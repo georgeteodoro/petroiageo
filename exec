@@ -12,7 +12,7 @@ for iter in {2..26}
 do
     val1=$(($iter - 1))
     val2=$(($iter + 1))
-    echo "iter $iter, val1 $val1, val2 $val2"
+    # echo "iter $iter, val1 $val1, val2 $val2"
     if [ $iter -eq 2 ] || [ $iter -eq 10 ] || [ $iter -eq 20 ] || [ $iter -eq 26 ] 
         then
             echo "Iter $iter"
