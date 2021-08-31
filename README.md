@@ -3,6 +3,7 @@ Para a execução local do POV é necessário:
 * Instalar as dependencias do sistema (no meu caso gawk)
     * sudo apt-get install gawk
 
+
 * Instalar as dependencias do python3 
     * pip install numpy ou pip3 install numpy
     * pip install pandas ou pip3 install pandas 
@@ -16,10 +17,10 @@ Para a execução local do POV é necessário:
     * bash exec
 
 Após a refatoração é necessário colocar os arquivos com os dados no diretório `dados` e então executar o exec3.
-    * scripts
-        * dados
-            * near.npy
-            * mid.npy
-            * far.npy
-            * ufar.npy
-            * etc
+* scripts
+    * dados
+        * near.npy
+        * mid.npy
+        * far.npy
+        * ufar.npy
+        * etc
