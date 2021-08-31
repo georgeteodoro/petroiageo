@@ -11,12 +11,12 @@ Para a execução local do POV é necessário:
     * pip install scipy ou pip3 install scipy
     * pip install scikit-learn ou pip3 install scikit-learn
 
-** Dependendo do sistema (como no meu caso, onde existe o python 2.7 e o python 3.xx), alterar no script exec de python para python3**
+**Dependendo do sistema (como no meu caso, onde existe o python 2.7 e o python 3.xx), alterar no script exec de python para python3**
 
 * Executar o código na versão original:
     * bash exec
 
-Após a refatoração é necessário colocar os arquivos com os dados no diretório `dados` e então executar o exec3.
+Após a refatoração é necessário colocar os arquivos com os dados no diretório `dados` e então executar o exec.
 * scripts
     * dados
         * near.npy
