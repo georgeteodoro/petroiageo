@@ -3,7 +3,8 @@ dados/o*
 dados/v*
 dados/w-*
 dados/p
-
-# all wells data, except wells-1.csv
 dados/wells-*
-!dados/wells-1.csv
+dados/*.npy
+
+!dados/xx.npy
+!dados/pp.npy
