@@ -1,1 +1,8 @@
 teste.py
+dados/o*
+dados/v*
+dados/w-*
+
+# all wells data, except wells-1.csv
+dados/wells-*
+!dados/wells-1.csv
