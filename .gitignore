@@ -2,6 +2,7 @@ teste.py
 dados/o*
 dados/v*
 dados/w-*
+dados/p
 
 # all wells data, except wells-1.csv
 dados/wells-*
