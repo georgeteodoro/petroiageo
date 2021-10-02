@@ -1,5 +1,13 @@
+# constant random seed generator
+get_seeded_random()
+{
+  seed="$1"
+  openssl enc -aes-256-ctr -pass pass:"$seed" -nosalt \
+    </dev/zero 2>/dev/null
+}
+
 echo "Iter 1"
-shuf dados/ids | head -15 | gawk '{a=a"$"$1","}END{print("cat dados/wells-1.csv | gawk xxBEGIN{FS=,}{print("a"$(NF-8),$(NF-7),$(NF-6),$(NF-5),$(NF-4),$(NF-3),$(NF-2),$(NF-1),$NF)}xx > dados/v; mv dados/v dados/w-1.csv")}' | sed "s/xx/'/g" | sed 's/,/","/g' > dados/p
+shuf --random-source=<(get_seeded_random 42) dados/ids | head -15 | gawk '{a=a"$"$1","}END{print("cat dados/wells-1.csv | gawk xxBEGIN{FS=,}{print("a"$(NF-8),$(NF-7),$(NF-6),$(NF-5),$(NF-4),$(NF-3),$(NF-2),$(NF-1),$NF)}xx > dados/v; mv dados/v dados/w-1.csv")}' | sed "s/xx/'/g" | sed 's/,/","/g' > dados/p
 source dados/p
 python3 apply2.py dados/w-1.csv > dados/v
 cp dados/v dados/o1
@@ -8,7 +16,8 @@ cat dados/v2 dados/v | gawk '{if($1=="a") {a[$2" "$3" "$4]=$5; b[$2" "$3" "$4]=1
 python3 tt2.py > dados/wells-2.csv
 python3 tt.py 2 dados/values >> dados/wells-2.csv
 
-for iter in {2..26}
+for iter in {2..6}
+# for iter in {2..26}
 do
     val1=$(($iter - 1))
     val2=$(($iter + 1))
@@ -16,7 +25,7 @@ do
     if [ $iter -eq 2 ] || [ $iter -eq 10 ] || [ $iter -eq 20 ] || [ $iter -eq 26 ] 
         then
             echo "Iter $iter"
-            shuf dados/ids | head -15 | gawk '{a=a"$"$1","}END{print("cat dados/wells-$iter.csv | gawk xxBEGIN{FS=,}{print("a"$501,$502,$503,$504,$505,$506,$507,$508,$509)}xx > dados/v; mv dados/v dados/w-$iter.csv")}' | sed "s/xx/'/g" | sed 's/,/","/g' > dados/p
+            shuf --random-source=<(get_seeded_random 42) dados/ids | head -15 | gawk '{a=a"$"$1","}END{print("cat dados/wells-$iter.csv | gawk xxBEGIN{FS=,}{print("a"$501,$502,$503,$504,$505,$506,$507,$508,$509)}xx > dados/v; mv dados/v dados/w-$iter.csv")}' | sed "s/xx/'/g" | sed 's/,/","/g' > dados/p
             source dados/p
             python3 apply2.py dados/w-$iter.csv > dados/v
             cat dados/o$val1 dados/v | gawk '{a[$1" "$2" "$3]=a[$1" "$2" "$3]" "$4}END{for(i in a) print(i, a[i])}' | gawk '{if(NF==5) {a=$4; if($5>0) {a+=$5; if($4>0) a=a/2;} print($1,$2,$3,a)} else print($1,$2,$3,$4)}' > dados/o$iter 
@@ -27,7 +36,7 @@ do
     elif [ $iter -eq 9 ]  || [ $iter -eq 19 ] || [ $iter -eq 25 ] 
         then
             echo "Iter $iter" 
-            shuf dados/ids | head -15 | gawk '{a=a"$"$1","}END{print("cat dados/o.csv | gawk xxBEGIN{FS=,}{print("a"$501,$502,$503,$504,$505,$506,$507,$508,$509)}xx > dados/v; mv dados/v dados/w-$iter.csv")}' | sed "s/xx/'/g" | sed 's/,/","/g' > dados/p
+            shuf --random-source=<(get_seeded_random 42) dados/ids | head -15 | gawk '{a=a"$"$1","}END{print("cat dados/o.csv | gawk xxBEGIN{FS=,}{print("a"$501,$502,$503,$504,$505,$506,$507,$508,$509)}xx > dados/v; mv dados/v dados/w-$iter.csv")}' | sed "s/xx/'/g" | sed 's/,/","/g' > dados/p
             source dados/p
             python3 apply2.py dados/w-$iter.csv > dados/v
             cat dados/o$val1 dados/v | gawk '{a[$1" "$2" "$3]=a[$1" "$2" "$3]" "$4}END{for(i in a) print(i, a[i])}' | gawk '{if(NF==5) {a=$4; if($5>0) {a+=$5; if($4>0) a=a/2;} print($1,$2,$3,a)} else print($1,$2,$3,$4)}' > dados/o$iter 
@@ -37,7 +46,7 @@ do
             python3 tt.py $val2 dados/values >> dados/wells-$val2.csv
     else
         echo "Iter $iter" 
-        shuf dados/ids | head -15 | gawk '{a=a"$"$1","}END{print("cat dados/o.csv | gawk xxBEGIN{FS=,}{print("a"$501,$502,$503,$504,$505,$506,$507,$508,$509)}xx > dados/v; mv dados/v dados/w-$iter.csv")}' | sed "s/xx/'/g" | sed 's/,/","/g' > dados/p
+        shuf --random-source=<(get_seeded_random 42) dados/ids | head -15 | gawk '{a=a"$"$1","}END{print("cat dados/o.csv | gawk xxBEGIN{FS=,}{print("a"$501,$502,$503,$504,$505,$506,$507,$508,$509)}xx > dados/v; mv dados/v dados/w-$iter.csv")}' | sed "s/xx/'/g" | sed 's/,/","/g' > dados/p
         source dados/p
         python3 apply2.py dados/w-$iter.csv > dados/v
         cat dados/o$val1 dados/v | gawk '{a[$1" "$2" "$3]=a[$1" "$2" "$3]" "$4}END{for(i in a) print(i, a[i])}' | gawk '{if(NF==5) {a=$4; if($5>0) {a+=$5; if($4>0) a=a/2;} print($1,$2,$3,a)} else print($1,$2,$3,$4)}' > dados/o$iter 
@@ -48,13 +57,13 @@ do
     fi        
 done
 
-echo "Iter final"
-shuf dados/ids | head -15 | gawk '{a=a"$"$1","}END{print("cat dados/o.csv | gawk xxBEGIN{FS=,}{print("a"$501,$502,$503,$504,$505,$506,$507,$508,$509)}xx > dados/v; mv dados/v dados/w-27.csv")}' | sed "s/xx/'/g" | sed 's/,/","/g'> dados/p
-source dados/p
-python3 apply2.py dados/w-27.csv > dados/v
-cat dados/o26 dados/v | gawk '{a[$1" "$2" "$3]=a[$1" "$2" "$3]" "$4}END{for(i in a) print(i, a[i])}' | gawk '{if(NF==5) {a=$4; if($5>0) {a+=$5; if($4>0) a=a/2;} print($1,$2,$3,a)} else print($1,$2,$3,$4)}' > dados/o27
-cat dados/o27 | gawk '{print("a "$0)}' > dados/v2
-cat dados/v2 dados/o27 | gawk '{if($1=="a") {a[$2" "$3" "$4]=$5; b[$2" "$3" "$4]=1;} else {for(i=$1-1;i<=$1+1;i++) for(j=$2-1;j<=$2+1;j++) {if(b[i" "j" "$3]!=1) {a[i" "j" "$3]+=$4; c[i" "j" "$3]++;}}}}END{for(i in a) {if(b[i]==1) print(i, a[i]); else print(i, a[i]/c[i])}}' | LC_ALL=C sort -nk1,1 -nk2,2 -nk3,3 | gawk '{if($3<251) print($0)}' > dados/values
-cat dados/values | gawk '{a[$1","$2]++}END{for(i in a) printf("[%s],", i)}' >> tt.py
-python3 tt2.py > dados/o.csv
-python3 tt.py 28 dados/values >> dados/o.csv
+# echo "Iter final"
+# shuf --random-source=<(get_seeded_random 42) dados/ids | head -15 | gawk '{a=a"$"$1","}END{print("cat dados/o.csv | gawk xxBEGIN{FS=,}{print("a"$501,$502,$503,$504,$505,$506,$507,$508,$509)}xx > dados/v; mv dados/v dados/w-27.csv")}' | sed "s/xx/'/g" | sed 's/,/","/g'> dados/p
+# source dados/p
+# python3 apply2.py dados/w-27.csv > dados/v
+# cat dados/o26 dados/v | gawk '{a[$1" "$2" "$3]=a[$1" "$2" "$3]" "$4}END{for(i in a) print(i, a[i])}' | gawk '{if(NF==5) {a=$4; if($5>0) {a+=$5; if($4>0) a=a/2;} print($1,$2,$3,a)} else print($1,$2,$3,$4)}' > dados/o27
+# cat dados/o27 | gawk '{print("a "$0)}' > dados/v2
+# cat dados/v2 dados/o27 | gawk '{if($1=="a") {a[$2" "$3" "$4]=$5; b[$2" "$3" "$4]=1;} else {for(i=$1-1;i<=$1+1;i++) for(j=$2-1;j<=$2+1;j++) {if(b[i" "j" "$3]!=1) {a[i" "j" "$3]+=$4; c[i" "j" "$3]++;}}}}END{for(i in a) {if(b[i]==1) print(i, a[i]); else print(i, a[i]/c[i])}}' | LC_ALL=C sort -nk1,1 -nk2,2 -nk3,3 | gawk '{if($3<251) print($0)}' > dados/values
+# cat dados/values | gawk '{a[$1","$2]++}END{for(i in a) printf("[%s],", i)}' >> tt.py
+# python3 tt2.py > dados/o.csv
+# python3 tt.py 28 dados/values >> dados/o.csv
