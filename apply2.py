@@ -13,29 +13,34 @@ RANDOM_STATE = 1
 
 
 def get_error(df, pred):
-    error = 0
+    mae = 0
+    # rmsd = 0
     count = 0
     for i in range(len(pred)):
         if df['real'][i] == 1:  # TODO: optimize 'if' out with products
-            error += abs(pred[i] - df[LABEL_COLUMN_NAME][i])
+            mae += abs(pred[i] - df[LABEL_COLUMN_NAME][i])
+            # rmsd += (pred[i] - df[LABEL_COLUMN_NAME][i])**2
             count += 1
     if count == 0:
         return 0
     else:
-        return error / count
+        # return mae / count, np.sqrt(rmsd / count)
+        return mae / count
 
 
-def eval_model(df, features):
-    t1 = time.time()
-    X = df[features].values
-    y = df[LABEL_COLUMN_NAME].values
-
+def predict_gradient_boosting(x, y):
     regressor = ensemble.GradientBoostingRegressor(n_estimators=20,
                                                    max_depth=8,
                                                    min_samples_split=5,
                                                    learning_rate=0.1,
                                                    loss='ls',
                                                    random_state=RANDOM_STATE)
+
+    regressor = regressor.fit(x, y)
+    return regressor.predict(x)
+
+
+def predict_lightgbm(x, y):
     params = {
         'boosting_type': 'gbdt',
         'objective': 'regression',
@@ -49,43 +54,49 @@ def eval_model(df, features):
         # 'device_type': 'gpu',
         'random_state': RANDOM_STATE
     }
-    t2 = time.time()
-    # regressor = regressor.fit(X, y)
+
     gbm = lgb.train(
         params,
-        lgb.Dataset(X, y),
+        lgb.Dataset(x, y),
         num_boost_round=100,
         # valid_sets=lgb_eval,
         # early_stopping_rounds=2,
-        valid_sets=lgb.Dataset(X, y))
+        valid_sets=lgb.Dataset(x, y))
+
+    return gbm.predict(x, num_iteration=gbm.best_iteration)
+
+
+def eval_model(df, features):
+    t1 = time.time()
+    x = df[features].values
+    y = df[LABEL_COLUMN_NAME].values
+
+    t2 = time.time()
+    # pred = predict_gradient_boosting(x, y)
+    pred = predict_lightgbm(x, y)
 
     t3 = time.time()
-    # pred = regressor.predict(X)
-    pred = gbm.predict(X, num_iteration=gbm.best_iteration)
+    mae = get_error(df, pred)
 
     t4 = time.time()
-    error = get_error(df, pred)
-
-    t5 = time.time()
-    for i in range(len(X)):
-        # What 0.025 prediction means?
+    for i in range(len(x)):
         if pred[i] < 0.025: pred[i] = 0
-        # What are labels 1 and 2?
+        # Label=1 means real well point
+        # Label=2 means predicted point of previous iterations
         if df['real'][i] == 1 or df['real'][i] == 2:
             pred[i] = df[LABEL_COLUMN_NAME][i]
-        print(int(X[i][0]), int(X[i][1]), int(X[i][2]), pred[i])
+        print(int(x[i][0]), int(x[i][1]), int(x[i][2]), pred[i])
 
-    t6 = time.time()
+    t5 = time.time()
 
     with open('apply-error.log', mode='a') as f:
-        print("error: " + str(error), file=f)
-        
+        print("MAE: " + str(mae), file=f)
+
     with open('apply-times.log', mode='a') as f:
         print("prep: " + str(t2 - t1), file=f)
-        print("train: " + str(t3 - t2), file=f)
-        print("predict: " + str(t4 - t3), file=f)
-        print("error calc: " + str(t5 - t4), file=f)
-        print("write: " + str(t6 - t5), file=f)
+        print("predict: " + str(t3 - t2), file=f)
+        print("error calc: " + str(t4 - t3), file=f)
+        print("write: " + str(t5 - t4), file=f)
 
 
 # Reads dataset

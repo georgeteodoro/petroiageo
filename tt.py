@@ -54,7 +54,14 @@ def well_str(p, w, real, shape):
 
         # define se o poco e real ou dado aumentado [...]
         # WORKARROUND: this field is no longer used, thus can be anything
-        s.write("0,")
+        # WRONG!!!! this field is used for validation
+        # s.write("0,")
+        if [p[0], p[1]] in real:
+            s.write("1,")
+        elif [p[0], p[1]] in xx:
+            s.write("2,")
+        else:
+            s.write("0,")
 
         s.write("%s," % p[0])
         s.write("%s," % p[1])

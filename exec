@@ -16,7 +16,7 @@ cat dados/v2 dados/v | gawk '{if($1=="a") {a[$2" "$3" "$4]=$5; b[$2" "$3" "$4]=1
 python3 tt2.py > dados/wells-2.csv
 python3 tt.py 2 dados/values >> dados/wells-2.csv
 
-for iter in {2..6}
+for iter in {2..3}
 # for iter in {2..26}
 do
     val1=$(($iter - 1))
