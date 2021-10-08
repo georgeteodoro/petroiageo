@@ -44,8 +44,8 @@ timed "tt2"
 python3 tt.py 2 dados/values >> dados/wells-2.csv
 timed "tt"
 
-# for iter in {2..3}
-for iter in {2..26}
+for iter in {2..3}
+#for iter in {2..26}
 do
     iteration $iter
 

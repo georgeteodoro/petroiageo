@@ -16,7 +16,7 @@ LABELS_SHAPE = (400, 700, 260)
 # Arrays are 1D for being usable on shared-memory
 # reshaping is too expensive, thus near[i*shape[1]*shape[2] + j*shape[2] + k]
 # Shape changing is too expensive: 20 sec for 100M and require 270M per array
-def well_str(p, w, real, shape):
+def well_str(p, w, real, xx, shape):
     # get shared memory variables
     near = snear
     mid = smid
@@ -26,6 +26,8 @@ def well_str(p, w, real, shape):
     B = sB
     C = sC
     D = sD
+    # locks = sLocks
+    # visited = sVisited
 
     # Get well ID if it is real, otherwise 0
     # ID must begin at 1
@@ -36,6 +38,22 @@ def well_str(p, w, real, shape):
 
     s = StringIO()
     for k in range(251):  # for all depths
+        # Calculate 1D coordinate of current point
+        origPcoord = (p[0], p[1], k)
+        pCoord = origPcoord[0] * LABELS_SHAPE[1] * LABELS_SHAPE[
+            2] + origPcoord[1] * LABELS_SHAPE[2] + origPcoord[2]
+
+        # # Checks for existing coordinate
+        # locks[pCoord].acquire()
+        # if visited[pCoord] != 0:
+        #     # Marks first visit
+        #     visited[pCoord] = 1
+        #     locks[pCoord].release()
+        # else:
+        #     # Skips for already visited coordinates
+        #     locks[pCoord].release()
+        #     continue
+
         for i in range(p[0] - w, p[0] + w + 1):
             for j in range(p[1] - w, p[1] + w + 1):
                 for z in range(k - w, k + w + 1):
@@ -49,6 +67,7 @@ def well_str(p, w, real, shape):
                     s.write("%s," % mid[coord])
                     s.write("%s," % far[coord])
                     s.write("%s," % ufar[coord])
+
         # imprime o id do poco, seja ele real ou aumentado, sao 10 pocos reais
         s.write("%s," % r)
 
@@ -64,15 +83,10 @@ def well_str(p, w, real, shape):
         s.write("%s," % p[1])
         s.write("%s," % k)
 
-        # Calculate 1D coordinate to be accessed by labels
-        labelscoord = (p[0], p[1], k)
-        labelscoord = labelscoord[0] * LABELS_SHAPE[1] * LABELS_SHAPE[
-            2] + labelscoord[1] * LABELS_SHAPE[2] + labelscoord[2]
-
-        s.write("%s," % A[labelscoord])
-        s.write("%s," % B[labelscoord])
-        s.write("%s," % C[labelscoord])
-        s.write("%s" % D[labelscoord])
+        s.write("%s," % A[pCoord])
+        s.write("%s," % B[pCoord])
+        s.write("%s," % C[pCoord])
+        s.write("%s" % D[pCoord])
         s.write('\n')
     return s
 
@@ -99,7 +113,7 @@ if __name__ == '__main__':
     t1 = time.time()
 
     iteration = int(sys.argv[1])
-    A, B, C, D = fill_labels(iteration, sys.argv[2])
+    # A, B, C, D = fill_labels(iteration, sys.argv[2])
 
     r = 0
     # janela para variar as dimensoes do cubo
@@ -162,18 +176,29 @@ if __name__ == '__main__':
 
     t2 = time.time()
 
+    t21 = time.time()
+    # print("shrd begin")
+
     labelslen = prod(LABELS_SHAPE)
+
+    t22 = time.time()
+    # print("labels done " + str(t22 - t21))
 
     # Allocate shared memory arrays
     # These are not thread-safe since read-only
-    snear = mp.Array('f', len(near), lock=False)
-    smid = mp.Array('f', len(mid), lock=False)
-    sfar = mp.Array('f', len(far), lock=False)
-    sufar = mp.Array('f', len(ufar), lock=False)
-    sA = mp.Array('f', labelslen, lock=False)
-    sB = mp.Array('f', labelslen, lock=False)
-    sC = mp.Array('f', labelslen, lock=False)
-    sD = mp.Array('f', labelslen, lock=False)
+    snear = mp.Array('d', len(near), lock=False)
+    smid = mp.Array('d', len(mid), lock=False)
+    sfar = mp.Array('d', len(far), lock=False)
+    sufar = mp.Array('d', len(ufar), lock=False)
+    sA = mp.Array('d', labelslen, lock=False)
+    sB = mp.Array('d', labelslen, lock=False)
+    sC = mp.Array('d', labelslen, lock=False)
+    sD = mp.Array('d', labelslen, lock=False)
+    # sVisited = mp.Array('d', labelslen, lock=False)
+    # sLocks = mp.RawArray(type(mp.Lock()), labelslen)
+
+    t23 = time.time()
+    # print("arrays done " + str(t23 - t22))
 
     # Fill values on shared memory space
     # Best if input arrays come from lazy numpy.array
@@ -183,12 +208,21 @@ if __name__ == '__main__':
     smid[:] = mid
     sfar[:] = far
     sufar[:] = ufar
+    t24 = time.time()
+    # print("cpy done " + str(t24 - t23))
+
     sA[:], sB[:], sC[:], sD[:] = fill_labels(iteration, sys.argv[2])
+
+    # Create a shared structure for synchronizing sVisited array by coordinate
+    # sVisited[:] = np.zeros((labelslen))
+
+    t25 = time.time()
+    # print("shrd end " + str(t25 - t24))
 
     t3 = time.time()
 
     # Parallel execution
-    f = partial(well_str, w=w, real=real, shape=nearshape)
+    f = partial(well_str, w=w, real=real, xx=xx, shape=nearshape)
     with mp.Pool(mp.cpu_count()) as pool:
         results = pool.map(f, pp)
 
@@ -203,10 +237,10 @@ if __name__ == '__main__':
 
     t5 = time.time()
 
-    # with open('tt-times.log', mode='a') as f:
-    #     print("iteration %s" % iteration, file=f)
-    #     print("prep " + str(t2 - t1), file=f)
-    #     print("shm prep " + str(t3 - t2), file=f)
-    #     print("exec " + str(t4 - t3), file=f)
-    #     print("write " + str(t5 - t4), file=f)
-    #     print("", file=f)
+    with open('tt-times.log', mode='a') as f:
+        print("iteration %s" % iteration, file=f)
+        print("prep " + str(t2 - t1), file=f)
+        print("shm prep " + str(t3 - t2), file=f)
+        print("exec " + str(t4 - t3), file=f)
+        print("write " + str(t5 - t4), file=f)
+        print("", file=f)
