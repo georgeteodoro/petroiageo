@@ -23,9 +23,6 @@ def well_str(p, w, real, xx, shape):
     far = sfar
     ufar = sufar
     A = sA
-    B = sB
-    C = sC
-    D = sD
     # locks = sLocks
     # visited = sVisited
 
@@ -84,36 +81,30 @@ def well_str(p, w, real, xx, shape):
         s.write("%s," % k)
 
         s.write("%s," % A[pCoord])
-        s.write("%s," % B[pCoord])
-        s.write("%s," % C[pCoord])
-        s.write("%s" % D[pCoord])
+        # Currently B, C and D labels were all zero
+        s.write("0,")
+        s.write("0,")
+        s.write("0,")
         s.write('\n')
     return s
 
 
 if __name__ == '__main__':
 
-    # TODO: labels b, c and d are useless now (all zero)
-    # can I replace all references to them (B[x]) to 0?
-    def fill_labels(iteration, f_name):
-        a = np.zeros(LABELS_SHAPE)
-        b = np.zeros(LABELS_SHAPE)
-        c = np.zeros(LABELS_SHAPE)
-        d = np.zeros(LABELS_SHAPE)
-
-        f = open(f_name, 'r')
-        for line in f.readlines():
-            fields = line.split(' ')
-            a[int(fields[0])][int(fields[1])][int(fields[2])] = float(
-                fields[3])
-        f.close()
-
-        return a.flatten(), b.flatten(), c.flatten(), d.flatten()
+    # Labels b, c and d are useless (all zero)
+    # Replaced all references to them (B[x]) to 0
+    def fill_labels(iteration, f_name, a):
+        with open(f_name, 'r') as f:
+            for line in f.readlines():
+                fields = line.split(' ')
+                coord = int(
+                    fields[0]) * LABELS_SHAPE[1] * LABELS_SHAPE[2] + int(
+                        fields[1]) * LABELS_SHAPE[2] + int(fields[2])
+                a[coord] = float(fields[3])
 
     t1 = time.time()
 
     iteration = int(sys.argv[1])
-    # A, B, C, D = fill_labels(iteration, sys.argv[2])
 
     r = 0
     # janela para variar as dimensoes do cubo
@@ -191,27 +182,35 @@ if __name__ == '__main__':
     sfar = mp.Array('d', len(far), lock=False)
     sufar = mp.Array('d', len(ufar), lock=False)
     sA = mp.Array('d', labelslen, lock=False)
-    sB = mp.Array('d', labelslen, lock=False)
-    sC = mp.Array('d', labelslen, lock=False)
-    sD = mp.Array('d', labelslen, lock=False)
     # sVisited = mp.Array('d', labelslen, lock=False)
     # sLocks = mp.RawArray(type(mp.Lock()), labelslen)
 
     t23 = time.time()
+
     # print("arrays done " + str(t23 - t22))
 
     # Fill values on shared memory space
     # Best if input arrays come from lazy numpy.array
     # since this assignment is a deep-copy to shared
     # memory space.
-    snear[:] = near
-    smid[:] = mid
-    sfar[:] = far
-    sufar[:] = ufar
+    def move_to_shrd(arrs):
+        # Shared arrays can only be accessed like this
+        sarrs = [snear, smid, sfar, sufar]
+        arr, _ = load_to_mem(arrs[1])
+        sarrs[arrs[0]][:] = arr
+
+    # The move to shared memory is done in parallel.
+    # Magic numbers are IDs for a list with the shared arrays 
+    # which is inside move_to_shrd.
+    # Name of files passed so they can be opened inside move_to_shrd, which
+    # is the only way to "pass" the opened np.arrays to a parallel worker.
+    with mp.Pool(4) as pool:
+        pool.map(move_to_shrd, [[0, "dados/NEAR.npy"], [1, "dados/MID.npy"],
+                                [2, "dados/FAR.npy"], [3, "dados/UFAR.npy"]])
     t24 = time.time()
     # print("cpy done " + str(t24 - t23))
 
-    sA[:], sB[:], sC[:], sD[:] = fill_labels(iteration, sys.argv[2])
+    fill_labels(iteration, sys.argv[2], sA)
 
     # Create a shared structure for synchronizing sVisited array by coordinate
     # sVisited[:] = np.zeros((labelslen))
