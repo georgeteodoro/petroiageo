@@ -239,7 +239,7 @@ if __name__ == '__main__':
     with open('tt-times.log', mode='a') as f:
         print("iteration %s" % iteration, file=f)
         print("prep " + str(t2 - t1), file=f)
-        print("shm prep " + str(t3 - t2), file=f)
+        print("shm-prep " + str(t3 - t2), file=f)
         print("exec " + str(t4 - t3), file=f)
         print("write " + str(t5 - t4), file=f)
         print("", file=f)

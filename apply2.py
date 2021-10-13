@@ -95,7 +95,7 @@ def eval_model(df, features):
     with open('apply-times.log', mode='a') as f:
         print("prep: " + str(t2 - t1), file=f)
         print("predict: " + str(t3 - t2), file=f)
-        print("error calc: " + str(t4 - t3), file=f)
+        print("error-calc: " + str(t4 - t3), file=f)
         print("write: " + str(t5 - t4), file=f)
 
 
