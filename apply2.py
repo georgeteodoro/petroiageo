@@ -104,15 +104,15 @@ df = pd.read_csv(sys.argv[1])
 df.dropna(axis=0, subset=[LABEL_COLUMN_NAME], inplace=True)
 
 all_features = list(df.columns)
+all_features.remove('well')
+all_features.remove('real')
 all_features.remove('X')
 all_features.remove('Y')
 all_features.remove('depth')
-all_features.remove('well')
-all_features.remove('real')
+all_features.remove(LABEL_COLUMN_NAME)
 all_features.remove('rho')
 all_features.remove('vp')
 all_features.remove('vs')
-all_features.remove(LABEL_COLUMN_NAME)
 
 f = ['X', 'Y', 'depth']
 for x in all_features:

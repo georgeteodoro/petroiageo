@@ -25,8 +25,10 @@ iteration()
 SECONDS=0
 iteration 1
 
-shuf --random-source=<(get_seeded_random 42) dados/ids | head -15 | gawk '{a=a"$"$1","}END{print("cat dados/wells-1.csv | gawk xxBEGIN{FS=,}{print("a"$(NF-8),$(NF-7),$(NF-6),$(NF-5),$(NF-4),$(NF-3),$(NF-2),$(NF-1),$NF)}xx > dados/v; mv dados/v dados/w-1.csv")}' | sed "s/xx/'/g" | sed 's/,/","/g' > dados/p
-source dados/p
+shuf --random-source=<(get_seeded_random 42) dados/ids | head -15 > dados/rids # | gawk '{a=a"$"$1","}END{print("cat dados/wells-1.csv | gawk xxBEGIN{FS=,}{print("a"$(NF-8),$(NF-7),$(NF-6),$(NF-5),$(NF-4),$(NF-3),$(NF-2),$(NF-1),$NF)}xx > dados/v; mv dados/v dados/w-1.csv")}' | sed "s/xx/'/g" | sed 's/,/","/g' > dados/p
+python3 prep1.py 1372 dados/rids dados/wells-1.csv dados/w-1.csv
+# cat rids | gawk '{a=a"$"$1","}END{print("cat dados/wells-1.csv | gawk xxBEGIN{FS=,}{print("a"$(NF-8),$(NF-7),$(NF-6),$(NF-5),$(NF-4),$(NF-3),$(NF-2),$(NF-1),$NF)}xx > dados/v; mv dados/v dados/w-1.csv")}' | sed "s/xx/'/g" | sed 's/,/","/g' > dados/p
+# source dados/p
 timed "prep1"
 
 python3 apply2.py dados/w-1.csv > dados/v
@@ -43,8 +45,8 @@ timed "tt2"
 python3 tt.py 2 dados/values >> dados/wells-2.csv
 timed "tt"
 
-# for iter in {2..3}
-for iter in {2..26}
+for iter in {2..3}
+# for iter in {2..26}
 do
     iteration $iter
 
@@ -53,8 +55,11 @@ do
     # echo "iter $iter, val1 $val1, val2 $val2"
     if [ $iter -eq 2 ] || [ $iter -eq 10 ] || [ $iter -eq 20 ] || [ $iter -eq 26 ] 
         then
-            shuf --random-source=<(get_seeded_random 42) dados/ids | head -15 | gawk '{a=a"$"$1","}END{print("cat dados/wells-$iter.csv | gawk xxBEGIN{FS=,}{print("a"$501,$502,$503,$504,$505,$506,$507,$508,$509)}xx > dados/v; mv dados/v dados/w-$iter.csv")}' | sed "s/xx/'/g" | sed 's/,/","/g' > dados/p
-            source dados/p
+            # shuf --random-source=<(get_seeded_random 42) dados/ids | head -15 | gawk '{a=a"$"$1","}END{print("cat dados/wells-$iter.csv | gawk xxBEGIN{FS=,}{print("a"$501,$502,$503,$504,$505,$506,$507,$508,$509)}xx > dados/v; mv dados/v dados/w-$iter.csv")}' | sed "s/xx/'/g" | sed 's/,/","/g' > dados/p
+            # source dados/p
+            shuf --random-source=<(get_seeded_random 42) dados/ids | head -15 > dados/rids
+            python3 prep1.py 500 dados/rids dados/wells-${iter}.csv dados/w-${iter}.csv
+
             timed "prep1"
 
             python3 apply2.py dados/w-$iter.csv > dados/v
@@ -72,8 +77,10 @@ do
             timed "tt"
     elif [ $iter -eq 9 ]  || [ $iter -eq 19 ] || [ $iter -eq 25 ] 
         then
-            shuf --random-source=<(get_seeded_random 42) dados/ids | head -15 | gawk '{a=a"$"$1","}END{print("cat dados/o.csv | gawk xxBEGIN{FS=,}{print("a"$501,$502,$503,$504,$505,$506,$507,$508,$509)}xx > dados/v; mv dados/v dados/w-$iter.csv")}' | sed "s/xx/'/g" | sed 's/,/","/g' > dados/p
-            source dados/p
+            # shuf --random-source=<(get_seeded_random 42) dados/ids | head -15 | gawk '{a=a"$"$1","}END{print("cat dados/o.csv | gawk xxBEGIN{FS=,}{print("a"$501,$502,$503,$504,$505,$506,$507,$508,$509)}xx > dados/v; mv dados/v dados/w-$iter.csv")}' | sed "s/xx/'/g" | sed 's/,/","/g' > dados/p
+            # source dados/p
+            shuf --random-source=<(get_seeded_random 42) dados/ids | head -15 > dados/rids
+            python3 prep1.py 500 dados/rids dados/o.csv dados/w-${iter}.csv
             timed "prep1"
             
             python3 apply2.py dados/w-$iter.csv > dados/v
@@ -90,8 +97,10 @@ do
             python3 tt.py $val2 dados/values >> dados/wells-$val2.csv
             timed "tt"
     else
-        shuf --random-source=<(get_seeded_random 42) dados/ids | head -15 | gawk '{a=a"$"$1","}END{print("cat dados/o.csv | gawk xxBEGIN{FS=,}{print("a"$501,$502,$503,$504,$505,$506,$507,$508,$509)}xx > dados/v; mv dados/v dados/w-$iter.csv")}' | sed "s/xx/'/g" | sed 's/,/","/g' > dados/p
-        source dados/p
+        # shuf --random-source=<(get_seeded_random 42) dados/ids | head -15 | gawk '{a=a"$"$1","}END{print("cat dados/o.csv | gawk xxBEGIN{FS=,}{print("a"$501,$502,$503,$504,$505,$506,$507,$508,$509)}xx > dados/v; mv dados/v dados/w-$iter.csv")}' | sed "s/xx/'/g" | sed 's/,/","/g' > dados/p
+        # source dados/p
+        shuf --random-source=<(get_seeded_random 42) dados/ids | head -15 > dados/rids
+        python3 prep1.py 500 dados/rids dados/o.csv dados/w-${iter}.csv
         timed "prep1"
 
         python3 apply2.py dados/w-$iter.csv > dados/v
