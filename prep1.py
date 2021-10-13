@@ -3,6 +3,8 @@ from functools import reduce
 import sys
 import random
 from io import StringIO
+from functools import partial
+import multiprocessing as mp
 
 # max_features = 1372 # for w1
 # max_features = 500 # for w2
@@ -33,31 +35,39 @@ output_file = sys.argv[3]
 random.seed(RANDOM_STATE)
 ids = random.sample(range(MAX_ID), N_FEATURES)
 
-# Allocate npy data
+# Get number of lines
 num_lines = sum(1 for line in open(wells_file, 'r')) - 1  # last line is empty
-output = []
+# output = []
 
 t2 = time.time()
+
+
+def filter_line(line, max_features, ids):
+    s = StringIO()
+
+    # Move selected features features
+    fields = line.split(',')
+    for i in range(N_FEATURES):
+        s.write(str(fields[ids[i]]) + ",")
+
+    # Move info data fields
+    for f in fields[max_features:max_features + N_INFO]:
+        s.write(str(f) + ",")
+
+    # Return output without trailing comma
+    return s.getvalue()[:-1]
+
 
 # Filter full data to reduced features
 with open(wells_file, 'r') as f:
     # First line is labels only
     all_labels = f.readline()
 
-    for line in f.readlines():
-        s = StringIO()
-
-        # Move selected features features
-        fields = line.split(',')
-        for i in range(N_FEATURES):
-            s.write(str(fields[ids[i]]) + ",")
-
-        # Move info data fields
-        for f in fields[max_features:max_features + N_INFO]:
-            s.write(str(f) + ",")
-
-        # Add to output without trailing comma
-        output.append(s.getvalue()[:-1])
+    # Parallel execution for each line of f
+    with mp.Pool(mp.cpu_count()) as pool:
+        output = pool.map(
+            partial(filter_line, max_features=max_features, ids=ids),
+            f.readlines())
 
 t3 = time.time()
 
@@ -68,8 +78,9 @@ with open(output_file, 'w') as f:
     labels += reduce(lambda rem, id: rem + ',' + all_labels[id],
                      range(max_features, max_features + N_INFO), "")
     print(labels, file=f)
-    for i in range(num_lines):
-        print(output[i], file=f)
+
+    for o in output:
+        print(o, file=f)
 
 t4 = time.time()
 
