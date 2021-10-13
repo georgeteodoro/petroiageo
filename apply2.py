@@ -97,6 +97,7 @@ def eval_model(df, features):
         print("predict: " + str(t3 - t2), file=f)
         print("error-calc: " + str(t4 - t3), file=f)
         print("write: " + str(t5 - t4), file=f)
+        print("", file=f)
 
 
 # Reads dataset
