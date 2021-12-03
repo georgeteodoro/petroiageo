@@ -4,6 +4,7 @@ import random
 import sys
 import time
 
+from sklearn.model_selection import LeaveOneGroupOut
 from sklearn import ensemble
 import lightgbm as lgb
 
@@ -66,6 +67,33 @@ def predict_lightgbm(x, y):
     return gbm.predict(x, num_iteration=gbm.best_iteration)
 
 
+# def eval_bootstrap(df, features):
+#     X = df[features].values
+#     y = df[LABEL_COLUMN_NAME].values
+#     a = []
+#     b = []
+
+#     logo = LeaveOneGroupOut()
+#     groups = df['well']
+#     logo.get_n_splits(X, y, groups)
+#     logo.get_n_splits(groups=groups)
+#     for (train, val) in logo.split(X, y, groups):
+#         v = []
+#         n = 0
+#         for i in np.array(df['real'][val]):
+#             if i == 1 or i == 2: v.insert(len(v),n)
+#             n = n + 1
+#         v = np.array(v)
+#         regressor = ensemble.GradientBoostingRegressor(n_estimators = 30, max_depth = 10, min_samples_split = 5, learning_rate = 0.1, loss = 'ls', random_state = RANDOM_STATE)
+#         regressor = regressor.fit(X[train], y[train])
+#         pred = regressor.predict(X[v])
+#         rmse = np.sqrt(np.mean((pred - y[v])**2))
+#         mae = mean_absolute_error(pred, y[v])
+#         a.insert(len(a), rmse)
+#         b.insert(len(b), mae)
+#     return np.mean(a),np.mean(b)
+
+
 def eval_model(df, features):
     t1 = time.time()
     x = df[features].values
@@ -104,19 +132,43 @@ def eval_model(df, features):
 df = pd.read_csv(sys.argv[1])
 df.dropna(axis=0, subset=[LABEL_COLUMN_NAME], inplace=True)
 
-all_features = list(df.columns)
-all_features.remove('well')
-all_features.remove('real')
-all_features.remove('X')
-all_features.remove('Y')
-all_features.remove('depth')
-all_features.remove(LABEL_COLUMN_NAME)
-all_features.remove('rho')
-all_features.remove('vp')
-all_features.remove('vs')
+cur_features_labels = list(df.columns)
+cur_features_labels.remove('well')
+cur_features_labels.remove('real')
+cur_features_labels.remove('X')
+cur_features_labels.remove('Y')
+cur_features_labels.remove('depth')
+cur_features_labels.remove(LABEL_COLUMN_NAME)
+cur_features_labels.remove('rho')
+cur_features_labels.remove('vp')
+cur_features_labels.remove('vs')
 
-f = ['X', 'Y', 'depth']
-for x in all_features:
-    f.insert(len(f), x)
+coord_labels = ['X', 'Y', 'depth']
 
-eval_model(df, f)
+eval_model(df, coord_labels + cur_features_labels)
+
+
+
+
+
+# labels = ['X', 'Y', 'depth']
+# i = 0
+# for f1 in coord_labels + cur_features_labels:
+#     if i == 15: break # no more than 15 features 
+#     i = i + 1
+
+#     if f1 in labels: continue
+#     x = f1
+    
+#     max_error = 1000
+    
+#     for f2 in filtered_features:
+#         if f2 in labels: continue
+#         rmse, mae = eval_bootstrap(df, labels + [f2])
+#         print("%s,%f,%f" % (labels + [f2], rmse, mae))
+#         sys.stdout.flush()
+#         if rmse < max_error:
+#             x = f2
+#             max_error = rmse
+#     labels.append(x)
+

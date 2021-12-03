@@ -1,0 +1,12 @@
+Training 10 out of 15 total features
+Data size: 45180
+it[0] => it_time=10.086021900177002 - avg_train_time=0.672399886449178
+it[1] => it_time=10.125137567520142 - avg_train_time=0.7232224600655692
+it[2] => it_time=14.03825831413269 - avg_train_time=1.0798642451946552
+it[3] => it_time=13.293526649475098 - avg_train_time=1.1077921191851299
+it[4] => it_time=10.128655195236206 - avg_train_time=0.9207850152795966
+it[5] => it_time=10.587925434112549 - avg_train_time=1.0587907075881957
+it[6] => it_time=11.003300905227661 - avg_train_time=1.2225870026482477
+it[7] => it_time=10.19649362564087 - avg_train_time=1.274559885263443
+it[8] => it_time=9.26865291595459 - avg_train_time=1.3240913663591658
+it[9] => it_time=8.090900182723999 - avg_train_time=1.3484813769658406
