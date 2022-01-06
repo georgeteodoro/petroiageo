@@ -68,6 +68,10 @@ with open(wells_file, 'r') as f:
         output = pool.map(
             partial(filter_line, max_features=max_features, ids=ids),
             f.readlines())
+    
+    # output = []
+    # for line in f.readlines():
+    #     output.append(filter_line(line, max_features, ids))
 
 t3 = time.time()
 
