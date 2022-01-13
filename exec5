@@ -1,0 +1,151 @@
+python3 header.py > nwells-1.csv
+python3 expand.py 1 porosity-canal.txt >> nwells-1.csv
+python3 petro.py nwells-1.csv > w1
+grep -v "remover" apply3.py > v; mv v apply3.py
+cat w1 | sed "s/,0\./+0\./g" | gawk 'BEGIN{FS="+"}{print($2,$3,$1)}' | LC_ALL=C sort -nk 2 | head -1 | gawk 'BEGIN{FS="["}{print("f = ["$2" #remover"); print("eval_model(df, f) #remover")}' >> apply3.py
+python3 apply3.py nwells-1.csv > v
+cp v o1
+cat v | gawk '{print("a "$0)}' > v2
+cat v2 v | gawk '{if($1=="a") {a[$2" "$3" "$4]=$5; b[$2" "$3" "$4]=1;} else {for(i=$1-1;i<=$1+1;i++) for(j=$2-1;j<=$2+1;j++) {if(b[i" "j" "$3]!=1) {a[i" "j" "$3]+=$4; c[i" "j" "$3]++;}}}}END{for(i in a) {if(b[i]==1) print(i, a[i]); else print(i, a[i]/c[i])}}' | LC_ALL=C sort -nk1,1 -nk2,2 -nk3,3 | gawk '{if($3<251) print($0)}' > values
+python3 header.py > nwells-2.csv
+python3 expand.py 2 values >> nwells-2.csv
+
+python3 petro.py nwells-2.csv > w2
+grep -v "remover" apply3.py > v; mv v apply3.py
+cat w2 | sed "s/,0\./+0\./g" | gawk 'BEGIN{FS="+"}{print($2,$3,$1)}' | LC_ALL=C sort -nk 2 | head -1 | gawk 'BEGIN{FS="["}{print("f = ["$2" #remover"); print("eval_model(df, f) #remover")}' >> apply3.py
+python3 apply3.py nwells-2.csv > v
+cp v o1
+cat v | gawk '{print("a "$0)}' > v2
+cat v2 v | gawk '{if($1=="a") {a[$2" "$3" "$4]=$5; b[$2" "$3" "$4]=1;} else {for(i=$1-1;i<=$1+1;i++) for(j=$2-1;j<=$2+1;j++) {if(b[i" "j" "$3]!=1) {a[i" "j" "$3]+=$4; c[i" "j" "$3]++;}}}}END{for(i in a) {if(b[i]==1) print(i, a[i]); else print(i, a[i]/c[i])}}' | LC_ALL=C sort -nk1,1 -nk2,2 -nk3,3 | gawk '{if($3<251) print($0)}' > values
+python3 header.py > nwells-3.csv
+python3 expand.py 3 values >> nwells-3.csv
+
+python3 petro.py nwells-3.csv > w3
+grep -v "remover" apply3.py > v; mv v apply3.py
+cat w3 | sed "s/,0\./+0\./g" | gawk 'BEGIN{FS="+"}{print($2,$3,$1)}' | LC_ALL=C sort -nk 2 | head -1 | gawk 'BEGIN{FS="["}{print("f = ["$2" #remover"); print("eval_model(df, f) #remover")}' >> apply3.py
+python3 apply3.py nwells-3.csv > v
+cp v o1
+cat v | gawk '{print("a "$0)}' > v2
+cat v2 v | gawk '{if($1=="a") {a[$2" "$3" "$4]=$5; b[$2" "$3" "$4]=1;} else {for(i=$1-1;i<=$1+1;i++) for(j=$2-1;j<=$2+1;j++) {if(b[i" "j" "$3]!=1) {a[i" "j" "$3]+=$4; c[i" "j" "$3]++;}}}}END{for(i in a) {if(b[i]==1) print(i, a[i]); else print(i, a[i]/c[i])}}' | LC_ALL=C sort -nk1,1 -nk2,2 -nk3,3 | gawk '{if($3<251) print($0)}' > values
+python3 header.py > nwells-4.csv
+python3 expand.py 4 values >> nwells-4.csv
+
+python3 petro.py nwells-4.csv > w4
+grep -v "remover" apply3.py > v; mv v apply3.py
+cat w4 | sed "s/,0\./+0\./g" | gawk 'BEGIN{FS="+"}{print($2,$3,$1)}' | LC_ALL=C sort -nk 2 | head -1 | gawk 'BEGIN{FS="["}{print("f = ["$2" #remover"); print("eval_model(df, f) #remover")}' >> apply3.py
+python3 apply3.py nwells-4.csv > v
+cp v o1
+cat v | gawk '{print("a "$0)}' > v2
+cat v2 v | gawk '{if($1=="a") {a[$2" "$3" "$4]=$5; b[$2" "$3" "$4]=1;} else {for(i=$1-1;i<=$1+1;i++) for(j=$2-1;j<=$2+1;j++) {if(b[i" "j" "$3]!=1) {a[i" "j" "$3]+=$4; c[i" "j" "$3]++;}}}}END{for(i in a) {if(b[i]==1) print(i, a[i]); else print(i, a[i]/c[i])}}' | LC_ALL=C sort -nk1,1 -nk2,2 -nk3,3 | gawk '{if($3<251) print($0)}' > values
+python3 header.py > nwells-5.csv
+python3 expand.py 5 values >> nwells-5.csv
+
+python3 petro.py nwells-5.csv > w5
+grep -v "remover" apply3.py > v; mv v apply3.py
+cat w5 | sed "s/,0\./+0\./g" | gawk 'BEGIN{FS="+"}{print($2,$3,$1)}' | LC_ALL=C sort -nk 2 | head -1 | gawk 'BEGIN{FS="["}{print("f = ["$2" #remover"); print("eval_model(df, f) #remover")}' >> apply3.py
+python3 apply3.py nwells-5.csv > v
+cp v o1
+cat v | gawk '{print("a "$0)}' > v2
+cat v2 v | gawk '{if($1=="a") {a[$2" "$3" "$4]=$5; b[$2" "$3" "$4]=1;} else {for(i=$1-1;i<=$1+1;i++) for(j=$2-1;j<=$2+1;j++) {if(b[i" "j" "$3]!=1) {a[i" "j" "$3]+=$4; c[i" "j" "$3]++;}}}}END{for(i in a) {if(b[i]==1) print(i, a[i]); else print(i, a[i]/c[i])}}' | LC_ALL=C sort -nk1,1 -nk2,2 -nk3,3 | gawk '{if($3<251) print($0)}' > values
+python3 header.py > nwells-6.csv
+python3 expand.py 6 values >> nwells-6.csv
+
+python3 petro.py nwells-6.csv > w6
+grep -v "remover" apply3.py > v; mv v apply3.py
+cat w6 | sed "s/,0\./+0\./g" | gawk 'BEGIN{FS="+"}{print($2,$3,$1)}' | LC_ALL=C sort -nk 2 | head -1 | gawk 'BEGIN{FS="["}{print("f = ["$2" #remover"); print("eval_model(df, f) #remover")}' >> apply3.py
+python3 apply3.py nwells-6.csv > v
+cp v o1
+cat v | gawk '{print("a "$0)}' > v2
+cat v2 v | gawk '{if($1=="a") {a[$2" "$3" "$4]=$5; b[$2" "$3" "$4]=1;} else {for(i=$1-1;i<=$1+1;i++) for(j=$2-1;j<=$2+1;j++) {if(b[i" "j" "$3]!=1) {a[i" "j" "$3]+=$4; c[i" "j" "$3]++;}}}}END{for(i in a) {if(b[i]==1) print(i, a[i]); else print(i, a[i]/c[i])}}' | LC_ALL=C sort -nk1,1 -nk2,2 -nk3,3 | gawk '{if($3<251) print($0)}' > values
+python3 header.py > nwells-7.csv
+python3 expand.py 7 values >> nwells-7.csv
+
+python3 petro.py nwells-7.csv > w7
+grep -v "remover" apply3.py > v; mv v apply3.py
+cat w7 | sed "s/,0\./+0\./g" | gawk 'BEGIN{FS="+"}{print($2,$3,$1)}' | LC_ALL=C sort -nk 2 | head -1 | gawk 'BEGIN{FS="["}{print("f = ["$2" #remover"); print("eval_model(df, f) #remover")}' >> apply3.py
+python3 apply3.py nwells-7.csv > v
+cp v o1
+cat v | gawk '{print("a "$0)}' > v2
+cat v2 v | gawk '{if($1=="a") {a[$2" "$3" "$4]=$5; b[$2" "$3" "$4]=1;} else {for(i=$1-1;i<=$1+1;i++) for(j=$2-1;j<=$2+1;j++) {if(b[i" "j" "$3]!=1) {a[i" "j" "$3]+=$4; c[i" "j" "$3]++;}}}}END{for(i in a) {if(b[i]==1) print(i, a[i]); else print(i, a[i]/c[i])}}' | LC_ALL=C sort -nk1,1 -nk2,2 -nk3,3 | gawk '{if($3<251) print($0)}' > values
+python3 header.py > nwells-8.csv
+python3 expand.py 8 values >> nwells-8.csv
+
+python3 petro.py nwells-8.csv > w8
+grep -v "remover" apply3.py > v; mv v apply3.py
+cat w8 | sed "s/,0\./+0\./g" | gawk 'BEGIN{FS="+"}{print($2,$3,$1)}' | LC_ALL=C sort -nk 2 | head -1 | gawk 'BEGIN{FS="["}{print("f = ["$2" #remover"); print("eval_model(df, f) #remover")}' >> apply3.py
+python3 apply3.py nwells-8.csv > v
+cp v o1
+cat v | gawk '{print("a "$0)}' > v2
+cat v2 v | gawk '{if($1=="a") {a[$2" "$3" "$4]=$5; b[$2" "$3" "$4]=1;} else {for(i=$1-1;i<=$1+1;i++) for(j=$2-1;j<=$2+1;j++) {if(b[i" "j" "$3]!=1) {a[i" "j" "$3]+=$4; c[i" "j" "$3]++;}}}}END{for(i in a) {if(b[i]==1) print(i, a[i]); else print(i, a[i]/c[i])}}' | LC_ALL=C sort -nk1,1 -nk2,2 -nk3,3 | gawk '{if($3<251) print($0)}' > values
+python3 header.py > nwells-9.csv
+python3 expand.py 9 values >> nwells-9.csv
+
+python3 petro.py nwells-9.csv > w9
+grep -v "remover" apply3.py > v; mv v apply3.py
+cat w9 | sed "s/,0\./+0\./g" | gawk 'BEGIN{FS="+"}{print($2,$3,$1)}' | LC_ALL=C sort -nk 2 | head -1 | gawk 'BEGIN{FS="["}{print("f = ["$2" #remover"); print("eval_model(df, f) #remover")}' >> apply3.py
+python3 apply3.py nwells-9.csv > v
+cp v o1
+cat v | gawk '{print("a "$0)}' > v2
+cat v2 v | gawk '{if($1=="a") {a[$2" "$3" "$4]=$5; b[$2" "$3" "$4]=1;} else {for(i=$1-1;i<=$1+1;i++) for(j=$2-1;j<=$2+1;j++) {if(b[i" "j" "$3]!=1) {a[i" "j" "$3]+=$4; c[i" "j" "$3]++;}}}}END{for(i in a) {if(b[i]==1) print(i, a[i]); else print(i, a[i]/c[i])}}' | LC_ALL=C sort -nk1,1 -nk2,2 -nk3,3 | gawk '{if($3<251) print($0)}' > values
+python3 header.py > nwells-10.csv
+python3 expand.py 10 values >> nwells-10.csv
+
+python3 petro.py nwells-10.csv > w10
+grep -v "remover" apply3.py > v; mv v apply3.py
+cat w10 | sed "s/,0\./+0\./g" | gawk 'BEGIN{FS="+"}{print($2,$3,$1)}' | LC_ALL=C sort -nk 2 | head -1 | gawk 'BEGIN{FS="["}{print("f = ["$2" #remover"); print("eval_model(df, f) #remover")}' >> apply3.py
+python3 apply3.py nwells-10.csv > v
+cp v o1
+cat v | gawk '{print("a "$0)}' > v2
+cat v2 v | gawk '{if($1=="a") {a[$2" "$3" "$4]=$5; b[$2" "$3" "$4]=1;} else {for(i=$1-1;i<=$1+1;i++) for(j=$2-1;j<=$2+1;j++) {if(b[i" "j" "$3]!=1) {a[i" "j" "$3]+=$4; c[i" "j" "$3]++;}}}}END{for(i in a) {if(b[i]==1) print(i, a[i]); else print(i, a[i]/c[i])}}' | LC_ALL=C sort -nk1,1 -nk2,2 -nk3,3 | gawk '{if($3<251) print($0)}' > values
+python3 header.py > nwells-11.csv
+python3 expand.py 11 values >> nwells-11.csv
+
+python3 petro.py nwells-11.csv > w11
+grep -v "remover" apply3.py > v; mv v apply3.py
+cat w11 | sed "s/,0\./+0\./g" | gawk 'BEGIN{FS="+"}{print($2,$3,$1)}' | LC_ALL=C sort -nk 2 | head -1 | gawk 'BEGIN{FS="["}{print("f = ["$2" #remover"); print("eval_model(df, f) #remover")}' >> apply3.py
+python3 apply3.py nwells-11.csv > v
+cp v o1
+cat v | gawk '{print("a "$0)}' > v2
+cat v2 v | gawk '{if($1=="a") {a[$2" "$3" "$4]=$5; b[$2" "$3" "$4]=1;} else {for(i=$1-1;i<=$1+1;i++) for(j=$2-1;j<=$2+1;j++) {if(b[i" "j" "$3]!=1) {a[i" "j" "$3]+=$4; c[i" "j" "$3]++;}}}}END{for(i in a) {if(b[i]==1) print(i, a[i]); else print(i, a[i]/c[i])}}' | LC_ALL=C sort -nk1,1 -nk2,2 -nk3,3 | gawk '{if($3<251) print($0)}' > values
+python3 header.py > nwells-12.csv
+python3 expand.py 12 values >> nwells-12.csv
+
+python3 petro.py nwells-12.csv > w12
+grep -v "remover" apply3.py > v; mv v apply3.py
+cat w12 | sed "s/,0\./+0\./g" | gawk 'BEGIN{FS="+"}{print($2,$3,$1)}' | LC_ALL=C sort -nk 2 | head -1 | gawk 'BEGIN{FS="["}{print("f = ["$2" #remover"); print("eval_model(df, f) #remover")}' >> apply3.py
+python3 apply3.py nwells-12.csv > v
+cp v o1
+cat v | gawk '{print("a "$0)}' > v2
+cat v2 v | gawk '{if($1=="a") {a[$2" "$3" "$4]=$5; b[$2" "$3" "$4]=1;} else {for(i=$1-1;i<=$1+1;i++) for(j=$2-1;j<=$2+1;j++) {if(b[i" "j" "$3]!=1) {a[i" "j" "$3]+=$4; c[i" "j" "$3]++;}}}}END{for(i in a) {if(b[i]==1) print(i, a[i]); else print(i, a[i]/c[i])}}' | LC_ALL=C sort -nk1,1 -nk2,2 -nk3,3 | gawk '{if($3<251) print($0)}' > values
+python3 header.py > nwells-13.csv
+python3 expand.py 13 values >> nwells-13.csv
+
+python3 petro.py nwells-13.csv > w13
+grep -v "remover" apply3.py > v; mv v apply3.py
+cat w13 | sed "s/,0\./+0\./g" | gawk 'BEGIN{FS="+"}{print($2,$3,$1)}' | LC_ALL=C sort -nk 2 | head -1 | gawk 'BEGIN{FS="["}{print("f = ["$2" #remover"); print("eval_model(df, f) #remover")}' >> apply3.py
+python3 apply3.py nwells-13.csv > v
+cp v o1
+cat v | gawk '{print("a "$0)}' > v2
+cat v2 v | gawk '{if($1=="a") {a[$2" "$3" "$4]=$5; b[$2" "$3" "$4]=1;} else {for(i=$1-1;i<=$1+1;i++) for(j=$2-1;j<=$2+1;j++) {if(b[i" "j" "$3]!=1) {a[i" "j" "$3]+=$4; c[i" "j" "$3]++;}}}}END{for(i in a) {if(b[i]==1) print(i, a[i]); else print(i, a[i]/c[i])}}' | LC_ALL=C sort -nk1,1 -nk2,2 -nk3,3 | gawk '{if($3<251) print($0)}' > values
+python3 header.py > nwells-14.csv
+python3 expand.py 14 values >> nwells-14.csv
+
+python3 petro.py nwells-14.csv > w14
+grep -v "remover" apply3.py > v; mv v apply3.py
+cat w14 | sed "s/,0\./+0\./g" | gawk 'BEGIN{FS="+"}{print($2,$3,$1)}' | LC_ALL=C sort -nk 2 | head -1 | gawk 'BEGIN{FS="["}{print("f = ["$2" #remover"); print("eval_model(df, f) #remover")}' >> apply3.py
+python3 apply3.py nwells-14.csv > v
+cp v o1
+cat v | gawk '{print("a "$0)}' > v2
+cat v2 v | gawk '{if($1=="a") {a[$2" "$3" "$4]=$5; b[$2" "$3" "$4]=1;} else {for(i=$1-1;i<=$1+1;i++) for(j=$2-1;j<=$2+1;j++) {if(b[i" "j" "$3]!=1) {a[i" "j" "$3]+=$4; c[i" "j" "$3]++;}}}}END{for(i in a) {if(b[i]==1) print(i, a[i]); else print(i, a[i]/c[i])}}' | LC_ALL=C sort -nk1,1 -nk2,2 -nk3,3 | gawk '{if($3<251) print($0)}' > values
+python3 header.py > nwells-15.csv
+python3 expand.py 15 values >> nwells-15.csv
+
+python3 petro.py nwells-15.csv > w15
+grep -v "remover" apply3.py > v; mv v apply3.py
+cat w15 | sed "s/,0\./+0\./g" | gawk 'BEGIN{FS="+"}{print($2,$3,$1)}' | LC_ALL=C sort -nk 2 | head -1 | gawk 'BEGIN{FS="["}{print("f = ["$2" #remover"); print("eval_model(df, f) #remover")}' >> apply3.py
+python3 apply3.py nwells-15.csv > v
+cp v o1
+cat v | gawk '{print("a "$0)}' > v2
+cat v2 v | gawk '{if($1=="a") {a[$2" "$3" "$4]=$5; b[$2" "$3" "$4]=1;} else {for(i=$1-1;i<=$1+1;i++) for(j=$2-1;j<=$2+1;j++) {if(b[i" "j" "$3]!=1) {a[i" "j" "$3]+=$4; c[i" "j" "$3]++;}}}}END{for(i in a) {if(b[i]==1) print(i, a[i]); else print(i, a[i]/c[i])}}' | LC_ALL=C sort -nk1,1 -nk2,2 -nk3,3 | gawk '{if($3<251) print($0)}' > values
+python3 header.py > nwells-16.csv
+python3 expand.py 16 values >> nwells-16.csv
