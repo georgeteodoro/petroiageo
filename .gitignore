@@ -6,5 +6,7 @@ dados/p
 dados/wells-*
 dados/*.npy
 
+*.log
+
 !dados/xx.npy
 !dados/pp.npy
