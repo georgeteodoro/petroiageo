@@ -55,35 +55,49 @@ def isTheSamePoint(point1, point2):
     """
     return (point1["X"] == point2['X'] and point1["Y"] == point2['Y'] and point1["Z"] == point2['Z'])
 
-def getRealAndPredictedValues(realValuesFileName, predictedValuesFileName):
+def computeErrors(realValuesFileName, predictedValuesFileName):
     """
-    Returns two lists with the predicted values and its corresponding real values from the files
+    Compute the RMSE and MAE.
     Assumes that all points in both files are ordered by X, Y and Z positions
 
     realValuesFileName, predictedValuesFileName: the input file names
-    return: predictedValues, realValues
+    return: RMSE, MAE
     """
-    predictedValues = []
-    realValues = []
+    partialRMSESum = 0
+    partialMAESum = 0
+    valuesCount = 0
 
     with open(realValuesFileName, 'r') as realValuesFile, open(predictedValuesFileName, 'r') as predValuesFile:
         #Reads a line from realValuesFile
-        currentRealValueDict = getStructuredLineFrom(realValuesFile)
+        currRealValueDict = getStructuredLineFrom(realValuesFile)
 
         #predValuesFile probably has much less lines than realValuesFile
         for line in predValuesFile:
             
             currPredValueDict = getStructuredLineFromLine(line)
 
-            while not isTheSamePoint(currPredValueDict, currentRealValueDict):
+            while not isTheSamePoint(currPredValueDict, currRealValueDict):
                 #Reads other line from realValuesFile
-                currentRealValueDict = getStructuredLineFrom(realValuesFile)
+                currRealValueDict = getStructuredLineFrom(realValuesFile)
             
             #Found a matching point on realValuesFile
-            predictedValues.append(currPredValueDict['Value'])
-            realValues.append(currentRealValueDict['Value'])
+            predDiff = currRealValueDict['Value']-currPredValueDict['Value']
+            partialRMSESum+=(predDiff)**2
+            partialMAESum+= abs(predDiff)
+            valuesCount += 1
+
+    rmse = (partialRMSESum/valuesCount)**(1/2)
+    mae = partialMAESum/valuesCount
+    return rmse, mae
+
+def printErrors(realValuesFileName, predictedValuesFileName):
+    rmse = 0
+    mae = 0
     
-    return predictedValues, realValues
+    rmse, mae = computeErrors(realValuesFileName, predictedValuesFileName)
+    
+    print(f"RMSE: {rmse}")
+    print(f"MAE: {mae}")
 
 if __name__ == "__main__":
     if (len(sys.argv) != 3):
@@ -93,16 +107,4 @@ if __name__ == "__main__":
         realValuesFileName = sys.argv[1]
         predictedValuesFileName = sys.argv[2]
 
-        predictedValues = []
-        realValues = []
-        predictedValues, realValues = getRealAndPredictedValues(realValuesFileName, predictedValuesFileName)
-
-        #print(f"Predicted Values Count: {len(predictedValues)}")
-        #print(f"Real Values Count: {len(realValues)}")
-        
-        #squared = False means Root Mean Squared
-        rmse = mean_squared_error(realValues, predictedValues, squared=False)
-        mae = mean_absolute_error(realValues, predictedValues)
-
-        print(f"RMSE: {rmse}")
-        print(f"MAE: {mae}")
+        printErrors(realValuesFileName, predictedValuesFileName)
