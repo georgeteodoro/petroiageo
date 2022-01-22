@@ -45,8 +45,8 @@ def eval_bootstrap(df, features):
         v = []
         n = 0
         for i in np.array(df['real'][val]):
-            #if i == 1 or i == 2: v.insert(len(v),n)
-            if i == 1: v.insert(len(v),n)
+            if i == 1: # if REAL
+                v.append(n)
             n = n + 1
         v = np.array(v)
         lgb_train = lgb.Dataset(X[train], y[train])

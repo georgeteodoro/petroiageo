@@ -6,6 +6,10 @@ dados/p
 dados/wells-*
 dados/*.npy
 
+coherence_features/*.npy
+
+tmp_data/*
+
 *.log
 
 !dados/xx.npy
