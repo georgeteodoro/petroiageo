@@ -2,34 +2,28 @@ import numpy as np
 import sys
 from io import StringIO
 import time
-from math import prod
 
 from functools import partial
 import multiprocessing as mp
 
-# solution based on:
-# https://stackoverflow.com/questions/1675766/combine-pool-map-with-shared-memory-array-in-python-multiprocessing
+import global_variables
 
-# LABELS_SHAPE = (400, 700, 260) # old
-LABELS_SHAPE = (434, 646, 251)
-
-
-def get_labels_len():
-    return prod(LABELS_SHAPE)
+# Load global variables
+snear = global_variables.snear
+smid = global_variables.smid
+sfar = global_variables.sfar
+sufar = global_variables.sufar
+sgersz = global_variables.sgersz
+sgst = global_variables.sgst
+sA = global_variables.porosity_values
+seismic_shape = global_variables.seismic_shape
+LABELS_SHAPE = global_variables.LABELS_SHAPE
 
 
 # Arrays are 1D for being usable on shared-memory
-# reshaping is too expensive, thus near[i*shape[1]*shape[2] + j*shape[2] + k]
+# reshaping is too expensive, thus snear[i*shape[1]*shape[2] + j*shape[2] + k]
 # Shape changing is too expensive: 20 sec for 100M and require 270M per array
 def well_str(p, w, real, xx, shape):
-    # get shared memory variables
-    near = snear
-    mid = smid
-    far = sfar
-    ufar = sufar
-    gersz = sgersz
-    gst = sgst
-    A = sA
     # locks = sLocks
     # visited = sVisited
 
@@ -60,7 +54,7 @@ def well_str(p, w, real, xx, shape):
         #     continue
 
         # Only expand points which have at least 0.05 porosity
-        if A[pCoord] <= 0.05:
+        if sA[pCoord] <= 0.05:
             continue
 
         for i in range(p[0] - w, p[0] + w + 1):
@@ -72,12 +66,12 @@ def well_str(p, w, real, xx, shape):
                     # Calculate 1D coordinate to be accessed by signal arrays
                     coord = i * shape[1] * shape[2] + j * shape[2] + zz
 
-                    s.write("%s," % near[coord])
-                    s.write("%s," % mid[coord])
-                    s.write("%s," % far[coord])
-                    s.write("%s," % ufar[coord])
-                    s.write("%s," % gersz[coord])
-                    s.write("%s," % gst[coord])
+                    s.write("%s," % snear[coord])
+                    s.write("%s," % smid[coord])
+                    s.write("%s," % sfar[coord])
+                    s.write("%s," % sufar[coord])
+                    s.write("%s," % sgersz[coord])
+                    s.write("%s," % sgst[coord])
 
         # imprime o id do poco, seja ele real ou aumentado, sao 10 pocos reais
         s.write("%s," % r)
@@ -94,7 +88,7 @@ def well_str(p, w, real, xx, shape):
         s.write("%s," % p[1])
         s.write("%s," % k)
 
-        s.write("%s," % A[pCoord])
+        s.write("%s," % sA[pCoord])
         # Currently B, C and D labels were all zero
         s.write("0.0,")
         s.write("0.0,")
@@ -103,45 +97,10 @@ def well_str(p, w, real, xx, shape):
     return s
 
 
-def load_to_mem(filename):
-    npa = np.load(filename)
-    return npa.flatten(), npa.shape
-
-# Fill values on shared memory space
-# Best if input arrays come from lazy numpy.array
-# since this assignment is a deep-copy to shared
-# memory space.
-def move_to_shrd(arrs):
-    # Shared arrays can only be accessed like this
-    near = snear
-    mid = smid
-    far = sfar
-    ufar = sufar
-    gersz = sgersz
-    gst = sgst
-    sarrs = [near, mid, far, ufar, gersz, gst]
-    arr, _ = load_to_mem(arrs[1])
-    sarrs[arrs[0]][:] = arr
-
-def data_aug(iteration, window, filename):
-    # Labels b, c and d are useless (all zero)
-    # Replaced all references to them (B[x]) to 0
-    def fill_labels(iteration, f_name, a):
-        with open(f_name, 'r') as f:
-            for line in f.readlines():
-                fields = line.split(' ')
-                coord = int(
-                    fields[0]) * LABELS_SHAPE[1] * LABELS_SHAPE[2] + int(
-                        fields[1]) * LABELS_SHAPE[2] + int(fields[2])
-                a[coord] = float(fields[3])
-
+def data_aug(iteration, window):
     t1 = time.time()
 
     iteration = int(iteration)
-
-    r = 0
-    # janela para variar as dimensoes do cubo
-    # window = 3
 
     # Loads xx and pp non-initial values
     nxx = np.load('dados/xx.npy', allow_pickle=True)
@@ -158,15 +117,6 @@ def data_aug(iteration, window, filename):
     nxx = None
     npp = None
 
-    # Convert to list for better access time
-    # numpy array is lazy with access
-    near, nearshape = load_to_mem('dados/NEAR.npy')
-    mid, midshape = load_to_mem('dados/MID.npy')
-    far, farshape = load_to_mem('dados/FAR.npy')
-    ufar, ufarshape = load_to_mem('dados/UFAR.npy')
-    gersz, gerszshape = load_to_mem('dados/GERSZ.npy')
-    gst, gstshape = load_to_mem('dados/GST.npy')
-
     # esses sao pocos reais
     real = [[146, 500], [287, 242], [200, 102], [344, 276], [134, 227],
             [250, 315], [174, 365], [236, 113], [167, 186], [230, 194]]
@@ -179,87 +129,35 @@ def data_aug(iteration, window, filename):
 
     t2 = time.time()
 
-    t21 = time.time()
-    # print("shrd begin")
-
-    labelslen = get_labels_len()
-
-    t22 = time.time()
-    # print("labels done " + str(t22 - t21))
-
-    # Allocate shared memory arrays
-    # These are not thread-safe since read-only
-    global snear
-    global smid
-    global sfar
-    global sufar
-    global sgersz
-    global sgst
-    global sA
-    snear = mp.Array('d', len(near), lock=False)
-    smid = mp.Array('d', len(mid), lock=False)
-    sfar = mp.Array('d', len(far), lock=False)
-    sufar = mp.Array('d', len(ufar), lock=False)
-    sgersz = mp.Array('d', len(gersz), lock=False)
-    sgst = mp.Array('d', len(gst), lock=False)
-    sA = mp.Array('d', labelslen, lock=False)
-    # sVisited = mp.Array('d', labelslen, lock=False)
-    # sLocks = mp.RawArray(type(mp.Lock()), labelslen)
-
-    t23 = time.time()
-
-    # print("arrays done " + str(t23 - t22))
-
-    # The move to shared memory is done in parallel.
-    # Magic numbers are IDs for a list with the shared arrays
-    # which is inside move_to_shrd.
-    # Name of files passed so they can be opened inside move_to_shrd, which
-    # is the only way to "pass" the opened np.arrays to a parallel worker.
-    with mp.Pool(6) as pool:
-        pool.map(move_to_shrd, [[0, "dados/NEAR.npy"], [1, "dados/MID.npy"],
-                                [2, "dados/FAR.npy"], [3, "dados/UFAR.npy"],
-                                [4, "dados/GERSZ.npy"], [5, "dados/GST.npy"]])
-    t24 = time.time()
-    # print("cpy done " + str(t24 - t23))
-
-    fill_labels(iteration, filename, sA)
-
-    # Create a shared structure for synchronizing sVisited array by coordinate
-    # sVisited[:] = np.zeros((labelslen))
-
-    t25 = time.time()
-    # print("shrd end " + str(t25 - t24))
-
-    t3 = time.time()
-
     # Parallel execution
-    f = partial(well_str, w=window, real=real, xx=xx, shape=nearshape)
+    f = partial(well_str, w=window, real=real, xx=xx, shape=seismic_shape)
     # with mp.Pool(1) as pool:
     with mp.Pool(mp.cpu_count()) as pool:
         results = pool.map(f, pp)
 
-    t4 = time.time()
+    t3 = time.time()
 
-    # Write results
+    # Compile results
+    s_results = "".join([r.getvalue() for r in results])
+
     # with open('out.csv', mode='w') as f:
     #     for r in results:
     #         print(r.getvalue(), file=f)
     # for r in results:
     #     print(r.getvalue(), end='')
 
-    # t5 = time.time()
+    t4 = time.time()
 
     with open('tt-times.log', mode='a') as f:
         print("iteration %s" % iteration, file=f)
         print("prep " + str(t2 - t1), file=f)
-        print("shm-prep " + str(t3 - t2), file=f)
-        print("exec " + str(t4 - t3), file=f)
-        # print("write " + str(t5 - t4), file=f)
+        print("exec " + str(t3 - t2), file=f)
+        print("result " + str(t4 - t3), file=f)
         print("", file=f)
 
     # Return results as a string
-    return "".join([r.getvalue() for r in results])
+    return s_results
 
 
 if __name__ == '__main__':
-    data_aug(sys.argv[1], 3, sys.argv[2])
+    data_aug(sys.argv[1], 3)
