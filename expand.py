@@ -14,6 +14,10 @@ import multiprocessing as mp
 LABELS_SHAPE = (434, 646, 251)
 
 
+def get_labels_len():
+    return prod(LABELS_SHAPE)
+
+
 # Arrays are 1D for being usable on shared-memory
 # reshaping is too expensive, thus near[i*shape[1]*shape[2] + j*shape[2] + k]
 # Shape changing is too expensive: 20 sec for 100M and require 270M per array
@@ -99,8 +103,27 @@ def well_str(p, w, real, xx, shape):
     return s
 
 
-if __name__ == '__main__':
+def load_to_mem(filename):
+    npa = np.load(filename)
+    return npa.flatten(), npa.shape
 
+# Fill values on shared memory space
+# Best if input arrays come from lazy numpy.array
+# since this assignment is a deep-copy to shared
+# memory space.
+def move_to_shrd(arrs):
+    # Shared arrays can only be accessed like this
+    near = snear
+    mid = smid
+    far = sfar
+    ufar = sufar
+    gersz = sgersz
+    gst = sgst
+    sarrs = [near, mid, far, ufar, gersz, gst]
+    arr, _ = load_to_mem(arrs[1])
+    sarrs[arrs[0]][:] = arr
+
+def data_aug(iteration, window, filename):
     # Labels b, c and d are useless (all zero)
     # Replaced all references to them (B[x]) to 0
     def fill_labels(iteration, f_name, a):
@@ -114,11 +137,11 @@ if __name__ == '__main__':
 
     t1 = time.time()
 
-    iteration = int(sys.argv[1])
+    iteration = int(iteration)
 
     r = 0
     # janela para variar as dimensoes do cubo
-    w = 3
+    # window = 3
 
     # Loads xx and pp non-initial values
     nxx = np.load('dados/xx.npy', allow_pickle=True)
@@ -134,10 +157,6 @@ if __name__ == '__main__':
     # Clear numpy arrays
     nxx = None
     npp = None
-
-    def load_to_mem(filename):
-        npa = np.load(filename)
-        return npa.flatten(), npa.shape
 
     # Convert to list for better access time
     # numpy array is lazy with access
@@ -163,13 +182,20 @@ if __name__ == '__main__':
     t21 = time.time()
     # print("shrd begin")
 
-    labelslen = prod(LABELS_SHAPE)
+    labelslen = get_labels_len()
 
     t22 = time.time()
     # print("labels done " + str(t22 - t21))
 
     # Allocate shared memory arrays
     # These are not thread-safe since read-only
+    global snear
+    global smid
+    global sfar
+    global sufar
+    global sgersz
+    global sgst
+    global sA
     snear = mp.Array('d', len(near), lock=False)
     smid = mp.Array('d', len(mid), lock=False)
     sfar = mp.Array('d', len(far), lock=False)
@@ -184,16 +210,6 @@ if __name__ == '__main__':
 
     # print("arrays done " + str(t23 - t22))
 
-    # Fill values on shared memory space
-    # Best if input arrays come from lazy numpy.array
-    # since this assignment is a deep-copy to shared
-    # memory space.
-    def move_to_shrd(arrs):
-        # Shared arrays can only be accessed like this
-        sarrs = [snear, smid, sfar, sufar, sgersz, sgst]
-        arr, _ = load_to_mem(arrs[1])
-        sarrs[arrs[0]][:] = arr
-
     # The move to shared memory is done in parallel.
     # Magic numbers are IDs for a list with the shared arrays
     # which is inside move_to_shrd.
@@ -206,7 +222,7 @@ if __name__ == '__main__':
     t24 = time.time()
     # print("cpy done " + str(t24 - t23))
 
-    fill_labels(iteration, sys.argv[2], sA)
+    fill_labels(iteration, filename, sA)
 
     # Create a shared structure for synchronizing sVisited array by coordinate
     # sVisited[:] = np.zeros((labelslen))
@@ -217,7 +233,7 @@ if __name__ == '__main__':
     t3 = time.time()
 
     # Parallel execution
-    f = partial(well_str, w=w, real=real, xx=xx, shape=nearshape)
+    f = partial(well_str, w=window, real=real, xx=xx, shape=nearshape)
     # with mp.Pool(1) as pool:
     with mp.Pool(mp.cpu_count()) as pool:
         results = pool.map(f, pp)
@@ -228,15 +244,22 @@ if __name__ == '__main__':
     # with open('out.csv', mode='w') as f:
     #     for r in results:
     #         print(r.getvalue(), file=f)
-    for r in results:
-        print(r.getvalue(), end='')
+    # for r in results:
+    #     print(r.getvalue(), end='')
 
-    t5 = time.time()
+    # t5 = time.time()
 
     with open('tt-times.log', mode='a') as f:
         print("iteration %s" % iteration, file=f)
         print("prep " + str(t2 - t1), file=f)
         print("shm-prep " + str(t3 - t2), file=f)
         print("exec " + str(t4 - t3), file=f)
-        print("write " + str(t5 - t4), file=f)
+        # print("write " + str(t5 - t4), file=f)
         print("", file=f)
+
+    # Return results as a string
+    return "".join([r.getvalue() for r in results])
+
+
+if __name__ == '__main__':
+    data_aug(sys.argv[1], 3, sys.argv[2])
