@@ -5,10 +5,12 @@ import time
 import header
 import expand
 import petro
-# import apply3
+import apply3
 
 # Constants
 INIT_IT = 2
+
+
 
 def main():
     iterations = 2
@@ -27,8 +29,13 @@ def main():
         print("Performing feature selection")
         features_sets = petro.get_features_sets(str_nwells)
         print(features_sets)
-        # f = prep(features_sets)...
-        # v = apply3(nwells, f)
+
+        print("Performing predictions")
+        # Sort by second column (id 1)
+        features_sets.sort(key=lambda tup: tup[1], reverse=True)
+        best_features_set = features_sets[0][0]
+        v = apply3.perf_predition(best_features_set, str_nwells)
+        print(v)
         # predition_values = prep2(v)
         # sA =+ values?
 
