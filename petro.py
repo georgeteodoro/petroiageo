@@ -52,12 +52,14 @@ def eval_bootstrap(df, features):
         lgb_train = lgb.Dataset(X[train], y[train])
         #lgb_eval = lgb.Dataset(X[val], y[val], reference=lgb_train)
         lgb_eval = lgb.Dataset(X[v], y[v], reference=lgb_train)
-        regressor = lgb.train(params,
-                              lgb_train,
-                              verbose_eval=False,
-                              num_boost_round=100,
-                              valid_sets=lgb_eval,
-                              early_stopping_rounds=30)
+        regressor = lgb.train(
+            params,
+            lgb_train,
+            num_boost_round=100,
+            valid_sets=lgb_eval,
+            callbacks=[
+                lgb.early_stopping(stopping_rounds=30, verbose=False)
+            ])
         pred = regressor.predict(X[v])
         rmse = np.sqrt(np.mean((pred - y[v])**2))
         mae = mean_absolute_error(pred, y[v])
@@ -92,7 +94,7 @@ def get_features_sets(str_nwells):
         for f2 in all_features:
             if f2 in f: continue
             j = j + 1
-            if j == 5: break # FOR DEBUGING => less iterations
+            if j == 5: break  # FOR DEBUGING => less iterations
             f.append(f2)
             print(f)
             A, B = eval_bootstrap(df, f)

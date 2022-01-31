@@ -33,8 +33,8 @@ def eval_model(df, features):
     lgb_train = lgb.Dataset(X, y)
     regressor = lgb.train(params,
                           lgb_train,
-                          verbose_eval=False,
-                          num_boost_round=100)
+                          num_boost_round=100,)
+                          # callbacks=[lgb.log_evaluation(show_stdv=False)])
     pred = regressor.predict(X)
     results = []
     for i in range(len(X)):

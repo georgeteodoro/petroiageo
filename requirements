@@ -3,3 +3,4 @@ pandas
 segyio
 scipy
 scikit-learn
+lightgbm
