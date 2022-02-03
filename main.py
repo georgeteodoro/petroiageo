@@ -3,19 +3,32 @@ import pandas as pd
 import time
 from collections import defaultdict
 from os import linesep
+from mpi4py import MPI
 
-import global_variables
-import header
-import expand
-import petro
-import apply3
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+mpi_size = comm.Get_size()
+manager_rank = mpi_size - 1
 
-# Constants
-INIT_IT = 2
-LABELS_SHAPE = global_variables.LABELS_SHAPE
+# Only import for manager
+if rank == manager_rank:
+    import global_variables
+    import header
+    import expand
+    # import petro
+    import petro_dist
+    import apply3
+
+    # Constants
+    INIT_IT = 2
+    LABELS_SHAPE = global_variables.LABELS_SHAPE
 
 
 def main():
+    # Only need to run a single main
+    if rank != manager_rank:
+        return
+
     iterations = 3
     window = 3
 
@@ -30,7 +43,7 @@ def main():
             f.write(str_nwells)
 
         print(f"Performing feature selection [{it}]")
-        features_sets = petro.get_features_sets(str_nwells)
+        features_sets = petro_dist.get_features_sets(str_nwells)
         # print(features_sets)
 
         print(f"Performing predictions [{it}]")
@@ -55,7 +68,7 @@ def main():
         # Averages the predictions of each point
         values = []
         for k, l in v2.items():
-            values.append(k.split(" ") + [sum(l)/len(l)])
+            values.append(k.split(" ") + [sum(l) / len(l)])
         with open(f'tmp_data/values{it}', mode='w') as f:
             f.write("".join([f"{p}\n" for p in values]))
 

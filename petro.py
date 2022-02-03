@@ -3,6 +3,7 @@ import numpy as np
 import sys
 import os
 import random
+import time
 from io import StringIO
 
 from sklearn.metrics import mean_squared_error, mean_absolute_error
@@ -27,11 +28,14 @@ params = {
     "min_data": 10,
     "boost_from_average": True,
     "bagging_freq": 1,
-    "random_state": 0
+    "random_state": 0,
 }
 
 
-def eval_bootstrap(df, features):
+def eval_bootstrap(df, features, num_threads=24):
+    params['num_threads'] = num_threads
+
+    print(features)
     X = df[features].values
     y = df[LABEL_COLUMN_NAME].values
     a = []
@@ -57,9 +61,7 @@ def eval_bootstrap(df, features):
             lgb_train,
             num_boost_round=100,
             valid_sets=lgb_eval,
-            callbacks=[
-                lgb.early_stopping(stopping_rounds=30, verbose=False)
-            ])
+            callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)])
         pred = regressor.predict(X[v])
         rmse = np.sqrt(np.mean((pred - y[v])**2))
         mae = mean_absolute_error(pred, y[v])
@@ -68,7 +70,7 @@ def eval_bootstrap(df, features):
     return np.mean(a), np.mean(b)
 
 
-def get_features_sets(str_nwells):
+def read_dataset(str_nwells):
     # Reads dataset
     str_nwells = StringIO(str_nwells)
     str_nwells.seek(0)
@@ -79,6 +81,12 @@ def get_features_sets(str_nwells):
     all_features = list(df.columns)
     for x in UNWANTED_COLUMNS + [LABEL_COLUMN_NAME]:
         all_features.remove(x)
+
+    return all_features, df
+
+
+def get_features_sets(str_nwells):
+    all_features, df = read_dataset(str_nwells)
 
     print("[petro] Starting features set search")
     f = ['X', 'Y', 'depth']
@@ -97,7 +105,10 @@ def get_features_sets(str_nwells):
             if j == 5: break  # FOR DEBUGING => less iterations
             f.append(f2)
             print(f)
+            t1 = time.time()
             A, B = eval_bootstrap(df, f)
+            t2 = time.time()
+            print(f"iter time {t2-t1}")
             # s.write(f"{f},{A},{B}")
             results.append([f, A, B])
             z = A
