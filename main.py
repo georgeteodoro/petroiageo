@@ -32,8 +32,8 @@ def main():
     # Data structure is composed by:
     #   x,y,depth,
     #   seismic features,
-    #   well => Well ID (begins at 0? what if it is not real well point?)
-# real => [2=expanded point, 1=real well point, 0=point to be expanded] (OLD)
+    #   well => Well ID (begins at 0? what if it is not real well point? )
+    #                   (currently, -1 if it's not an original real point)
     #   real => [2=point to be expanded, 1=expanded point, 0=real well point]
     #   phi  => Porosity value
     #   rho  => ?
