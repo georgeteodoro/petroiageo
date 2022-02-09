@@ -4,6 +4,8 @@ import time
 from collections import defaultdict
 from os import linesep
 from mpi4py import MPI
+import seismic_data
+import wells_data
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -12,22 +14,44 @@ manager_rank = mpi_size - 1
 
 # Only import for manager
 if rank == manager_rank:
-    import global_variables
-    import header
-    import expand
+    # import global_variables
+    # import header
+    # import expand
     # import petro
-    import petro_dist
-    import apply3
+    # import petro_dist
+    # import apply3
 
     # Constants
     INIT_IT = 2
-    LABELS_SHAPE = global_variables.LABELS_SHAPE
+    # LABELS_SHAPE = global_variables.LABELS_SHAPE
 
 
 def main():
-    # Only need to run a single main
-    if rank != manager_rank:
-        return
+
+    # Instantiate pandas dataframe for all data
+    # Data structure is composed by:
+    #   x,y,depth,
+    #   seismic features,
+    #   well => Well ID (begins at 0? what if it is not real well point?)
+# real => [2=expanded point, 1=real well point, 0=point to be expanded] (OLD)
+    #   real => [2=point to be expanded, 1=expanded point, 0=real well point]
+    #   phi  => Porosity value
+    #   rho  => ?
+    #   vp   => ?
+    #   vs   => ?
+
+    # Read seismic data and add it to a dataframe
+    seismic_columns = ["NEAR", "MID", "FAR", "UFAR", "GERSZ", "GST"]
+    print("[main] Loading seismic data")
+    seismic_df = seismic_data.get_all_seismic_data(seismic_columns)
+    # print(seismic_df.head(4))
+    
+    print("[main] Loading wells values")
+    df = wells_data.merge_wells_data(seismic_df, './dados/porosity-canal.txt')
+    print(df)
+    print("[main] Done loading wells values")
+
+    return
 
     iterations = 3
     window = 3
@@ -43,7 +67,8 @@ def main():
             f.write(str_nwells)
 
         print(f"Performing feature selection [{it}]")
-        features_sets = petro_dist.get_features_sets(str_nwells)
+        features_sets = petro.get_features_sets(str_nwells)
+        # features_sets = petro_dist.get_features_sets(str_nwells)
         # print(features_sets)
 
         print(f"Performing predictions [{it}]")

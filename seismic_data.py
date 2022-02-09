@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from numba import jit
 
 
@@ -12,40 +13,55 @@ def prod(shape):
 
 
 # Merge all seismic data
+# Outputs are generated separately to enforce types (avoid x,y,z with float)
+# while enabling sparse allocation of numpy arrays. Using structured arrays
+# results in out-of-memory errors.
 @jit(nopython=True)
 def get_all(arrs, shape):
-    # Output array with its index
-    # Fields are [x, y, z, seismic_data...]
-    output = np.empty((prod(shape), 3 + len(arrs)))
+    # Output arrays initialization
+    # Fields are [x, y, z] and [seismic_data...]
+    num_lines = prod(shape)
+    coords_output = np.empty((num_lines, 3), dtype=np.int32)
+    seismic_output = np.empty((num_lines, len(arrs)), dtype=np.float64)
     i = 0
 
     for x in range(shape[0]):
         for y in range(shape[1]):
             for z in range(shape[2]):
-                # Create a line with [x, y, z, seismic_data...]
-                line_vals = np.empty(len(arrs) + 3)
-                line_vals[:3] = [x, y, z]
-                for i in range(len(arrs)):
-                    line_vals[i + 3] = arrs[i][x, y, z]
+                # Create a line with [seismic_data...]
+                line_vals = np.empty(len(arrs))
+                for j in range(len(arrs)):
+                    line_vals[j] = arrs[j][x, y, z]
 
                 # Assign line and increment index
-                output[i] = line_vals
+                coords_output[i] = [int(x), int(y), int(z)]
+                seismic_output[i] = line_vals
                 i = i + 1
 
-    return output
+    return coords_output, seismic_output
 
 
 # Get all seismic data on the order the input filenames are passed
-def get_all_seismic_data(filenames):
+def get_all_seismic_data(seismic_columns):
 
+    # Generate filenames
+    filenames = [f'./dados/{col}.npy' for col in seismic_columns]
+
+    # Load each numpy array
     first = np.load(filenames[0])
-
     arrs = np.array([first] + [np.load(f) for f in filenames[1:]])
-    return get_all(arrs, first.shape)
+
+    # Get separate np arrays and convert them to DataFrames
+    coords_np, seismic_np = get_all(arrs, first.shape)
+    coords_df = pd.DataFrame(coords_np, columns=['x', 'y', 'z'])
+    seismic_df = pd.DataFrame(seismic_np, columns=seismic_columns)
+
+    # Merge and return the DataFrame
+    return pd.concat([coords_df, seismic_df], axis=1)
 
 
 if __name__ == '__main__':
     get_all_seismic_data([
-        "./dados/NEAR.npy", "./dados/MID.npy", "./dados/FAR.npy",
-        "./dados/UFAR.npy", "./dados/GERSZ.npy", "./dados/GST.npy"
+        './dados/NEAR.npy', './dados/MID.npy', './dados/FAR.npy',
+        './dados/UFAR.npy', './dados/GERSZ.npy', './dados/GST.npy'
     ])

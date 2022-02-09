@@ -4,3 +4,5 @@ segyio
 scipy
 scikit-learn
 lightgbm
+numba
+dask
