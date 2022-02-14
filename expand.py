@@ -6,26 +6,30 @@ import pandas as pd
 
 
 # Using pandas DataFrame
-def well_expand(p, real, xx, df):
+def well_expand(p, real, xx, main_df, seismic_df):
     for z in range(251):  # for all depths
         x = p[0]
         y = p[1]
 
         # Only expand points which have at least 0.05 porosity
-        if df.loc[(x, y, z), 'phi'] <= 0.05:
+        if main_df.loc[(x, y, z), 'phi'] <= 0.05:
             continue
 
         # If this point was not real and is inside xx,
         # then it is an expanded point
-        if df.loc[(x, y, z), 'real'] != 0 & ([x, y] in xx):
-            df.loc[(x,y,z), 'real'] = 1
+        if main_df.loc[(x, y, z), 'real'] != 0 & ([x, y] in xx):
+            main_df.loc[(x, y, z), 'real'] = 1
 
 
-
-def data_aug(iteration, df):
+def data_aug(iteration, main_df, seismic_df):
     t1 = time.time()
 
     iteration = int(iteration)
+
+    # TODO: xx and pp array is incremental, i.e., xx[3] in xx[4]
+    # This means that expanded points are revisited for every iteration.
+    # Updating xx.npy and pp.npy for intersection(xx[3], xx[4])=[] should
+    # improve performance
 
     # Loads xx and pp non-initial values
     nxx = np.load('dados/xx.npy', allow_pickle=True)
@@ -49,7 +53,7 @@ def data_aug(iteration, df):
     t2 = time.time()
 
     for point in pp:
-        well_expand(point, real, xx, df)
+        well_expand(point, real, xx, main_df, seismic_df)
 
     t3 = time.time()
 

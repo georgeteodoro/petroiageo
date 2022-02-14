@@ -12,7 +12,8 @@ import lightgbm as lgb
 
 # Parameters
 LABEL_COLUMN_NAME = 'phi'
-UNWANTED_COLUMNS = ['real', 'well', 'rho', 'vs', 'vp']
+# UNWANTED_COLUMNS = ['real', 'well', 'rho', 'vs', 'vp']
+UNWANTED_COLUMNS = ['real', 'well']
 
 RANDOM_STATE = 1
 
@@ -85,11 +86,16 @@ def read_dataset(str_nwells):
     return all_features, df
 
 
-def get_features_sets(str_nwells):
-    all_features, df = read_dataset(str_nwells)
+def get_features_sets(df):
+    # Get all features to test
+    all_features = df.columns.to_list()
+    for x in UNWANTED_COLUMNS + [LABEL_COLUMN_NAME]:
+        all_features.remove(x)
+
+    # Filter dataframe
 
     print("[petro] Starting features set search")
-    f = ['X', 'Y', 'depth']
+    f = ['x', 'y', 'z']
     i = 0
     results = []
     for f1 in all_features:

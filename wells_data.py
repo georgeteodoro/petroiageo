@@ -48,7 +48,7 @@ def get_np_wells_data(filename):
     return int_values_np, phi_np
 
 
-def merge_wells_data(seismic_df, filename):
+def get_wells_data(filename):
     # Open porosity file
     int_values_np, phi_np = get_np_wells_data(filename)
 
@@ -59,13 +59,12 @@ def merge_wells_data(seismic_df, filename):
     wells_df = pd.concat([int_values_df, phi_df], axis=1)
 
     # Creates a join on left (seismic_df)
-    result = pd.merge(seismic_df, wells_df, on=['x', 'y', 'z'], how='left')
-    result.fillna({'well': -1, 'real': 2}, inplace=True)
-    result = result.astype({'well': int, 'real': int})
-    # result.set_index('real', inplace=True)
+    # result = pd.merge(seismic_df, wells_df, on=['x', 'y', 'z'], how='left')
+    # result.fillna({'well': -1, 'real': 2}, inplace=True)
+    wells_df = wells_df.astype({'well': int, 'real': int})
 
     # Ok to sort since we access points directly, without adding more points
     # However, should we index this value?
     # result.sort_values(by='real', ascending=True, inplace=True)
 
-    return result
+    return wells_df

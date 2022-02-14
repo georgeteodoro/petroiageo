@@ -1,37 +1,29 @@
 import multiprocessing as mp
 import pandas as pd
+import numpy as np
 import time
 from collections import defaultdict
 from os import linesep
-from mpi4py import MPI
+# from mpi4py import MPI
 import seismic_data
 import wells_data
 
 import expand
 
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-mpi_size = comm.Get_size()
-manager_rank = mpi_size - 1
+# comm = MPI.COMM_WORLD
+# rank = comm.Get_rank()
+# mpi_size = comm.Get_size()
+# manager_rank = mpi_size - 1
 
-# Only import for manager
-if rank == manager_rank:
-    # import global_variables
-    # import header
-    # import petro
-    # import petro_dist
-    # import apply3
-
-    # Constants
-    INIT_IT = 2
-    # LABELS_SHAPE = global_variables.LABELS_SHAPE
+# Constants
+INIT_IT = 2
 
 
 def main():
 
     # Instantiate pandas dataframe for all data
     # Data structure is composed by:
-    #   x,y,depth,
+    #   x,y,z(depth),
     #   seismic features,
     #   well => Well ID (begins at 0? what if it is not real well point? )
     #                   (currently, -1 if it's not an original real point)
@@ -45,40 +37,53 @@ def main():
     seismic_columns = ["NEAR", "MID", "FAR", "UFAR", "GERSZ", "GST"]
     print("[main] Loading seismic data")
     seismic_df = seismic_data.get_all_seismic_data(seismic_columns)
-    # print(seismic_df.head(4))
+    # print(seismic_df)
 
+    # Real wells' data into a main dataframe
     print("[main] Loading wells values")
-    df = wells_data.merge_wells_data(seismic_df, './dados/porosity-canal.txt')
+    main_df = wells_data.get_wells_data('./dados/porosity-canal.txt')
 
+    # Add index of xyz and sort dataframe for better access times
     print("[main] Indexing all data by (x,y,z)")
-    index = pd.MultiIndex.from_arrays([df['x'], df['y'], df['z']])
-    df.set_index(index, inplace=True)
-    df.sort_index()
+    index = pd.MultiIndex.from_arrays(
+        [main_df['x'], main_df['y'], main_df['z']])
+    main_df.set_index(index, inplace=True)
+    main_df.sort_index()
 
-    print(df)
-    
-    iterations = 3
+    print("[main] Adding empty seismic features columns")
     window = 3
+    new_cols = dict()
+    for col in seismic_columns:
+        for i in range(-window, window + 1):
+            for j in range(-window, window + 1):
+                for k in range(-window, window + 1):
+                    new_cols[f'{col}{i}{j}{k}'] = [np.nan]
+
+    print(f'new cols: {len(new_cols)}')
+    new_columns_df = pd.DataFrame(new_cols)
+    main_df = pd.merge(main_df, new_columns_df, how='cross')
+
+    print(main_df)
+
+    iterations = 3
 
     for it in range(iterations):
-        # print(f"Preparing header [{it}]")
-        # str_nwells = header.prepare_header(window)
-
         print(f"Expanding points [{it}]")
-        # str_nwells += "\n" + expand.data_aug(
-        #     it + 1, window)  # param sA passed by global variable
-        # with open(f"tmp_data/nwells-{it}.csv", mode='w') as f:
-        #     f.write(str_nwells)
+        expand.data_aug(it + 1, main_df, seismic_df)
 
-        expand.data_aug(it+1, df)
-
-        return
-
+        UNWANTED_COLUMNS = ['real', 'well', 'x', 'y', 'z', 'phi']
+        all_features = main_df.columns.to_list()
+        for x in UNWANTED_COLUMNS:
+            print(x)
+            all_features.remove(x)
+        print(all_features)
 
         print(f"Performing feature selection [{it}]")
-        features_sets = petro.get_features_sets(str_nwells)
+        features_sets = petro.get_features_sets(df)
         # features_sets = petro_dist.get_features_sets(str_nwells)
-        # print(features_sets)
+        print(features_sets)
+
+        return
 
         print(f"Performing predictions [{it}]")
         # Sort by second column (id 1)
