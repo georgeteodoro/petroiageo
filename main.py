@@ -7,7 +7,7 @@ from mpi4py import MPI
 import seismic_data
 import wells_data
 
-import random
+import expand
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -18,7 +18,6 @@ manager_rank = mpi_size - 1
 if rank == manager_rank:
     # import global_variables
     # import header
-    # import expand
     # import petro
     # import petro_dist
     # import apply3
@@ -54,23 +53,27 @@ def main():
     print("[main] Indexing all data by (x,y,z)")
     index = pd.MultiIndex.from_arrays([df['x'], df['y'], df['z']])
     df.set_index(index, inplace=True)
+    df.sort_index()
 
     print(df)
-
-    return
-
+    
     iterations = 3
     window = 3
 
     for it in range(iterations):
-        print(f"Preparing header [{it}]")
-        str_nwells = header.prepare_header(window)
+        # print(f"Preparing header [{it}]")
+        # str_nwells = header.prepare_header(window)
 
         print(f"Expanding points [{it}]")
-        str_nwells += "\n" + expand.data_aug(
-            it + 1, window)  # param sA passed by global variable
-        with open(f"tmp_data/nwells-{it}.csv", mode='w') as f:
-            f.write(str_nwells)
+        # str_nwells += "\n" + expand.data_aug(
+        #     it + 1, window)  # param sA passed by global variable
+        # with open(f"tmp_data/nwells-{it}.csv", mode='w') as f:
+        #     f.write(str_nwells)
+
+        expand.data_aug(it+1, df)
+
+        return
+
 
         print(f"Performing feature selection [{it}]")
         features_sets = petro.get_features_sets(str_nwells)

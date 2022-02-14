@@ -66,6 +66,6 @@ def merge_wells_data(seismic_df, filename):
 
     # Ok to sort since we access points directly, without adding more points
     # However, should we index this value?
-    result.sort_values(by='real', ascending=True, inplace=True)
+    # result.sort_values(by='real', ascending=True, inplace=True)
 
     return result
