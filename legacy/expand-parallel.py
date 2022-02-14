@@ -8,20 +8,22 @@ import multiprocessing as mp
 
 import global_variables
 
-# # Load global variables
-# snear = global_variables.snear
-# smid = global_variables.smid
-# sfar = global_variables.sfar
-# sufar = global_variables.sufar
-# sgersz = global_variables.sgersz
-# sgst = global_variables.sgst
-# sA = global_variables.porosity_values
-# seismic_shape = global_variables.seismic_shape
-# LABELS_SHAPE = global_variables.LABELS_SHAPE
+# Load global variables
+snear = global_variables.snear
+smid = global_variables.smid
+sfar = global_variables.sfar
+sufar = global_variables.sufar
+sgersz = global_variables.sgersz
+sgst = global_variables.sgst
+sA = global_variables.porosity_values
+seismic_shape = global_variables.seismic_shape
+LABELS_SHAPE = global_variables.LABELS_SHAPE
 
 
-# Using pandas DataFrame
-def well_str(p, w, real, xx, df):
+# Arrays are 1D for being usable on shared-memory
+# reshaping is too expensive, thus snear[i*shape[1]*shape[2] + j*shape[2] + k]
+# Shape changing is too expensive: 20 sec for 100M and require 270M per array
+def well_str(p, w, real, xx, shape):
     # locks = sLocks
     # visited = sVisited
 
@@ -34,16 +36,11 @@ def well_str(p, w, real, xx, df):
         r = 0
 
     s = StringIO()
-    for z in range(251):  # for all depths
-        # Get current point
-        x = p[0]
-        y = p[1]
-        point = df[x,y,z]
-
+    for k in range(251):  # for all depths
         # Calculate 1D coordinate of current point
-        # origPcoord = (p[0], p[1], k)
-        # pCoord = origPcoord[0] * LABELS_SHAPE[1] * LABELS_SHAPE[
-        #     2] + origPcoord[1] * LABELS_SHAPE[2] + origPcoord[2]
+        origPcoord = (p[0], p[1], k)
+        pCoord = origPcoord[0] * LABELS_SHAPE[1] * LABELS_SHAPE[
+            2] + origPcoord[1] * LABELS_SHAPE[2] + origPcoord[2]
 
         # # Checks for existing coordinate
         # locks[pCoord].acquire()
@@ -57,55 +54,46 @@ def well_str(p, w, real, xx, df):
         #     continue
 
         # Only expand points which have at least 0.05 porosity
-        # if sA[pCoord] <= 0.05:
-        if point['phi'] <= 0.05:
+        if sA[pCoord] <= 0.05:
             continue
 
-        # for i in range(p[0] - w, p[0] + w + 1):
-        #     for j in range(p[1] - w, p[1] + w + 1):
-        #         for z in range(k - w, k + w + 1):
-        #             # Deals with border cases
-        #             zz = min(max(z, 1), 250)
+        for i in range(p[0] - w, p[0] + w + 1):
+            for j in range(p[1] - w, p[1] + w + 1):
+                for z in range(k - w, k + w + 1):
+                    # Deals with border cases
+                    zz = min(max(z, 1), 250)
 
-        #             # Calculate 1D coordinate to be accessed by signal arrays
-        #             coord = i * shape[1] * shape[2] + j * shape[2] + zz
+                    # Calculate 1D coordinate to be accessed by signal arrays
+                    coord = i * shape[1] * shape[2] + j * shape[2] + zz
 
-        #             s.write("%s," % snear[coord])
-        #             s.write("%s," % smid[coord])
-        #             s.write("%s," % sfar[coord])
-        #             s.write("%s," % sufar[coord])
-        #             s.write("%s," % sgersz[coord])
-        #             s.write("%s," % sgst[coord])
+                    s.write("%s," % snear[coord])
+                    s.write("%s," % smid[coord])
+                    s.write("%s," % sfar[coord])
+                    s.write("%s," % sufar[coord])
+                    s.write("%s," % sgersz[coord])
+                    s.write("%s," % sgst[coord])
 
         # imprime o id do poco, seja ele real ou aumentado, sao 10 pocos reais
-        # s.write("%s," % r)
+        s.write("%s," % r)
 
-        # If this point was not real and is inside xx, 
-        # then it is an expanded point
-        if point['real'] != 0 & ([x,y] in xx):
-            point['real'] = 1
+        # define se o poco e real ou dado aumentado [...]
+        if [p[0], p[1]] in real:
+            s.write("1,")
+        elif [p[0], p[1]] in xx:
+            s.write("2,")
+        else:
+            s.write("0,")
 
-        # # define se o poco e real ou dado aumentado [...]
-        # if [p[0], p[1]] in real:
-        #     s.write("1,")
-        # elif [p[0], p[1]] in xx:
-        #     s.write("2,")
-        # else:
-        #     s.write("0,")
+        s.write("%s," % p[0])
+        s.write("%s," % p[1])
+        s.write("%s," % k)
 
-        # s.write("%s," % p[0])
-        # s.write("%s," % p[1])
-        # s.write("%s," % z)
-
-        # Set new phi value
-        point['phi'] = sA[x, y, z]
-
-        # s.write("%s," % sA[pCoord])
-        # # Currently B, C and D labels were all zero
-        # s.write("0.0,")
-        # s.write("0.0,")
-        # s.write("0.0")
-        # s.write('\n')
+        s.write("%s," % sA[pCoord])
+        # Currently B, C and D labels were all zero
+        s.write("0.0,")
+        s.write("0.0,")
+        s.write("0.0")
+        s.write('\n')
     return s
 
 

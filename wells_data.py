@@ -2,6 +2,10 @@ import numpy as np
 import pandas as pd
 from numba import jit
 
+# Real points
+real = [[146, 500], [287, 242], [200, 102], [344, 276], [134, 227], [250, 315],
+        [174, 365], [236, 113], [167, 186], [230, 194]]
+
 
 # Converter to ease usage of txt files with numpy efficiency
 # This only needs to be ran once
@@ -15,15 +19,18 @@ def get_np_wells_data(filename):
     int_values_np = np.empty(shape=(num_lines, 5), dtype=np.int32)
     phi_np = np.empty(shape=(num_lines, 1), dtype=np.float64)
     i = 0
-    real_id = 0  # TODO: ID should start at 0 or 1?
-    prev_xy = (-1, -1)
 
     # Convert wells data to np.array format
     for line in f.readlines():
         fields = [s.replace('\n', '') for s in line.split(' ')]
-        if prev_xy != (int(fields[0]), int(fields[1])):
-            real_id = real_id + 1
-        prev_xy = (int(fields[0]), int(fields[1]))
+
+        # Check it this is a real point
+        if [int(fields[0]), int(fields[1])] in real:
+            real_id = real.index([int(fields[0]), int(fields[1])])
+            real_val = 0
+        else:
+            real_id = -1
+            real_val = 2
 
         # Each point is set as a real point with ID i
         int_values_np[i] = [
@@ -31,7 +38,7 @@ def get_np_wells_data(filename):
             int(fields[1]),
             int(fields[2]),
             int(real_id),
-            int(0)
+            int(real_val)
         ]
         phi_np[i] = float(fields[3])
         i = i + 1

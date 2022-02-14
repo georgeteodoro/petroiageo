@@ -7,6 +7,8 @@ from mpi4py import MPI
 import seismic_data
 import wells_data
 
+import random
+
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 mpi_size = comm.Get_size()
@@ -45,11 +47,15 @@ def main():
     print("[main] Loading seismic data")
     seismic_df = seismic_data.get_all_seismic_data(seismic_columns)
     # print(seismic_df.head(4))
-    
+
     print("[main] Loading wells values")
     df = wells_data.merge_wells_data(seismic_df, './dados/porosity-canal.txt')
+
+    print("[main] Indexing all data by (x,y,z)")
+    index = pd.MultiIndex.from_arrays([df['x'], df['y'], df['z']])
+    df.set_index(index, inplace=True)
+
     print(df)
-    print("[main] Done loading wells values")
 
     return
 
