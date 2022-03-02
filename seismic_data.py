@@ -56,8 +56,16 @@ def get_all_seismic_data(seismic_columns):
     coords_df = pd.DataFrame(coords_np, columns=['x', 'y', 'z'])
     seismic_df = pd.DataFrame(seismic_np, columns=seismic_columns)
 
-    # Merge and return the DataFrame
-    return pd.concat([coords_df, seismic_df], axis=1)
+    # Add coordinates to main dataframe
+    fetures_df = pd.concat([coords_df, seismic_df], axis=1)
+
+    # Set coordinates as the index
+    index = pd.MultiIndex.from_arrays(
+        [fetures_df['x'], fetures_df['y'], fetures_df['z']])
+    fetures_df.set_index(index, inplace=True)
+    fetures_df.sort_index(inplace=True)
+
+    return fetures_df
 
 
 if __name__ == '__main__':
