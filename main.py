@@ -24,7 +24,6 @@ def main():
     # Instantiate pandas dataframe for all data
     # Data structure is composed by:
     #   x,y,z(depth),
-    #   seismic features,
     #   well => Well ID (begins at 0? what if it is not real well point? )
     #                   (currently, -1 if it's not an original real point)
     #   real => [2=point to be expanded, 1=expanded point, 0=real well point]
@@ -34,10 +33,10 @@ def main():
     #   vs   => ?
 
     # Read seismic data and add it to a dataframe
-    seismic_columns = ["NEAR", "MID", "FAR", "UFAR", "GERSZ", "GST"]
+    features_columns = ["NEAR", "MID", "FAR", "UFAR", "GERSZ", "GST"]
     print("[main] Loading seismic data")
-    seismic_df = seismic_data.get_all_seismic_data(seismic_columns)
-    # print(seismic_df)
+    features_df = seismic_data.get_all_seismic_data(features_columns)
+    # print(features_df)
 
     # Real wells' data into a main dataframe
     print("[main] Loading wells values")
@@ -48,20 +47,20 @@ def main():
     index = pd.MultiIndex.from_arrays(
         [main_df['x'], main_df['y'], main_df['z']])
     main_df.set_index(index, inplace=True)
-    main_df.sort_index()
+    main_df.sort_index(inplace=True)
 
-    print("[main] Adding empty seismic features columns")
-    window = 3
-    new_cols = dict()
-    for col in seismic_columns:
-        for i in range(-window, window + 1):
-            for j in range(-window, window + 1):
-                for k in range(-window, window + 1):
-                    new_cols[f'{col}{i}{j}{k}'] = [np.nan]
+    # print("[main] Adding empty seismic features columns")
+    # window = 3
+    # new_cols = dict()
+    # for col in features_columns:
+    #     for i in range(-window, window + 1):
+    #         for j in range(-window, window + 1):
+    #             for k in range(-window, window + 1):
+    #                 new_cols[f'{col}{i}{j}{k}'] = [np.nan]
 
-    print(f'new cols: {len(new_cols)}')
-    new_columns_df = pd.DataFrame(new_cols)
-    main_df = pd.merge(main_df, new_columns_df, how='cross')
+    # print(f'new cols: {len(new_cols)}')
+    # new_columns_df = pd.DataFrame(new_cols)
+    # main_df = pd.merge(main_df, new_columns_df, how='cross')
 
     print(main_df)
 
@@ -69,17 +68,18 @@ def main():
 
     for it in range(iterations):
         print(f"Expanding points [{it}]")
-        expand.data_aug(it + 1, main_df, seismic_df)
+        main_df = expand.data_aug(it + 1, main_df)
+        main_df.sort_index(inplace=True)
 
-        UNWANTED_COLUMNS = ['real', 'well', 'x', 'y', 'z', 'phi']
-        all_features = main_df.columns.to_list()
-        for x in UNWANTED_COLUMNS:
-            print(x)
-            all_features.remove(x)
-        print(all_features)
+        # UNWANTED_COLUMNS = ['real', 'well', 'x', 'y', 'z', 'phi']
+        # all_features = main_df.columns.to_list()
+        # for x in UNWANTED_COLUMNS:
+        #     print(x)
+        #     all_features.remove(x)
+        # print(all_features)
 
         print(f"Performing feature selection [{it}]")
-        features_sets = petro.get_features_sets(df)
+        features_sets = petro.get_features_sets(main_df, features_df)
         # features_sets = petro_dist.get_features_sets(str_nwells)
         print(features_sets)
 

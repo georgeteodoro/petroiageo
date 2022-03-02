@@ -3,15 +3,32 @@ import sys
 from io import StringIO
 import time
 import pandas as pd
+import warnings
 
 
 # Using pandas DataFrame
-def well_expand(p, real, xx, main_df, seismic_df):
+def well_expand(p, real, xx, main_df):
+    # List of points with phi=0 to be appended later
+    # Inserting them later as a single DataFrane is quicker than inserting
+    # one at a time.
+    # Empirically, zero_coords list or array are similar in performance
+    zero_coords = []
+
+    # Disable PerformanceWarning for not sorting main_df
+    # In practice, for this algorithm, not sorting is faster
+    warnings.simplefilter(action='ignore',
+                          category=pd.errors.PerformanceWarning)
+
     for z in range(251):  # for all depths
         x = p[0]
         y = p[1]
 
-        # Only expand points which have at least 0.05 porosity
+        # If point is not present on main_df create it
+        if len(main_df.index.intersection(pd.Index([(x, y, z)]))) == 0:
+            zero_coords.append([x, y, z, -1, 1, 0])
+            continue
+
+        # Only expand existing points which have at least 0.05 porosity
         if main_df.loc[(x, y, z), 'phi'] <= 0.05:
             continue
 
@@ -20,8 +37,21 @@ def well_expand(p, real, xx, main_df, seismic_df):
         if main_df.loc[(x, y, z), 'real'] != 0 & ([x, y] in xx):
             main_df.loc[(x, y, z), 'real'] = 1
 
+    zero_coords_df = pd.DataFrame(
+        zero_coords, columns=['x', 'y', 'z', 'well', 'real', 'phi'])
+    index = pd.MultiIndex.from_arrays(
+        [zero_coords_df['x'], zero_coords_df['y'], zero_coords_df['z']])
+    zero_coords_df.set_index(index, inplace=True)
+    main_df = pd.concat([main_df, zero_coords_df])
 
-def data_aug(iteration, main_df, seismic_df):
+    # Re-enabling warnings
+    warnings.simplefilter(action='default',
+                          category=pd.errors.PerformanceWarning)
+
+    return main_df
+
+
+def data_aug(iteration, main_df):
     t1 = time.time()
 
     iteration = int(iteration)
@@ -53,11 +83,13 @@ def data_aug(iteration, main_df, seismic_df):
     t2 = time.time()
 
     for point in pp:
-        well_expand(point, real, xx, main_df, seismic_df)
+        main_df = well_expand(point, real, xx, main_df)
 
     t3 = time.time()
 
     print(f'[expand] exp time: {t3-t2}')
+
+    return main_df
 
 
 if __name__ == '__main__':
