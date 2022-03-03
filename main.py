@@ -8,8 +8,8 @@ from os import linesep
 
 import seismic_data
 import wells_data
-import expand
-import petro
+import expand2
+import petro2
 import apply3
 
 # comm = MPI.COMM_WORLD
@@ -20,26 +20,30 @@ import apply3
 # Constants
 INIT_IT = 2
 
+real_wells = [[146, 500], [287, 242], [200, 102], [344, 276], [134, 227],
+              [250, 315], [174, 365], [236, 113], [167, 186], [230, 194]]
+
 
 def main():
 
     # Instantiate pandas dataframe for all data
     # Data structure is composed by:
     #   x,y,z(depth),
-    #   well => Well ID (begins at 0? what if it is not real well point? )
-    #                   (currently, -1 if it's not an original real point)
-    #   real => [2=point to be expanded, 1=expanded point, 0=real well point]
+    #   well => Well ID (-1 if it's not an original real point.)
+    #                   (Has the ID from the original real well)
+    #                   (from which it was expanded.           )
+    #   real => [1=expanded point, 0=real well point]
     #   phi  => Porosity value
     #   rho  => ?
     #   vp   => ?
     #   vs   => ?
 
     # Read seismic data and add it to a dataframe
-    seismic_columns = ["NEAR", "MID", "FAR", "UFAR"]
-    other_columns = ["GERSZ", "GST"]
+    seismic_features_names = ["NEAR", "MID", "FAR", "UFAR"]
+    other_features_names = ["GERSZ", "GST"]
     print("[main] Loading seismic data")
-    features_df = seismic_data.get_all_seismic_data(seismic_columns +
-                                                    other_columns)
+    features_df = seismic_data.get_all_seismic_data(seismic_features_names +
+                                                    other_features_names)
     print("[main] Features DataFrame:")
     print(features_df)
 
@@ -60,25 +64,31 @@ def main():
     iterations = 3
 
     for it in range(iterations):
-        print(f"Expanding points [{it}]")
-        main_df = expand.data_aug(it + 1, main_df)
-        main_df.sort_index(inplace=True)
+        # print(f"Expanding points [{it}]")
+        # main_df = expand.data_aug(it + 1, main_df)
+        # main_df.sort_index(inplace=True)
 
         print(f"Performing feature selection [{it}]")
         # Generate seismic features names
         window = 3
         all_features = []
-        for f in seismic_columns:
-            for i in range(-window, window+1):
-                for j in range(-window, window+1):
-                    for k in range(-window, window+1):
+        for f in seismic_features_names:
+            for i in range(-window, window + 1):
+                for j in range(-window, window + 1):
+                    for k in range(-window, window + 1):
                         all_features.append((f, i, j, k))
 
-        features_sets = petro.get_features_sets(main_df,
-            features_df, all_features, 2, 2)
+        
+        features_sets = petro2.get_features_sets(main_df, features_df,
+                                                all_features, 2, 2)
         print(features_sets)
 
-        print(f"Performing predictions [{it}]")
+        # Generate new points for later prediction
+        # Square wavefront propagation pattern
+        print(f"Expanding points [{it}]")
+
+
+        print(f"Performing predictions on new expanded points [{it}]")
         # Sort by second column (id 1)
         features_sets.sort(key=lambda tup: tup[1], reverse=True)
         best_features_set = features_sets[0][0]
