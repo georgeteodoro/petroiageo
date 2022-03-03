@@ -86,7 +86,8 @@ def main():
         # Generate new points for later prediction
         # Square wavefront propagation pattern
         print(f"Expanding points [{it}]")
-
+        expand2.gen_expanded_points(main_df, real_wells, it)
+        print(main_df)
 
         print(f"Performing predictions on new expanded points [{it}]")
         # Sort by second column (id 1)

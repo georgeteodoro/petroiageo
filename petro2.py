@@ -112,7 +112,7 @@ def add_feature_col(cur_df, features_df, cur_feature):
     if type(cur_feature) is tuple:
         # If f is a tuple, then the feature is seismic
         cur_f_name = f2str(cur_feature)
-        print(f'[petro] creating feature col {cur_f_name}')
+        # print(f'[petro] creating feature col {cur_f_name}')
         cur_df[cur_f_name] = 0  # New column created
         cur_df.loc[:,
                    cur_f_name] = cur_df.apply(transfer_seismic_feature,
@@ -141,8 +141,6 @@ def get_features_sets(main_df,
     # ID (i.e., well=-1)
     cur_df = cur_df[cur_df['well'] != -1]
 
-    print("[petro] Starting features set search")
-
     # Current features set with the best error
     cur_f_set = ['x', 'y', 'z']
 
@@ -159,14 +157,16 @@ def get_features_sets(main_df,
 
         # Test each available feature
         ii = 0
-        print(f'[petro] starting iteration with features:')
-        print(cur_f_set)
+        # print(f'[petro] starting iteration with features:')
+        # print(cur_f_set)
         for cur_feature in remaining_features:
 
             # Early termination for debugging
             if f_width != 0 and ii == f_width:
                 break
             ii = ii + 1
+            
+            print(f"[petro] Testing feature {cur_feature}")
 
             t1 = time.time()
 
@@ -179,13 +179,13 @@ def get_features_sets(main_df,
             add_feature_col(test_df, features_df, cur_feature)
 
             t2 = time.time()
-            print(f"col setup time {t2-t1}")
+            print(f"[petro]    col setup time {t2-t1}")
 
             # Test current feature set
             rmse, mae = eval_bootstrap(test_df)
             results.append((cur_f_set + [cur_feature], rmse, mae))
             t3 = time.time()
-            print(f"iter time {t3-t1}")
+            print(f"[petro]    iter time {t3-t1}")
 
             # Update current best feature
             if rmse < best_error:
@@ -193,63 +193,11 @@ def get_features_sets(main_df,
                 best_feature = cur_feature
 
         # Update current DataFrame to add best feature of current iteration
-        print(f'[petro] found best feature: {f2str(cur_feature)}')
+        # print(f'[petro] found best feature: {f2str(cur_feature)}')
         cur_f_set.append(best_feature)
         add_feature_col(cur_df, features_df, best_feature)
-        print('[petro] current DF:')
-        print(cur_df)
+        # print('[petro] current DF:')
+        # print(cur_df)
 
     return results
-
-    # i = 0
-    # results = []
-    # for f1 in all_features:
-    #     if i == exp_n_features: break
-    #     if f1 in f: continue
-    #     k = 1000
-    #     x = f1
-    #     i = i + 1
-    #     j = 0
-    #     for f2 in all_features:
-    #         if f2 in f: continue
-    #         j = j + 1
-    #         if f_width != 0 and j == f_width: break
-    #         f.append(f2)
-    #         print(f)
-
-    #         t1 = time.time()
-
-    #         # Add feature column to current DataFrame
-    #         # A copy of the current rolling DataFrame is done
-    #         # in order to avoid inserting and removing columns
-    #         # The current rolling DataFrame is updated after all
-    #         # features are tested
-    #         ev_df = cur_df.copy(deep=False)
-    #         if type(f2) is tuple:
-    #             # If f is a tuple, then the feature is seismic
-    #             print('creating feature col')
-    #             ev_df[f2str(f2)] = 0  # New column created
-    #             # transfer_seismic_feature(ev_df, features_df, f2)
-    #             ev_df.loc[:, f2str(f2)] = ev_df.apply(transfer_seismic_feature,
-    #                                                   axis=1,
-    #                                                   args=(features_df, f2))
-    #         else:
-    #             # If f2 is not a tuple, then the feature other, and doesn't need
-    #             # any fancy assignment due to its index
-    #             ev_df.join(features_df[f2], on=['x', 'y', 'z'])
-
-    #         t2 = time.time()
-    #         print(f"col setup time {t2-t1}")
-
-    #         A, B = eval_bootstrap(ev_df)
-    #         t3 = time.time()
-    #         print(f"iter time {t3-t1}")
-    #         # s.write(f"{f},{A},{B}")
-    #         results.append([f, A, B])
-    #         z = A
-    #         f.remove(f2)
-    #         sys.stdout.flush()
-    #         if z < k:
-    #             x = f2
-    #             k = z
-    #     f.append(x)
+    

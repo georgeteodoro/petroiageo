@@ -5,91 +5,54 @@ import time
 import pandas as pd
 import warnings
 
+MAX_DEPTH = 251  # Starts from 1
 
-# Using pandas DataFrame
-def well_expand(p, real, xx, main_df):
-    # List of points with phi=0 to be appended later
-    # Inserting them later as a single DataFrane is quicker than inserting
-    # one at a time.
-    # Empirically, zero_coords list or array are similar in performance
-    zero_coords = []
+def gen_expanded_points(main_df, real_wells, it):
+    # Set distance ring to be generated
+    ring = it + 1
+    ring_circunf = ring * 2 + 1  # single width
+    ring_circunf = 2 * ring_circunf + 2 * (ring_circunf - 2)
 
-    # Disable PerformanceWarning for not sorting main_df
-    # In practice, for this algorithm, not sorting is faster
-    warnings.simplefilter(action='ignore',
-                          category=pd.errors.PerformanceWarning)
+    # Allocate ndarray for new points
+    # Number of cols = 6 : (x,y,z,well,real,phi)
+    expanded_points_np = np.empty((ring_circunf * MAX_DEPTH, 6))
 
-    for z in range(251):  # for all depths
-        x = p[0]
-        y = p[1]
-
-        # If point is not present on main_df create it
-        if len(main_df.index.intersection(pd.Index([(x, y, z)]))) == 0:
-            zero_coords.append([x, y, z, -1, 1, 0])
-            continue
-
-        # Only expand existing points which have at least 0.05 porosity
-        if main_df.loc[(x, y, z), 'phi'] <= 0.05:
-            continue
-
-        # If this point was not real and is inside xx,
-        # then it is an expanded point
-        if main_df.loc[(x, y, z), 'real'] != 0 & ([x, y] in xx):
-            main_df.loc[(x, y, z), 'real'] = 1
-
-    zero_coords_df = pd.DataFrame(
-        zero_coords, columns=['x', 'y', 'z', 'well', 'real', 'phi'])
-    index = pd.MultiIndex.from_arrays(
-        [zero_coords_df['x'], zero_coords_df['y'], zero_coords_df['z']])
-    zero_coords_df.set_index(index, inplace=True)
-    main_df = pd.concat([main_df, zero_coords_df])
-
-    # Re-enabling warnings
-    warnings.simplefilter(action='default',
-                          category=pd.errors.PerformanceWarning)
-
-    return main_df
-
-
-def data_aug(iteration, main_df):
+    # Expand around each original well
+    well_id = 0
     t1 = time.time()
+    for well in real_wells:
+        ii = 0
+        for z in range(MAX_DEPTH):
+            for i in range(-ring, ring + 1):
+                for j in range(-ring, ring + 1):
+                    # Only add ring frontier points
+                    if abs(i) == ring or abs(j) == ring:
+                        x = well[0] + i
+                        y = well[1] + j
 
-    iteration = int(iteration)
+                        # Create new expanded point (real=1) with empty phi val
+                        expanded_points_np[ii] = (x, y, z, well_id, 1, 0)
+                        ii = ii + 1
 
-    # TODO: xx and pp array is incremental, i.e., xx[3] in xx[4]
-    # This means that expanded points are revisited for every iteration.
-    # Updating xx.npy and pp.npy for intersection(xx[3], xx[4])=[] should
-    # improve performance
+        # Add new points to DataFrame
+        expanded_points_df = pd.DataFrame(
+            expanded_points_np,
+            columns=['x', 'y', 'z', 'well', 'real', 'phi'],
+            dtype=np.int32)
+        index = pd.MultiIndex.from_arrays([
+            expanded_points_df['x'], expanded_points_df['y'],
+            expanded_points_df['z']
+        ])
+        expanded_points_df.set_index(index, inplace=True)
+        main_df = pd.concat([main_df, expanded_points_df])
 
-    # Loads xx and pp non-initial values
-    nxx = np.load('dados/xx.npy', allow_pickle=True)
-    npp = np.load('dados/pp.npy', allow_pickle=True)
+        # print(f'[expand] done with point {well}')
+        # print(main_df)
 
-    # 0 is a placeholder for no-value on a sparse matrix
-    def allButZero(arr):
-        return arr[0:arr.index(0)]
-
-    xx = allButZero(nxx[iteration].tolist())
-    pp = allButZero(npp[iteration].tolist())
-
-    # Clear numpy arrays
-    nxx = None
-    npp = None
-
-    # esses sao pocos reais
-    real = [[146, 500], [287, 242], [200, 102], [344, 276], [134, 227],
-            [250, 315], [174, 365], [236, 113], [167, 186], [230, 194]]
-
+        well_id = well_id + 1
+    
     t2 = time.time()
-
-    for point in pp:
-        main_df = well_expand(point, real, xx, main_df)
-
-    t3 = time.time()
-
-    print(f'[expand] exp time: {t3-t2}')
-
-    return main_df
+    print(f'[expand] total time: {t2-t1}')
 
 
 if __name__ == '__main__':
