@@ -97,37 +97,6 @@ def f2str(f_tuple):
         return f_tuple
 
 
-# Transfer a seismic feature value with a displaced coordinate
-# to the main DataFrame
-# To be used by DataFrame.apply
-def transfer_seismic_feature(ds, features_df, f):
-    # Bound x,y,z coordinates
-    x = max(0, min(SEISMIC_MAX_X, ds.name[0] + f[1]))
-    y = max(0, min(SEISMIC_MAX_Y, ds.name[1] + f[2]))
-    z = max(0, min(SEISMIC_MAX_Z, ds.name[2] + f[3]))
-
-    # Return seismic value for given coordinate
-    return features_df.loc[(x, y, z), f[0]]
-
-
-def get_feature_col(indexes, feature, features_df):
-    if type(feature) is tuple:
-        ret = np.empty(len(indexes))
-        sub_features = features_df[feature[0]]
-        ii = 0
-        print(f'[get_feature_col] index len: {len(indexes)}')
-        for i in indexes:
-            x = max(0, min(SEISMIC_MAX_X, i[0] + feature[1]))
-            y = max(0, min(SEISMIC_MAX_Y, i[1] + feature[2]))
-            z = max(0, min(SEISMIC_MAX_Z, i[2] + feature[3]))
-            ret[ii] = sub_features.loc[(x, y, z)]
-            ii = ii + 1
-        return ret
-
-    else:
-        return features_df[features_df.index.isin(indexes)][feature].values
-
-
 @jit(nopython=True)
 def parallel_read(array_np, indexes, f_x, f_y, f_z):
     ret = np.empty((len(indexes)), dtype=np.float64)
@@ -137,6 +106,7 @@ def parallel_read(array_np, indexes, f_x, f_y, f_z):
         x = max(0, min(SEISMIC_MAX_X, i[0] + f_x))
         y = max(0, min(SEISMIC_MAX_Y, i[1] + f_y))
         z = max(0, min(SEISMIC_MAX_Z, i[2] + f_z))
+        # array_np is 1D with 3D indexed data
         coord = x * (SEISMIC_MAX_Y + 1) * (SEISMIC_MAX_Z +
                                            1) + y * (SEISMIC_MAX_Z + 1) + z
         ret[ii] = array_np[coord]
@@ -149,7 +119,7 @@ def parallel_read(array_np, indexes, f_x, f_y, f_z):
 def get_feature_col2(indexes, feature, features_df):
     if type(feature) is tuple:
         sub_features_np = features_df[feature[0]].values
-        
+
         # Numba only accepts ndarrays of concrete types (not object)
         indexes_ndarray = np.array(indexes.values,
                                    dtype=[('x', '<u2'), ('y', '<u2'),
@@ -160,32 +130,10 @@ def get_feature_col2(indexes, feature, features_df):
         return features_df[features_df.index.isin(indexes)][feature].values
 
 
-# Add the data of cur_feature from features_df to cur_df in-place
-def add_feature_col(cur_df, features_df, cur_feature):
-    if type(cur_feature) is tuple:
-        # If f is a tuple, then the feature is seismic
-        cur_f_name = f2str(cur_feature)
-        # print(f'[petro] creating feature col {cur_f_name}')
-        cur_df[cur_f_name] = 0  # New column created
-        cur_df.loc[:,
-                   cur_f_name] = cur_df.apply(transfer_seismic_feature,
-                                              axis=1,
-                                              args=(features_df, cur_feature))
-    else:
-        # If cur_feature is not a tuple, then the feature other, and
-        # doesn't need any fancy assignment due to its index
-        cur_df.join(features_df[cur_feature])
-        # cur_df = pd.merge(cur_df,
-        #          features_df[cur_feature],
-        #          left_index=True,
-        #          right_index=True,
-        #          copy=False)
-
-
 # exp_n_features: number of features to be selected
 # f_width: number of features to be compared
-#   default=0 means all features
-#   used for debugging
+#   default=0 means all features.
+#   Used for debugging and reducing computing cost
 def get_features_sets(main_df,
                       features_df,
                       all_features,
@@ -201,7 +149,6 @@ def get_features_sets(main_df,
 
     # Current features set with the best error
     cur_f_set = ['x', 'y', 'z']
-    cur_f_set_s = []
 
     # List of features sets and their error metric
     results = []
@@ -223,7 +170,7 @@ def get_features_sets(main_df,
 
             cur_feature_s = f2str(cur_feature)
 
-            if cur_feature_s in cur_f_set_s:
+            if cur_feature in cur_f_set:
                 continue
 
             t1 = time.time()
@@ -241,7 +188,6 @@ def get_features_sets(main_df,
             # The current rolling DataFrame is updated after all
             # features are tested
             test_df = cur_df.copy(deep=False)
-            # add_feature_col(test_df, features_df, cur_feature)
             test_df.loc[:, cur_feature_s] = get_feature_col2(
                 test_df.index, cur_feature, features_df)
 
@@ -266,8 +212,6 @@ def get_features_sets(main_df,
         # Update current DataFrame to add best feature of current iteration
         # print(f'[petro] found best feature: {f2str(cur_feature)}')
         cur_f_set.append(best_feature)
-        cur_f_set_s.append(f2str(best_feature))
-        # add_feature_col(cur_df, features_df, best_feature)
         cur_df.loc[:, f2str(best_feature)] = get_feature_col2(
             cur_df.index, best_feature, features_df)
         # print('[petro] current DF:')

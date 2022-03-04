@@ -75,10 +75,6 @@ def main():
     all_features = all_features + other_features_names
 
     for it in range(iterations):
-        # print(f"Expanding points [{it}]")
-        # main_df = expand.data_aug(it + 1, main_df)
-        # main_df.sort_index(inplace=True)
-
         t1 = time.time()
 
         print(f"Performing feature selection [{it}]")
@@ -102,11 +98,6 @@ def main():
         main_df = apply4.perf_predition(best_features_set, main_df,
                                                features_df)
         print(main_df)
-        # with open(f'tmp_data/v-{it}', mode='w') as f:
-        #     f.write("".join([
-        #         f"{p}\n".replace('[', '').replace(']', '').replace(',', '')
-        #         for p in v
-        #     ]))
 
         t4 = time.time()
         print(f'it[{it}] ran in {t4-t1}')
