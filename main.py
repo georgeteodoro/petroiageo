@@ -10,7 +10,7 @@ import seismic_data
 import wells_data
 import expand2
 import petro2
-import apply3
+import apply4
 
 # comm = MPI.COMM_WORLD
 # rank = comm.Get_rank()
@@ -32,7 +32,7 @@ def main():
     #   well => Well ID (-1 if it's not an original real point.)
     #                   (Has the ID from the original real well)
     #                   (from which it was expanded.           )
-    #   real => [1=expanded point, 0=real well point]
+    #   real => [2=to be expanded, 1=expanded point, 0=real well point]
     #   phi  => Porosity value
     #   rho  => ?
     #   vp   => ?
@@ -61,65 +61,58 @@ def main():
     print("[main] Main DataFrame:")
     print(main_df)
 
-    iterations = 3
+    iterations = 4
+
+    # Generate seismic features names
+    window = 3
+    # all_features = other_features_names
+    all_features = []
+    for f in seismic_features_names:
+        for i in range(-window, window + 1):
+            for j in range(-window, window + 1):
+                for k in range(-window, window + 1):
+                    all_features.append((f, i, j, k))
+    all_features = all_features + other_features_names
 
     for it in range(iterations):
         # print(f"Expanding points [{it}]")
         # main_df = expand.data_aug(it + 1, main_df)
         # main_df.sort_index(inplace=True)
 
-        print(f"Performing feature selection [{it}]")
-        # Generate seismic features names
-        window = 3
-        all_features = []
-        for f in seismic_features_names:
-            for i in range(-window, window + 1):
-                for j in range(-window, window + 1):
-                    for k in range(-window, window + 1):
-                        all_features.append((f, i, j, k))
+        t1 = time.time()
 
-        
+        print(f"Performing feature selection [{it}]")
         features_sets = petro2.get_features_sets(main_df, features_df,
-                                                all_features, 2, 2)
-        print(features_sets)
+                                                 all_features, 10, 5)
+        # print(features_sets)
+        t2 = time.time()
 
         # Generate new points for later prediction
         # Square wavefront propagation pattern
         print(f"Expanding points [{it}]")
-        expand2.gen_expanded_points(main_df, real_wells, it)
-        print(main_df)
+        main_df = expand2.gen_expanded_points(main_df, real_wells, it)
+        # print(main_df)
+        t3 = time.time()
 
         print(f"Performing predictions on new expanded points [{it}]")
         # Sort by second column (id 1)
         features_sets.sort(key=lambda tup: tup[1], reverse=True)
         best_features_set = features_sets[0][0]
-        v = apply3.perf_predition(best_features_set, str_nwells)
-        with open(f'tmp_data/v-{it}', mode='w') as f:
-            f.write("".join([
-                f"{p}\n".replace('[', '').replace(']', '').replace(',', '')
-                for p in v
-            ]))
+        print(best_features_set)
+        main_df = apply4.perf_predition(best_features_set, main_df,
+                                               features_df)
+        print(main_df)
+        # with open(f'tmp_data/v-{it}', mode='w') as f:
+        #     f.write("".join([
+        #         f"{p}\n".replace('[', '').replace(']', '').replace(',', '')
+        #         for p in v
+        #     ]))
 
-        print(f"Expanding predictions [{it}]")
-        v2 = defaultdict(list)
-        # Create a dict of all predictions per point
-        for p in v:
-            for i in range(p[0] - 1, p[0] + 2):
-                for j in range(p[1] - 1, p[1] + 2):
-                    v2[f"{i} {j} {p[2]}"].append(p[3])
-
-        # Averages the predictions of each point
-        values = []
-        for k, l in v2.items():
-            values.append(k.split(" ") + [sum(l) / len(l)])
-        with open(f'tmp_data/values{it}', mode='w') as f:
-            f.write("".join([f"{p}\n" for p in values]))
-
-        print(f"Updating porosity points [{it}]")
-        for p in values:
-            coord = int(p[0]) * LABELS_SHAPE[1] * LABELS_SHAPE[2] + int(
-                p[1]) * LABELS_SHAPE[2] + int(p[2])
-            global_variables.porosity_values[coord] = float(p[3])
+        t4 = time.time()
+        print(f'it[{it}] ran in {t4-t1}')
+        print(f'   feature selection {t2-t1}')
+        print(f'   expanding points  {t3-t2}')
+        print(f'   predictions       {t4-t3}')
 
 
 if __name__ == '__main__':

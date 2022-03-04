@@ -30,8 +30,8 @@ def gen_expanded_points(main_df, real_wells, it):
                         x = well[0] + i
                         y = well[1] + j
 
-                        # Create new expanded point (real=1) with empty phi val
-                        expanded_points_np[ii] = (x, y, z, well_id, 1, 0)
+                        # Create new expanded point (real=2) with empty phi val
+                        expanded_points_np[ii] = (x, y, z, well_id, 2, 0)
                         ii = ii + 1
 
         # Add new points to DataFrame
@@ -53,6 +53,8 @@ def gen_expanded_points(main_df, real_wells, it):
     
     t2 = time.time()
     print(f'[expand] total time: {t2-t1}')
+
+    return main_df
 
 
 if __name__ == '__main__':
