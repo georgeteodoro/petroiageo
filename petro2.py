@@ -5,6 +5,7 @@ import os
 import random
 import time
 from io import StringIO
+from numba import jit
 
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.model_selection import LeaveOneGroupOut
@@ -127,23 +128,34 @@ def get_feature_col(indexes, feature, features_df):
         return features_df[features_df.index.isin(indexes)][feature].values
 
 
+@jit(nopython=True)
+def parallel_read(array_np, indexes, f_x, f_y, f_z):
+    ret = np.empty((len(indexes)), dtype=np.float64)
+
+    ii = 0
+    for i in indexes:
+        x = max(0, min(SEISMIC_MAX_X, i[0] + f_x))
+        y = max(0, min(SEISMIC_MAX_Y, i[1] + f_y))
+        z = max(0, min(SEISMIC_MAX_Z, i[2] + f_z))
+        coord = x * (SEISMIC_MAX_Y + 1) * (SEISMIC_MAX_Z +
+                                           1) + y * (SEISMIC_MAX_Z + 1) + z
+        ret[ii] = array_np[coord]
+        ii = ii + 1
+
+    return ret
+
+
 # Uses ndarray instead of pandas access
 def get_feature_col2(indexes, feature, features_df):
     if type(feature) is tuple:
-        ret = np.empty(len(indexes))
         sub_features_np = features_df[feature[0]].values
-        ii = 0
-        for i in indexes:
-            x = max(0, min(SEISMIC_MAX_X, i[0] + feature[1]))
-            y = max(0, min(SEISMIC_MAX_Y, i[1] + feature[2]))
-            z = max(0, min(SEISMIC_MAX_Z, i[2] + feature[3]))
-            coord = x * (SEISMIC_MAX_Y + 1) * (SEISMIC_MAX_Z +
-                                               1) + y * (SEISMIC_MAX_Z + 1) + z
-            ret[ii] = sub_features_np[coord]
-            ii = ii + 1
-
-        return ret
-
+        
+        # Numba only accepts ndarrays of concrete types (not object)
+        indexes_ndarray = np.array(indexes.values,
+                                   dtype=[('x', '<u2'), ('y', '<u2'),
+                                          ('z', '<u2')])
+        return parallel_read(sub_features_np, indexes_ndarray, feature[1],
+                             feature[2], feature[3])
     else:
         return features_df[features_df.index.isin(indexes)][feature].values
 
@@ -189,12 +201,13 @@ def get_features_sets(main_df,
 
     # Current features set with the best error
     cur_f_set = ['x', 'y', 'z']
+    cur_f_set_s = []
 
     # List of features sets and their error metric
     results = []
 
     # Find a feature set with exp_n_features features
-    remaining_features = all_features.copy()
+    # remaining_features = all_features.copy()
     for _ in range(exp_n_features):
 
         # Reset best feature and its error
@@ -205,18 +218,22 @@ def get_features_sets(main_df,
         ii = 0
         # print(f'[petro] starting iteration with features:')
         # print(cur_f_set)
-        for cur_feature in remaining_features:
+        for cur_feature in all_features:
+            print(f"[petro] Testing feature {cur_feature}")
 
+            cur_feature_s = f2str(cur_feature)
+
+            if cur_feature_s in cur_f_set_s:
+                continue
+
+            t1 = time.time()
             # Early termination for debugging
             if f_width != 0 and ii == f_width:
                 break
             ii = ii + 1
 
-            print(f"[petro] Testing feature {cur_feature}")
             # print(f"[petro] Testing feature {cur_feature} \
             #     on feature set {cur_f_set}")
-
-            t1 = time.time()
 
             # Add feature column to current DataFrame
             # A copy of the current rolling DataFrame is done
@@ -225,27 +242,34 @@ def get_features_sets(main_df,
             # features are tested
             test_df = cur_df.copy(deep=False)
             # add_feature_col(test_df, features_df, cur_feature)
-            test_df.loc[:, f2str(cur_feature)] = get_feature_col2(
+            test_df.loc[:, cur_feature_s] = get_feature_col2(
                 test_df.index, cur_feature, features_df)
 
             t2 = time.time()
-            print(f"[petro]    col setup time {t2-t1}")
 
             # Test current feature set
             rmse, mae = eval_bootstrap(test_df)
             results.append((cur_f_set + [cur_feature], rmse, mae))
             t3 = time.time()
-            print(f"[petro]    iter time {t3-t1}")
 
             # Update current best feature
             if rmse < best_error:
                 best_error = rmse
                 best_feature = cur_feature
 
+            t4 = time.time()
+            print(f"[petro] it time for {len(test_df)} rows (total {t4-t1}):")
+            print(f"[petro]    col select  {t2-t1}")
+            print(f"[petro]    training    {t3-t2}")
+            print(f"[petro]    update best {t4-t3}")
+
         # Update current DataFrame to add best feature of current iteration
         # print(f'[petro] found best feature: {f2str(cur_feature)}')
         cur_f_set.append(best_feature)
-        add_feature_col(cur_df, features_df, best_feature)
+        cur_f_set_s.append(f2str(best_feature))
+        # add_feature_col(cur_df, features_df, best_feature)
+        cur_df.loc[:, f2str(best_feature)] = get_feature_col2(
+            cur_df.index, best_feature, features_df)
         # print('[petro] current DF:')
         # print(cur_df)
 

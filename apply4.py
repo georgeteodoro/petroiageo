@@ -6,6 +6,7 @@ import time
 from io import StringIO
 
 import lightgbm as lgb
+from numba import jit
 
 import petro2
 
@@ -101,23 +102,34 @@ def get_feature_col(indexes, feature, features_df):
         return features_df[features_df.index.isin(indexes)][feature].values
 
 
+@jit(nopython=True)
+def parallel_read(array_np, indexes, f_x, f_y, f_z):
+    ret = np.empty((len(indexes)), dtype=np.float64)
+
+    ii = 0
+    for i in indexes:
+        x = max(0, min(SEISMIC_MAX_X, i[0] + f_x))
+        y = max(0, min(SEISMIC_MAX_Y, i[1] + f_y))
+        z = max(0, min(SEISMIC_MAX_Z, i[2] + f_z))
+        coord = x * (SEISMIC_MAX_Y + 1) * (SEISMIC_MAX_Z +
+                                           1) + y * (SEISMIC_MAX_Z + 1) + z
+        ret[ii] = array_np[coord]
+        ii = ii + 1
+
+    return ret
+
+
 # Uses ndarray instead of pandas access
 def get_feature_col2(indexes, feature, features_df):
     if type(feature) is tuple:
-        ret = np.empty(len(indexes))
         sub_features_np = features_df[feature[0]].values
-        ii = 0
-        for i in indexes:
-            x = max(0, min(SEISMIC_MAX_X, i[0] + feature[1]))
-            y = max(0, min(SEISMIC_MAX_Y, i[1] + feature[2]))
-            z = max(0, min(SEISMIC_MAX_Z, i[2] + feature[3]))
-            coord = x * (SEISMIC_MAX_Y + 1) * (SEISMIC_MAX_Z +
-                                               1) + y * (SEISMIC_MAX_Z + 1) + z
-            ret[ii] = sub_features_np[coord]
-            ii = ii + 1
-
-        return ret
-
+        
+        # Numba only accepts ndarrays of concrete types (not object)
+        indexes_ndarray = np.array(indexes.values,
+                                   dtype=[('x', '<u2'), ('y', '<u2'),
+                                          ('z', '<u2')])
+        return parallel_read(sub_features_np, indexes_ndarray, feature[1],
+                             feature[2], feature[3])
     else:
         return features_df[features_df.index.isin(indexes)][feature].values
 
