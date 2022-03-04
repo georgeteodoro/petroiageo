@@ -33,18 +33,6 @@ SEISMIC_MAX_Y = 645
 SEISMIC_MAX_Z = 250
 
 
-def assign_porosity_pred(ds, preditions):
-    # Bound x,y,z coordinates
-    x = ds.name[0]
-    y = ds.name[1]
-    z = ds.name[2]
-
-    # print(ds)
-
-    # Return seismic value for given coordinate
-    return preditions.loc[(x, y, z), 0]
-
-
 def eval_model(orig_df, main_df, features):
     # main_df = main_df[main_df['phi'] != 2]
 
@@ -72,8 +60,8 @@ def eval_model(orig_df, main_df, features):
     pred = regressor.predict(X_to_predict.values)
 
     predicted_df = orig_df[orig_df['real'] == 2]
-    predicted_df.loc[:,'real'] = 1
-    predicted_df.loc[:,'phi'] = pred
+    predicted_df.loc[:, 'real'] = 1
+    predicted_df.loc[:, 'phi'] = pred
 
     remaining_df = orig_df[orig_df['real'] != 2]
 
@@ -82,17 +70,52 @@ def eval_model(orig_df, main_df, features):
 
 def get_feature_col(indexes, feature, features_df):
     if type(feature) is tuple:
+        t1 = time.time()
         ret = np.empty(len(indexes))
-        # sub_features = features_df[features_df.index.isin(indexes)][feature[0]]
+        t2 = time.time()
+        # Filtering earlier is faster than selecting col on .loc
         sub_features = features_df[feature[0]]
+        ii = 0
+        t3 = time.time()
+        print(f'len {len(indexes)}')
+        for i in indexes:
+            # t31 = time.time()
+            x = max(0, min(SEISMIC_MAX_X, i[0] + feature[1]))
+            y = max(0, min(SEISMIC_MAX_Y, i[1] + feature[2]))
+            z = max(0, min(SEISMIC_MAX_Z, i[2] + feature[3]))
+            # t32 = time.time()
+            ret[ii] = sub_features.loc[(x, y, z)]
+            # t33 = time.time()
+            # print(f'=== coord: {t2-t1}')
+            # print(f'=== load: {t3-t2}')
+            ii = ii + 1
+        t4 = time.time()
+
+        print(f'[get_feature_col]:')
+        print(f'   np alloc: {t2-t1}')
+        print(f'   filtering: {t3-t2}')
+        print(f'   iteration: {t4-t3}')
+        return ret
+
+    else:
+        return features_df[features_df.index.isin(indexes)][feature].values
+
+
+# Uses ndarray instead of pandas access
+def get_feature_col2(indexes, feature, features_df):
+    if type(feature) is tuple:
+        ret = np.empty(len(indexes))
+        sub_features_np = features_df[feature[0]].values
         ii = 0
         for i in indexes:
             x = max(0, min(SEISMIC_MAX_X, i[0] + feature[1]))
             y = max(0, min(SEISMIC_MAX_Y, i[1] + feature[2]))
             z = max(0, min(SEISMIC_MAX_Z, i[2] + feature[3]))
-            # print(sub_features.loc[(x,y,z)])
-            ret[ii] = sub_features.loc[(x, y, z)]
+            coord = x * (SEISMIC_MAX_Y + 1) * (SEISMIC_MAX_Z +
+                                               1) + y * (SEISMIC_MAX_Z + 1) + z
+            ret[ii] = sub_features_np[coord]
             ii = ii + 1
+
         return ret
 
     else:
@@ -118,10 +141,11 @@ def perf_predition(best_features_set, main_df, features_df):
         print(f'[apply4] adding feature {feature}')
         feature_s = petro2.f2str(feature)
         t1 = time.time()
-        cur_features_df[feature_s] = get_feature_col(main_df.index, feature,
-                                                     features_df)
+        tmp = get_feature_col2(main_df.index, feature, features_df)
         t2 = time.time()
-        print(f'   time: {t2-t1}')
+        cur_features_df.loc[:, feature_s] = tmp
+        t3 = time.time()
+        print(f'   filtering: {t2-t1}, assignment: {t3-t2}')
 
     # print(cur_features_df)
 

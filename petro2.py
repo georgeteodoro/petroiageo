@@ -38,7 +38,7 @@ SEISMIC_MAX_Z = 250
 
 
 def eval_bootstrap(df, num_threads=24):
-    params['num_threads'] = num_threads
+    # params['num_threads'] = num_threads
 
     # print(features)
     X = df.values
@@ -109,6 +109,45 @@ def transfer_seismic_feature(ds, features_df, f):
     return features_df.loc[(x, y, z), f[0]]
 
 
+def get_feature_col(indexes, feature, features_df):
+    if type(feature) is tuple:
+        ret = np.empty(len(indexes))
+        sub_features = features_df[feature[0]]
+        ii = 0
+        print(f'[get_feature_col] index len: {len(indexes)}')
+        for i in indexes:
+            x = max(0, min(SEISMIC_MAX_X, i[0] + feature[1]))
+            y = max(0, min(SEISMIC_MAX_Y, i[1] + feature[2]))
+            z = max(0, min(SEISMIC_MAX_Z, i[2] + feature[3]))
+            ret[ii] = sub_features.loc[(x, y, z)]
+            ii = ii + 1
+        return ret
+
+    else:
+        return features_df[features_df.index.isin(indexes)][feature].values
+
+
+# Uses ndarray instead of pandas access
+def get_feature_col2(indexes, feature, features_df):
+    if type(feature) is tuple:
+        ret = np.empty(len(indexes))
+        sub_features_np = features_df[feature[0]].values
+        ii = 0
+        for i in indexes:
+            x = max(0, min(SEISMIC_MAX_X, i[0] + feature[1]))
+            y = max(0, min(SEISMIC_MAX_Y, i[1] + feature[2]))
+            z = max(0, min(SEISMIC_MAX_Z, i[2] + feature[3]))
+            coord = x * (SEISMIC_MAX_Y + 1) * (SEISMIC_MAX_Z +
+                                               1) + y * (SEISMIC_MAX_Z + 1) + z
+            ret[ii] = sub_features_np[coord]
+            ii = ii + 1
+
+        return ret
+
+    else:
+        return features_df[features_df.index.isin(indexes)][feature].values
+
+
 # Add the data of cur_feature from features_df to cur_df in-place
 def add_feature_col(cur_df, features_df, cur_feature):
     if type(cur_feature) is tuple:
@@ -173,6 +212,7 @@ def get_features_sets(main_df,
                 break
             ii = ii + 1
 
+            print(f"[petro] Testing feature {cur_feature}")
             # print(f"[petro] Testing feature {cur_feature} \
             #     on feature set {cur_f_set}")
 
@@ -184,16 +224,18 @@ def get_features_sets(main_df,
             # The current rolling DataFrame is updated after all
             # features are tested
             test_df = cur_df.copy(deep=False)
-            add_feature_col(test_df, features_df, cur_feature)
+            # add_feature_col(test_df, features_df, cur_feature)
+            test_df.loc[:, f2str(cur_feature)] = get_feature_col2(
+                test_df.index, cur_feature, features_df)
 
             t2 = time.time()
-            # print(f"[petro]    col setup time {t2-t1}")
+            print(f"[petro]    col setup time {t2-t1}")
 
             # Test current feature set
             rmse, mae = eval_bootstrap(test_df)
             results.append((cur_f_set + [cur_feature], rmse, mae))
             t3 = time.time()
-            # print(f"[petro]    iter time {t3-t1}")
+            print(f"[petro]    iter time {t3-t1}")
 
             # Update current best feature
             if rmse < best_error:

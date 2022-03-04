@@ -96,7 +96,7 @@ def main():
 
         print(f"Performing predictions on new expanded points [{it}]")
         # Sort by second column (id 1)
-        features_sets.sort(key=lambda tup: tup[1], reverse=True)
+        features_sets.sort(key=lambda tup: tup[1])
         best_features_set = features_sets[0][0]
         print(best_features_set)
         main_df = apply4.perf_predition(best_features_set, main_df,
