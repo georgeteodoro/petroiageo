@@ -7,6 +7,7 @@ from io import StringIO
 
 import lightgbm as lgb
 from numba import jit
+import warnings
 
 import petro2
 
@@ -64,11 +65,17 @@ def eval_model(orig_df, main_df, features):
     remaining_df = orig_df[orig_df['real'] != 2]
     predicted_df = orig_df[orig_df['real'] == 2]
 
+    # SettingWithCopyWarning is false positive on the two .loc lines below
+    pd.options.mode.chained_assignment = None
+
     # Update real value from 2 (to expand) to 1 (expanded)
     predicted_df.loc[:, 'real'] = 1
 
     # Assign predicted values
     predicted_df.loc[:, 'phi'] = pred
+
+    # Re-enable SettingWithCopyWarning
+    pd.options.mode.chained_assignment = 'warn'
 
     return pd.concat([remaining_df, predicted_df])
 
@@ -118,11 +125,11 @@ def perf_predition(best_features_set, main_df, features_df):
 
     # Add each feature to the DataFrame
     for feature in best_features_set:
-        print(f'[apply4] adding feature {feature}')
+        # print(f'[apply4] adding feature {feature}')
         feature_s = petro2.f2str(feature)
         cur_features_df.loc[:, feature_s] = get_feature_col2(
             main_df.index, feature, features_df)
-    
+
     t2 = time.time()
 
     # print(cur_features_df)

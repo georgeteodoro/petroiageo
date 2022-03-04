@@ -7,6 +7,7 @@ import warnings
 
 MAX_DEPTH = 251  # Starts from 1
 
+
 def gen_expanded_points(main_df, real_wells, it):
     # Set distance ring to be generated
     ring = it + 1
@@ -15,14 +16,24 @@ def gen_expanded_points(main_df, real_wells, it):
 
     # Allocate ndarray for new points
     # Number of cols = 6 : (x,y,z,well,real,phi)
-    expanded_points_np = np.empty((ring_circunf * MAX_DEPTH, 6))
+    expanded_points_np = np.empty((ring_circunf * MAX_DEPTH, 6),
+                                  dtype=np.int32)
 
     # Expand around each original well
     well_id = 0
     t1 = time.time()
     for well in real_wells:
         ii = 0
+
         for z in range(MAX_DEPTH):
+            # Only expand points which have at least 0.05 porosity
+            well_coord = (well[0], well[1], z)
+            if not main_df.index.isin([well_coord]).any():
+                continue
+            cur_phi = main_df.loc[well_coord, 'phi']
+            if cur_phi <= 0.05:
+                continue
+
             for i in range(-ring, ring + 1):
                 for j in range(-ring, ring + 1):
                     # Only add ring frontier points
@@ -34,9 +45,13 @@ def gen_expanded_points(main_df, real_wells, it):
                         expanded_points_np[ii] = (x, y, z, well_id, 2, 0)
                         ii = ii + 1
 
+        # Filter the zero values [0.0, 0.0, ... 0.0]
+        # They come from non-expanded points due to low porosity value
+        filt_expanded_points_np = expanded_points_np[:ii]
+
         # Add new points to DataFrame
         expanded_points_df = pd.DataFrame(
-            expanded_points_np,
+            filt_expanded_points_np,
             columns=['x', 'y', 'z', 'well', 'real', 'phi'],
             dtype=np.int32)
         index = pd.MultiIndex.from_arrays([
@@ -50,9 +65,9 @@ def gen_expanded_points(main_df, real_wells, it):
         # print(main_df)
 
         well_id = well_id + 1
-    
+
     t2 = time.time()
-    print(f'[expand] total time: {t2-t1}')
+    # print(f'[expand] total time: {t2-t1}')
 
     return main_df
 

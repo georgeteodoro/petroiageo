@@ -166,7 +166,7 @@ def get_features_sets(main_df,
         # print(f'[petro] starting iteration with features:')
         # print(cur_f_set)
         for cur_feature in all_features:
-            print(f"[petro] Testing feature {cur_feature}")
+            # print(f"[petro] Testing feature {cur_feature}")
 
             cur_feature_s = f2str(cur_feature)
 
@@ -204,10 +204,10 @@ def get_features_sets(main_df,
                 best_feature = cur_feature
 
             t4 = time.time()
-            print(f"[petro] it time for {len(test_df)} rows (total {t4-t1}):")
-            print(f"[petro]    col select  {t2-t1}")
-            print(f"[petro]    training    {t3-t2}")
-            print(f"[petro]    update best {t4-t3}")
+            # print(f"[petro] it time for {len(test_df)} rows (total {t4-t1}):")
+            # print(f"[petro]    col select  {t2-t1}")
+            # print(f"[petro]    training    {t3-t2}")
+            # print(f"[petro]    update best {t4-t3}")
 
         # Update current DataFrame to add best feature of current iteration
         # print(f'[petro] found best feature: {f2str(cur_feature)}')
