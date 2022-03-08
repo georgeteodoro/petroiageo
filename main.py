@@ -20,8 +20,8 @@ import apply4
 # Constants
 INIT_IT = 2
 
-real_wells = [[146, 500], [287, 242], [200, 102], [344, 276], [134, 227],
-              [250, 315], [174, 365], [236, 113], [167, 186], [230, 194]]
+real_wells = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
+              (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
 
 
 def main():
@@ -39,8 +39,11 @@ def main():
     #   vs   => ?
 
     # Read seismic data and add it to a dataframe
-    seismic_features_names = ["NEAR", "MID", "FAR", "UFAR"]
-    other_features_names = ["GERSZ", "GST"]
+    seismic_features_names = ["NEAR", "MID", "FAR", "UFAR", "GERSZ", "GST"]
+
+    # Features which do not need to be expanded on the window
+    other_features_names = []
+
     print("[main] Loading seismic data")
     features_df = seismic_data.get_all_seismic_data(seismic_features_names +
                                                     other_features_names)
@@ -99,9 +102,60 @@ def main():
         best_features_set = features_sets[0][0]
         print(best_features_set)
         main_df = apply4.perf_predition(best_features_set, main_df,
-                                               features_df)
+                                        features_df)
         print(main_df)
         main_df.to_csv(f'tmp_data/predicted{it}.csv', index=False)
+
+        # print(f"Expanding points for the second time [{it}]")
+
+        # phi_vals = main_df['phi'].values
+        # well_vals = main_df['well'].values
+        # real_vals = main_df['real'].values
+        # indices = main_df.index.values
+
+        # # Create dict with default empty list for missing values
+        # # new_preds_dic represents distinct phi values for the
+        # # same coordinate
+        # new_preds_dic = defaultdict(list)
+
+        # # info_dic stores other data from each point (well, real, ...)
+        # info_dic = dict()
+
+        # # Expand points, adding repeated ones of the same coordinate
+        # # to a list
+        # for p in range(len(phi_vals)):
+        #     for i in range(indices[p][0] - 1, indices[p][0] + 2):
+        #         for j in range(indices[p][1] - 1, indices[p][1] + 2):
+        #             coord = (i, j, indices[p][2])
+        #             new_preds_dic[coord].append(phi_vals[p])
+        #             info_dic[coord] = (well_vals[p], real_vals[p])
+
+        # # Averages predictions of each point
+        # new_preds_list = []
+        # for k, l in new_preds_dic.items():
+        #     # Only add points which were expanded/predicted
+        #     if not k in real_wells:
+        #         new_preds_list.append(
+        #             (k, info_dic[k][0], info_dic[k][1], sum(l) / len(l)))
+
+        # # Filter only new points from the expanded new_preds_list
+        # old_coords_list = main_df.index.values.tolist()
+        # new_points_l = []
+        # for (coord, well, real, phi) in new_preds_list:
+        #     if not coord in old_coords_list:
+        #         new_points_l.append(
+        #             (coord[0], coord[1], coord[2], well, real, phi))
+
+        # # Add new predictions
+        # new_points_df = pd.DataFrame(
+        #     new_points_l, columns=['x', 'y', 'z', 'well', 'real', 'phi'])
+        # index = pd.MultiIndex.from_arrays(
+        #     [new_points_df['x'], new_points_df['y'], new_points_df['z']])
+        # new_points_df.set_index(index, inplace=True)
+        # new_points_df.sort_index(inplace=True)
+        # main_df = pd.concat([main_df, new_points_df])
+
+        print(main_df)
 
         t4 = time.time()
         print(f'it[{it}] ran in {t4-t1}')
