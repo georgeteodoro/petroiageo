@@ -1,10 +1,13 @@
 from mpi4py import MPI
 from enum import Enum, auto
-import time
 
-import petro2
+import petro
 
-# Initialization of mpi variables
+# Defines for later externalization
+LGB_MAX_THREADS = 1
+MAX_FEATURES = 3
+FEATURE_TEST_LIMIT = 10
+
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 mpi_size = comm.Get_size()
@@ -12,59 +15,51 @@ manager_rank = mpi_size - 1
 
 
 class MPI_TAGS(Enum):
-    WORKER_EMPTY_RESULT = auto()  # Signals first ask from worker
-    MANAGER_FEATURE_DONE = auto()  # Signals done finding new feature
-    MANAGER_FINISH = auto()  # Signals done execution of current iteration
+    WORKER_EMPTY_RESULT = auto()
+    MANAGER_FEATURE_DONE = auto()
+    MANAGER_FINISH = auto()
 
-
-# exp_n_features: number of features to be selected
-# f_width: number of features to be compared
-#   default=0 means all features.
-#   Used for debugging and reducing computing cost
-def get_features_sets(main_df,
-                      features_df,
-                      all_features,
-                      exp_n_features,
-                      f_width=0):
-    if mpi_size < 2:
-        print("[petro-dist] 2 minimum processes required")
-        return None
-
+# Main function to be called from outside
+def get_features_sets(str_nwells):
     if rank == manager_rank:
-        return manager(all_features, exp_n_features, f_width)
+        if mpi_size < 2:
+            print("[petro-dist] 2 minimum processes required")
+            return None
+
+        best = manager(str_nwells)
+        print(f"best: {best}")
+        return best
     elif rank != manager_rank:
-        return worker(main_df, features_df)
+        worker(str_nwells)
 
 
-def manager(all_features, exp_n_features, f_width):
+def manager(str_nwells):
     print("[petro-dist][manager]")
 
-    # Current features set with the best error
-    cur_f_set = ['x', 'y', 'z']
+    all_features, _ = petro.read_dataset(str_nwells)
 
-    # List of features sets and their error metric
-    results = []
+    best_features_set = ['X', 'Y', 'depth']
+    max_features = MAX_FEATURES
+    feature_limiter = FEATURE_TEST_LIMIT  # 0 means no limit
 
-    # Find a feature set by testing exp_n_features features
-    for _ in range(exp_n_features):
+    # Generate a feature set of max_features
+    for f1 in range(max_features):
 
-        t0 = time.time()
-        
-        # Reset workers done and wait for next feature set
+        # Reset workers done and waiting for next feature set
         workers_done = 0
 
         # Reset new best feature
         new_best_feature = None
         best_error = float("inf")
 
-        # Create current features list as (all_features - cur_f_set)
+        # Create current features list as (all_features - best_features_set)
         remaining_features = [
-            item for item in all_features if item not in cur_f_set
+            item for item in all_features if item not in best_features_set
         ]
 
         # Limit the number of features analyzed
-        if f_width > 0:
-            remaining_features = remaining_features[:f_width]
+        if feature_limiter > 0:
+            remaining_features = remaining_features[:feature_limiter]
 
         # Iterate through all features to be tested
         while workers_done < mpi_size - 1:
@@ -76,12 +71,6 @@ def manager(all_features, exp_n_features, f_width):
             if status.Get_tag() != MPI_TAGS.WORKER_EMPTY_RESULT.value:
                 # Unpack data
                 (cur_feature, cur_error) = data
-
-                print(
-                    f'Tested feature {cur_f_set+ [cur_feature]} with error {cur_error}'
-                )
-
-                results.append((cur_f_set + [cur_feature], best_error))
 
                 # Update new best, if necessary
                 if best_error > cur_error:
@@ -102,32 +91,22 @@ def manager(all_features, exp_n_features, f_width):
 
         # Broadcast new best feature and updates current best features_set
         comm.bcast(new_best_feature, root=manager_rank)
-        cur_f_set.append(new_best_feature)
-
-        t1 = time.time()
-        print(f'[petro2] fullIt time: {t1-t0}')
-
+        best_features_set.append(new_best_feature)
 
     # Broadcast a done message to all workers
     for worker_rank in range(mpi_size - 1):
         comm.send(None, dest=worker_rank, tag=MPI_TAGS.MANAGER_FINISH.value)
 
-    # Broadcast resulting features and errors
-    comm.bcast(results, root=manager_rank)
-
-    return results
+    return best_features_set
 
 
-def worker(main_df, features_df):
+def worker(str_nwells):
     print(f"[petro-dist][w{rank}]")
 
-    # all_features, df = petro.read_dataset(str_nwells)
+    all_features, df = petro.read_dataset(str_nwells)
 
-    # Create a shallow copy of main_df for adding new columns
-    # Data from is main_df is only referenced, not copied
-    cur_df = main_df.copy(deep=False)
-
-    cur_f_set = ['x', 'y', 'z']
+    manager_tag = None
+    cur_feature_set = ['X', 'Y', 'depth']
 
     # Run jobs until manager finishes
     while True:
@@ -146,14 +125,13 @@ def worker(main_df, features_df):
             break
 
         # Run jobs until there are not any
-        while (manager_tag != MPI_TAGS.MANAGER_FEATURE_DONE.value):
+        while (manager_tag != MPI_TAGS.MANAGER_FEATURE_DONE.value
+               and manager_tag != MPI_TAGS.MANAGER_FINISH.value):
 
-            rmse, mae = petro2.single_feature_run(cur_df, features_df,
-                                                  new_feature)
-            # # Evaluate current features set
-            # rmse, mae = petro.eval_bootstrap(df,
-            #                                  cur_f_set + [new_feature],
-            #                                  LGB_MAX_THREADS)
+            # Evaluate current features set
+            rmse, mae = petro.eval_bootstrap(df,
+                                             cur_feature_set + [new_feature],
+                                             LGB_MAX_THREADS)
 
             # Return results to manager
             comm.send((new_feature, rmse), dest=manager_rank)
@@ -164,14 +142,8 @@ def worker(main_df, features_df):
 
         # Get best feature from iteration from manager
         new_best_feature = comm.bcast(None, root=manager_rank)
-        cur_f_set.append(new_best_feature)
-        cur_df.loc[:,
-                   petro2.f2str(new_best_feature)] = petro2.get_feature_col2(
-                       cur_df.index, new_best_feature, features_df)
+        cur_feature_set.append(new_best_feature)
 
-    # Get broadcasted resulting features and errors
-    results = comm.bcast(None, root=manager_rank)
-    return results
 
 if __name__ == '__main__':
     with open("tmp_data/nwells-0.csv", mode='r') as f:

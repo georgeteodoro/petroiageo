@@ -4,18 +4,20 @@ import numpy as np
 import time
 from collections import defaultdict
 from os import linesep
-# from mpi4py import MPI
+from mpi4py import MPI
 
 import seismic_data
 import wells_data
 import expand2
 import petro2
+import petro_dist
 import apply4
 
-# comm = MPI.COMM_WORLD
-# rank = comm.Get_rank()
-# mpi_size = comm.Get_size()
-# manager_rank = mpi_size - 1
+# Initialization of mpi variables
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+mpi_size = comm.Get_size()
+manager_rank = mpi_size - 1
 
 # Constants
 INIT_IT = 2
@@ -44,15 +46,52 @@ def main():
     # Features which do not need to be expanded on the window
     other_features_names = []
 
+    # # Serialize seismic read for single-node test with mpi
+    # features_df = []
+    # cur_p = -1
+    # while True:
+    #     comm.Barrier()
+    #     cur_p = cur_p + 1
+    #     if cur_p == mpi_size:
+    #         break
+    #     if rank != cur_p:
+    #         continue
+    #     print(f'reading rank {rank}')
     print("[main] Loading seismic data")
-    features_df = seismic_data.get_all_seismic_data(seismic_features_names +
-                                                    other_features_names)
+    features_df = seismic_data.get_all_seismic_data(
+        seismic_features_names + other_features_names)
+
     print("[main] Features DataFrame:")
     print(features_df)
 
     # Real wells' data into a main dataframe
     print("[main] Loading wells values")
     main_df = wells_data.get_wells_data('./dados/porosity-canal.txt')
+
+    # Separate the main DataFrame into two, one with only canal points
+    canal_df = main_df[main_df['real'] == 2]
+    main_df = main_df[main_df['real'] != 2]
+
+    # Expand canal_df to have values across the whole hipercube
+    # This allows expand to access each point with DataFrame.loc[]
+    # instead of using DataFrame.isin() to check whether a canal point
+    # is there.
+    t1 = time.time()
+    full_canal_np = np.zeros(434 * 646 * 251)
+    xs_np = np.zeros(434 * 646 * 251)
+    ys_np = np.zeros(434 * 646 * 251)
+    zs_np = np.zeros(434 * 646 * 251)
+    ii = 0
+    for i in range(434):
+        for j in range(646):
+            for k in range(251):
+                xs_np[ii] = i
+                ys_np[ii] = j
+                zs_np[ii] = k
+                ii = ii + 1
+    for [x, y, z, phi] in canal_df[['x', 'y', 'z', 'phi']].values:
+        full_canal_np[int(x) * 646 * 251 + int(y) * 251 + int(z)] = phi
+    canal_df = pd.DataFrame(full_canal_np, columns=['phi'])
 
     # Add index of xyz and sort dataframe for better access times
     print("[main] Indexing all data by (x,y,z)")
@@ -61,15 +100,17 @@ def main():
     main_df.set_index(index, inplace=True)
     main_df.sort_index(inplace=True)
 
-    print("[main] Main DataFrame:")
-    print(main_df)
+    index = pd.MultiIndex.from_arrays([xs_np, ys_np, zs_np])
+    canal_df.set_index(index, inplace=True)
+    canal_df.sort_index(inplace=True)
+    t2 = time.time()
+    print(f'hipercube gen time {t2-t1}')
 
     iterations = 4
 
     # Generate seismic features names
     window = 3
-    # all_features = other_features_names
-    all_features = []
+    all_features = other_features_names
     for f in seismic_features_names:
         for i in range(-window, window + 1):
             for j in range(-window, window + 1):
@@ -77,90 +118,46 @@ def main():
                     all_features.append((f, i, j, k))
     all_features = all_features + other_features_names
 
+    print("[main] Main DataFrame [initial]:")
+    print(main_df)
+
     for it in range(iterations):
         t1 = time.time()
 
-        print(f"Performing feature selection [{it}]")
-        features_sets = petro2.get_features_sets(main_df, features_df,
-                                                 all_features, 10, 5)
-        # print(features_sets)
+        print(f"[main][{it}] Expanding points")
+        main_df = expand2.gen_expanded_points(main_df, canal_df, real_wells,
+                                              it)
+        main_df.to_csv(f'tmp_data/expanded{it}.csv', index=False)
+        print(main_df)
+
         t2 = time.time()
 
-        # Generate new points for later prediction
-        # Square wavefront propagation pattern
-        print(f"Expanding points [{it}]")
-        main_df = main_df[main_df['real'] != 2]
-        main_df = expand2.gen_expanded_points(main_df, real_wells, it)
-        main_df.to_csv(f'tmp_data/expanded{it}.csv', index=False)
+        print(f"[main][{it}] Performing feature selection")
+        if mpi_size == 1:
+            features_sets = petro2.get_features_sets(main_df, features_df,
+                                                     all_features, 10, 0)
+        else:
+            features_sets = petro_dist.get_features_sets(
+                main_df, features_df, all_features, 10, 0)
+        # print(features_sets)
 
-        # print(main_df)
         t3 = time.time()
 
-        print(f"Performing predictions on new expanded points [{it}]")
+        print(f"[main][{it}] Performing predictions on new expanded points")
         # Sort by second column (id 1)
         features_sets.sort(key=lambda tup: tup[1])
         best_features_set = features_sets[0][0]
-        print(best_features_set)
+        best_error = features_sets[0][1]
+        print(f'[main][{it}] Best features set: {best_features_set} with {best_error} error')
         main_df = apply4.perf_predition(best_features_set, main_df,
                                         features_df)
         print(main_df)
         main_df.to_csv(f'tmp_data/predicted{it}.csv', index=False)
 
-        # print(f"Expanding points for the second time [{it}]")
-
-        # phi_vals = main_df['phi'].values
-        # well_vals = main_df['well'].values
-        # real_vals = main_df['real'].values
-        # indices = main_df.index.values
-
-        # # Create dict with default empty list for missing values
-        # # new_preds_dic represents distinct phi values for the
-        # # same coordinate
-        # new_preds_dic = defaultdict(list)
-
-        # # info_dic stores other data from each point (well, real, ...)
-        # info_dic = dict()
-
-        # # Expand points, adding repeated ones of the same coordinate
-        # # to a list
-        # for p in range(len(phi_vals)):
-        #     for i in range(indices[p][0] - 1, indices[p][0] + 2):
-        #         for j in range(indices[p][1] - 1, indices[p][1] + 2):
-        #             coord = (i, j, indices[p][2])
-        #             new_preds_dic[coord].append(phi_vals[p])
-        #             info_dic[coord] = (well_vals[p], real_vals[p])
-
-        # # Averages predictions of each point
-        # new_preds_list = []
-        # for k, l in new_preds_dic.items():
-        #     # Only add points which were expanded/predicted
-        #     if not k in real_wells:
-        #         new_preds_list.append(
-        #             (k, info_dic[k][0], info_dic[k][1], sum(l) / len(l)))
-
-        # # Filter only new points from the expanded new_preds_list
-        # old_coords_list = main_df.index.values.tolist()
-        # new_points_l = []
-        # for (coord, well, real, phi) in new_preds_list:
-        #     if not coord in old_coords_list:
-        #         new_points_l.append(
-        #             (coord[0], coord[1], coord[2], well, real, phi))
-
-        # # Add new predictions
-        # new_points_df = pd.DataFrame(
-        #     new_points_l, columns=['x', 'y', 'z', 'well', 'real', 'phi'])
-        # index = pd.MultiIndex.from_arrays(
-        #     [new_points_df['x'], new_points_df['y'], new_points_df['z']])
-        # new_points_df.set_index(index, inplace=True)
-        # new_points_df.sort_index(inplace=True)
-        # main_df = pd.concat([main_df, new_points_df])
-
-        print(main_df)
-
         t4 = time.time()
-        print(f'it[{it}] ran in {t4-t1}')
-        print(f'   feature selection {t2-t1}')
-        print(f'   expanding points  {t3-t2}')
+        print(f'[main][{it}] ran in {t4-t1}')
+        print(f'   expanding points  {t2-t1}')
+        print(f'   feature selection {t3-t2}')
         print(f'   predictions       {t4-t3}')
 
 

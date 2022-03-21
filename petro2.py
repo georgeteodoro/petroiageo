@@ -13,7 +13,6 @@ import lightgbm as lgb
 
 # Parameters
 LABEL_COLUMN_NAME = 'phi'
-# UNWANTED_COLUMNS = ['real', 'well', 'rho', 'vs', 'vp']
 UNWANTED_COLUMNS = ['real', 'well']
 
 RANDOM_STATE = 1
@@ -30,7 +29,7 @@ params = {
     "min_data": 10,
     "boost_from_average": True,
     "bagging_freq": 1,
-    "random_state": 0,
+    "random_state": RANDOM_STATE,
 }
 
 SEISMIC_MAX_X = 433
@@ -52,7 +51,6 @@ def eval_bootstrap(df, num_threads=24):
     groups = df['well']
     logo.get_n_splits(X, y, groups)
     logo.get_n_splits(groups=groups)
-
     for (train, val) in logo.split(X, y, groups):
 
         # Create training dataset
@@ -130,6 +128,31 @@ def get_feature_col2(indexes, feature, features_df):
         return features_df[features_df.index.isin(indexes)][feature].values
 
 
+def single_feature_run(cur_df, features_df, cur_feature):
+    # print(f"[petro] Testing feature {cur_feature}")
+
+    cur_feature_s = f2str(cur_feature)
+
+    t1 = time.time()
+
+    # Add feature column to current DataFrame
+    # A copy of the current rolling DataFrame is done
+    # in order to avoid inserting and removing columns
+    # The current rolling DataFrame is updated after all
+    # features are tested
+    test_df = cur_df.copy(deep=False)
+    test_df.loc[:, cur_feature_s] = get_feature_col2(test_df.index,
+                                                     cur_feature, features_df)
+
+    t2 = time.time()
+
+    # Test current feature set
+    rmse, mae = eval_bootstrap(test_df)
+    t3 = time.time()
+
+    return rmse, mae
+
+
 # exp_n_features: number of features to be selected
 # f_width: number of features to be compared
 #   default=0 means all features.
@@ -145,7 +168,7 @@ def get_features_sets(main_df,
 
     # Remove rows from cur_df which don't have an original well
     # ID (i.e., well=-1)
-    cur_df = cur_df[cur_df['well'] != -1]
+    # cur_df = cur_df[cur_df['well'] != -1]
 
     # Current features set with the best error
     cur_f_set = ['x', 'y', 'z']
@@ -154,8 +177,9 @@ def get_features_sets(main_df,
     results = []
 
     # Find a feature set with exp_n_features features
-    # remaining_features = all_features.copy()
     for _ in range(exp_n_features):
+
+        t0 = time.time()
 
         # Reset best feature and its error
         best_error = 10000
@@ -166,37 +190,17 @@ def get_features_sets(main_df,
         # print(f'[petro] starting iteration with features:')
         # print(cur_f_set)
         for cur_feature in all_features:
-            # print(f"[petro] Testing feature {cur_feature}")
-
-            cur_feature_s = f2str(cur_feature)
-
             if cur_feature in cur_f_set:
                 continue
 
-            t1 = time.time()
             # Early termination for debugging
             if f_width != 0 and ii == f_width:
                 break
             ii = ii + 1
 
-            # print(f"[petro] Testing feature {cur_feature} \
-            #     on feature set {cur_f_set}")
+            rmse, mae = single_feature_run(cur_df, features_df, cur_feature)
 
-            # Add feature column to current DataFrame
-            # A copy of the current rolling DataFrame is done
-            # in order to avoid inserting and removing columns
-            # The current rolling DataFrame is updated after all
-            # features are tested
-            test_df = cur_df.copy(deep=False)
-            test_df.loc[:, cur_feature_s] = get_feature_col2(
-                test_df.index, cur_feature, features_df)
-
-            t2 = time.time()
-
-            # Test current feature set
-            rmse, mae = eval_bootstrap(test_df)
             results.append((cur_f_set + [cur_feature], rmse, mae))
-            t3 = time.time()
 
             # Update current best feature
             if rmse < best_error:
@@ -208,6 +212,8 @@ def get_features_sets(main_df,
             # print(f"[petro]    col select  {t2-t1}")
             # print(f"[petro]    training    {t3-t2}")
             # print(f"[petro]    update best {t4-t3}")
+            print(
+                f'Tested feature {cur_f_set+ [cur_feature]} with error {rmse}')
 
         # Update current DataFrame to add best feature of current iteration
         # print(f'[petro] found best feature: {f2str(cur_feature)}')
@@ -216,5 +222,9 @@ def get_features_sets(main_df,
             cur_df.index, best_feature, features_df)
         # print('[petro] current DF:')
         # print(cur_df)
+
+        t5 = time.time()
+
+        print(f'[petro2] fullIt time: {t5-t0}')
 
     return results
