@@ -6,6 +6,8 @@ from collections import defaultdict
 from os import linesep
 from mpi4py import MPI
 
+# from memory_profiler import profile
+
 import seismic_data
 import wells_data
 import expand2
@@ -25,7 +27,6 @@ INIT_IT = 2
 real_wells = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
               (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
 
-
 def main():
 
     # Instantiate pandas dataframe for all data
@@ -34,7 +35,8 @@ def main():
     #   well => Well ID (-1 if it's not an original real point.)
     #                   (Has the ID from the original real well)
     #                   (from which it was expanded.           )
-    #   real => [2=to be expanded, 1=expanded point, 0=real well point]
+    #   real => [3=not expanded, to be predicted, 2=expanded,
+    #            1=expanded point, 0=real well point]
     #   phi  => Porosity value
     #   rho  => ?
     #   vp   => ?
@@ -58,8 +60,8 @@ def main():
     #         continue
     #     print(f'reading rank {rank}')
     print("[main] Loading seismic data")
-    features_df = seismic_data.get_all_seismic_data(
-        seismic_features_names + other_features_names)
+    features_df = seismic_data.get_all_seismic_data(seismic_features_names +
+                                                    other_features_names)
 
     print("[main] Features DataFrame:")
     print(features_df)
@@ -103,10 +105,15 @@ def main():
     index = pd.MultiIndex.from_arrays([xs_np, ys_np, zs_np])
     canal_df.set_index(index, inplace=True)
     canal_df.sort_index(inplace=True)
-    t2 = time.time()
-    print(f'hipercube gen time {t2-t1}')
+    # print(f'hipercube gen time {t2-t1}')
 
-    iterations = 4
+    # Free indexes np arrays
+    xs=None
+    ys=None
+    zs=None
+    full_canal_np=None
+
+    iterations = 10
 
     # Generate seismic features names
     window = 3
@@ -117,6 +124,9 @@ def main():
                 for k in range(-window, window + 1):
                     all_features.append((f, i, j, k))
     all_features = all_features + other_features_names
+    t2 = time.time()
+
+    print(f'[main] Initial data loading time: {t2-t1}')
 
     print("[main] Main DataFrame [initial]:")
     print(main_df)
@@ -133,12 +143,15 @@ def main():
         t2 = time.time()
 
         print(f"[main][{it}] Performing feature selection")
+        # Only uses real, previously predicted and expanded canal points
+        # for feature selection
+        feature_selection_points_df = main_df[main_df['real'] != 3]
         if mpi_size == 1:
-            features_sets = petro2.get_features_sets(main_df, features_df,
-                                                     all_features, 10, 0)
+            features_sets = petro2.get_features_sets(
+                feature_selection_points_df, features_df, all_features, 10, 0)
         else:
             features_sets = petro_dist.get_features_sets(
-                main_df, features_df, all_features, 10, 0)
+                feature_selection_points_df, features_df, all_features, 10, 0)
         # print(features_sets)
 
         t3 = time.time()
@@ -148,7 +161,9 @@ def main():
         features_sets.sort(key=lambda tup: tup[1])
         best_features_set = features_sets[0][0]
         best_error = features_sets[0][1]
-        print(f'[main][{it}] Best features set: {best_features_set} with {best_error} error')
+        print(f'[main][{it}] Best features set:'\
+              f' {best_features_set} with {best_error} error'
+        )
         main_df = apply4.perf_predition(best_features_set, main_df,
                                         features_df)
         print(main_df)

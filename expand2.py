@@ -5,9 +5,11 @@ import time
 import pandas as pd
 import warnings
 
+from memory_profiler import profile
+
 MAX_DEPTH = 251  # Starts from 1
 
-
+# @profile
 def gen_expanded_points(main_df, canal_df, real_wells, it):
     # Set distance ring to be generated
     ring = it + 1
@@ -21,9 +23,6 @@ def gen_expanded_points(main_df, canal_df, real_wells, it):
     expanded_points_phi_np = np.empty((ring_circunf * MAX_DEPTH, ),
                                       dtype=np.float64)
 
-    # Get all phi values for direct access
-    phi_vals = main_df['phi']
-
     # Expand around each original well
     well_id = 0
     t1 = time.time()
@@ -34,13 +33,9 @@ def gen_expanded_points(main_df, canal_df, real_wells, it):
         for z in range(MAX_DEPTH):
             # Only expand from real points (present at a certain depth)
             well_coord = (well[0], well[1], z)
+            is_real_point = True
             if not main_df.index.isin([well_coord]).any():
-                continue
-            # # Obs: Line bellow will break the application once there are
-            # # duplicated points on main_df. This will happen on later
-            # # expansions for high iteration values of main.py
-            # if phi_vals.loc[well_coord] <= 0.05:
-            #     continue
+                is_real_point = False            
 
             for i in range(-ring, ring + 1):
                 for j in range(-ring, ring + 1):
@@ -53,25 +48,31 @@ def gen_expanded_points(main_df, canal_df, real_wells, it):
                         # phi val from canal point
                         canal_phi = canal_df.loc[(x, y, z)]['phi']
 
-                        if canal_phi == 0:
-                            continue
-                        expanded_points_np[expanded_points_i] = (x, y, z,
-                                                                 well_id, 2)
-                        expanded_points_phi_np[expanded_points_i] = canal_phi
+                        if canal_phi == 0 or not is_real_point:
+                            expanded_points_np[expanded_points_i] = (x, y, z,
+                                                                 well_id, 3)
+                            expanded_points_phi_np[expanded_points_i] = 0
+                        else:
+                            expanded_points_np[expanded_points_i] = (x, y, z,
+                                                                     well_id, 2)
+                            expanded_points_phi_np[expanded_points_i] = canal_phi
+                        
                         expanded_points_i = expanded_points_i + 1
 
-        # Filter the zero values [0.0, 0.0, ... 0.0]
-        # They come from non-expanded points which are not present on the canal
-        filt_expanded_points_np = expanded_points_np[:expanded_points_i]
-        filt_expanded_points_phi_np = expanded_points_phi_np[:
-                                                             expanded_points_i]
+        # # Filter the zero values [0.0, 0.0, ... 0.0]
+        # # They come from non-expanded points which are not present on the canal
+        # filt_expanded_points_np = expanded_points_np[:expanded_points_i]
+        # filt_expanded_points_phi_np = expanded_points_phi_np[:
+        #                                                      expanded_points_i]
 
         # Add new points from current well to the main DataFrame
         expanded_points_df = pd.DataFrame(
-            filt_expanded_points_np,
+            # filt_expanded_points_np,
+            expanded_points_np,
             columns=['x', 'y', 'z', 'well', 'real'],
             dtype=np.int32)
-        expanded_points_df['phi'] = filt_expanded_points_phi_np
+        # expanded_points_df['phi'] = filt_expanded_points_phi_np
+        expanded_points_df['phi'] = expanded_points_phi_np
         index = pd.MultiIndex.from_arrays([
             expanded_points_df['x'], expanded_points_df['y'],
             expanded_points_df['z']

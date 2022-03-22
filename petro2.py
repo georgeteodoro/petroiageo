@@ -7,6 +7,8 @@ import time
 from io import StringIO
 from numba import jit
 
+from memory_profiler import profile
+
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.model_selection import LeaveOneGroupOut
 import lightgbm as lgb
@@ -157,6 +159,7 @@ def single_feature_run(cur_df, features_df, cur_feature):
 # f_width: number of features to be compared
 #   default=0 means all features.
 #   Used for debugging and reducing computing cost
+# @profile
 def get_features_sets(main_df,
                       features_df,
                       all_features,

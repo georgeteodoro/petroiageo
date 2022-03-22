@@ -11,6 +11,8 @@ import warnings
 
 import petro2
 
+from memory_profiler import profile
+
 # Parameters
 LABEL_COLUMN_NAME = 'phi'
 RANDOM_STATE = 1
@@ -37,8 +39,8 @@ SEISMIC_MAX_Z = 250
 
 def eval_model(orig_df, main_df, features):
 
-    # predict points marked for expand
-    X_to_predict = main_df[main_df['real'] == 2]
+    # Get points marked for prediction
+    X_to_predict = main_df[(main_df['real'] == 2) | (main_df['real'] == 3)]
     X_to_predict = X_to_predict[[petro2.f2str(f) for f in features]]
 
     # Only train on points with phi value
@@ -62,13 +64,13 @@ def eval_model(orig_df, main_df, features):
 
     # Get the two disjoint set of points, real + previously expanded
     # and expanded on this iteration
-    remaining_df = orig_df[orig_df['real'] != 2]
-    predicted_df = orig_df[orig_df['real'] == 2]
+    remaining_df = orig_df[(orig_df['real'] != 2) & (orig_df['real'] != 3)]
+    predicted_df = orig_df[(orig_df['real'] == 2) | (orig_df['real'] == 3)]
 
     # SettingWithCopyWarning is false positive on the two .loc lines below
     pd.options.mode.chained_assignment = None
 
-    # Update real value from 2 (to expand) to 1 (expanded)
+    # Update real value from 3 (to predict) and 2 (to expand) to 1 (expanded)
     predicted_df.loc[:, 'real'] = 1
 
     # Assign predicted values
@@ -112,6 +114,7 @@ def get_feature_col2(indexes, feature, features_df):
         return features_df[features_df.index.isin(indexes)][feature].values
 
 
+# @profile
 def perf_predition(best_features_set, main_df, features_df):
     t1 = time.time()
 
