@@ -88,9 +88,9 @@ def parallel_read(array_np, indexes, f_x, f_y, f_z):
 
     ii = 0
     for i in indexes:
-        x = max(0, min(SEISMIC_MAX_X, i[0] + f_x))
-        y = max(0, min(SEISMIC_MAX_Y, i[1] + f_y))
-        z = max(0, min(SEISMIC_MAX_Z, i[2] + f_z))
+        x = max(0, min(SEISMIC_MAX_X, i['x'] + f_x))
+        y = max(0, min(SEISMIC_MAX_Y, i['y'] + f_y))
+        z = max(0, min(SEISMIC_MAX_Z, i['z'] + f_z))
         coord = x * (SEISMIC_MAX_Y + 1) * (SEISMIC_MAX_Z +
                                            1) + y * (SEISMIC_MAX_Z + 1) + z
         ret[ii] = array_np[coord]

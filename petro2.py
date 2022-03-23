@@ -103,9 +103,9 @@ def parallel_read(array_np, indexes, f_x, f_y, f_z):
 
     ii = 0
     for i in indexes:
-        x = max(0, min(SEISMIC_MAX_X, i[0] + f_x))
-        y = max(0, min(SEISMIC_MAX_Y, i[1] + f_y))
-        z = max(0, min(SEISMIC_MAX_Z, i[2] + f_z))
+        x = max(0, min(SEISMIC_MAX_X, i['x'] + f_x))
+        y = max(0, min(SEISMIC_MAX_Y, i['y'] + f_y))
+        z = max(0, min(SEISMIC_MAX_Z, i['z'] + f_z))
         # array_np is 1D with 3D indexed data
         coord = x * (SEISMIC_MAX_Y + 1) * (SEISMIC_MAX_Z +
                                            1) + y * (SEISMIC_MAX_Z + 1) + z
@@ -122,8 +122,8 @@ def get_feature_col2(indexes, feature, features_df):
 
         # Numba only accepts ndarrays of concrete types (not object)
         indexes_ndarray = np.array(indexes.values,
-                                   dtype=[('x', '<u2'), ('y', '<u2'),
-                                          ('z', '<u2')])
+                                   dtype=[('x', '<u4'), ('y', '<u4'),
+                                          ('z', '<u4')])
         return parallel_read(sub_features_np, indexes_ndarray, feature[1],
                              feature[2], feature[3])
     else:
