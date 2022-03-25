@@ -123,7 +123,6 @@ def main():
             for j in range(-window, window + 1):
                 for k in range(-window, window + 1):
                     all_features.append((f, i, j, k))
-    all_features = all_features + other_features_names
     t2 = time.time()
 
     print(f'[main] Initial data loading time: {t2-t1}')
@@ -146,6 +145,8 @@ def main():
         # Only uses real, previously predicted and expanded canal points
         # for feature selection
         feature_selection_points_df = main_df[main_df['real'] != 3]
+        print('[main] Points for feature selection:')
+        print(feature_selection_points_df)
         if mpi_size == 1:
             features_sets = petro2.get_features_sets(
                 feature_selection_points_df, features_df, all_features, 10, 0)
