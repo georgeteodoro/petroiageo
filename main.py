@@ -35,8 +35,8 @@ def main():
     #   well => Well ID (-1 if it's not an original real point.)
     #                   (Has the ID from the original real well)
     #                   (from which it was expanded.           )
-    #   real => [3=not expanded, to be predicted, 2=expanded,
-    #            1=expanded point, 0=real well point]
+    #   real => [3=not expanded, to be propagated, 2=expanded,
+    #            1=propagated, 0=real well point]
     #   phi  => Porosity value
     #   rho  => ?
     #   vp   => ?

@@ -49,7 +49,7 @@ def manager(all_features, exp_n_features, f_width):
     for _ in range(exp_n_features):
 
         t0 = time.time()
-        
+
         # Reset workers done and wait for next feature set
         workers_done = 0
 
@@ -107,7 +107,6 @@ def manager(all_features, exp_n_features, f_width):
         t1 = time.time()
         print(f'[petro2] fullIt time: {t1-t0}')
 
-
     # Broadcast a done message to all workers
     for worker_rank in range(mpi_size - 1):
         comm.send(None, dest=worker_rank, tag=MPI_TAGS.MANAGER_FINISH.value)
@@ -146,8 +145,10 @@ def worker(main_df, features_df):
             break
 
         # Run jobs until there are not any
+        print(f"[petro-dist][w{rank}] new iteration")
         while (manager_tag != MPI_TAGS.MANAGER_FEATURE_DONE.value):
 
+            print(f"[petro-dist][w{rank}] testing {cur_f_set + [new_feature]}")
             rmse, mae = petro2.single_feature_run(cur_df, features_df,
                                                   new_feature)
             # # Evaluate current features set
@@ -172,6 +173,7 @@ def worker(main_df, features_df):
     # Get broadcasted resulting features and errors
     results = comm.bcast(None, root=manager_rank)
     return results
+
 
 if __name__ == '__main__':
     with open("tmp_data/nwells-0.csv", mode='r') as f:

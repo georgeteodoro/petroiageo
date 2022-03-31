@@ -44,11 +44,12 @@ def eval_model(orig_df, main_df, features):
     X_to_predict = X_to_predict[[petro2.f2str(f) for f in features]]
 
     # Only train on points with phi value
-    X_with_phi = main_df[main_df['real'] != 2]
+    X_with_phi = main_df[(main_df['real'] == 0) | (main_df['real'] == 1)]
     X_with_phi = X_with_phi[[petro2.f2str(f) for f in features]]
 
     # Results (phi) only for predicted or original points
-    y_df = main_df[main_df['real'] != 2][LABEL_COLUMN_NAME]
+    y_df = main_df[(main_df['real'] == 0) |
+                   (main_df['real'] == 1)][LABEL_COLUMN_NAME]
 
     # Train
     lgb_train = lgb.Dataset(X_with_phi.values, y_df.values)
@@ -70,7 +71,7 @@ def eval_model(orig_df, main_df, features):
     # SettingWithCopyWarning is false positive on the two .loc lines below
     pd.options.mode.chained_assignment = None
 
-    # Update real value from 3 (to predict) and 2 (to expand) to 1 (expanded)
+    # Update real value from 3 (to predict) and 2 (to expand) to 1 (propagated)
     predicted_df.loc[:, 'real'] = 1
 
     # Assign predicted values

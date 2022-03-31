@@ -35,7 +35,7 @@ def gen_expanded_points(main_df, canal_df, real_wells, it):
             well_coord = (well[0], well[1], z)
             is_real_point = True
             if not main_df.index.isin([well_coord]).any():
-                is_real_point = False            
+                is_real_point = False
 
             for i in range(-ring, ring + 1):
                 for j in range(-ring, ring + 1):
