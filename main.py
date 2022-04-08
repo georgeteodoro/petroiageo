@@ -27,6 +27,7 @@ INIT_IT = 2
 real_wells = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
               (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
 
+
 def main():
 
     # Instantiate pandas dataframe for all data
@@ -108,10 +109,10 @@ def main():
     # print(f'hipercube gen time {t2-t1}')
 
     # Free indexes np arrays
-    xs=None
-    ys=None
-    zs=None
-    full_canal_np=None
+    xs = None
+    ys = None
+    zs = None
+    full_canal_np = None
 
     iterations = 10
 
@@ -149,7 +150,7 @@ def main():
         print(feature_selection_points_df)
         if mpi_size == 1:
             features_sets = petro2.get_features_sets(
-                feature_selection_points_df, features_df, all_features, 10, 0)
+                feature_selection_points_df, features_df, all_features, 2, 4)
         else:
             features_sets = petro_dist.get_features_sets(
                 feature_selection_points_df, features_df, all_features, 10, 0)
@@ -172,9 +173,9 @@ def main():
 
         t4 = time.time()
         print(f'[main][{it}] ran in {t4-t1}')
-        print(f'   expanding points  {t2-t1}')
-        print(f'   feature selection {t3-t2}')
-        print(f'   predictions       {t4-t3}')
+        print(f'[main][{it}]   expanding points  {t2-t1}')
+        print(f'[main][{it}]   feature selection {t3-t2}')
+        print(f'[main][{it}]   predictions       {t4-t3}')
 
 
 if __name__ == '__main__':

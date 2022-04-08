@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from numba import jit
 
+import sys
 
 # Prod of tuple (numba does not allows math.prod)
 @jit(nopython=True)
@@ -10,6 +11,30 @@ def prod(shape):
     for s in shape:
         p = p * s
     return p
+
+@jit(nopython=True)
+def get_single(arr, shape, with_coords=False):
+    # Output arrays initialization
+    # Fields are [x, y, z] and [seismic_data...]
+    num_lines = prod(shape)
+    if with_coords:
+        coords_output = np.empty((num_lines, 3), dtype=np.int32)
+    else:
+        coords_output = None
+    seismic_output = np.empty((num_lines,), dtype=np.float64)
+    i = 0
+
+    for x in range(shape[0]):
+        for y in range(shape[1]):
+            for z in range(shape[2]):
+                # Assign value and increment index
+                if with_coords:
+                    coords_output[i] = [int(x), int(y), int(z)]
+                seismic_output[i] = arr[x, y, z]
+                i = i + 1
+
+    return coords_output, seismic_output
+
 
 
 # Merge all seismic data
@@ -40,7 +65,6 @@ def get_all(arrs, shape):
 
     return coords_output, seismic_output
 
-
 # Get all seismic data on the order the input filenames are passed
 def get_all_seismic_data(seismic_columns):
 
@@ -48,34 +72,50 @@ def get_all_seismic_data(seismic_columns):
     filenames = [f'./dados/{col}.npy' for col in seismic_columns]
 
     # Load each numpy array
-    first = np.load(filenames[0])
-    arrs = np.array([first] + [np.load(f) for f in filenames[1:]])
+    arr = np.load(filenames[0])
+    arr_shape = arr.shape
+    # arrs = np.array([first] + [np.load(f) for f in filenames[1:]])
+    # arrs = np.array([np.load(f) for f in filenames[1:]])
 
-    # Get separate np arrays and convert them to DataFrames
-    coords_np, seismic_np = get_all(arrs, first.shape)
+    # Get first file and prepare DataFrame
+    coords_np, seismic_np = get_single(arr, arr_shape, True)
     coords_df = pd.DataFrame(coords_np, columns=['x', 'y', 'z'])
-    seismic_df = pd.DataFrame(seismic_np, columns=seismic_columns)
-
-    coords_np=None
-    seismic_np=None
-
-    # Add coordinates to main dataframe
+    seismic_df = pd.DataFrame(seismic_np, columns=[seismic_columns[0]])
     fetures_df = pd.concat([coords_df, seismic_df], axis=1)
 
-    coords_df=None
-    seismic_df=None
+    del coords_np
+    del seismic_np
+    del seismic_df
+    del coords_df
+
+    i = 1 # Column ID for getting the right col name
+    for f in filenames[1:]:
+        seismic_np = []
+        arr = np.load(f)
+        # Load single file
+        _, seismic_np = get_single(arr, arr_shape)
+        del arr
+        del _
+
+        seismic_df = pd.DataFrame(seismic_np, columns=[seismic_columns[i]])
+        del seismic_np
+        i = i + 1
+
+        # add results to main DataFrame
+        fetures_df = pd.concat([fetures_df, seismic_df], axis=1)
+        # print(f'size of fetures_df: {sys.getsizeof(fetures_df)}')
+        del seismic_df
 
     # Set coordinates as the index
     index = pd.MultiIndex.from_arrays(
         [fetures_df['x'], fetures_df['y'], fetures_df['z']])
+    # print(f'size of index: {sys.getsizeof(index)}')
     fetures_df.set_index(index, inplace=True)
+    del index
     fetures_df.sort_index(inplace=True)
 
     return fetures_df
 
 
 if __name__ == '__main__':
-    get_all_seismic_data([
-        './dados/NEAR.npy', './dados/MID.npy', './dados/FAR.npy',
-        './dados/UFAR.npy', './dados/GERSZ.npy', './dados/GST.npy'
-    ])
+    get_all_seismic_data(['NEAR', 'MID', 'FAR', 'UFAR', 'GERSZ', 'GST'])
