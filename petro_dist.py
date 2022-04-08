@@ -77,9 +77,8 @@ def manager(all_features, exp_n_features, f_width):
                 # Unpack data
                 (cur_feature, cur_error) = data
 
-                print(
-                    f'Tested feature {cur_f_set+ [cur_feature]} with error {cur_error}'
-                )
+                print(f'Tested feature {cur_f_set + [cur_feature]} '\
+                      f'with error {cur_error}')
 
                 results.append((cur_f_set + [cur_feature], best_error))
 
@@ -109,6 +108,9 @@ def manager(all_features, exp_n_features, f_width):
 
     # Broadcast a done message to all workers
     for worker_rank in range(mpi_size - 1):
+        # Receive EMPTY_RESULT msg to clear the queue before the next iteration
+        comm.recv()
+        # Actually send finish signal
         comm.send(None, dest=worker_rank, tag=MPI_TAGS.MANAGER_FINISH.value)
 
     # Broadcast resulting features and errors

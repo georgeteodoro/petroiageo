@@ -38,6 +38,11 @@ SEISMIC_MAX_X = 433
 SEISMIC_MAX_Y = 645
 SEISMIC_MAX_Z = 250
 
+# Profiling variables
+avg_col_time = 0
+avg_eval_time = 0
+feature_run_count = 0
+
 
 def eval_bootstrap(df, num_threads=24):
     # params['num_threads'] = num_threads
@@ -127,6 +132,7 @@ def get_feature_col2(indexes, feature, features_df):
         return parallel_read(sub_features_np, indexes_ndarray, feature[1],
                              feature[2], feature[3])
     else:
+        print(f'[petro2][WARNING] non-seismic column created: {feature}')
         return features_df[features_df.index.isin(indexes)][feature].values
 
 
@@ -151,6 +157,13 @@ def single_feature_run(cur_df, features_df, cur_feature):
     # Test current feature set
     rmse, mae = eval_bootstrap(test_df)
     t3 = time.time()
+
+    global avg_col_time
+    global avg_eval_time
+    global feature_run_count
+    avg_col_time = avg_col_time + (t2 - t1)
+    avg_eval_time = avg_eval_time + (t3 - t2)
+    feature_run_count = feature_run_count + 1
 
     return rmse, mae
 
@@ -211,12 +224,12 @@ def get_features_sets(main_df,
                 best_feature = cur_feature
 
             t4 = time.time()
-            # print(f"[petro] it time for {len(test_df)} rows (total {t4-t1}):")
-            # print(f"[petro]    col select  {t2-t1}")
-            # print(f"[petro]    training    {t3-t2}")
-            # print(f"[petro]    update best {t4-t3}")
-            print(
-                f'Tested feature {cur_f_set+ [cur_feature]} with error {rmse}')
+            # print(f"[petro2] it time for {len(test_df)} rows (total {t4-t1}):")
+            # print(f"[petro2]    col select  {t2-t1}")
+            # print(f"[petro2]    training    {t3-t2}")
+            # print(f"[petro2]    update best {t4-t3}")
+            print(f'[petro2] Tested feature'\
+                  f'{cur_f_set+ [cur_feature]} with error {rmse}')
 
         # Update current DataFrame to add best feature of current iteration
         # print(f'[petro] found best feature: {f2str(cur_feature)}')
@@ -228,6 +241,15 @@ def get_features_sets(main_df,
 
         t5 = time.time()
 
+        # Print iteration statistics
+        global avg_col_time
+        global avg_eval_time
+        global feature_run_count
         print(f'[petro2] fullIt time: {t5-t0}')
+        print(f'[petro2] avg_col_time: {avg_col_time/feature_run_count}')
+        print(f'[petro2] avg_eval_time: {avg_eval_time/feature_run_count}')
+        avg_col_time = 0
+        avg_eval_time = 0
+        feature_run_count = 0
 
     return results
