@@ -137,6 +137,9 @@ def worker(main_df, features_df):
                   dest=manager_rank,
                   tag=MPI_TAGS.WORKER_EMPTY_RESULT.value)
 
+        avg_feature_time = 0
+        avg_feature_time_count = 0
+
         # Get first message from Manager
         status = MPI.Status()
         new_feature = comm.recv(source=manager_rank, status=status)
@@ -151,8 +154,12 @@ def worker(main_df, features_df):
         while (manager_tag != MPI_TAGS.MANAGER_FEATURE_DONE.value):
 
             print(f"[petro-dist][w{rank}] testing {cur_f_set + [new_feature]}")
+            t1 = time.time()
             rmse, mae = petro2.single_feature_run(cur_df, features_df,
                                                   new_feature)
+            t2 = time.time()
+            avg_feature_time = avg_feature_time + (t2 - t1)
+            avg_feature_time_count = avg_feature_time_count + 1
             # # Evaluate current features set
             # rmse, mae = petro.eval_bootstrap(df,
             #                                  cur_f_set + [new_feature],
@@ -171,6 +178,9 @@ def worker(main_df, features_df):
         cur_df.loc[:,
                    petro2.f2str(new_best_feature)] = petro2.get_feature_col2(
                        cur_df.index, new_best_feature, features_df)
+
+        print(f'[petro-dist][w{rank}][profiling] avg feature time: '\
+              f'{avg_feature_time/avg_feature_time_count}')
 
     # Get broadcasted resulting features and errors
     results = comm.bcast(None, root=manager_rank)

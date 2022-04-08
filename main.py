@@ -36,7 +36,7 @@ def main():
     #   well => Well ID (-1 if it's not an original real point.)
     #                   (Has the ID from the original real well)
     #                   (from which it was expanded.           )
-    #   real => [3=not expanded, to be propagated, 2=expanded,
+    #   real => [3=expanded, to be propagated, 2=expanded canal,
     #            1=propagated, 0=real well point]
     #   phi  => Porosity value
     #   rho  => ?
@@ -139,6 +139,12 @@ def main():
                                               it)
         main_df.to_csv(f'tmp_data/expanded{it}.csv', index=False)
         print(main_df)
+
+        # Info for validating points generation (All is OK!)
+        # print(f'[VAL][{it}] real: {len(main_df[main_df["real"] == 0])}')
+        # print(f'[VAL][{it}] propagated: {len(main_df[main_df["real"] == 1])}')
+        # print(f'[VAL][{it}] expanded-canal: {len(main_df[main_df["real"] == 2])}')
+        # print(f'[VAL][{it}] expanded-new: {len(main_df[main_df["real"] == 3])}')
 
         t2 = time.time()
 
