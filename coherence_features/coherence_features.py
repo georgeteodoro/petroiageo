@@ -4,8 +4,16 @@ import scipy.signal
 from algs import *
 
 files = ["NEAR"]
-windows = [(5,5,11)]
-algs = {"gersz", "gst"}
+windows3D = [(5,5,11)]
+windows1D = [5]
+algs = {"rms", "envelope", "instFrequency"}
+
+if algs == {"all"}:
+    algs = {"dip_angle", "azimuth", "mean_curvature", "gaussian_curvature",
+            "max_curvature", "min_curvature", "most_positive_curvature",
+            "most_negative_curvature", "shape_index", "dip_curvature",
+            "contour_curvature", "curvedness", "rms", "instFrequency",
+            "envelope", "marfurt", "sobel", "gersz", "gst"}
 
 name = lambda w: "-".join(str(x) for x in w)
 for f in files:
@@ -13,7 +21,7 @@ for f in files:
 
     curvature = curvature_parameters(seismic)
     if "dip_angle" in algs:
-        coh = dip_anlge(curvature)
+        coh = dip_angle(curvature)
         np.save("results/"+f+"_dip-angle_.npy", coh)
     if "azimuth" in algs:
         coh = azimuth(curvature)
@@ -48,9 +56,26 @@ for f in files:
     if "curvedness" in algs:
         coh = curvedness(curvature)
         np.save("results/"+f+"_curvedness_.npy", coh)
+    
+    for window1D in windows1D:
+        if "rms" in algs:
+            rmsCube = rms(window1D, seismic)
+            np.save("results/"+f+"_rms-"+str(window1D)+"_.npy", rmsCube)
+    
+    runEnvelope = "envelope" in algs
+    runInstFrequency = "instFrequency" in algs
+    if runEnvelope or runInstFrequency:
+        analiticCube = analiticOf(seismic)
+        
+        if runEnvelope:
+            envelopeCube = envelopeOf(analiticCube)
+            np.save("results/"+f+"_envelope_.npy", envelopeCube)
 
+        if runInstFrequency:
+            instFrequencyCube = instantaneousFrequencyOf(analiticCube)
+            np.save("results/"+f+"_instantaneous-frequency_.npy", instFrequencyCube)
 
-    for w in windows:
+    for w in windows3D:
         if "marfurt" in algs:
             coh = moving_window(seismic, w, marfurt_semblance)
             np.save("results/"+f+"_marfurt_"+name(w)+".npy", coh)
