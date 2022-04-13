@@ -141,10 +141,10 @@ def main():
         print(main_df)
 
         # Info for validating points generation (All is OK!)
-        # print(f'[VAL][{it}] real: {len(main_df[main_df["real"] == 0])}')
-        # print(f'[VAL][{it}] propagated: {len(main_df[main_df["real"] == 1])}')
-        # print(f'[VAL][{it}] expanded-canal: {len(main_df[main_df["real"] == 2])}')
-        # print(f'[VAL][{it}] expanded-new: {len(main_df[main_df["real"] == 3])}')
+        # print(f'[{it}] real: {len(main_df[main_df["real"] == 0])}')
+        # print(f'[{it}] propagated: {len(main_df[main_df["real"] == 1])}')
+        # print(f'[{it}] expanded-canal: {len(main_df[main_df["real"] == 2])}')
+        # print(f'[{it}] expanded-new: {len(main_df[main_df["real"] == 3])}')
 
         t2 = time.time()
 
@@ -155,23 +155,20 @@ def main():
         print('[main] Points for feature selection:')
         print(feature_selection_points_df)
         if mpi_size == 1:
-            features_sets = petro2.get_features_sets(
+            best_features_set, best_error = petro2.get_features_sets(
                 feature_selection_points_df, features_df, all_features, 2, 4)
         else:
-            features_sets = petro_dist.get_features_sets(
+            best_features_set, best_error = petro_dist.get_features_sets(
                 feature_selection_points_df, features_df, all_features, 10, 0)
         # print(features_sets)
+
+        print(f'[main][{it}] Best features set:'\
+              f' {best_features_set} with {best_error} error'
+        )
 
         t3 = time.time()
 
         print(f"[main][{it}] Performing predictions on new expanded points")
-        # Sort by second column (id 1)
-        features_sets.sort(key=lambda tup: tup[1])
-        best_features_set = features_sets[0][0]
-        best_error = features_sets[0][1]
-        print(f'[main][{it}] Best features set:'\
-              f' {best_features_set} with {best_error} error'
-        )
         main_df = apply4.perf_predition(best_features_set, main_df,
                                         features_df)
         print(main_df)

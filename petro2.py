@@ -44,6 +44,15 @@ avg_eval_time = 0
 feature_run_count = 0
 
 
+def get_best_features_set(features_sets):
+    # Sort by second column (id 1)
+    features_sets.sort(key=lambda tup: tup[1])
+    best_features_set = features_sets[0][0]
+    best_error = features_sets[0][1]
+
+    return best_features_set, best_error
+
+
 def eval_bootstrap(df, num_threads=24):
     # params['num_threads'] = num_threads
 
@@ -252,4 +261,4 @@ def get_features_sets(main_df,
         avg_eval_time = 0
         feature_run_count = 0
 
-    return results
+    return get_best_features_set(results)

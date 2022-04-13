@@ -80,7 +80,7 @@ def manager(all_features, exp_n_features, f_width):
                 print(f'Tested feature {cur_f_set + [cur_feature]} '\
                       f'with error {cur_error}')
 
-                results.append((cur_f_set + [cur_feature], best_error))
+                results.append((cur_f_set + [cur_feature], cur_error))
 
                 # Update new best, if necessary
                 if best_error > cur_error:
@@ -114,9 +114,10 @@ def manager(all_features, exp_n_features, f_width):
         comm.send(None, dest=worker_rank, tag=MPI_TAGS.MANAGER_FINISH.value)
 
     # Broadcast resulting features and errors
-    comm.bcast(results, root=manager_rank)
+    best_result = petro2.get_best_features_set(results)
+    comm.bcast(best_result, root=manager_rank)
 
-    return results
+    return best_result
 
 
 def worker(main_df, features_df):
@@ -160,10 +161,6 @@ def worker(main_df, features_df):
             t2 = time.time()
             avg_feature_time = avg_feature_time + (t2 - t1)
             avg_feature_time_count = avg_feature_time_count + 1
-            # # Evaluate current features set
-            # rmse, mae = petro.eval_bootstrap(df,
-            #                                  cur_f_set + [new_feature],
-            #                                  LGB_MAX_THREADS)
 
             # Return results to manager
             comm.send((new_feature, rmse), dest=manager_rank)
@@ -179,12 +176,17 @@ def worker(main_df, features_df):
                    petro2.f2str(new_best_feature)] = petro2.get_feature_col2(
                        cur_df.index, new_best_feature, features_df)
 
-        print(f'[petro-dist][w{rank}][profiling] avg feature time: '\
-              f'{avg_feature_time/avg_feature_time_count}')
+        if avg_feature_time_count > 0:
+            print(f'[petro-dist][w{rank}][profiling] {avg_feature_time_count}'\
+                  f' tasks ran with avg feature time: '\
+                  f'{avg_feature_time/avg_feature_time_count}')
+        else:
+            print('[petro-dist][w{rank}][profiling] 0 tasks ran '\
+                  'with avg feature time: 0')
 
     # Get broadcasted resulting features and errors
-    results = comm.bcast(None, root=manager_rank)
-    return results
+    best_result = comm.bcast(None, root=manager_rank)
+    return best_result
 
 
 if __name__ == '__main__':
