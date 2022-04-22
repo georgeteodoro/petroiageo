@@ -16,44 +16,20 @@ ErrorMetricName: value
 """ 
 
 import sys
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from timeit import default_timer as timer
 
 def printUsage():
     print("Error! Argc is not 3. Check Usage!")
     print("Usage: python errorCalc.py realValuesFileName predictedValuesFileName")
 
-def getStructuredLineFromLine(line):
-    """
-    Returns a Dict with X,Y,Z,Value as keys based on the line read from file.
-    The split assumes that values are separated with a space.
-    Also, the split assumes that the values are in order: X Y Z Value
+def printErrors(realValuesFileName, predictedValuesFileName):
+    rmse = 0
+    mae = 0
+    
+    rmse, mae = computeErrors(realValuesFileName, predictedValuesFileName)
 
-    line: A line from file that has not been split
-    """
-    #Split based on spaces
-    lineSplit = line.split()
-    structLine = {}
-    structLine['X'] = int(lineSplit[0])
-    structLine['Y'] = int(lineSplit[1])
-    structLine['Z'] = int(lineSplit[2])
-    structLine['Value'] = float(lineSplit[3])
-    return structLine
-
-def getStructuredLineFrom(myFile):
-    """
-    Returns a Dict with X,Y,Z,Value as keys based on the line read from file.
-    See getStructuredLineFromLine(line)
-    myFile: The file that will read a line
-    """
-    line = myFile.readline()
-    return getStructuredLineFromLine(line)
-
-def isTheSamePoint(point1, point2):
-    """
-    Compares the two Points and returns if they are the same.
-    point1, point2: Both are Dicts that must have X,Y and Z keys. These keys are used to compare both points
-    """
-    return (point1["X"] == point2['X'] and point1["Y"] == point2['Y'] and point1["Z"] == point2['Z'])
+    print(f"RMSE: {rmse}")
+    print(f"MAE: {mae}")
 
 def computeErrors(realValuesFileName, predictedValuesFileName):
     """
@@ -61,43 +37,86 @@ def computeErrors(realValuesFileName, predictedValuesFileName):
     Assumes that all points in both files are ordered by X, Y and Z positions
 
     realValuesFileName, predictedValuesFileName: the input file names
+    Assumes that the predictedValuesFile has a header on it
     return: RMSE, MAE
     """
     partialRMSESum = 0
     partialMAESum = 0
     valuesCount = 0
+    predEmptyLines = 0
+
+    REALFILESEP = " "
+    PREDFILESEP = ","
 
     with open(realValuesFileName, 'r') as realValuesFile, open(predictedValuesFileName, 'r') as predValuesFile:
-        #Reads a line from realValuesFile
-        currRealValueDict = getStructuredLineFrom(realValuesFile)
+
+        #First read to pass header
+        predValuesFile.readline()
+        currRealValueDict = getStructuredLineFrom(realValuesFile, REALFILESEP)
 
         #predValuesFile probably has much less lines than realValuesFile
         for line in predValuesFile:
-            
-            currPredValueDict = getStructuredLineFromLine(line)
 
-            while not isTheSamePoint(currPredValueDict, currRealValueDict):
-                #Reads other line from realValuesFile
-                currRealValueDict = getStructuredLineFrom(realValuesFile)
+            if line.strip() != "":
             
-            #Found a matching point on realValuesFile
-            predDiff = currRealValueDict['Value']-currPredValueDict['Value']
-            partialRMSESum+=(predDiff)**2
-            partialMAESum+= abs(predDiff)
-            valuesCount += 1
+                currPredValueDict = getStructuredLineFromLine(line, PREDFILESEP)
+
+                while not isTheSamePoint(currPredValueDict, currRealValueDict):
+                    
+                    currRealValueDict = getStructuredLineFrom(realValuesFile, REALFILESEP)
+                
+                #Found a matching point on realValuesFile
+                predDiff = currRealValueDict['phi']-currPredValueDict['phi']
+                partialRMSESum+=(predDiff)**2
+                partialMAESum+= abs(predDiff)
+                valuesCount += 1
+            else:
+                predEmptyLines +=1
+
+    print(f"Pontos contabilizados: {valuesCount}")
+    print(f"Linhas Vazias Pred: {predEmptyLines}")
 
     rmse = (partialRMSESum/valuesCount)**(1/2)
     mae = partialMAESum/valuesCount
+
     return rmse, mae
 
-def printErrors(realValuesFileName, predictedValuesFileName):
-    rmse = 0
-    mae = 0
+def getStructuredLineFrom(myFile, sep=" "):
+    """
+    Returns a Dict with x,y,z,phi as keys based on the line read from file.
+    See getStructuredLineFromLine(line)
+    myFile: The file that will read a line
+    """
+    line = myFile.readline()
+    return getStructuredLineFromLine(line, sep)
+
+def getStructuredLineFromLine(line, sep):
+    """
+    Returns a Dict with x,y,z,phi as keys based on the line read from file.
     
-    rmse, mae = computeErrors(realValuesFileName, predictedValuesFileName)
+    The split assumes that the values are in order: x y z ... phi
+
+    line: A line from file that has not been split
+    sep: The file separator.
+    """
+    lineSplit = line.split(sep)
+    structLine = {}
+    try:
+        structLine['x'] = int(lineSplit[0])
+        structLine['y'] = int(lineSplit[1])
+        structLine['z'] = int(lineSplit[2])
+        structLine['phi'] = float(lineSplit[-1])
+    except:
+        print(f"linha que fugiu do padrão: {line}")
+
+    return structLine
     
-    print(f"RMSE: {rmse}")
-    print(f"MAE: {mae}")
+def isTheSamePoint(point1, point2):
+    """
+    Compares the two Points and returns if they are the same.
+    point1, point2: Both must have x,y and z keys. These keys are used to compare both points
+    """
+    return (point1["x"] == point2['x'] and point1["y"] == point2['y'] and point1["z"] == point2['z'])
 
 if __name__ == "__main__":
     if (len(sys.argv) != 3):
@@ -107,4 +126,7 @@ if __name__ == "__main__":
         realValuesFileName = sys.argv[1]
         predictedValuesFileName = sys.argv[2]
 
+        start = timer()
         printErrors(realValuesFileName, predictedValuesFileName)
+        end = timer()
+        print(f"Elapsed Time: {end-start}")
