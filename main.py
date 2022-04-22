@@ -137,6 +137,7 @@ def main():
         print(f"[main][{it}] Expanding points")
         main_df = expand2.gen_expanded_points(main_df, canal_df, real_wells,
                                               it)
+        main_df.sort_index(inplace=True)
         main_df.to_csv(f'tmp_data/expanded{it}.csv', index=False)
         print(main_df)
 
@@ -172,6 +173,7 @@ def main():
         main_df = apply4.perf_predition(best_features_set, main_df,
                                         features_df)
         print(main_df)
+        main_df.sort_index(inplace=True)
         main_df.to_csv(f'tmp_data/predicted{it}.csv', index=False)
 
         t4 = time.time()
