@@ -175,10 +175,10 @@ def main():
         main_df.to_csv(f'tmp_data/predicted{it}.csv', index=False)
 
         t4 = time.time()
-        print(f'[main][{it}] ran in {t4-t1}')
-        print(f'[main][{it}]   expanding points  {t2-t1}')
-        print(f'[main][{it}]   feature selection {t3-t2}')
-        print(f'[main][{it}]   predictions       {t4-t3}')
+        print(f'[main][times][{it}] total_it_time {t4-t1}')
+        print(f'[main][times][{it}] expansion {t2-t1}')
+        print(f'[main][times][{it}] feature_selection {t3-t2}')
+        print(f'[main][times][{it}] propagation {t4-t3}')
 
 
 if __name__ == '__main__':

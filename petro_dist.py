@@ -133,13 +133,16 @@ def worker(main_df, features_df):
 
     # Run jobs until manager finishes
     while True:
+        t0 = time.time()
+
         # Request a job from manager
         comm.send(None,
                   dest=manager_rank,
                   tag=MPI_TAGS.WORKER_EMPTY_RESULT.value)
 
-        avg_feature_time = 0
-        avg_feature_time_count = 0
+        total_feature_exec_time = 0
+        total_feature_comm_time = 0
+        feature_exec_count = 0
 
         # Get first message from Manager
         status = MPI.Status()
@@ -159,8 +162,6 @@ def worker(main_df, features_df):
             rmse, mae = petro2.single_feature_run(cur_df, features_df,
                                                   new_feature)
             t2 = time.time()
-            avg_feature_time = avg_feature_time + (t2 - t1)
-            avg_feature_time_count = avg_feature_time_count + 1
 
             # Return results to manager
             comm.send((new_feature, rmse), dest=manager_rank)
@@ -169,6 +170,11 @@ def worker(main_df, features_df):
             new_feature = comm.recv(source=manager_rank, status=status)
             manager_tag = status.Get_tag()
 
+            t3 = time.time()
+            total_feature_exec_time = total_feature_exec_time + (t2 - t1)
+            total_feature_comm_time = total_feature_comm_time + (t3 - t2)
+            feature_exec_count = feature_exec_count + 1
+
         # Get best feature from iteration from manager
         new_best_feature = comm.bcast(None, root=manager_rank)
         cur_f_set.append(new_best_feature)
@@ -176,13 +182,15 @@ def worker(main_df, features_df):
                    petro2.f2str(new_best_feature)] = petro2.get_feature_col2(
                        cur_df.index, new_best_feature, features_df)
 
-        if avg_feature_time_count > 0:
-            print(f'[petro-dist][w{rank}][profiling] {avg_feature_time_count}'\
-                  f' tasks ran with avg feature time: '\
-                  f'{avg_feature_time/avg_feature_time_count}')
-        else:
-            print('[petro-dist][w{rank}][profiling] 0 tasks ran '\
-                  'with avg feature time: 0')
+        t4 = time.time()
+
+        print(f'[petro-dist][w{rank}][profiling] it_full_time: {t4-t1}')
+        print(f'[petro-dist][w{rank}][profiling] total_exec_time: '\
+              f'{total_feature_exec_time}')
+        print(f'[petro-dist][w{rank}][profiling] total_comm_time: '\
+              f'{total_feature_comm_time}')
+        print(f'[petro-dist][w{rank}][profiling] n_tasks: '\
+              f'{feature_exec_count}')
 
     # Get broadcasted resulting features and errors
     best_result = comm.bcast(None, root=manager_rank)
