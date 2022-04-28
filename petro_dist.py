@@ -184,7 +184,7 @@ def worker(main_df, features_df):
 
         t4 = time.time()
 
-        print(f'[petro-dist][w{rank}][profiling] it_full_time: {t4-t1}')
+        print(f'[petro-dist][w{rank}][profiling] it_full_time: {t4-t0}')
         print(f'[petro-dist][w{rank}][profiling] total_exec_time: '\
               f'{total_feature_exec_time}')
         print(f'[petro-dist][w{rank}][profiling] total_comm_time: '\

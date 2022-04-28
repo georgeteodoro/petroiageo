@@ -148,9 +148,8 @@ def get_feature_col2(indexes, feature, features_df):
 def single_feature_run(cur_df, features_df, cur_feature):
     # print(f"[petro] Testing feature {cur_feature}")
 
-    cur_feature_s = f2str(cur_feature)
-
     t1 = time.time()
+    cur_feature_s = f2str(cur_feature)
 
     # Add feature column to current DataFrame
     # A copy of the current rolling DataFrame is done
@@ -158,21 +157,26 @@ def single_feature_run(cur_df, features_df, cur_feature):
     # The current rolling DataFrame is updated after all
     # features are tested
     test_df = cur_df.copy(deep=False)
+    t2 = time.time()
     test_df.loc[:, cur_feature_s] = get_feature_col2(test_df.index,
                                                      cur_feature, features_df)
 
-    t2 = time.time()
+    t3 = time.time()
 
     # Test current feature set
     rmse, mae = eval_bootstrap(test_df)
-    t3 = time.time()
+    t4 = time.time()
 
-    global avg_col_time
-    global avg_eval_time
-    global feature_run_count
-    avg_col_time = avg_col_time + (t2 - t1)
-    avg_eval_time = avg_eval_time + (t3 - t2)
-    feature_run_count = feature_run_count + 1
+    print(f'[petro2][single_feature_run] copy_time {t2-t1}')
+    print(f'[petro2][single_feature_run] add_col_time {t3-t2}')
+    print(f'[petro2][single_feature_run] eval_bootstrap {t4-t3}')
+
+    # global avg_col_time
+    # global avg_eval_time
+    # global feature_run_count
+    # avg_col_time = avg_col_time + (t2 - t1)
+    # avg_eval_time = avg_eval_time + (t3 - t2)
+    # feature_run_count = feature_run_count + 1
 
     return rmse, mae
 
