@@ -3,7 +3,6 @@ import numpy as np
 
 
 def prepare_header(window):
-    # window = 3
     out_list = list()
     for i in range(-window, window + 1):
         for j in range(-window, window + 1):

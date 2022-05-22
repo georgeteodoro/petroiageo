@@ -12,7 +12,6 @@ import lightgbm as lgb
 
 # Parameters
 LABEL_COLUMN_NAME = 'phi'
-# UNWANTED_COLUMNS = ['real', 'well', 'rho', 'vs', 'vp']
 UNWANTED_COLUMNS = ['real', 'well']
 
 RANDOM_STATE = 1
@@ -40,8 +39,6 @@ SEISMIC_MAX_Z = 250
 def eval_bootstrap(df, num_threads=24):
     params['num_threads'] = num_threads
 
-    # print(features)
-    # X = df[features].values
     X = df.values
     y = df[LABEL_COLUMN_NAME].values
     a = []
@@ -61,7 +58,6 @@ def eval_bootstrap(df, num_threads=24):
             n = n + 1
         v = np.array(v)
         lgb_train = lgb.Dataset(X[train], y[train])
-        # lgb_eval = lgb.Dataset(X[val], y[val], reference=lgb_train)
 
         # THIS WILL BREAK:
         # Currently there are points with well=-1, meaning they aren't
@@ -114,11 +110,6 @@ def get_features_sets(main_df, features_df, all_features, exp_n_features,
     # Data from is main_df is only referenced, not copied
     cur_df = main_df.copy(deep=False)
 
-    # # Get all features to test
-    # all_features = main_df.columns.to_list()
-    # for x in UNWANTED_COLUMNS + [LABEL_COLUMN_NAME]:
-    #     all_features.remove(x)
-
     print("[petro] Starting features set search")
     f = ['x', 'y', 'z']
     i = 0
@@ -149,7 +140,6 @@ def get_features_sets(main_df, features_df, all_features, exp_n_features,
                 # If f is a tuple, then the feature is seismic
                 print('creating feature col')
                 ev_df[f2str(f2)] = 0  # New column created
-                # transfer_seismic_feature(ev_df, features_df, f2)
                 ev_df.loc[:, f2str(f2)] = ev_df.apply(transfer_seismic_feature,
                                                       axis=1,
                                                       args=(features_df, f2))
@@ -164,7 +154,6 @@ def get_features_sets(main_df, features_df, all_features, exp_n_features,
             A, B = eval_bootstrap(ev_df)
             t3 = time.time()
             print(f"iter time {t3-t1}")
-            # s.write(f"{f},{A},{B}")
             results.append([f, A, B])
             z = A
             f.remove(f2)

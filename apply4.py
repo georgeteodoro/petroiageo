@@ -58,7 +58,6 @@ def eval_model(orig_df, main_df, features):
         lgb_train,
         num_boost_round=100,
     )
-    # callbacks=[lgb.log_evaluation(show_stdv=False)])
 
     # Predict expanded points
     pred = regressor.predict(X_to_predict.values)
@@ -115,7 +114,6 @@ def get_feature_col2(indexes, feature, features_df):
         return features_df[features_df.index.isin(indexes)][feature].values
 
 
-# @profile
 def perf_predition(best_features_set, main_df, features_df):
     t1 = time.time()
 
@@ -129,14 +127,11 @@ def perf_predition(best_features_set, main_df, features_df):
 
     # Add each feature to the DataFrame
     for feature in best_features_set:
-        # print(f'[apply4] adding feature {feature}')
         feature_s = petro2.f2str(feature)
         cur_features_df.loc[:, feature_s] = get_feature_col2(
             main_df.index, feature, features_df)
 
     t2 = time.time()
-
-    # print(cur_features_df)
 
     # Train model and predict porosity for new expanded points
     ret = eval_model(main_df, cur_features_df, best_features_set)

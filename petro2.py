@@ -54,9 +54,6 @@ def get_best_features_set(features_sets):
 
 
 def eval_bootstrap(df, num_threads=24):
-    # params['num_threads'] = num_threads
-
-    # print(features)
     X = df.values
     y = df[LABEL_COLUMN_NAME].values
     a = []
@@ -146,7 +143,6 @@ def get_feature_col2(indexes, feature, features_df):
 
 
 def single_feature_run(cur_df, features_df, cur_feature):
-    # print(f"[petro] Testing feature {cur_feature}")
 
     t1 = time.time()
     cur_feature_s = f2str(cur_feature)
@@ -171,13 +167,6 @@ def single_feature_run(cur_df, features_df, cur_feature):
     print(f'[petro2][single_feature_run] add_col_time {t3-t2}')
     print(f'[petro2][single_feature_run] eval_bootstrap {t4-t3}')
 
-    # global avg_col_time
-    # global avg_eval_time
-    # global feature_run_count
-    # avg_col_time = avg_col_time + (t2 - t1)
-    # avg_eval_time = avg_eval_time + (t3 - t2)
-    # feature_run_count = feature_run_count + 1
-
     return rmse, mae
 
 
@@ -185,7 +174,6 @@ def single_feature_run(cur_df, features_df, cur_feature):
 # f_width: number of features to be compared
 #   default=0 means all features.
 #   Used for debugging and reducing computing cost
-# @profile
 def get_features_sets(main_df,
                       features_df,
                       all_features,
@@ -194,10 +182,6 @@ def get_features_sets(main_df,
     # Create a shallow copy of main_df for adding new columns
     # Data from is main_df is only referenced, not copied
     cur_df = main_df.copy(deep=False)
-
-    # Remove rows from cur_df which don't have an original well
-    # ID (i.e., well=-1)
-    # cur_df = cur_df[cur_df['well'] != -1]
 
     # Current features set with the best error
     cur_f_set = ['x', 'y', 'z']
@@ -216,8 +200,6 @@ def get_features_sets(main_df,
 
         # Test each available feature
         ii = 0
-        # print(f'[petro] starting iteration with features:')
-        # print(cur_f_set)
         for cur_feature in all_features:
             if cur_feature in cur_f_set:
                 continue
@@ -237,20 +219,13 @@ def get_features_sets(main_df,
                 best_feature = cur_feature
 
             t4 = time.time()
-            # print(f"[petro2] it time for {len(test_df)} rows (total {t4-t1}):")
-            # print(f"[petro2]    col select  {t2-t1}")
-            # print(f"[petro2]    training    {t3-t2}")
-            # print(f"[petro2]    update best {t4-t3}")
             print(f'[petro2] Tested feature'\
                   f'{cur_f_set+ [cur_feature]} with error {rmse}')
 
         # Update current DataFrame to add best feature of current iteration
-        # print(f'[petro] found best feature: {f2str(cur_feature)}')
         cur_f_set.append(best_feature)
         cur_df.loc[:, f2str(best_feature)] = get_feature_col2(
             cur_df.index, best_feature, features_df)
-        # print('[petro] current DF:')
-        # print(cur_df)
 
         t5 = time.time()
 

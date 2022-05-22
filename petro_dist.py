@@ -123,8 +123,6 @@ def manager(all_features, exp_n_features, f_width):
 def worker(main_df, features_df):
     print(f"[petro-dist][w{rank}]")
 
-    # all_features, df = petro.read_dataset(str_nwells)
-
     # Create a shallow copy of main_df for adding new columns
     # Data from is main_df is only referenced, not copied
     cur_df = main_df.copy(deep=False)

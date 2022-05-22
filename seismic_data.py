@@ -74,8 +74,6 @@ def get_all_seismic_data(seismic_columns):
     # Load each numpy array
     arr = np.load(filenames[0])
     arr_shape = arr.shape
-    # arrs = np.array([first] + [np.load(f) for f in filenames[1:]])
-    # arrs = np.array([np.load(f) for f in filenames[1:]])
 
     # Get first file and prepare DataFrame
     coords_np, seismic_np = get_single(arr, arr_shape, True)
@@ -103,13 +101,11 @@ def get_all_seismic_data(seismic_columns):
 
         # add results to main DataFrame
         fetures_df = pd.concat([fetures_df, seismic_df], axis=1)
-        # print(f'size of fetures_df: {sys.getsizeof(fetures_df)}')
         del seismic_df
 
     # Set coordinates as the index
     index = pd.MultiIndex.from_arrays(
         [fetures_df['x'], fetures_df['y'], fetures_df['z']])
-    # print(f'size of index: {sys.getsizeof(index)}')
     fetures_df.set_index(index, inplace=True)
     del index
     fetures_df.sort_index(inplace=True)

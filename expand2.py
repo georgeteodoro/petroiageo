@@ -10,7 +10,6 @@ from memory_profiler import profile
 
 MAX_DEPTH = 251  # Starts from 1
 
-# @profile
 def gen_expanded_points(main_df, canal_df, real_wells, it):
     # Set distance ring to be generated
     ring = it + 1
@@ -72,7 +71,6 @@ def gen_expanded_points(main_df, canal_df, real_wells, it):
             expanded_points_np,
             columns=['x', 'y', 'z', 'well', 'real'],
             dtype=np.int32)
-        # expanded_points_df['phi'] = filt_expanded_points_phi_np
         expanded_points_df['phi'] = expanded_points_phi_np
         index = pd.MultiIndex.from_arrays([
                                             expanded_points_df['x'], expanded_points_df['y'],
@@ -86,7 +84,6 @@ def gen_expanded_points(main_df, canal_df, real_wells, it):
         well_id = well_id + 1
 
     t2 = time.time()
-    # print(f'[expand] total time: {t2-t1}')
 
     return main_df
 
