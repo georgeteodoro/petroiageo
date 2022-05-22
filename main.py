@@ -5,8 +5,8 @@ import time
 from collections import defaultdict
 from os import linesep
 from mpi4py import MPI
-
-# from memory_profiler import profile
+import sys
+import common
 
 import seismic_data
 import wells_data
@@ -22,13 +22,12 @@ mpi_size = comm.Get_size()
 manager_rank = mpi_size - 1
 
 # Constants
-INIT_IT = 2
 
 real_wells = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
               (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
 
 
-def main():
+def main(initialIteration:int, numIterations:int):
 
     # Instantiate pandas dataframe for all data
     # Data structure is composed by:
@@ -44,22 +43,44 @@ def main():
     #   vs   => ?
 
     # Read seismic data and add it to a dataframe
-    seismic_features_names = ["NEAR", "MID", "FAR", "UFAR", "GERSZ", "GST"]
+    seismic_features_names = [
+        "FAR",
+        "MID",
+        "NEAR_azimuth_",
+        "NEAR_contour-curvature_",
+        "NEAR_curvedness_",
+        "NEAR_dip-angle_",
+        "NEAR_dip-curvature_",
+        "NEAR_envelope_",
+        "NEAR_gaussian-curvature_",
+        "NEAR_gersztenkorn_3-3-11",
+        "NEAR_gersztenkorn_3-3-7",
+        "NEAR_gersztenkorn_3-3-9",
+        "NEAR_gersztenkorn_5-5-11",
+        "NEAR_gersztenkorn_5-5-7",
+        "NEAR_gersztenkorn_5-5-9",
+        "NEAR_gst_3-3-11",
+        "NEAR_gst_3-3-7",
+        "NEAR_gst_3-3-9",
+        "NEAR_gst_5-5-11",
+        "NEAR_gst_5-5-7",
+        "NEAR_gst_5-5-9",
+        "NEAR_instantaneous-frequency_",
+        "NEAR_max-curvature_",
+        "NEAR_mean-curvature_",
+        "NEAR_min-curvature_",
+        "NEAR_most-negative-curvature_",
+        "NEAR_most-positive-curvature_",
+        "NEAR",
+        "NEAR_rms-5_",
+        "NEAR_shape-index_",
+        "NEAR_sobel_5-5-11",
+        "UFAR",
+    ]
 
     # Features which do not need to be expanded on the window
     other_features_names = []
 
-    # # Serialize seismic read for single-node test with mpi
-    # features_df = []
-    # cur_p = -1
-    # while True:
-    #     comm.Barrier()
-    #     cur_p = cur_p + 1
-    #     if cur_p == mpi_size:
-    #         break
-    #     if rank != cur_p:
-    #         continue
-    #     print(f'reading rank {rank}')
     print("[main] Loading seismic data")
     features_df = seismic_data.get_all_seismic_data(seismic_features_names +
                                                     other_features_names)
@@ -99,22 +120,22 @@ def main():
     # Add index of xyz and sort dataframe for better access times
     print("[main] Indexing all data by (x,y,z)")
     index = pd.MultiIndex.from_arrays(
-        [main_df['x'], main_df['y'], main_df['z']])
+        [main_df['x'], main_df['y'], main_df['z']],
+        names=common.MAIN_DF_INDEX_NAMES)
     main_df.set_index(index, inplace=True)
     main_df.sort_index(inplace=True)
 
-    index = pd.MultiIndex.from_arrays([xs_np, ys_np, zs_np])
+    index = pd.MultiIndex.from_arrays(  [xs_np, ys_np, zs_np],
+                                        names=common.MAIN_DF_INDEX_NAMES)
+                                        
     canal_df.set_index(index, inplace=True)
     canal_df.sort_index(inplace=True)
-    # print(f'hipercube gen time {t2-t1}')
 
     # Free indexes np arrays
     xs = None
     ys = None
     zs = None
     full_canal_np = None
-
-    iterations = 10
 
     # Generate seismic features names
     window = 3
@@ -131,7 +152,8 @@ def main():
     print("[main] Main DataFrame [initial]:")
     print(main_df)
 
-    for it in range(iterations):
+    maxIteration = initialIteration+numIterations
+    for it in range(initialIteration, maxIteration):
         t1 = time.time()
 
         print(f"[main][{it}] Expanding points")
@@ -140,12 +162,6 @@ def main():
         main_df.sort_index(inplace=True)
         main_df.to_csv(f'tmp_data/expanded{it}.csv', index=False)
         print(main_df)
-
-        # Info for validating points generation (All is OK!)
-        # print(f'[{it}] real: {len(main_df[main_df["real"] == 0])}')
-        # print(f'[{it}] propagated: {len(main_df[main_df["real"] == 1])}')
-        # print(f'[{it}] expanded-canal: {len(main_df[main_df["real"] == 2])}')
-        # print(f'[{it}] expanded-new: {len(main_df[main_df["real"] == 3])}')
 
         t2 = time.time()
 
@@ -161,7 +177,6 @@ def main():
         else:
             best_features_set, best_error = petro_dist.get_features_sets(
                 feature_selection_points_df, features_df, all_features, 10, 0)
-        # print(features_sets)
 
         print(f'[main][{it}] Best features set:'\
               f' {best_features_set} with {best_error} error'
@@ -174,7 +189,8 @@ def main():
                                         features_df)
         print(main_df)
         # main_df.sort_index(inplace=True)
-        main_df.to_csv(f'tmp_data/predicted{it}.csv', index=False)
+        main_df.to_csv( f'tmp_data/predicted{it}.csv', index=True,
+                        index_label=common.MAIN_DF_INDEX_NAMES)
 
         t4 = time.time()
         print(f'[main][times][{it}] total_it_time {t4-t1}')
@@ -184,4 +200,16 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    BASE_INIT_ITERATION = 0
+    BASE_NUM_ITERATIONS = 10
+    
+    initialIteration = BASE_INIT_ITERATION
+    numIterations = BASE_NUM_ITERATIONS
+
+    if len(sys.argv) >= 2:
+        initialIteration = int(sys.argv[1])
+
+        if len(sys.argv) >= 3:
+            numIterations = int(sys.argv[2])
+
+    main(initialIteration, numIterations)

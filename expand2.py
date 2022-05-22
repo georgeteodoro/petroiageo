@@ -4,6 +4,7 @@ from io import StringIO
 import time
 import pandas as pd
 import warnings
+import common
 
 from memory_profiler import profile
 
@@ -74,9 +75,11 @@ def gen_expanded_points(main_df, canal_df, real_wells, it):
         # expanded_points_df['phi'] = filt_expanded_points_phi_np
         expanded_points_df['phi'] = expanded_points_phi_np
         index = pd.MultiIndex.from_arrays([
-            expanded_points_df['x'], expanded_points_df['y'],
-            expanded_points_df['z']
-        ])
+                                            expanded_points_df['x'], expanded_points_df['y'],
+                                            expanded_points_df['z']
+                                            ],
+                                            names=common.MAIN_DF_INDEX_NAMES
+                                        )
         expanded_points_df.set_index(index, inplace=True)
         main_df = pd.concat([main_df, expanded_points_df])
 
