@@ -150,9 +150,6 @@ def computeErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName
             partialRMSESum+=(predDiff)**2
             partialMAESum+= abs(predDiff)
             valuesCount += 1
-
-            if valuesCount % 10000 == 0:
-                print(f"Values Count: {valuesCount}")
             
             line = predValuesFile.readline().rstrip('\n').strip()
 
