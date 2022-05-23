@@ -20,8 +20,7 @@ ErrorMetricName: value
 """ 
 
 import sys
-import pandas
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from timeit import default_timer as timer
 
 def printUsage():
     print("Error! Argc is not 5. Check Usage!")
@@ -106,12 +105,10 @@ def jumpToNextLineIfStartWithHeader(file, sep):
     
     if isHeader(line, sep):
         #this line was a header. The next eventual read should be a values line
-        print("Was Header")
         pass
     else:
         #this line was not a header. Should go back a line so it doesn't mess with 
         #future line reads
-        print("Was Not Header")
         file.seek(startPos)
 
 def computeErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName, predictedValuesFileSep):
@@ -153,6 +150,7 @@ def computeErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName
             
             line = predValuesFile.readline().rstrip('\n').strip()
 
+    print(f"Pontos contabilizados: {valuesCount}")
     rmse = (partialRMSESum/valuesCount)**(1/2)
     mae = partialMAESum/valuesCount
     return rmse, mae
@@ -185,4 +183,7 @@ if __name__ == "__main__":
         realValuesFileSep = treatInputSepIfSpace(realValuesFileSep)
         predictedValuesFileSep = treatInputSepIfSpace(predictedValuesFileSep)
 
+        start = timer()
         printErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName, predictedValuesFileSep)
+        end = timer()
+        print(f"Elapsed Time: {end-start}")
