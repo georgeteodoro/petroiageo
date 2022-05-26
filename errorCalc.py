@@ -57,12 +57,8 @@ def getStructuredLineFrom(myFile, fileSep):
     line = myFile.readline()
     return getStructuredLineFromLine(line, fileSep)
 
-def isTheSamePoint(point1, point2):
-    """
-    Compares the two Points and returns if they are the same.
-    point1, point2: Both are Dicts that must have X,Y and Z keys. These keys are used to compare both points
-    """
-    return (point1["X"] == point2['X'] and point1["Y"] == point2['Y'] and point1["Z"] == point2['Z'])
+    print(f"RMSE: {rmse}")
+    print(f"MAE: {mae}")
 
 def isType(type:str, value:str) -> bool:
     """
@@ -117,11 +113,16 @@ def computeErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName
     Assumes that all points in both files are ordered by X, Y and Z positions
 
     realValuesFileName, predictedValuesFileName: the input file names
+    Assumes that the predictedValuesFile has a header on it
     return: RMSE, MAE
     """
     partialRMSESum = 0
     partialMAESum = 0
     valuesCount = 0
+    predEmptyLines = 0
+
+    REALFILESEP = " "
+    PREDFILESEP = ","
 
     with open(realValuesFileName, 'r') as realValuesFile, open(predictedValuesFileName, 'r') as predValuesFile:
 
@@ -153,6 +154,7 @@ def computeErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName
     print(f"Pontos contabilizados: {valuesCount}")
     rmse = (partialRMSESum/valuesCount)**(1/2)
     mae = partialMAESum/valuesCount
+
     return rmse, mae
 
 def printErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName, predictedValuesFileSep):
@@ -161,8 +163,12 @@ def printErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName, 
     
     rmse, mae = computeErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName, predictedValuesFileSep)
     
-    print(f"RMSE: {rmse}")
-    print(f"MAE: {mae}")
+def isTheSamePoint(point1, point2):
+    """
+    Compares the two Points and returns if they are the same.
+    point1, point2: Both must have x,y and z keys. These keys are used to compare both points
+    """
+    return (point1["x"] == point2['x'] and point1["y"] == point2['y'] and point1["z"] == point2['z'])
 
 def treatInputSepIfSpace(inputSep:str) -> str:
     if inputSep == '\s':
