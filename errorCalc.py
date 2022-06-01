@@ -4,11 +4,15 @@ porosity measures resulted from each iteration of some exec file.
 The current error metrics are: MAE and RMSE
 
 The two input files lines should follow the pattern:
-X Y Z Value
+X Y Z ... Value
+
+The two input files don't need to have headers. If it does, a column name must not be a number (int or float)
 
 X, Y and Z should be integers and Value will be converted to a float
 
-Both files should order its lines by the X,Y and Z values
+-----IMPORTANT:-----
+Both files should be ordered by the X,Y and Z values.
+If you want to set a file separator equals to a space when running this script, use \s as an argument
 
 At the end, the error metrics are printed with the pattern:
 
@@ -19,19 +23,95 @@ import sys
 from timeit import default_timer as timer
 
 def printUsage():
-    print("Error! Argc is not 3. Check Usage!")
-    print("Usage: python errorCalc.py realValuesFileName predictedValuesFileName")
+    print("Error! Argc is not 5. Check Usage!")
+    print("Usage: python errorCalc.py realValuesFileName realValuesFileSep predictedValuesFileName predictedValuesFileSep")
 
-def printErrors(realValuesFileName, predictedValuesFileName):
-    rmse = 0
-    mae = 0
+def getStructuredLineFromLine(line, sep=" "):
+    """
+    Returns a Dict with X,Y,Z,Value as keys based on the line read from file.
+    Also, the split assumes that the values are in order: X Y Z Value
+
+    line: A line from file that has not been split
+    sep: The line separator
+    """
+    lineSplit = line.split(sep)
+    structLine = {}
+    try:
+        structLine['X'] = int(lineSplit[0])
+        structLine['Y'] = int(lineSplit[1])
+        structLine['Z'] = int(lineSplit[2])
+        structLine['Value'] = float(lineSplit[-1])
+    except:
+        print(f"ERROR: Original Line: {line}, sep: {sep}")
+        raise
     
-    rmse, mae = computeErrors(realValuesFileName, predictedValuesFileName)
+    return structLine
 
-    print(f"RMSE: {rmse}")
-    print(f"MAE: {mae}")
+def getStructuredLineFrom(myFile, fileSep):
+    """
+    Returns a Dict with X,Y,Z,Value as keys based on the line read from file.
+    See getStructuredLineFromLine(line)
+    myFile: The file that will read a line
+    fileSep: The file line separator
+    """
+    line = myFile.readline()
+    return getStructuredLineFromLine(line, fileSep)
 
-def computeErrors(realValuesFileName, predictedValuesFileName):
+def isTheSamePoint(point1, point2):
+    """
+    Compares the two Points and returns if they are the same.
+    point1, point2: Both are Dicts that must have X,Y and Z keys. These keys are used to compare both points
+    """
+    return (point1["X"] == point2['X'] and point1["Y"] == point2['Y'] and point1["Z"] == point2['Z'])
+
+def isType(type:str, value:str) -> bool:
+    """
+    Tests if a given value can be cast to a value of the type provided
+    type: A valid type to cast value. Should be 'int' or 'float'
+    value: The value to try to cast on
+    """
+    try:
+        if type == 'int':
+            valueConv = int(value)
+        elif type == 'float':
+            valueConv = float(value)
+    except:
+        return False
+    else:
+        return True
+
+def isHeader(line:str, sep:str) -> bool:
+    """
+    Tests if a line is considered a header. A line is considered to be a header if it does
+    not have a column with a value that can be cast to int or float
+    Example: a,b,c is a header but 1,b,c and 'a 5.67 c' are not headers
+    line: A line
+    sep: The line separator 
+    """
+    for value in line.split(sep):
+        if isType('int', value) or isType('float', value):
+            return False
+        
+    return True
+
+def jumpToNextLineIfStartWithHeader(file, sep):
+    """
+    Jump the header line of file if it is identified as having one
+    file: An opened file
+    sep: The file line separator
+    """
+    startPos = file.tell()
+    line = file.readline()
+    
+    if isHeader(line, sep):
+        #this line was a header. The next eventual read should be a values line
+        pass
+    else:
+        #this line was not a header. Should go back a line so it doesn't mess with 
+        #future line reads
+        file.seek(startPos)
+
+def computeErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName, predictedValuesFileSep):
     """
     Compute the RMSE and MAE.
     Assumes that all points in both files are ordered by X, Y and Z positions
@@ -50,66 +130,42 @@ def computeErrors(realValuesFileName, predictedValuesFileName):
 
     with open(realValuesFileName, 'r') as realValuesFile, open(predictedValuesFileName, 'r') as predValuesFile:
 
-        #First read to pass header
-        predValuesFile.readline()
-        currRealValueDict = getStructuredLineFrom(realValuesFile, REALFILESEP)
+        jumpToNextLineIfStartWithHeader(realValuesFile, realValuesFileSep)
+        jumpToNextLineIfStartWithHeader(predValuesFile, predictedValuesFileSep)
+
+        #Reads a line from realValuesFile
+        currRealValueDict = getStructuredLineFrom(realValuesFile, realValuesFileSep)
 
         #predValuesFile probably has much less lines than realValuesFile
-        for line in predValuesFile:
+        line = predValuesFile.readline().rstrip('\n').strip()
 
-            if line.strip() != "":
+        while line != '':
+
+            currPredValueDict = getStructuredLineFromLine(line, predictedValuesFileSep)
+
+            while not isTheSamePoint(currPredValueDict, currRealValueDict):
+                #Reads other line from realValuesFile
+                currRealValueDict = getStructuredLineFrom(realValuesFile, realValuesFileSep)
             
-                currPredValueDict = getStructuredLineFromLine(line, PREDFILESEP)
-
-                while not isTheSamePoint(currPredValueDict, currRealValueDict):
-                    
-                    currRealValueDict = getStructuredLineFrom(realValuesFile, REALFILESEP)
-                
-                #Found a matching point on realValuesFile
-                predDiff = currRealValueDict['phi']-currPredValueDict['phi']
-                partialRMSESum+=(predDiff)**2
-                partialMAESum+= abs(predDiff)
-                valuesCount += 1
-            else:
-                predEmptyLines +=1
+            #Found a matching point on realValuesFile
+            predDiff = currRealValueDict['Value']-currPredValueDict['Value']
+            partialRMSESum+=(predDiff)**2
+            partialMAESum+= abs(predDiff)
+            valuesCount += 1
+            
+            line = predValuesFile.readline().rstrip('\n').strip()
 
     print(f"Pontos contabilizados: {valuesCount}")
-    print(f"Linhas Vazias Pred: {predEmptyLines}")
-
     rmse = (partialRMSESum/valuesCount)**(1/2)
     mae = partialMAESum/valuesCount
 
     return rmse, mae
 
-def getStructuredLineFrom(myFile, sep=" "):
-    """
-    Returns a Dict with x,y,z,phi as keys based on the line read from file.
-    See getStructuredLineFromLine(line)
-    myFile: The file that will read a line
-    """
-    line = myFile.readline()
-    return getStructuredLineFromLine(line, sep)
-
-def getStructuredLineFromLine(line, sep):
-    """
-    Returns a Dict with x,y,z,phi as keys based on the line read from file.
+def printErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName, predictedValuesFileSep):
+    rmse = 0
+    mae = 0
     
-    The split assumes that the values are in order: x y z ... phi
-
-    line: A line from file that has not been split
-    sep: The file separator.
-    """
-    lineSplit = line.split(sep)
-    structLine = {}
-    try:
-        structLine['x'] = int(lineSplit[0])
-        structLine['y'] = int(lineSplit[1])
-        structLine['z'] = int(lineSplit[2])
-        structLine['phi'] = float(lineSplit[-1])
-    except:
-        print(f"linha que fugiu do padrão: {line}")
-
-    return structLine
+    rmse, mae = computeErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName, predictedValuesFileSep)
     
 def isTheSamePoint(point1, point2):
     """
@@ -118,15 +174,26 @@ def isTheSamePoint(point1, point2):
     """
     return (point1["x"] == point2['x'] and point1["y"] == point2['y'] and point1["z"] == point2['z'])
 
+def treatInputSepIfSpace(inputSep:str) -> str:
+    if inputSep == '\s':
+        inputSep = " "
+    
+    return inputSep
+
 if __name__ == "__main__":
-    if (len(sys.argv) != 3):
+    if (len(sys.argv) != 5):
         printUsage()
     else:
-    
+        
         realValuesFileName = sys.argv[1]
-        predictedValuesFileName = sys.argv[2]
+        realValuesFileSep = sys.argv[2]
+        predictedValuesFileName = sys.argv[3]
+        predictedValuesFileSep = sys.argv[4]
+
+        realValuesFileSep = treatInputSepIfSpace(realValuesFileSep)
+        predictedValuesFileSep = treatInputSepIfSpace(predictedValuesFileSep)
 
         start = timer()
-        printErrors(realValuesFileName, predictedValuesFileName)
+        printErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName, predictedValuesFileSep)
         end = timer()
         print(f"Elapsed Time: {end-start}")
