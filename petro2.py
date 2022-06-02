@@ -54,6 +54,7 @@ def get_best_features_set(features_sets):
 
 
 def eval_bootstrap(df, num_threads=24):
+    params['num_threads'] = num_threads
     X = df.values
     y = df[LABEL_COLUMN_NAME].values
     a = []
@@ -142,7 +143,7 @@ def get_feature_col2(indexes, feature, features_df):
         return features_df[features_df.index.isin(indexes)][feature].values
 
 
-def single_feature_run(cur_df, features_df, cur_feature):
+def single_feature_run(cur_df, features_df, cur_feature, num_threads):
 
     t1 = time.time()
     cur_feature_s = f2str(cur_feature)
@@ -160,7 +161,7 @@ def single_feature_run(cur_df, features_df, cur_feature):
     t3 = time.time()
 
     # Test current feature set
-    rmse, mae = eval_bootstrap(test_df)
+    rmse, mae = eval_bootstrap(test_df, num_threads)
     t4 = time.time()
 
     print(f'[petro2][single_feature_run] copy_time {t2-t1}')
@@ -177,6 +178,7 @@ def single_feature_run(cur_df, features_df, cur_feature):
 def get_features_sets(main_df,
                       features_df,
                       all_features,
+                      num_threads,
                       exp_n_features,
                       f_width=0):
     # Create a shallow copy of main_df for adding new columns
@@ -209,7 +211,7 @@ def get_features_sets(main_df,
                 break
             ii = ii + 1
 
-            rmse, mae = single_feature_run(cur_df, features_df, cur_feature)
+            rmse, mae = single_feature_run(cur_df, features_df, cur_feature, num_threads)
 
             results.append((cur_f_set + [cur_feature], rmse, mae))
 

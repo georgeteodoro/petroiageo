@@ -24,6 +24,7 @@ class MPI_TAGS(Enum):
 def get_features_sets(main_df,
                       features_df,
                       all_features,
+                      num_threads,
                       exp_n_features,
                       f_width=0):
     if mpi_size < 2:
@@ -33,7 +34,7 @@ def get_features_sets(main_df,
     if rank == manager_rank:
         return manager(all_features, exp_n_features, f_width)
     elif rank != manager_rank:
-        return worker(main_df, features_df)
+        return worker(main_df, features_df, num_threads)
 
 
 def manager(all_features, exp_n_features, f_width):
@@ -120,7 +121,7 @@ def manager(all_features, exp_n_features, f_width):
     return best_result
 
 
-def worker(main_df, features_df):
+def worker(main_df, features_df, num_threads):
     print(f"[petro-dist][w{rank}]")
 
     # Create a shallow copy of main_df for adding new columns
@@ -158,7 +159,7 @@ def worker(main_df, features_df):
             print(f"[petro-dist][w{rank}] testing {cur_f_set + [new_feature]}")
             t1 = time.time()
             rmse, mae = petro2.single_feature_run(cur_df, features_df,
-                                                  new_feature)
+                                                  new_feature, num_threads)
             t2 = time.time()
 
             # Return results to manager

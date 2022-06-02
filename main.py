@@ -27,7 +27,7 @@ real_wells = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
               (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
 
 
-def main(initialIteration:int, numIterations:int):
+def main(initialIteration:int, numIterations:int, num_threads:int):
 
     # Instantiate pandas dataframe for all data
     # Data structure is composed by:
@@ -147,6 +147,12 @@ def main(initialIteration:int, numIterations:int):
                     all_features.append((f, i, j, k))
     t2 = time.time()
 
+    if initialIteration > 0:
+        main_df = pd.read_csv(f'./tmp_data/predicted{initialIteration}.csv')
+        index = pd.MultiIndex.from_arrays([main_df['x'], main_df['y'], main_df['z']], names=common.MAIN_DF_INDEX_NAMES)
+        main_df.set_index(index, inplace=True)
+        main_df.sort_index(inplace=True)
+
     print(f'[main] Initial data loading time: {t2-t1}')
 
     print("[main] Main DataFrame [initial]:")
@@ -173,10 +179,10 @@ def main(initialIteration:int, numIterations:int):
         print(feature_selection_points_df)
         if mpi_size == 1:
             best_features_set, best_error = petro2.get_features_sets(
-                feature_selection_points_df, features_df, all_features, 2, 4)
+                feature_selection_points_df, features_df, all_features, num_threads, 2, 4)
         else:
             best_features_set, best_error = petro_dist.get_features_sets(
-                feature_selection_points_df, features_df, all_features, 10, 0)
+                feature_selection_points_df, features_df, all_features, num_threads, 10, 0)
 
         print(f'[main][{it}] Best features set:'\
               f' {best_features_set} with {best_error} error'
@@ -206,10 +212,12 @@ if __name__ == '__main__':
     initialIteration = BASE_INIT_ITERATION
     numIterations = BASE_NUM_ITERATIONS
 
-    if len(sys.argv) >= 2:
-        initialIteration = int(sys.argv[1])
+    num_threads = sys.argv[1]
 
-        if len(sys.argv) >= 3:
-            numIterations = int(sys.argv[2])
+    if len(sys.argv) >= 3:
+        initialIteration = int(sys.argv[2])
 
-    main(initialIteration, numIterations)
+        if len(sys.argv) >= 4:
+            numIterations = int(sys.argv[3])
+
+    main(initialIteration, numIterations, num_threads)
