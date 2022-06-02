@@ -27,7 +27,7 @@ real_wells = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
               (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
 
 
-def main(initialIteration:int, numIterations:int, num_threads:int):
+def main(initialIteration: int, numIterations: int, num_threads: int):
 
     # Instantiate pandas dataframe for all data
     # Data structure is composed by:
@@ -46,36 +46,36 @@ def main(initialIteration:int, numIterations:int, num_threads:int):
     seismic_features_names = [
         "FAR",
         "MID",
-        "NEAR_azimuth_",
-        "NEAR_contour-curvature_",
-        "NEAR_curvedness_",
-        "NEAR_dip-angle_",
-        "NEAR_dip-curvature_",
-        "NEAR_envelope_",
-        "NEAR_gaussian-curvature_",
-        "NEAR_gersztenkorn_3-3-11",
-        "NEAR_gersztenkorn_3-3-7",
-        "NEAR_gersztenkorn_3-3-9",
-        "NEAR_gersztenkorn_5-5-11",
-        "NEAR_gersztenkorn_5-5-7",
-        "NEAR_gersztenkorn_5-5-9",
-        "NEAR_gst_3-3-11",
-        "NEAR_gst_3-3-7",
-        "NEAR_gst_3-3-9",
-        "NEAR_gst_5-5-11",
-        "NEAR_gst_5-5-7",
-        "NEAR_gst_5-5-9",
-        "NEAR_instantaneous-frequency_",
-        "NEAR_max-curvature_",
-        "NEAR_mean-curvature_",
-        "NEAR_min-curvature_",
-        "NEAR_most-negative-curvature_",
-        "NEAR_most-positive-curvature_",
-        "NEAR",
-        "NEAR_rms-5_",
-        "NEAR_shape-index_",
-        "NEAR_sobel_5-5-11",
-        "UFAR",
+        # "NEAR_azimuth_",
+        # "NEAR_contour-curvature_",
+        # "NEAR_curvedness_",
+        # "NEAR_dip-angle_",
+        # "NEAR_dip-curvature_",
+        # "NEAR_envelope_",
+        # "NEAR_gaussian-curvature_",
+        # "NEAR_gersztenkorn_3-3-11",
+        # "NEAR_gersztenkorn_3-3-7",
+        # "NEAR_gersztenkorn_3-3-9",
+        # "NEAR_gersztenkorn_5-5-11",
+        # "NEAR_gersztenkorn_5-5-7",
+        # "NEAR_gersztenkorn_5-5-9",
+        # "NEAR_gst_3-3-11",
+        # "NEAR_gst_3-3-7",
+        # "NEAR_gst_3-3-9",
+        # "NEAR_gst_5-5-11",
+        # "NEAR_gst_5-5-7",
+        # "NEAR_gst_5-5-9",
+        # "NEAR_instantaneous-frequency_",
+        # "NEAR_max-curvature_",
+        # "NEAR_mean-curvature_",
+        # "NEAR_min-curvature_",
+        # "NEAR_most-negative-curvature_",
+        # "NEAR_most-positive-curvature_",
+        # "NEAR",
+        # "NEAR_rms-5_",
+        # "NEAR_shape-index_",
+        # "NEAR_sobel_5-5-11",
+        # "UFAR",
     ]
 
     # Features which do not need to be expanded on the window
@@ -125,9 +125,9 @@ def main(initialIteration:int, numIterations:int, num_threads:int):
     main_df.set_index(index, inplace=True)
     main_df.sort_index(inplace=True)
 
-    index = pd.MultiIndex.from_arrays(  [xs_np, ys_np, zs_np],
-                                        names=common.MAIN_DF_INDEX_NAMES)
-                                        
+    index = pd.MultiIndex.from_arrays([xs_np, ys_np, zs_np],
+                                      names=common.MAIN_DF_INDEX_NAMES)
+
     canal_df.set_index(index, inplace=True)
     canal_df.sort_index(inplace=True)
 
@@ -149,7 +149,9 @@ def main(initialIteration:int, numIterations:int, num_threads:int):
 
     if initialIteration > 0:
         main_df = pd.read_csv(f'./tmp_data/predicted{initialIteration}.csv')
-        index = pd.MultiIndex.from_arrays([main_df['x'], main_df['y'], main_df['z']], names=common.MAIN_DF_INDEX_NAMES)
+        index = pd.MultiIndex.from_arrays(
+            [main_df['x'], main_df['y'], main_df['z']],
+            names=common.MAIN_DF_INDEX_NAMES)
         main_df.set_index(index, inplace=True)
         main_df.sort_index(inplace=True)
 
@@ -158,7 +160,7 @@ def main(initialIteration:int, numIterations:int, num_threads:int):
     print("[main] Main DataFrame [initial]:")
     print(main_df)
 
-    maxIteration = initialIteration+numIterations
+    maxIteration = initialIteration + numIterations
     for it in range(initialIteration, maxIteration):
         t1 = time.time()
 
@@ -179,10 +181,12 @@ def main(initialIteration:int, numIterations:int, num_threads:int):
         print(feature_selection_points_df)
         if mpi_size == 1:
             best_features_set, best_error = petro2.get_features_sets(
-                feature_selection_points_df, features_df, all_features, num_threads, 2, 4)
+                feature_selection_points_df, features_df, all_features,
+                num_threads, 10, 4)
         else:
             best_features_set, best_error = petro_dist.get_features_sets(
-                feature_selection_points_df, features_df, all_features, num_threads, 10, 0)
+                feature_selection_points_df, features_df, all_features,
+                num_threads, 10, 0)
 
         print(f'[main][{it}] Best features set:'\
               f' {best_features_set} with {best_error} error'
@@ -195,8 +199,9 @@ def main(initialIteration:int, numIterations:int, num_threads:int):
                                         features_df)
         print(main_df)
         # main_df.sort_index(inplace=True)
-        main_df.to_csv( f'tmp_data/predicted{it}.csv', index=True,
-                        index_label=common.MAIN_DF_INDEX_NAMES)
+        main_df.to_csv(f'tmp_data/predicted{it}.csv',
+                       index=True,
+                       index_label=common.MAIN_DF_INDEX_NAMES)
 
         t4 = time.time()
         print(f'[main][times][{it}] total_it_time {t4-t1}')
@@ -208,7 +213,7 @@ def main(initialIteration:int, numIterations:int, num_threads:int):
 if __name__ == '__main__':
     BASE_INIT_ITERATION = 0
     BASE_NUM_ITERATIONS = 10
-    
+
     initialIteration = BASE_INIT_ITERATION
     numIterations = BASE_NUM_ITERATIONS
 

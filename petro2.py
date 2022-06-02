@@ -38,11 +38,6 @@ SEISMIC_MAX_X = 433
 SEISMIC_MAX_Y = 645
 SEISMIC_MAX_Z = 250
 
-# Profiling variables
-avg_col_time = 0
-avg_eval_time = 0
-feature_run_count = 0
-
 
 def get_best_features_set(features_sets):
     # Sort by second column (id 1)
@@ -211,7 +206,8 @@ def get_features_sets(main_df,
                 break
             ii = ii + 1
 
-            rmse, mae = single_feature_run(cur_df, features_df, cur_feature, num_threads)
+            rmse, mae = single_feature_run(cur_df, features_df, cur_feature,
+                                           num_threads)
 
             results.append((cur_f_set + [cur_feature], rmse, mae))
 
@@ -232,14 +228,6 @@ def get_features_sets(main_df,
         t5 = time.time()
 
         # Print iteration statistics
-        global avg_col_time
-        global avg_eval_time
-        global feature_run_count
         print(f'[petro2] fullIt time: {t5-t0}')
-        print(f'[petro2] avg_col_time: {avg_col_time/feature_run_count}')
-        print(f'[petro2] avg_eval_time: {avg_eval_time/feature_run_count}')
-        avg_col_time = 0
-        avg_eval_time = 0
-        feature_run_count = 0
 
     return get_best_features_set(results)
