@@ -46,36 +46,36 @@ def main(initialIteration: int, numIterations: int, num_threads: int):
     seismic_features_names = [
         "FAR",
         "MID",
-        # "NEAR_azimuth_",
-        # "NEAR_contour-curvature_",
-        # "NEAR_curvedness_",
-        # "NEAR_dip-angle_",
-        # "NEAR_dip-curvature_",
-        # "NEAR_envelope_",
-        # "NEAR_gaussian-curvature_",
-        # "NEAR_gersztenkorn_3-3-11",
-        # "NEAR_gersztenkorn_3-3-7",
-        # "NEAR_gersztenkorn_3-3-9",
-        # "NEAR_gersztenkorn_5-5-11",
-        # "NEAR_gersztenkorn_5-5-7",
-        # "NEAR_gersztenkorn_5-5-9",
-        # "NEAR_gst_3-3-11",
-        # "NEAR_gst_3-3-7",
-        # "NEAR_gst_3-3-9",
-        # "NEAR_gst_5-5-11",
-        # "NEAR_gst_5-5-7",
-        # "NEAR_gst_5-5-9",
-        # "NEAR_instantaneous-frequency_",
-        # "NEAR_max-curvature_",
-        # "NEAR_mean-curvature_",
-        # "NEAR_min-curvature_",
-        # "NEAR_most-negative-curvature_",
-        # "NEAR_most-positive-curvature_",
-        # "NEAR",
-        # "NEAR_rms-5_",
-        # "NEAR_shape-index_",
-        # "NEAR_sobel_5-5-11",
-        # "UFAR",
+        "NEAR_azimuth_",
+        "NEAR_contour-curvature_",
+        "NEAR_curvedness_",
+        "NEAR_dip-angle_",
+        "NEAR_dip-curvature_",
+        "NEAR_envelope_",
+        "NEAR_gaussian-curvature_",
+        "NEAR_gersztenkorn_3-3-11",
+        "NEAR_gersztenkorn_3-3-7",
+        "NEAR_gersztenkorn_3-3-9",
+        "NEAR_gersztenkorn_5-5-11",
+        "NEAR_gersztenkorn_5-5-7",
+        "NEAR_gersztenkorn_5-5-9",
+        "NEAR_gst_3-3-11",
+        "NEAR_gst_3-3-7",
+        "NEAR_gst_3-3-9",
+        "NEAR_gst_5-5-11",
+        "NEAR_gst_5-5-7",
+        "NEAR_gst_5-5-9",
+        "NEAR_instantaneous-frequency_",
+        "NEAR_max-curvature_",
+        "NEAR_mean-curvature_",
+        "NEAR_min-curvature_",
+        "NEAR_most-negative-curvature_",
+        "NEAR_most-positive-curvature_",
+        "NEAR",
+        "NEAR_rms-5_",
+        "NEAR_shape-index_",
+        "NEAR_sobel_5-5-11",
+        "UFAR",
     ]
 
     # Features which do not need to be expanded on the window
@@ -160,8 +160,8 @@ def main(initialIteration: int, numIterations: int, num_threads: int):
     print("[main] Main DataFrame [initial]:")
     print(main_df)
 
-    maxIteration = initialIteration + numIterations
-    for it in range(initialIteration, maxIteration):
+    maxIteration = initialIteration + numIterations + 1
+    for it in range(initialIteration + 1, maxIteration):
         t1 = time.time()
 
         print(f"[main][{it}] Expanding points")
