@@ -4,16 +4,40 @@ import scipy.signal
 from algs import *
 
 files = ["NEAR"]
-windows3D = [(5,5,11)]
-windows1D = [5]
-algs = {"rms", "envelope", "instFrequency"}
+windows3D = [
+        (5,5,11), (5,5,9), (5,5,7),
+        (3,3,11), (3,3,9), (3,3,7)
+    ]
+windows1D = [3, 5, 7, 9]
+algs = {"all"}
 
 if algs == {"all"}:
-    algs = {"dip_angle", "azimuth", "mean_curvature", "gaussian_curvature",
-            "max_curvature", "min_curvature", "most_positive_curvature",
-            "most_negative_curvature", "shape_index", "dip_curvature",
-            "contour_curvature", "curvedness", "rms", "instFrequency",
-            "envelope", "marfurt", "sobel", "gersz", "gst"}
+    algs = {
+                "dip_angle",
+                "azimuth",
+                "mean_curvature",
+                "gaussian_curvature",
+                "max_curvature",
+                "min_curvature",
+                "most_positive_curvature",
+                "most_negative_curvature",
+                "shape_index",
+                "dip_curvature",
+                "contour_curvature",
+                "curvedness",
+                "rms",
+                "instFrequency",
+                "envelope",
+                "marfurt",
+                "sobel",
+                "gersz",
+                "gst",
+                "median",
+                "mean",
+                "max",
+                "min",
+                "sum"
+        }
 
 name = lambda w: "-".join(str(x) for x in w)
 for f in files:
@@ -88,3 +112,18 @@ for f in files:
         if "sobel" in algs:
             coh = gersz_sobel(seismic, w)
             np.save("results/"+f+"_sobel_"+name(w)+".npy", coh)
+        if "median" in algs:
+            coh = moving_window(seismic, w, np.median)
+            np.save("results/"+f+"_median_"+name(w)+".npy", coh)
+        if "mean" in algs:
+            coh = moving_window(seismic, w, np.mean)
+            np.save("results/"+f+"_mean_"+name(w)+".npy", coh)
+        if "min" in algs:
+            coh = moving_window(seismic, w, np.min)
+            np.save("results/"+f+"_min_"+name(w)+".npy", coh)
+        if "max" in algs:
+            coh = moving_window(seismic, w, np.max)
+            np.save("results/"+f+"_max_"+name(w)+".npy", coh)
+        if "sum" in algs:
+            coh = moving_window(seismic, w, np.sum)
+            np.save("results/"+f+"_sum_"+name(w)+".npy", coh)
