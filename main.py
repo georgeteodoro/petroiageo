@@ -284,8 +284,8 @@ def main(initial_iteration: int, num_iterations: int, parallel_settings):
     print("[main] Main DataFrame [initial]:")
     print(main_df)
 
-    maxIteration = initialIteration + numIterations + 1
-    for it in range(initialIteration + 1, maxIteration):
+    max_iteration = initial_iteration + num_iterations + 1
+    for it in range(initial_iteration + 1, max_iteration):
         t1 = time.time()
 
         print(f"[main][{it}] Expanding points")

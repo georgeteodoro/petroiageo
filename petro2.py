@@ -7,9 +7,7 @@ import time
 from io import StringIO
 from numba import jit
 
-from pandarallel import pandarallel
-
-from memory_profiler import profile
+#from memory_profiler import profile
 
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.model_selection import LeaveOneGroupOut
@@ -40,16 +38,6 @@ params = {
 SEISMIC_MAX_X = 433
 SEISMIC_MAX_Y = 645
 SEISMIC_MAX_Z = 250
-
-def add(a):
-    time.sleep(a)
-    return a+2
-
-def addd(cur_df, features_df, cur_feature, num_threads):
-# def addd(cur_df, features_df):
-    print(f'begin to run {time.time()}')
-    time.sleep(2)
-    return 2
 
 
 def get_best_features_set(features_sets):
