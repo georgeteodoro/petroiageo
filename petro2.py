@@ -7,6 +7,8 @@ import time
 from io import StringIO
 from numba import jit
 
+from pandarallel import pandarallel
+
 from memory_profiler import profile
 
 from sklearn.metrics import mean_squared_error, mean_absolute_error
@@ -32,11 +34,22 @@ params = {
     "boost_from_average": True,
     "bagging_freq": 1,
     "random_state": RANDOM_STATE,
+    # "tree_learner": "data",
 }
 
 SEISMIC_MAX_X = 433
 SEISMIC_MAX_Y = 645
 SEISMIC_MAX_Z = 250
+
+def add(a):
+    time.sleep(a)
+    return a+2
+
+def addd(cur_df, features_df, cur_feature, num_threads):
+# def addd(cur_df, features_df):
+    print(f'begin to run {time.time()}')
+    time.sleep(2)
+    return 2
 
 
 def get_best_features_set(features_sets):
@@ -141,6 +154,7 @@ def get_feature_col2(indexes, feature, features_df):
 def single_feature_run(cur_df, features_df, cur_feature, num_threads):
 
     t1 = time.time()
+    print(f'[single_feature_run] begin {t1}')
     cur_feature_s = f2str(cur_feature)
 
     # Add feature column to current DataFrame
@@ -162,6 +176,8 @@ def single_feature_run(cur_df, features_df, cur_feature, num_threads):
     print(f'[petro2][single_feature_run] copy_time {t2-t1}')
     print(f'[petro2][single_feature_run] add_col_time {t3-t2}')
     print(f'[petro2][single_feature_run] eval_bootstrap {t4-t3}')
+
+    print(f'[single_feature_run] end {t4}')
 
     return rmse, mae
 

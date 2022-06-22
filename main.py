@@ -7,6 +7,9 @@ from os import linesep
 from mpi4py import MPI
 import sys
 import common
+import argparse
+import concurrent.futures
+from enum import Enum, auto
 
 import seismic_data
 import wells_data
@@ -27,7 +30,128 @@ real_wells = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
               (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
 
 
-def main(initialIteration: int, numIterations: int, num_threads: int):
+class MPI_TAGS(Enum):
+    WORKER_EMPTY_RESULT = auto()  # Signals first ask from worker
+    MANAGER_FEATURE_DONE = auto()  # Signals done finding new feature
+    MANAGER_FINISH = auto()  # Signals done execution of current iteration
+
+
+# exp_n_features: number of features to be selected
+# f_width: number of features to be compared
+#   default=0 means all features.
+#   Used for debugging and reducing computing cost
+def get_features_sets(main_df,
+                      features_df,
+                      all_features,
+                      parallel_settings,
+                      exp_n_features,
+                      f_width=0):
+    if mpi_size < 2:
+        print("[petro-dist] 2 minimum processes required")
+        return None
+
+    if rank == manager_rank:
+        return petro_dist.manager(all_features, exp_n_features, f_width)
+    elif rank != manager_rank:
+        return worker(main_df, features_df, parallel_settings)
+
+
+def worker(main_df, features_df, parallel_settings):
+    print(f"[petro-dist][w{rank}]")
+
+    # Create a shallow copy of main_df for adding new columns
+    # Data from is main_df is only referenced, not copied
+    cur_df = main_df.copy(deep=False)
+
+    cur_f_set = ['x', 'y', 'z']
+
+    # Run jobs until manager finishes
+    while True:
+        t0 = time.time()
+
+        # Request a job from manager
+        comm.send(parallel_settings['n_cpus'],
+                  dest=manager_rank,
+                  tag=MPI_TAGS.WORKER_EMPTY_RESULT.value)
+
+        total_feature_exec_time = 0
+        total_feature_comm_time = 0
+        feature_exec_count = 0
+
+        # Get first message from Manager
+        status = MPI.Status()
+        new_features = comm.recv(source=manager_rank, status=status)
+        manager_tag = status.Get_tag()
+
+        # Exit if there are no more tasks
+        if manager_tag == MPI_TAGS.MANAGER_FINISH.value:
+            break
+
+        # Run jobs until there are not any
+        print(f"[petro-dist][w{rank}] new iteration")
+        while (manager_tag != MPI_TAGS.MANAGER_FEATURE_DONE.value):
+
+            t1 = time.time()
+            print(f'[petro-dist][w{rank}] executing {len(new_features)} '\
+                   'features in parallel')
+            with concurrent.futures.ProcessPoolExecutor() as executor:
+                future = [
+                    executor.submit(petro2.single_feature_run, cur_df,
+                                    features_df, f,
+                                    parallel_settings['cpu_thrds'])
+                    for f in new_features
+                ]
+                print('all submitted===============')
+            t2 = time.time()
+            print(f'[petro-dist][w{rank}] ran {len(new_features)} '\
+                  f'features in parallel in {t2-t1} secs')
+
+            # # Run all features concurrently
+            # for new_feature in new_features:
+
+            #     rmse, mae = petro2.single_feature_run(
+            #         cur_df, features_df, new_feature,
+            #         parallel_settings['cpu_thrds'])
+
+            # Return results to manager
+            results = [f.result() for f in future]
+            results = [rmse for (rmse, mae) in results]
+            comm.send((list(zip(new_features,
+                                results)), parallel_settings['n_cpus']),
+                      dest=manager_rank)
+
+            # Wait for new job
+            new_feature = comm.recv(source=manager_rank, status=status)
+            manager_tag = status.Get_tag()
+
+            t3 = time.time()
+            total_feature_exec_time = total_feature_exec_time + (t2 - t1)
+            total_feature_comm_time = total_feature_comm_time + (t3 - t2)
+            feature_exec_count = feature_exec_count + 1
+
+        # Get best feature from iteration from manager
+        new_best_feature = comm.bcast(None, root=manager_rank)
+        cur_f_set.append(new_best_feature)
+        cur_df.loc[:,
+                   petro2.f2str(new_best_feature)] = petro2.get_feature_col2(
+                       cur_df.index, new_best_feature, features_df)
+
+        t4 = time.time()
+
+        print(f'[petro-dist][w{rank}][profiling] it_full_time: {t4-t0}')
+        print(f'[petro-dist][w{rank}][profiling] total_exec_time: '\
+              f'{total_feature_exec_time}')
+        print(f'[petro-dist][w{rank}][profiling] total_comm_time: '\
+              f'{total_feature_comm_time}')
+        print(f'[petro-dist][w{rank}][profiling] n_tasks: '\
+              f'{feature_exec_count}')
+
+    # Get broadcasted resulting features and errors
+    best_result = comm.bcast(None, root=manager_rank)
+    return best_result
+
+
+def main(initial_iteration: int, num_iterations: int, parallel_settings):
 
     # Instantiate pandas dataframe for all data
     # Data structure is composed by:
@@ -147,8 +271,8 @@ def main(initialIteration: int, numIterations: int, num_threads: int):
                     all_features.append((f, i, j, k))
     t2 = time.time()
 
-    if initialIteration > 0:
-        main_df = pd.read_csv(f'./tmp_data/predicted{initialIteration}.csv')
+    if initial_iteration > 0:
+        main_df = pd.read_csv(f'./tmp_data/predicted{initial_iteration}.csv')
         index = pd.MultiIndex.from_arrays(
             [main_df['x'], main_df['y'], main_df['z']],
             names=common.MAIN_DF_INDEX_NAMES)
@@ -160,8 +284,8 @@ def main(initialIteration: int, numIterations: int, num_threads: int):
     print("[main] Main DataFrame [initial]:")
     print(main_df)
 
-    maxIteration = initialIteration + numIterations
-    for it in range(initialIteration, maxIteration):
+    maxIteration = initial_iteration + num_iterations
+    for it in range(initial_iteration, maxIteration):
         t1 = time.time()
 
         print(f"[main][{it}] Expanding points")
@@ -182,11 +306,11 @@ def main(initialIteration: int, numIterations: int, num_threads: int):
         if mpi_size == 1:
             best_features_set, best_error = petro2.get_features_sets(
                 feature_selection_points_df, features_df, all_features,
-                num_threads, 10, 4)
+                parallel_settings, 10, 4)
         else:
             best_features_set, best_error = petro_dist.get_features_sets(
                 feature_selection_points_df, features_df, all_features,
-                num_threads, 10, 0)
+                parallel_settings, 10, 0)
 
         print(f'[main][{it}] Best features set:'\
               f' {best_features_set} with {best_error} error'
@@ -211,18 +335,48 @@ def main(initialIteration: int, numIterations: int, num_threads: int):
 
 
 if __name__ == '__main__':
-    BASE_INIT_ITERATION = 0
-    BASE_NUM_ITERATIONS = 10
+    parser = argparse.ArgumentParser(description='POV')
 
-    initialIteration = BASE_INIT_ITERATION
-    numIterations = BASE_NUM_ITERATIONS
+    parser.add_argument('--it',
+                        dest='initial_it',
+                        action='store',
+                        default=0,
+                        help='Initial iteration (default: 0)')
+    parser.add_argument('--nits',
+                        dest='num_its',
+                        action='store',
+                        default=10,
+                        help='Number of iterations to run (default: 10)')
+    parser.add_argument('--gpu',
+                        dest='n_gpus',
+                        action='store',
+                        default=0,
+                        help='Number of GPUs to be used (default: 0)')
+    parser.add_argument('--gput',
+                        dest='gpu_thrds',
+                        action='store',
+                        default=0,
+                        help='Number of threads to be executed '\
+                             'per GPU (default: 0)')
+    parser.add_argument('--cpu',
+                        dest='n_cpus',
+                        action='store',
+                        default=1,
+                        help='Number of LGB execution threads to be '\
+                             'executed by node. Parallel multithreading per '\
+                             'LGB thread can be enabled (default: 1)')
+    parser.add_argument('--cput',
+                        dest='cpu_thrds',
+                        action='store',
+                        default=1,
+                        help='Number of CPU threads to be used '\
+                             'per LGB execution (default: 1)')
 
-    num_threads = sys.argv[1]
-
-    if len(sys.argv) >= 3:
-        initialIteration = int(sys.argv[2])
-
-        if len(sys.argv) >= 4:
-            numIterations = int(sys.argv[3])
-
-    main(initialIteration, numIterations, num_threads)
+    args = parser.parse_args()
+    parallel_settings = {
+        'n_cpus': int(args.n_cpus),
+        'cpu_thrds': int(args.cpu_thrds),
+        'n_gpus': int(args.n_gpus),
+        'gpu_thrds': int(args.gpu_thrds),
+    }
+    main(int(args.initial_it), int(args.num_its), parallel_settings)
