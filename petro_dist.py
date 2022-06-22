@@ -1,6 +1,9 @@
 from mpi4py import MPI
 from enum import Enum, auto
 import time
+import concurrent.futures
+import ctypes
+import multiprocessing as mp
 
 import petro2
 
@@ -17,14 +20,14 @@ class MPI_TAGS(Enum):
     MANAGER_FINISH = auto()  # Signals done execution of current iteration
 
 
-# exp_n_features: number of features to be selected
+# # exp_n_features: number of features to be selected
 # f_width: number of features to be compared
 #   default=0 means all features.
 #   Used for debugging and reducing computing cost
 def get_features_sets(main_df,
                       features_df,
                       all_features,
-                      num_threads,
+                      parallel_settings,
                       exp_n_features,
                       f_width=0):
     if mpi_size < 2:
@@ -34,7 +37,7 @@ def get_features_sets(main_df,
     if rank == manager_rank:
         return manager(all_features, exp_n_features, f_width)
     elif rank != manager_rank:
-        return worker(main_df, features_df, num_threads)
+        return worker(main_df, features_df, parallel_settings)
 
 
 def manager(all_features, exp_n_features, f_width):
@@ -73,26 +76,34 @@ def manager(all_features, exp_n_features, f_width):
             data = comm.recv(status=status)
             worker_rank = status.Get_source()
 
+            # Number of features to be sent to the worker
+            n_features = -1
+
             # Read results from ran feature
             if status.Get_tag() != MPI_TAGS.WORKER_EMPTY_RESULT.value:
                 # Unpack data
-                (cur_feature, cur_error) = data
+                (data, n_features) = data
+                for (cur_feature, cur_error) in data:
+                    print(f'[petro-dist][manager]Tested feature '\
+                          f'{cur_f_set + [cur_feature]} '\
+                          f'with error {cur_error}')
 
-                print(f'Tested feature {cur_f_set + [cur_feature]} '\
-                      f'with error {cur_error}')
+                    results.append((cur_f_set + [cur_feature], cur_error))
 
-                results.append((cur_f_set + [cur_feature], cur_error))
-
-                # Update new best, if necessary
-                if best_error > cur_error:
-                    best_error = cur_error
-                    new_best_feature = cur_feature
+                    # Update new best, if necessary
+                    if best_error > cur_error:
+                        best_error = cur_error
+                        new_best_feature = cur_feature
+            else:
+                # First msg only sends the number of requested features
+                n_features = data
 
             # Check if there is work to be distributed
             if len(remaining_features) > 0:
-                # Send new task
-                new_feature = remaining_features.pop()
-                comm.send(new_feature, dest=worker_rank)
+                # Send new tasks
+                new_features = remaining_features[:n_features]
+                remaining_features = remaining_features[n_features:]
+                comm.send(new_features, dest=worker_rank)
             else:
                 # Send finish message
                 comm.send(None,
@@ -121,12 +132,26 @@ def manager(all_features, exp_n_features, f_width):
     return best_result
 
 
-def worker(main_df, features_df, num_threads):
+# Wrapper to get shared variables
+def single_feature_run_proxy(feature, n_cpu):
+    return petro2.single_feature_run(cur_df_shr.value, features_df_shr.value,
+                                     feature, n_cpu)
+
+
+def worker(main_df, features_df, parallel_settings):
     print(f"[petro-dist][w{rank}]")
 
     # Create a shallow copy of main_df for adding new columns
     # Data from is main_df is only referenced, not copied
     cur_df = main_df.copy(deep=False)
+
+    # Set shared data
+    global cur_df_shr
+    cur_df_shr = mp.Value(ctypes.py_object, lock=False)
+    cur_df_shr.value = cur_df
+    global features_df_shr
+    features_df_shr = mp.Value(ctypes.py_object, lock=False)
+    features_df_shr.value = features_df
 
     cur_f_set = ['x', 'y', 'z']
 
@@ -135,7 +160,7 @@ def worker(main_df, features_df, num_threads):
         t0 = time.time()
 
         # Request a job from manager
-        comm.send(None,
+        comm.send(parallel_settings['n_cpus'],
                   dest=manager_rank,
                   tag=MPI_TAGS.WORKER_EMPTY_RESULT.value)
 
@@ -145,7 +170,7 @@ def worker(main_df, features_df, num_threads):
 
         # Get first message from Manager
         status = MPI.Status()
-        new_feature = comm.recv(source=manager_rank, status=status)
+        new_features = comm.recv(source=manager_rank, status=status)
         manager_tag = status.Get_tag()
 
         # Exit if there are no more tasks
@@ -156,14 +181,33 @@ def worker(main_df, features_df, num_threads):
         print(f"[petro-dist][w{rank}] new iteration")
         while (manager_tag != MPI_TAGS.MANAGER_FEATURE_DONE.value):
 
-            print(f"[petro-dist][w{rank}] testing {cur_f_set + [new_feature]}")
             t1 = time.time()
-            rmse, mae = petro2.single_feature_run(cur_df, features_df,
-                                                  new_feature, num_threads)
+            print(f'[petro-dist][w{rank}] executing {len(new_features)} '\
+                   'features in parallel')
+            with concurrent.futures.ProcessPoolExecutor(
+                    parallel_settings['n_cpus']) as executor:
+                future = [
+                    executor.submit(single_feature_run_proxy, f,
+                                    parallel_settings['cpu_thrds'])
+                    for f in new_features
+                ]
             t2 = time.time()
+            print(f'[petro-dist][w{rank}] ran {len(new_features)} '\
+                  f'features in parallel in {t2-t1} secs')
+
+            # # Run all features concurrently
+            # for new_feature in new_features:
+
+            #     rmse, mae = petro2.single_feature_run(
+            #         cur_df, features_df, new_feature,
+            #         parallel_settings['cpu_thrds'])
 
             # Return results to manager
-            comm.send((new_feature, rmse), dest=manager_rank)
+            results = [f.result() for f in future]
+            results = [rmse for (rmse, mae) in results]
+            comm.send((list(zip(new_features,
+                                results)), parallel_settings['n_cpus']),
+                      dest=manager_rank)
 
             # Wait for new job
             new_feature = comm.recv(source=manager_rank, status=status)
