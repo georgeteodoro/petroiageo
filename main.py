@@ -310,7 +310,7 @@ def main(initial_iteration: int, num_iterations: int, parallel_settings):
         else:
             best_features_set, best_error = petro_dist.get_features_sets(
                 feature_selection_points_df, features_df, all_features,
-                parallel_settings, 10, 0)
+                parallel_settings, 10, 4)
 
         print(f'[main][{it}] Best features set:'\
               f' {best_features_set} with {best_error} error'
@@ -347,17 +347,17 @@ if __name__ == '__main__':
                         action='store',
                         default=10,
                         help='Number of iterations to run (default: 10)')
-    parser.add_argument('--gpu',
-                        dest='n_gpus',
-                        action='store',
-                        default=0,
-                        help='Number of GPUs to be used (default: 0)')
-    parser.add_argument('--gput',
-                        dest='gpu_thrds',
-                        action='store',
-                        default=0,
-                        help='Number of threads to be executed '\
-                             'per GPU (default: 0)')
+    # parser.add_argument('--gpu',
+    #                     dest='n_gpus',
+    #                     action='store',
+    #                     default=0,
+    #                     help='Number of GPUs to be used (default: 0)')
+    # parser.add_argument('--gput',
+    #                     dest='gpu_thrds',
+    #                     action='store',
+    #                     default=0,
+    #                     help='Number of threads to be executed '\
+    #                          'per GPU (default: 0)')
     parser.add_argument('--cpu',
                         dest='n_cpus',
                         action='store',
@@ -376,7 +376,7 @@ if __name__ == '__main__':
     parallel_settings = {
         'n_cpus': int(args.n_cpus),
         'cpu_thrds': int(args.cpu_thrds),
-        'n_gpus': int(args.n_gpus),
-        'gpu_thrds': int(args.gpu_thrds),
+        # 'n_gpus': int(args.n_gpus),
+        # 'gpu_thrds': int(args.gpu_thrds),
     }
     main(int(args.initial_it), int(args.num_its), parallel_settings)

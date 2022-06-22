@@ -2,6 +2,8 @@ from mpi4py import MPI
 from enum import Enum, auto
 import time
 import concurrent.futures
+import ctypes
+import multiprocessing as mp
 
 import petro2
 
@@ -82,7 +84,8 @@ def manager(all_features, exp_n_features, f_width):
                 # Unpack data
                 (data, n_features) = data
                 for (cur_feature, cur_error) in data:
-                    print(f'Tested feature {cur_f_set + [cur_feature]} '\
+                    print(f'[petro-dist][manager]Tested feature '\
+                          f'{cur_f_set + [cur_feature]} '\
                           f'with error {cur_error}')
 
                     results.append((cur_f_set + [cur_feature], cur_error))
@@ -129,12 +132,26 @@ def manager(all_features, exp_n_features, f_width):
     return best_result
 
 
+# Wrapper to get shared variables
+def single_feature_run_proxy(feature, n_cpu):
+    return petro2.single_feature_run(cur_df_shr.value, features_df_shr.value,
+                                     feature, n_cpu)
+
+
 def worker(main_df, features_df, parallel_settings):
     print(f"[petro-dist][w{rank}]")
 
     # Create a shallow copy of main_df for adding new columns
     # Data from is main_df is only referenced, not copied
     cur_df = main_df.copy(deep=False)
+
+    # Set shared data
+    global cur_df_shr
+    cur_df_shr = mp.Value(ctypes.py_object, lock=False)
+    cur_df_shr.value = cur_df
+    global features_df_shr
+    features_df_shr = mp.Value(ctypes.py_object, lock=False)
+    features_df_shr.value = features_df
 
     cur_f_set = ['x', 'y', 'z']
 
@@ -169,14 +186,11 @@ def worker(main_df, features_df, parallel_settings):
                    'features in parallel')
             with concurrent.futures.ProcessPoolExecutor(
                     parallel_settings['n_cpus']) as executor:
-                print(f'initial submit {time.time()}')
                 future = [
-                    executor.submit(petro2.single_feature_run, cur_df,
-                                    features_df, f,
+                    executor.submit(single_feature_run_proxy, f,
                                     parallel_settings['cpu_thrds'])
                     for f in new_features
                 ]
-                print('all submitted===============')
             t2 = time.time()
             print(f'[petro-dist][w{rank}] ran {len(new_features)} '\
                   f'features in parallel in {t2-t1} secs')
