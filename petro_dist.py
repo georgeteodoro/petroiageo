@@ -184,7 +184,7 @@ def worker(main_df, features_df, parallel_settings):
             t1 = time.time()
             print(f'[petro-dist][w{rank}] executing {len(new_features)} '\
                    'features in parallel')
-            with concurrent.futures.ProcessPoolExecutor(
+            with concurrent.futures.ThreadPoolExecutor(
                     parallel_settings['n_cpus']) as executor:
                 future = [
                     executor.submit(single_feature_run_proxy, f,
