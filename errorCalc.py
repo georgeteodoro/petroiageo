@@ -21,10 +21,8 @@ ErrorMetricName: value
 
 import sys
 from timeit import default_timer as timer
-
-def printUsage():
-    print("Error! Argc is not 5. Check Usage!")
-    print("Usage: python errorCalc.py realValuesFileName realValuesFileSep predictedValuesFileName predictedValuesFileSep")
+import argparse
+import pathlib
 
 def getStructuredLineFromLine(line, sep=" "):
     """
@@ -94,7 +92,7 @@ def isHeader(line:str, sep:str) -> bool:
         
     return True
 
-def jumpToNextLineIfStartWithHeader(file, sep):
+def jumpToNextLineIfStartWithHeader(file, sep:str):
     """
     Jump the header line of file if it is identified as having one
     file: An opened file
@@ -103,13 +101,10 @@ def jumpToNextLineIfStartWithHeader(file, sep):
     startPos = file.tell()
     line = file.readline()
     
-    if isHeader(line, sep):
-        #this line was a header. The next eventual read should be a values line
-        pass
-    else:
+    if not isHeader(line, sep):
         #this line was not a header. Should go back a line so it doesn't mess with 
         #future line reads
-        file.seek(startPos)
+        file.seek(startPos)        
 
 def computeErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName, predictedValuesFileSep):
     """
@@ -123,10 +118,6 @@ def computeErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName
     partialRMSESum = 0
     partialMAESum = 0
     valuesCount = 0
-    predEmptyLines = 0
-
-    REALFILESEP = " "
-    PREDFILESEP = ","
 
     with open(realValuesFileName, 'r') as realValuesFile, open(predictedValuesFileName, 'r') as predValuesFile:
 
@@ -137,42 +128,33 @@ def computeErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName
         currRealValueDict = getStructuredLineFrom(realValuesFile, realValuesFileSep)
 
         #predValuesFile probably has much less lines than realValuesFile
-        line = predValuesFile.readline().rstrip('\n').strip()
+        line = predValuesFile.readline()
 
-        while line != '':
+        while line not in [None, '']:
 
+            line = line.rstrip('\n').strip()
             currPredValueDict = getStructuredLineFromLine(line, predictedValuesFileSep)
-
             while not isTheSamePoint(currPredValueDict, currRealValueDict):
                 #Reads other line from realValuesFile
-                currRealValueDict = getStructuredLineFrom(realValuesFile, realValuesFileSep)
-            
+                try:
+                    currRealValueDict = getStructuredLineFrom(realValuesFile, realValuesFileSep)
+                except Exception:
+                    print("Got to the end of the real values file!")
+                    raise
+
             #Found a matching point on realValuesFile
             predDiff = currRealValueDict['Value']-currPredValueDict['Value']
             partialRMSESum+=(predDiff)**2
             partialMAESum+= abs(predDiff)
             valuesCount += 1
             
-            line = predValuesFile.readline().rstrip('\n').strip()
+            line = predValuesFile.readline()
 
     print(f"Pontos contabilizados: {valuesCount}")
     rmse = (partialRMSESum/valuesCount)**(1/2)
     mae = partialMAESum/valuesCount
 
-    return rmse, mae
-
-def printErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName, predictedValuesFileSep):
-    rmse = 0
-    mae = 0
-    
-    rmse, mae = computeErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName, predictedValuesFileSep)
-    
-def isTheSamePoint(point1, point2):
-    """
-    Compares the two Points and returns if they are the same.
-    point1, point2: Both must have x,y and z keys. These keys are used to compare both points
-    """
-    return (point1["x"] == point2['x'] and point1["y"] == point2['y'] and point1["z"] == point2['z'])
+    return rmse, mae    
 
 def treatInputSepIfSpace(inputSep:str) -> str:
     if inputSep == '\s':
@@ -180,20 +162,52 @@ def treatInputSepIfSpace(inputSep:str) -> str:
     
     return inputSep
 
+def file_exists(file_path:str) -> bool:
+    file = pathlib.Path(file_path)
+    return file.exists()
+
+def config_arg_parser():
+    arg_parser = argparse.ArgumentParser()
+
+    arg_parser.add_argument('--real-file', type=str, help="The real values file path", required=True)
+    arg_parser.add_argument("--pred-file", type=str, help="The predicted values file path", required=True)
+
+    DEFAULT_PRED_SEP = ","
+    DEFAULT_REAL_SEP = " "
+    real_file_sep_help = f"The file separator for the real values file. Default: '{DEFAULT_REAL_SEP}'"
+    arg_parser.add_argument("--real-file-sep", type=str, default=DEFAULT_REAL_SEP,
+                            help=real_file_sep_help)
+    pred_file_sep_help = f"The file separator for the predicted values file. Default: '{DEFAULT_PRED_SEP}'"
+    arg_parser.add_argument("--pred-file-sep", type=str, default=DEFAULT_PRED_SEP,
+                            help=pred_file_sep_help)
+    
+    return arg_parser
+
 if __name__ == "__main__":
-    if (len(sys.argv) != 5):
-        printUsage()
-    else:
+
+    my_arg_parser = config_arg_parser()
+    
+    user_args = my_arg_parser.parse_args()
+    
+    if not file_exists(user_args.real_file):
+        print(f"{user_args.real_file} não existe!")
+        sys.exit(-1)
+    
+    if not file_exists(user_args.pred_file):
+        print(f"{user_args.pred_file} não existe!")
+        sys.exit(-1)
         
-        realValuesFileName = sys.argv[1]
-        realValuesFileSep = sys.argv[2]
-        predictedValuesFileName = sys.argv[3]
-        predictedValuesFileSep = sys.argv[4]
+    realValuesFileName = user_args.real_file
+    realValuesFileSep = user_args.real_file_sep
+    predictedValuesFileName = user_args.pred_file
+    predictedValuesFileSep = user_args.pred_file_sep
 
-        realValuesFileSep = treatInputSepIfSpace(realValuesFileSep)
-        predictedValuesFileSep = treatInputSepIfSpace(predictedValuesFileSep)
+    realValuesFileSep = treatInputSepIfSpace(realValuesFileSep)
+    predictedValuesFileSep = treatInputSepIfSpace(predictedValuesFileSep)
 
-        start = timer()
-        printErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName, predictedValuesFileSep)
-        end = timer()
-        print(f"Elapsed Time: {end-start}")
+    start = timer()
+    rmse, mae = computeErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName, predictedValuesFileSep)
+    end = timer()
+    print(f"RMSE: {rmse}")
+    print(f"MAE: {mae}")
+    print(f"Elapsed Time: {end-start}")
