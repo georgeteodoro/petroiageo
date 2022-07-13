@@ -2,14 +2,13 @@
 import pandas as pd
 import numpy as np
 import time
-from collections import defaultdict
-from os import linesep
+# from collections import defaultdict
+# from os import linesep
 from mpi4py import MPI
 import sys
 import common
 import argparse
-#import concurrent.futures
-#from enum import Enum, auto
+import math
 
 import seismic_data
 import wells_data
@@ -25,12 +24,12 @@ mpi_size = comm.Get_size()
 manager_rank = mpi_size - 1
 
 # Constants
-
+hypercube_shape = (434, 646, 251)
 real_wells = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
               (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
 
 
-def main(initial_iteration: int, num_iterations: int, parallel_settings):
+def main(load_iteration: int, num_iterations: int, parallel_settings):
 
     # Instantiate pandas dataframe for all data
     # Data structure is composed by:
@@ -80,14 +79,14 @@ def main(initial_iteration: int, num_iterations: int, parallel_settings):
         "NEAR_sobel_5-5-11",
         "UFAR",
     ]
-    #seismic_features_names = seismic_features_names[:2]
+    seismic_features_names = seismic_features_names[:1]
 
     # Features which do not need to be expanded on the window
     other_features_names = []
 
     print("[main] Loading seismic data")
     features_df = seismic_data.get_all_seismic_data(seismic_features_names +
-                                                    other_features_names)
+                                                     other_features_names)
 
     print("[main] Features DataFrame:")
     print(features_df)
@@ -105,20 +104,21 @@ def main(initial_iteration: int, num_iterations: int, parallel_settings):
     # instead of using DataFrame.isin() to check whether a canal point
     # is there.
     t1 = time.time()
-    full_canal_np = np.zeros(434 * 646 * 251)
-    xs_np = np.zeros(434 * 646 * 251, dtype=int)
-    ys_np = np.zeros(434 * 646 * 251, dtype=int)
-    zs_np = np.zeros(434 * 646 * 251, dtype=int)
+    full_canal_np = np.zeros(math.prod(hypercube_shape))
+    xs_np = np.zeros(math.prod(hypercube_shape), dtype=int)
+    ys_np = np.zeros(math.prod(hypercube_shape), dtype=int)
+    zs_np = np.zeros(math.prod(hypercube_shape), dtype=int)
     ii = 0
-    for i in range(434):
-        for j in range(646):
-            for k in range(251):
+    for i in range(hypercube_shape[0]):
+        for j in range(hypercube_shape[1]):
+            for k in range(hypercube_shape[2]):
                 xs_np[ii] = i
                 ys_np[ii] = j
                 zs_np[ii] = k
                 ii = ii + 1
     for [x, y, z, phi] in canal_df[['x', 'y', 'z', 'phi']].values:
-        full_canal_np[int(x) * 646 * 251 + int(y) * 251 + int(z)] = phi
+        full_canal_np[int(x) * hypercube_shape[1] * hypercube_shape[2] +
+                      int(y) * hypercube_shape[2] + int(z)] = phi
     canal_df = pd.DataFrame(full_canal_np, columns=['phi'])
 
     # Add index of xyz and sort dataframe for better access times
@@ -151,8 +151,8 @@ def main(initial_iteration: int, num_iterations: int, parallel_settings):
                     all_features.append((f, i, j, k))
     t2 = time.time()
 
-    if initial_iteration > 0:
-        main_df = pd.read_csv(f'./tmp_data/predicted{initial_iteration}.csv')
+    if load_iteration > 0:
+        main_df = pd.read_csv(f'./tmp_data/predicted{load_iteration}.csv')
         index = pd.MultiIndex.from_arrays(
             [main_df['x'], main_df['y'], main_df['z']],
             names=common.MAIN_DF_INDEX_NAMES)
@@ -164,8 +164,8 @@ def main(initial_iteration: int, num_iterations: int, parallel_settings):
     print("[main] Main DataFrame [initial]:")
     print(main_df)
 
-    max_iteration = initial_iteration + num_iterations + 1
-    for it in range(initial_iteration + 1, max_iteration):
+    max_iteration = load_iteration + num_iterations + 1
+    for it in range(load_iteration + 1, max_iteration):
         t1 = time.time()
 
         print(f"[main][{it}] Expanding points")
@@ -186,7 +186,7 @@ def main(initial_iteration: int, num_iterations: int, parallel_settings):
         if mpi_size == 1:
             best_features_set, best_error = petro2.get_features_sets(
                 feature_selection_points_df, features_df, all_features,
-                parallel_settings, 10, 4)
+                parallel_settings, 4, 4)
         else:
             best_features_set, best_error = petro_dist.get_features_sets(
                 feature_selection_points_df, features_df, all_features,
@@ -218,10 +218,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='POV')
 
     parser.add_argument('--it',
-                        dest='initial_it',
+                        dest='load_it',
                         action='store',
                         default=0,
-                        help='Initial iteration (default: 0)')
+                        help='Iteration to load (default: 0=none)')
     parser.add_argument('--nits',
                         dest='num_its',
                         action='store',
@@ -259,4 +259,4 @@ if __name__ == '__main__':
         # 'n_gpus': int(args.n_gpus),
         # 'gpu_thrds': int(args.gpu_thrds),
     }
-    main(int(args.initial_it), int(args.num_its), parallel_settings)
+    main(int(args.load_it), int(args.num_its), parallel_settings)

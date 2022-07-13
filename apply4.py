@@ -11,8 +11,6 @@ import warnings
 
 import petro2
 
-from memory_profiler import profile
-
 # Parameters
 LABEL_COLUMN_NAME = 'phi'
 RANDOM_STATE = 1

@@ -6,8 +6,6 @@ import pandas as pd
 import warnings
 import common
 
-from memory_profiler import profile
-
 MAX_DEPTH = 251  # Starts from 1
 
 def gen_expanded_points(main_df, canal_df, real_wells, it):
