@@ -60,7 +60,9 @@ def isTheSamePoint(point1, point2):
     Compares the two Points and returns if they are the same.
     point1, point2: Both are Dicts that must have X,Y and Z keys. These keys are used to compare both points
     """
-    return (point1["X"] == point2['X'] and point1["Y"] == point2['Y'] and point1["Z"] == point2['Z'])
+    interest_columns = ['X', 'Y', 'Z']
+    comparing_values = [point1[key] == point2[key] for key in interest_columns]
+    return all(comparing_values)
 
 def isType(type:str, value:str) -> bool:
     """
@@ -133,11 +135,14 @@ def computeErrors(realValuesFileName, realValuesFileSep, predictedValuesFileName
         while line not in [None, '']:
 
             line = line.rstrip('\n').strip()
+
             currPredValueDict = getStructuredLineFromLine(line, predictedValuesFileSep)
+            # print(currPredValueDict)
             while not isTheSamePoint(currPredValueDict, currRealValueDict):
                 #Reads other line from realValuesFile
                 try:
                     currRealValueDict = getStructuredLineFrom(realValuesFile, realValuesFileSep)
+                    # print(currRealValueDict)
                 except Exception:
                     print("Got to the end of the real values file!")
                     raise
