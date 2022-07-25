@@ -1,5 +1,5 @@
 from unittest import TestCase, main
-from explorationUtils import ExplorationCube, NonNegativeIntegerPoint, Well
+from explorationUtils import ExplorationCube, NonNegativeInteger2DPoint, Well
     
 class TestWell(TestCase):
 
@@ -22,7 +22,7 @@ class TestWell(TestCase):
     def test_can_init_with_valid_coords(self):
         valid_x = 1
         valid_y = 2
-        point = NonNegativeIntegerPoint(valid_x, valid_y)
+        point = NonNegativeInteger2DPoint(valid_x, valid_y)
         self.assertEqual(point.x, valid_x)
         self.assertEqual(point.y, valid_y)
     
@@ -63,7 +63,7 @@ class TestExplorationCube(TestCase):
         self.assertTupleEqual(cube.top_left, top_left)
         self.assertTupleEqual(cube.bottom_right, bottom_right)
     
-    def test_cant_init_with_wrong_type_points(self):
+    def test_raise_when_init_with_wrong_type_points(self):
         wrong_top_left = (0, True)
         bottom_right = (1, 1)
 
@@ -73,7 +73,7 @@ class TestExplorationCube(TestCase):
         top_left = (0, 0)
         self.assertRaises(TypeError, ExplorationCube, top_left, wrong_bottom_right)
     
-    def test_cant_init_with_negative_points(self):
+    def test_raise_when_init_with_negative_points(self):
         wrong_top_left = (0, -1)
         bottom_right = (1, 1)
 
@@ -83,31 +83,31 @@ class TestExplorationCube(TestCase):
         top_left = (0, 0)
         self.assertRaises(ValueError, ExplorationCube, top_left, wrong_bottom_right)
     
-    def test_cant_init_with_top_left_after_bottom_right(self):
+    def test_raise_when_init_with_top_left_after_bottom_right(self):
         top_left = (0, 1)
         bottom_right = (1, 0)
 
         self.assertRaises(ValueError, ExplorationCube, top_left, bottom_right)
     
-    def test_cant_init_top_left_same_x_bottom_right(self):
+    def test_raise_when_init_top_left_same_x_bottom_right(self):
         top_left = (1, 1)
         bottom_right = (1, 2)
 
         self.assertRaises(ValueError, ExplorationCube, top_left, bottom_right)
     
-    def test_cant_init_top_left_same_y_bottom_right(self):
+    def test_raise_when_init_top_left_same_y_bottom_right(self):
         top_left = (0, 1)
         bottom_right = (1, 1)
 
         self.assertRaises(ValueError, ExplorationCube, top_left, bottom_right)
     
-    def test_cant_init_top_left_same_as_bottom_right(self):
+    def test_raise_when_init_top_left_same_as_bottom_right(self):
         top_left = (1, 1)
         bottom_right = (1, 1)
 
         self.assertRaises(ValueError, ExplorationCube, top_left, bottom_right)
     
-    def test_cant_set_top_left_same_x_bottom_right(self):
+    def test_raise_when_set_top_left_same_x_bottom_right(self):
         valid_top_left = (0, 0)
         valid_bot_right = (1, 1)
 
@@ -119,7 +119,7 @@ class TestExplorationCube(TestCase):
     
         self.assertEqual(cube.top_left, valid_top_left)
     
-    def test_cant_set_top_left_same_y_bottom_right(self):
+    def test_raise_when_set_top_left_same_y_bottom_right(self):
         valid_top_left = (0, 0)
         valid_bot_right = (1, 1)
 
