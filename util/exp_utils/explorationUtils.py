@@ -118,85 +118,6 @@ class NonNegativeInteger2DPoint():
     def __str__(self):
         return f"(x={self._x.value}, y={self._y.value})"
 
-class NonNegativeInteger3DPoint():
-    """
-    This is a 3D point that can't have negative coordinates
-    """
-    def __init__(self, x:int, y:int, z:int):
-        self.x = x
-        self.y = y
-        self.z = z
-    
-    def __eq__(self, other):
-        if isinstance(other, NonNegativeInteger3DPoint):
-            my_values = [self.x, self.y, self.z]
-            other_values = [other.x, other.y, other.z]
-            return my_values == other_values
-        
-        return False
-    
-    def __hash__(self):
-        my_values = [self.x, self.y, self.z]
-        return sum(hash(value) for value in my_values)
-
-    @property
-    def x(self):
-        """
-        The x value of this point
-        """
-        return self._x.value
-    
-    @x.setter
-    def x(self, new_x:int):
-        self._x = NonNegativeIntegerSingleCoordinate(new_x)
-    
-    @property
-    def y(self):
-        """
-        The y value of this point
-        """
-        return self._y.value
-    
-    @y.setter
-    def y(self, new_y:int):
-        self._y = NonNegativeIntegerSingleCoordinate(new_y)
-    
-    @property
-    def z(self):
-        """
-        The z value of this point
-        """
-        return self._z.value
-    
-    @z.setter
-    def z(self, new_z:int):
-        self._z = NonNegativeIntegerSingleCoordinate(new_z)
-    
-    def as_tuple(self):
-        return (self._x.value, self._y.value, self._z.value)
-    
-    def __getitem__(self, key:int) -> int:
-        if key == 0:
-            return self._x.value
-        elif key == 1:
-            return self._y.value
-        elif key == 2:
-            return self._z.value
-        else:
-            raise IndexError("key should be 0, 1 or 2")
-    
-    def __str__(self):
-        my_values = (('x', self._x.value), ('y', self._y.value), ('z', self._z.value))
-        my_str = "("
-
-        for values_pair in my_values[:-1]:
-            my_str += values_pair[0] +"="+ values_pair[1]+", "
-        else:
-            my_str += my_values[-1][0] +"="+ my_values[-1][1]
-        
-        my_str += ")"
-        return my_str
-
 class Well():
     def __init__(self, x:int, y:int):
         self.coords = (x, y)
@@ -230,9 +151,12 @@ class Well():
 
 
 class ExplorationCube():
+    """
+    This represents a Exploration Cube.
+    """
     def __init__(self, top_left_point:tuple, bottom_right_point:tuple, depth:int):
-        self._set_extremity_points(top_left_point, bottom_right_point)
         self.depth = depth
+        self._set_extremity_points(top_left_point, bottom_right_point)
     
     @property
     def top_left(self) -> tuple:
@@ -254,7 +178,7 @@ class ExplorationCube():
     
     @bottom_right.setter
     def bottom_right(self, new_bottom_right: tuple):
-       self._set_extremity_points(self.top_left, NonNegativeInteger2DPoint(new_bottom_right[0], new_bottom_right[1]))
+        self._set_extremity_points(self.top_left, new_bottom_right)
     
     @property
     def depth(self):
@@ -273,15 +197,19 @@ class ExplorationCube():
         
         self._depth = new_depth
     
-    def _set_extremity_points(self, new_top_left: NonNegativeInteger2DPoint, new_bottom_right:NonNegativeInteger2DPoint):
+    def _set_extremity_points(self, new_top_left:tuple, new_bottom_right:tuple):
         if not any([new_top_left, new_bottom_right]):
             raise TypeError("A point should not be NoneType")
         
         if isinstance(new_top_left, tuple):
             new_top_left = NonNegativeInteger2DPoint(new_top_left[0], new_top_left[1])
+        else:
+            raise TypeError("new_top_left should be a tuple!")
         
         if isinstance(new_bottom_right, tuple):
             new_bottom_right = NonNegativeInteger2DPoint(new_bottom_right[0], new_bottom_right[1])
+        else:
+            raise TypeError("new_bottom_right should be a tuple!")
         
         if self._is_top_left_before_bottom_right(new_top_left, new_bottom_right):
             self._top_left_point = new_top_left

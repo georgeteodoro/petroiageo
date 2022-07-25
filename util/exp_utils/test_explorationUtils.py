@@ -63,6 +63,7 @@ class TestExplorationCube(TestCase):
 
         self.assertTupleEqual(cube.top_left, top_left)
         self.assertTupleEqual(cube.bottom_right, bottom_right)
+        self.assertEqual(cube.depth, depth)
     
     def test_raise_when_init_with_wrong_type_points(self):
         wrong_top_left = (0, True)
@@ -162,6 +163,18 @@ class TestExplorationCube(TestCase):
     
         self.assertEqual(cube.top_left, valid_top_left)
 
+    def test_raise_when_set_non_positive_depth(self):
+        top_left = (0, 0)
+        bottom_right = (1, 1)
+        valid_depth = 1
+
+        cube = ExplorationCube(top_left, bottom_right, valid_depth)
+
+        invalid_depth = -1
+        with self.assertRaises(ValueError):
+            cube.depth = invalid_depth
+
+        self.assertEqual(cube.depth, valid_depth)
 
 if __name__ == '__main__':
     main()
