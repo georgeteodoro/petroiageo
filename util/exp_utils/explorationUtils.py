@@ -148,7 +148,15 @@ class Well():
             self._coords.y = value
         else:
             raise IndexError("Key must be 0 or 1")
-
+    
+    def __eq__(self, other):
+        if isinstance(other, Well):
+            return self.coords == other.coords
+        
+        return False
+    
+    def __hash__(self):
+        return hash(self.coords)
 
 class ExplorationCube():
     """
@@ -229,3 +237,14 @@ class ExplorationCube():
             return False
         
         return True
+    
+    def __eq__(self, other):
+        if isinstance(other, ExplorationCube):
+            my_values = [self.top_left, self.bottom_right, self.depth]
+            other_values = [other.top_left, other.bottom_right, other.depth]
+            return my_values == other_values
+        
+        return False
+    
+    def __hash__(self):
+        return sum(hash(value) for value in [self.top_left, self.bottom_right, self.depth])

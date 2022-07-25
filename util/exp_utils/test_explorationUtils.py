@@ -51,6 +51,23 @@ class TestWell(TestCase):
         valid_y = 1
         point = Well(valid_x, valid_y)
         self.assertTupleEqual(point.coords, (valid_x, valid_y))
+    
+    def test_well_equality(self):
+        x = 0
+        y = 1
+
+        well_1 = Well(x, y)
+        well_2 = Well(x, y)
+        self.assertEqual(well_1, well_2)
+    
+    def test_well_inequality(self):
+        x = 0
+        y_1 = 1
+        y_2 = 2
+
+        well_1 = Well(x, y_1)
+        well_2 = Well(x, y_2)
+        self.assertNotEqual(well_1, well_2)
 
 class TestExplorationCube(TestCase):
 
@@ -175,6 +192,27 @@ class TestExplorationCube(TestCase):
             cube.depth = invalid_depth
 
         self.assertEqual(cube.depth, valid_depth)
+    
+    def test_exp_cube_equality(self):
+        top_left = (0, 0)
+        bottom_right = (1, 1)
+        depth = (1)
+
+        cube1 = ExplorationCube(top_left, bottom_right, depth)
+        cube2 = ExplorationCube(top_left, bottom_right, depth)
+
+        self.assertEqual(cube1, cube2)
+    
+    def test_exp_cube_inequality(self):
+        top_left = (0, 0)
+        bottom_right_1 = (1, 1)
+        bottom_right_2 = (2, 2)
+        depth = (1)
+
+        cube1 = ExplorationCube(top_left, bottom_right_1, depth)
+        cube2 = ExplorationCube(top_left, bottom_right_2, depth)
+
+        self.assertNotEqual(cube1, cube2)
 
 if __name__ == '__main__':
     main()
