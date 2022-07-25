@@ -57,8 +57,9 @@ class TestExplorationCube(TestCase):
     def test_can_init_with_valid_points(self):
         top_left = (0, 0)
         bottom_right = (1, 1)
+        depth = 1
 
-        cube = ExplorationCube(top_left, bottom_right)
+        cube = ExplorationCube(top_left, bottom_right, depth)
 
         self.assertTupleEqual(cube.top_left, top_left)
         self.assertTupleEqual(cube.bottom_right, bottom_right)
@@ -66,8 +67,9 @@ class TestExplorationCube(TestCase):
     def test_raise_when_init_with_wrong_type_points(self):
         wrong_top_left = (0, True)
         bottom_right = (1, 1)
+        depth = 1
 
-        self.assertRaises(TypeError, ExplorationCube, wrong_top_left, bottom_right)
+        self.assertRaises(TypeError, ExplorationCube, wrong_top_left, bottom_right, depth)
 
         wrong_bottom_right = (1, ['a','b'])
         top_left = (0, 0)
@@ -76,42 +78,70 @@ class TestExplorationCube(TestCase):
     def test_raise_when_init_with_negative_points(self):
         wrong_top_left = (0, -1)
         bottom_right = (1, 1)
+        depth = 1
 
-        self.assertRaises(ValueError, ExplorationCube, wrong_top_left, bottom_right)
+        self.assertRaises(ValueError, ExplorationCube, wrong_top_left, bottom_right, depth)
 
         wrong_bottom_right = (-3, -4)
         top_left = (0, 0)
-        self.assertRaises(ValueError, ExplorationCube, top_left, wrong_bottom_right)
+        self.assertRaises(ValueError, ExplorationCube, top_left, wrong_bottom_right, depth)
     
     def test_raise_when_init_with_top_left_after_bottom_right(self):
         top_left = (0, 1)
         bottom_right = (1, 0)
+        depth = 1
 
-        self.assertRaises(ValueError, ExplorationCube, top_left, bottom_right)
+        self.assertRaises(ValueError, ExplorationCube, top_left, bottom_right, depth)
     
     def test_raise_when_init_top_left_same_x_bottom_right(self):
         top_left = (1, 1)
         bottom_right = (1, 2)
+        depth = 1
 
-        self.assertRaises(ValueError, ExplorationCube, top_left, bottom_right)
+        self.assertRaises(ValueError, ExplorationCube, top_left, bottom_right, depth)
     
     def test_raise_when_init_top_left_same_y_bottom_right(self):
         top_left = (0, 1)
         bottom_right = (1, 1)
+        depth = 1
 
-        self.assertRaises(ValueError, ExplorationCube, top_left, bottom_right)
+        self.assertRaises(ValueError, ExplorationCube, top_left, bottom_right, depth)
     
     def test_raise_when_init_top_left_same_as_bottom_right(self):
         top_left = (1, 1)
         bottom_right = (1, 1)
+        depth = 1
 
-        self.assertRaises(ValueError, ExplorationCube, top_left, bottom_right)
+        self.assertRaises(ValueError, ExplorationCube, top_left, bottom_right, depth)
+    
+    def test_raise_when_init_non_positive_depth(self):
+        top_left = (0, 0)
+        bottom_right = (1, 1)
+        depth = -1
+
+        self.assertRaises(ValueError, ExplorationCube, top_left, bottom_right, depth)
+
+        depth = 0
+
+        self.assertRaises(ValueError, ExplorationCube, top_left, bottom_right, depth)
+    
+    def test_raise_when_init_non_int_depth(self):
+        top_left = (0, 0)
+        bottom_right = (1, 1)
+        depth = True
+
+        self.assertRaises(TypeError, ExplorationCube, top_left, bottom_right, depth)
+
+        depth = 'a'
+
+        self.assertRaises(TypeError, ExplorationCube, top_left, bottom_right, depth)
     
     def test_raise_when_set_top_left_same_x_bottom_right(self):
         valid_top_left = (0, 0)
         valid_bot_right = (1, 1)
+        depth = 1
 
-        cube = ExplorationCube(valid_top_left, valid_bot_right)
+        cube = ExplorationCube(valid_top_left, valid_bot_right, depth)
 
         invalid_top_left = (1, 0)
         with self.assertRaises(ValueError):
@@ -122,8 +152,9 @@ class TestExplorationCube(TestCase):
     def test_raise_when_set_top_left_same_y_bottom_right(self):
         valid_top_left = (0, 0)
         valid_bot_right = (1, 1)
+        depth = 1
 
-        cube = ExplorationCube(valid_top_left, valid_bot_right)
+        cube = ExplorationCube(valid_top_left, valid_bot_right, depth)
 
         invalid_top_left = (1, 1)
         with self.assertRaises(ValueError):

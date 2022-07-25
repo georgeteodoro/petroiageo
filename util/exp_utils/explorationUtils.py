@@ -230,8 +230,9 @@ class Well():
 
 
 class ExplorationCube():
-    def __init__(self, top_left_point:tuple, bottom_right_point:tuple):
+    def __init__(self, top_left_point:tuple, bottom_right_point:tuple, depth:int):
         self._set_extremity_points(top_left_point, bottom_right_point)
+        self.depth = depth
     
     @property
     def top_left(self) -> tuple:
@@ -254,6 +255,23 @@ class ExplorationCube():
     @bottom_right.setter
     def bottom_right(self, new_bottom_right: tuple):
        self._set_extremity_points(self.top_left, NonNegativeInteger2DPoint(new_bottom_right[0], new_bottom_right[1]))
+    
+    @property
+    def depth(self):
+        """
+        The depth of this cube
+        """
+        return self._depth
+    
+    @depth.setter
+    def depth(self, new_depth):
+        if not type(new_depth) == int:
+            raise TypeError("depth should be an int!")
+        
+        if new_depth < 1:
+            raise ValueError("depth should be a positive int!")
+        
+        self._depth = new_depth
     
     def _set_extremity_points(self, new_top_left: NonNegativeInteger2DPoint, new_bottom_right:NonNegativeInteger2DPoint):
         if not any([new_top_left, new_bottom_right]):
