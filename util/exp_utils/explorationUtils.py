@@ -249,6 +249,17 @@ class WellSet():
                 break
         
         return target_well
+    
+    def its_until_point(self, target_point:tuple) -> int:
+        """
+        Returns the minimun number of its until target_point is reached.
+        If there is no wells present, it returns float('inf')
+        """
+        min_its = float("inf")
+        for well in self._wells:
+            min_its = min(min_its, well.its_to_point(target_point))
+        
+        return min_its
 
 class ExplorationCube():
     """

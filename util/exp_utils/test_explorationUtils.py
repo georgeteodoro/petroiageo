@@ -239,7 +239,22 @@ class TestWellSet(TestCase):
     
     def test_dont_raise_if_remove_when_dont_have_well(self):
         self.assertIsNone(self.well_set.remove_well_at(1, 1))
-        
+    
+    def test_its_until_point(self):
+        wells = [(1, 1), (1, 2)]
+        self.well_set.add_all_wells_at(wells)
+
+        target_point = (1, 3)
+
+        self.assertEqual(self.well_set.its_until_point(target_point), 1)
+
+        target_point = (-1, 0)
+        self.assertEqual(self.well_set.its_until_point(target_point), 2)
+    
+    def test_its_until_point_with_no_wells(self):
+        target_point = (1, 3)
+
+        self.assertEqual(self.well_set.its_until_point(target_point), float('inf'))
 
 class TestExplorationCube(TestCase):
 
