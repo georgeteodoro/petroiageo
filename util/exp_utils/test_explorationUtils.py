@@ -1,5 +1,5 @@
 from unittest import TestCase, main
-from explorationUtils import ExplorationCube, NonNegativeInteger2DPoint, Well
+from explorationUtils import ExplorationCube, NonNegativeInteger2DPoint, Well, WellSet
     
 class TestWell(TestCase):
 
@@ -176,6 +176,70 @@ class TestWell(TestCase):
         target_point = (0, -3)
 
         self.assertEqual(well.its_to_point(target_point), 5)
+
+class TestWellSet(TestCase):
+
+    def setUp(self):
+        self.well_set = WellSet()
+    
+    def test_can_add_well_at(self):
+        self.well_set.add_well_at(1, 1)
+        self.assertTrue(self.well_set.has_well_at(1, 1))
+    
+    def test_cant_add_well_with_negative_coords_at(self):
+        with self.assertRaises(ValueError):
+            self.well_set.add_well_at(-1, 1)
+
+    def test_cant_add_well_with_non_int_coords_at(self):
+        with self.assertRaises(TypeError):
+            self.well_set.add_well_at(1.7, 1)
+
+        with self.assertRaises(TypeError):
+            self.well_set.add_well_at(True, 1)
+    
+    def test_can_add_well(self):
+        well = Well(1, 1)
+        self.well_set.add_well(well)
+        self.assertTrue(self.well_set.has_well_at(1, 1))
+        self.assertTrue(self.well_set.has_well(well))
+    
+    def test_can_add_all_wells(self):
+        wells = [Well(1, 1), Well(1, 2)]
+        self.well_set.add_all_wells(wells)
+        self.assertTrue(self.well_set.has_well_at(1, 1))
+        self.assertTrue(self.well_set.has_well(wells[1]))
+    
+    def test_can_add_all_wells_at(self):
+        wells = [(1, 1), (1, 2)]
+        self.well_set.add_all_wells_at(wells)
+        self.assertTrue(self.well_set.has_well_at(1, 1))
+        self.assertTrue(self.well_set.has_well_at(*wells[1]))
+    
+    def test_can_remove_well(self):
+        well = Well(1, 1)
+        self.well_set.add_well(well)
+        self.well_set.remove_well(well)
+        self.assertFalse(self.well_set.has_well(well))
+    
+    def test_can_remove_well_at(self):
+        well = Well(1, 1)
+        self.well_set.add_well(well)
+        self.well_set.remove_well_at(well.coords[0], well.coords[1])
+        self.assertFalse(self.well_set.has_well(well))
+    
+    def test_can_get_well_at(self):
+        well = Well(1, 1)
+        self.well_set.add_well(well)
+        retrieved_well = self.well_set.get_well_at(well.coords[0], well.coords[1])
+        self.assertEqual(well, retrieved_well)
+    
+    def test_dont_get_well_that_doesnt_exists(self):
+        retrieved_well = self.well_set.get_well_at(1, 1)
+        self.assertIsNone(retrieved_well)
+    
+    def test_dont_raise_if_remove_when_dont_have_well(self):
+        self.assertIsNone(self.well_set.remove_well_at(1, 1))
+        
 
 class TestExplorationCube(TestCase):
 

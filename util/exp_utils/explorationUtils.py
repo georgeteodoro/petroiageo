@@ -1,3 +1,7 @@
+from contextlib import suppress
+from typing import Iterable
+
+
 class NonNegativeIntegerSingleCoordinate():
     """
     This is a single coordinate that can't be a negative number.
@@ -170,6 +174,81 @@ class Well():
         
         return max(abs(target_point[0] - self._coords.x), abs(target_point[1] - self._coords.y))
 
+class WellSet():
+    """
+    This represents a wells set
+    """
+
+    def __init__(self):
+        self._wells = set()
+    
+    def add_well(self, well:Well):
+        """
+        Adds a Well
+        """
+        self._wells.add(well)
+    
+    def add_well_at(self, x:int, y:int):
+        """
+        Adds a Well with the specified coords
+        """
+        self.add_well(Well(x, y))
+    
+    def add_all_wells(self, wells:Iterable):
+        """
+        Adds all Well objects inside the iterable
+        """
+        for well in wells:
+            self.add_well(well)
+    
+    def add_all_wells_at(self, coords:Iterable):
+        """
+        Adds wells for each tuple inside the coords
+        """
+        for coord in coords:
+            self.add_well_at(coord[0], coord[1])
+    
+    def has_well_at(self, x:int, y:int) -> bool:
+        """
+        Checks if there is a Well with the specified coords
+        """
+        return self.has_well(Well(x, y))
+    
+    def has_well(self, well:Well) -> bool:
+        """
+        Checks if the well is in this set
+        """
+        return well in self._wells
+    
+    def remove_well_at(self, x:int, y:int):
+        """
+        Remove well with the specified coords from this set
+        """
+        self.remove_well(Well(x, y))
+    
+    def remove_well(self, well:Well):
+        """
+        Remove the well from this set
+        """
+        with suppress(KeyError):
+            self._wells.remove(well)
+    
+    def get_well_at(self, x:int, y:int) -> Well:
+        """
+        Returns the Well with the specified position if it is present. Otherwise, it returns None
+        """
+        target_well = None
+        wells_it = iter(self._wells)
+        while True:
+            well = next(wells_it, None)
+            if not well:
+                break
+            
+            if well.coords[0] == x and well.coords[1] == y:
+                target_well = well
+                break
+        
+        return target_well
 
 class ExplorationCube():
     """
