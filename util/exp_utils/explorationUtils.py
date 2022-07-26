@@ -161,6 +161,16 @@ class Well():
     def __hash__(self):
         return hash(self.coords)
 
+    def its_to_point(self, target_point:tuple) -> int:
+        if not type(target_point) == tuple:
+            raise TypeError("target_point should be a tuple!")
+        
+        if not len(target_point) >= 2:
+            raise ValueError("target_point should have lenght of at least 2")
+        
+        return max(abs(target_point[0] - self._coords.x), abs(target_point[1] - self._coords.y))
+
+
 class ExplorationCube():
     """
     This represents an Exploration Cube.

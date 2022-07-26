@@ -68,6 +68,114 @@ class TestWell(TestCase):
         well_1 = Well(x, y_1)
         well_2 = Well(x, y_2)
         self.assertNotEqual(well_1, well_2)
+    
+    def test_num_its_until_point_with_less_x_less_y_than_well(self):
+        well_x = 1
+        well_y = 2
+
+        well = Well(well_x, well_y)
+        target_point = (0, 0)
+
+        self.assertEqual(well.its_to_point(target_point), 2)
+    
+    def test_num_its_until_point_with_bigger_x_less_y_than_well(self):
+        well_x = 1
+        well_y = 2
+
+        well = Well(well_x, well_y)
+        target_point = (2, 0)
+
+        self.assertEqual(well.its_to_point(target_point), 2)
+    
+    def test_num_its_until_point_with_less_x_bigger_y_than_well(self):
+        well_x = 1
+        well_y = 2
+
+        well = Well(well_x, well_y)
+        target_point = (0, 4)
+
+        self.assertEqual(well.its_to_point(target_point), 2)
+    
+    def test_num_its_until_point_with_bigger_x_bigger_y_than_well(self):
+        well_x = 1
+        well_y = 2
+
+        well = Well(well_x, well_y)
+        target_point = (2, 3)
+
+        self.assertEqual(well.its_to_point(target_point), 1)
+    
+    def test_num_its_until_point_with_same_x_bigger_y_than_well(self):
+        well_x = 1
+        well_y = 2
+
+        well = Well(well_x, well_y)
+        target_point = (1, 4)
+
+        self.assertEqual(well.its_to_point(target_point), 2)
+    
+    def test_num_its_until_point_with_same_x_less_y_than_well(self):
+        well_x = 1
+        well_y = 2
+
+        well = Well(well_x, well_y)
+        target_point = (1, 0)
+
+        self.assertEqual(well.its_to_point(target_point), 2)
+    
+    def test_num_its_until_point_with_same_x_same_y_than_well(self):
+        well_x = 1
+        well_y = 2
+
+        well = Well(well_x, well_y)
+        target_point = (1, 2)
+
+        self.assertEqual(well.its_to_point(target_point), 0)
+    
+    def test_num_its_until_point_with_bigger_x_same_y_than_well(self):
+        well_x = 1
+        well_y = 2
+
+        well = Well(well_x, well_y)
+        target_point = (2, 2)
+
+        self.assertEqual(well.its_to_point(target_point), 1)
+    
+    def test_num_its_until_point_with_less_x_same_y_than_well(self):
+        well_x = 1
+        well_y = 2
+
+        well = Well(well_x, well_y)
+        target_point = (0, 2)
+
+        self.assertEqual(well.its_to_point(target_point), 1)
+    
+    def test_num_its_until_point_with_both_coords_negative(self):
+        well_x = 1
+        well_y = 2
+
+        well = Well(well_x, well_y)
+        target_point = (-1, -1)
+
+        self.assertEqual(well.its_to_point(target_point), 3)
+    
+    def test_num_its_until_point_with_x_coord_negative(self):
+        well_x = 1
+        well_y = 2
+
+        well = Well(well_x, well_y)
+        target_point = (-1, 2)
+
+        self.assertEqual(well.its_to_point(target_point), 2)
+    
+    def test_num_its_until_point_with_y_coord_negative(self):
+        well_x = 1
+        well_y = 2
+
+        well = Well(well_x, well_y)
+        target_point = (0, -3)
+
+        self.assertEqual(well.its_to_point(target_point), 5)
 
 class TestExplorationCube(TestCase):
 
