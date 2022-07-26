@@ -119,6 +119,9 @@ class NonNegativeInteger2DPoint():
         return f"(x={self._x.value}, y={self._y.value})"
 
 class Well():
+    """
+    This represents a Well
+    """
     def __init__(self, x:int, y:int):
         self.coords = (x, y)
     
@@ -160,7 +163,7 @@ class Well():
 
 class ExplorationCube():
     """
-    This represents a Exploration Cube.
+    This represents an Exploration Cube.
     """
     def __init__(self, top_left_point:tuple, bottom_right_point:tuple, depth:int):
         self.depth = depth
@@ -209,21 +212,25 @@ class ExplorationCube():
         if not any([new_top_left, new_bottom_right]):
             raise TypeError("A point should not be NoneType")
         
-        if isinstance(new_top_left, tuple):
-            new_top_left = NonNegativeInteger2DPoint(new_top_left[0], new_top_left[1])
-        else:
-            raise TypeError("new_top_left should be a tuple!")
-        
-        if isinstance(new_bottom_right, tuple):
-            new_bottom_right = NonNegativeInteger2DPoint(new_bottom_right[0], new_bottom_right[1])
-        else:
-            raise TypeError("new_bottom_right should be a tuple!")
+        new_top_left = self._return_point_or_raise(new_top_left, "new_top_left")
+        new_bottom_right = self._return_point_or_raise(new_bottom_right, "new_bottom_right")
         
         if self._is_top_left_before_bottom_right(new_top_left, new_bottom_right):
             self._top_left_point = new_top_left
             self._bottom_right_point = new_bottom_right
         else:
             raise ValueError("This configuration of points is invalid!")
+    
+    def _return_point_or_raise(self, my_tuple:tuple, name:str) -> NonNegativeInteger2DPoint:
+        self._raise_if_invalid_tuple(my_tuple, name)
+        return NonNegativeInteger2DPoint(my_tuple[0], my_tuple[1])
+    
+    def _raise_if_invalid_tuple(self, my_tuple:tuple, name:str):
+        if not isinstance(my_tuple, tuple):
+            raise TypeError(f"{name} should be a tuple!")
+        
+        if len(my_tuple) < 2:
+            raise ValueError(f"{name} should have size equals 2 at least!")
 
     def _is_top_left_before_bottom_right(self, top_left: NonNegativeInteger2DPoint, bottom_right: NonNegativeInteger2DPoint) -> bool:
         
