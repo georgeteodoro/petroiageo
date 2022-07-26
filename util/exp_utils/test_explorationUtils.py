@@ -227,6 +227,13 @@ class TestWellSet(TestCase):
         self.well_set.remove_well_at(well.coords[0], well.coords[1])
         self.assertFalse(self.well_set.has_well(well))
     
+    def test_can_remove_all_wells(self):
+        wells = [Well(1, 1), Well(0, 0)]
+        self.well_set.add_all_wells(wells)
+        self.well_set.remove_all()
+        self.assertFalse(self.well_set.has_well(wells[0]))
+        self.assertFalse(self.well_set.has_well(wells[1]))
+    
     def test_can_get_well_at(self):
         well = Well(1, 1)
         self.well_set.add_well(well)
@@ -255,6 +262,22 @@ class TestWellSet(TestCase):
         target_point = (1, 3)
 
         self.assertEqual(self.well_set.its_until_point(target_point), float('inf'))
+    
+    def test_first_well_to_point(self):
+        wells = [Well(1, 1), Well(1, 2)]
+        self.well_set.add_all_wells(wells)
+
+        target_point = (1, 3)
+        self.assertEqual(self.well_set.first_to_point(target_point), wells[1])
+
+        target_point = (0, -1)
+        self.assertEqual(self.well_set.first_to_point(target_point), wells[0])
+
+        target_point = (0, 1)
+        self.assertEqual(self.well_set.first_to_point(target_point), wells[0])
+
+        target_point = (1, 2)
+        self.assertEqual(self.well_set.first_to_point(target_point), wells[1])
 
 class TestExplorationCube(TestCase):
 

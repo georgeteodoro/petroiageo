@@ -164,6 +164,12 @@ class Well():
     
     def __hash__(self):
         return hash(self.coords)
+    
+    def __str__(self):
+        return f"Well(x={self._coords.x}, y={self._coords.y})"
+    
+    def __repr__(self):
+        return f"Well(x={self._coords.x}, y={self._coords.y})"
 
     def its_to_point(self, target_point:tuple) -> int:
         if not type(target_point) == tuple:
@@ -233,6 +239,12 @@ class WellSet():
         with suppress(KeyError):
             self._wells.remove(well)
     
+    def remove_all(self):
+        """
+        Removes all wells from this set
+        """
+        self._wells.clear()
+    
     def get_well_at(self, x:int, y:int) -> Well:
         """
         Returns the Well with the specified position if it is present. Otherwise, it returns None
@@ -260,6 +272,20 @@ class WellSet():
             min_its = min(min_its, well.its_to_point(target_point))
         
         return min_its
+    
+    def first_to_point(self, target_point:tuple) -> Well:
+        """
+        Returns the first well to get to the target_point
+        """
+        min_its = float("inf")
+        first_well = None
+        for well in self._wells:
+            its_to_point = well.its_to_point(target_point)
+            if its_to_point < min_its:
+                first_well = well
+                min_its = its_to_point
+        
+        return first_well
 
 class ExplorationCube():
     """
