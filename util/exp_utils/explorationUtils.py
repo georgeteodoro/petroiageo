@@ -179,6 +179,56 @@ class Well():
             raise ValueError("target_point should have lenght of at least 2")
         
         return max(abs(target_point[0] - self._coords.x), abs(target_point[1] - self._coords.y))
+    
+    def overlap_with_well_at_it(self, other:'Well', it:int) -> bool:
+        """
+        Returns if at iteration 'it' this well overlaps with 'other' well
+        """
+        if not isinstance(other, Well):
+            raise TypeError("other_well should be a Well!")
+        
+        other_well_top_left, other_well_bot_right = other.extremity_points_at_it(it)
+        my_well_top_left, my_well_bot_right = self.extremity_points_at_it(it)
+
+        if (self._has_area_zero(my_well_top_left, my_well_bot_right) or 
+                self._has_area_zero(other_well_top_left, other_well_bot_right)):
+            return False
+     
+        if(self._some_is_on_left_side_of_other(my_well_top_left, my_well_bot_right, other_well_top_left, other_well_bot_right)):
+            return False
+
+
+        if(self._some_is_above_other(my_well_top_left, my_well_bot_right, other_well_top_left, other_well_bot_right)):
+            return False
+    
+        return True
+    
+    def _has_area_zero(self, top_left:tuple, bottom_right:tuple) -> bool:
+        return top_left[0] == bottom_right[0] or top_left[1] == bottom_right[1]
+    
+    def _some_is_on_left_side_of_other(self, first_top_left, first_bot_right, second_top_left, second_bot_right) -> bool:
+        return first_top_left[0] > second_bot_right[0] or second_top_left[0] > first_bot_right[0]
+    
+    def _some_is_above_other(self, first_top_left, first_bot_right, second_top_left, second_bot_right) -> bool:
+        
+        #As the y axis begins at the top with 0 and increases the y downwards, we should use the '<' sign
+        return first_bot_right[1] < second_top_left[1] or second_bot_right[1] < first_top_left[1]
+    
+    def extremity_points_at_it(self, it:int) -> tuple:
+        """
+        Returns the top_left and bottom_right x, y coordinates of the predicted layer at iteration it
+        for this well   
+        """
+        if not type(it) == int:
+            raise TypeError("it should be an int!")
+        
+        if it < 0:
+            raise ValueError("it should be a non negative integer!")
+
+        top_left = (self._coords.x - it, self._coords.y - it)
+        bottom_right = (self._coords.x + it, self._coords.y + it)
+
+        return (top_left, bottom_right) 
 
 class WellSet():
     """

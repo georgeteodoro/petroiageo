@@ -176,6 +176,36 @@ class TestWell(TestCase):
         target_point = (0, -3)
 
         self.assertEqual(well.its_to_point(target_point), 5)
+    
+    def test_get_extremity_points_at_some_it(self):
+        well = Well(1, 1)
+
+        it = 1
+        expected_extremity_points = ((0, 0), (2, 2))
+        self.assertTupleEqual(well.extremity_points_at_it(it), expected_extremity_points)
+
+        well = Well(4, 6)
+        it = 3
+        expected_extremity_points = ((1, 3), (7, 9))
+        self.assertTupleEqual(well.extremity_points_at_it(it), expected_extremity_points)
+    
+    def test_has_overlap_at_some_it(self):
+        well1 = Well(1, 1)
+        well2 = Well(4, 4)
+
+        it = 1
+        self.assertFalse(well1.overlap_with_well_at_it(well2, it))
+
+        it = 2
+        self.assertTrue(well1.overlap_with_well_at_it(well2, it))
+
+        well1 = Well(1, 1)
+        well2 = Well(1, 2)
+        it = 1
+        self.assertTrue(well1.overlap_with_well_at_it(well2, it))
+
+        it = 0
+        self.assertFalse(well1.overlap_with_well_at_it(well2, it))
 
 class TestWellSet(TestCase):
 
