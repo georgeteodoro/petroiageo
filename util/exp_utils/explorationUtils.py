@@ -228,7 +228,41 @@ class Well():
         top_left = (self._coords.x - it, self._coords.y - it)
         bottom_right = (self._coords.x + it, self._coords.y + it)
 
-        return (top_left, bottom_right) 
+        return (top_left, bottom_right)
+    
+    def num_predicted(self, max_x:int, max_y:int, depth:int, it:int) -> int:
+        if not type(max_x) == int or max_x < 1:
+            raise TypeError("'max_x' should be a positive int!")
+        
+        if not type(max_y) == int or max_y < 1:
+            raise TypeError("'max_y' should be a positive int!")
+        
+        if not type(it) == int or it < 1:
+            raise TypeError("'it' should be a positive int!")
+        
+        if not type(depth) == int or depth < 1:
+            raise TypeError("'depth' should be a positive int!")
+        
+        top_left, bottom_right = self.extremity_points_at_it(it)
+        top_left = list(top_left)
+        bottom_right = list(bottom_right)
+
+        if top_left[0] < 0:
+            top_left[0] = 0
+        
+        if top_left[1] < 0:
+            top_left[1] = 0
+        
+        if bottom_right[0] > max_x:
+            bottom_right[0] = max_x
+
+        if bottom_right[1] > max_y:
+            bottom_right[1] = max_y
+        
+        x_range = bottom_right[0] - top_left[0] + 1
+        y_range = bottom_right[1] - top_left[1] + 1
+        
+        return (x_range * y_range) * depth
 
 class WellSet():
     """

@@ -206,6 +206,29 @@ class TestWell(TestCase):
 
         it = 0
         self.assertFalse(well1.overlap_with_well_at_it(well2, it))
+    
+    def test_num_predicted_points(self):
+        plane_max_x = 3
+        plane_max_y = 3
+
+        depth = 30
+
+        well = Well(1, 1)
+
+        it = 1
+        expected_num_predicted_points = plane_max_x*plane_max_y * depth
+        self.assertEqual(well.num_predicted(plane_max_x, plane_max_y, depth, it), expected_num_predicted_points)
+    
+    def test_num_predicted_points_passing_plane_size(self):
+        plane_max_x = 9
+        plane_max_y = 9
+        depth = 10
+
+        well = Well(2, 2)
+
+        it = 10
+        expected_num_predicted_points = (plane_max_x+1)*(plane_max_y+1) * depth
+        self.assertEqual(well.num_predicted(plane_max_x, plane_max_y, depth, it), expected_num_predicted_points)
 
 class TestWellSet(TestCase):
 
