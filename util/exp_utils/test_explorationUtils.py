@@ -229,6 +229,66 @@ class TestWell(TestCase):
         it = 10
         expected_num_predicted_points = (plane_max_x+1)*(plane_max_y+1) * depth
         self.assertEqual(well.num_predicted(plane_max_x, plane_max_y, depth, it), expected_num_predicted_points)
+    
+    def test_no_volume_overlap_between_wells(self):
+        well1 = Well(0, 0)
+        well2 = Well(2, 2)
+
+        plane_max_x = 9
+        plane_max_y = 9
+        depth = 10
+
+        it = 0
+        expected_result = 0
+        self.assertEqual(well1.overlap_volume_at_it(well2, it, plane_max_x, plane_max_y, depth), expected_result)
+    
+    def test_has_one_volume_overlap_between_wells(self):
+        well1 = Well(0, 0)
+        well2 = Well(2, 2)
+
+        plane_max_x = 9
+        plane_max_y = 9
+        depth = 10
+
+        it = 1
+        expected_result = depth * 1
+        self.assertEqual(well1.overlap_volume_at_it(well2, it, plane_max_x, plane_max_y, depth), expected_result)
+    
+    def test_has_x_range_volume_overlap_between_wells(self):
+        well1 = Well(1, 1)
+        well2 = Well(3, 1)
+
+        plane_max_x = 9
+        plane_max_y = 9
+        depth = 10
+
+        it = 1
+        expected_result = depth * 3
+        self.assertEqual(well1.overlap_volume_at_it(well2, it, plane_max_x, plane_max_y, depth), expected_result)
+    
+    def test_has_y_range_volume_overlap_between_wells(self):
+        well1 = Well(1, 1)
+        well2 = Well(1, 3)
+
+        plane_max_x = 9
+        plane_max_y = 9
+        depth = 10
+
+        it = 1
+        expected_result = depth * 3
+        self.assertEqual(well1.overlap_volume_at_it(well2, it, plane_max_x, plane_max_y, depth), expected_result)
+    
+    def test_has_volume_overlap_between_wells(self):
+        well1 = Well(1, 1)
+        well2 = Well(4, 4)
+
+        plane_max_x = 9
+        plane_max_y = 9
+        depth = 10
+
+        it = 2
+        expected_result = depth * 4
+        self.assertEqual(well1.overlap_volume_at_it(well2, it, plane_max_x, plane_max_y, depth), expected_result)
 
 class TestWellSet(TestCase):
 

@@ -214,6 +214,31 @@ class Well():
         #As the y axis begins at the top with 0 and increases the y downwards, we should use the '<' sign
         return first_bot_right[1] < second_top_left[1] or second_bot_right[1] < first_top_left[1]
     
+    def overlap_volume_at_it(self, other:'Well', it:int, max_x:int, max_y:int, depth:int) -> int:
+        """
+        Returns the num of points overlapping for this well with other well at iteration it.
+        Based on: https://www.geeksforgeeks.org/total-area-two-overlapping-rectangles/
+        """
+        area_well1 = self.num_predicted(max_x, max_y, depth, it)
+        area_well2 = other.num_predicted(max_x, max_y, depth, it)
+        
+        my_top_left, my_bot_right = self.extremity_points_at_it(it)
+        other_top_left, other_bot_right = other.extremity_points_at_it(it)
+
+        x_dist = (min(my_bot_right[0], other_bot_right[0]) -
+              max(my_top_left[0], other_top_left[0]) + 1)
+ 
+        y_dist = (min(my_bot_right[1], other_bot_right[1]) -
+                max(my_top_left[1], other_top_left[1]) + 1)
+
+        intersection_volume = 0
+        if x_dist > 0 and y_dist > 0:
+            intersection_area = x_dist * y_dist
+            
+            intersection_volume = intersection_area * depth
+    
+        return intersection_volume
+    
     def extremity_points_at_it(self, it:int) -> tuple:
         """
         Returns the top_left and bottom_right x, y coordinates of the predicted layer at iteration it
@@ -237,8 +262,8 @@ class Well():
         if not type(max_y) == int or max_y < 1:
             raise TypeError("'max_y' should be a positive int!")
         
-        if not type(it) == int or it < 1:
-            raise TypeError("'it' should be a positive int!")
+        if not type(it) == int or it < 0:
+            raise TypeError("'it' should be a non negative int!")
         
         if not type(depth) == int or depth < 1:
             raise TypeError("'depth' should be a positive int!")
