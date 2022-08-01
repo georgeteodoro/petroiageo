@@ -11,6 +11,7 @@ import argparse
 import math
 
 import seismic_data
+import seismic_data2
 import wells_data
 import expand2
 import petro2
@@ -24,7 +25,7 @@ mpi_size = comm.Get_size()
 manager_rank = mpi_size - 1
 
 # Constants
-hypercube_shape = (434, 646, 251)
+# hypercube_shape = (434, 646, 251)
 real_wells = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
               (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
 
@@ -79,27 +80,32 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
         "NEAR_sobel_5-5-11",
         "UFAR",
     ]
-    seismic_features_names = seismic_features_names[:1]
+    seismic_features_names = seismic_features_names[:2]
 
     # Features which do not need to be expanded on the window
     other_features_names = []
 
     print("[main] Loading seismic data")
-    features_df = seismic_data.get_all_seismic_data(seismic_features_names +
-                                                     other_features_names)
+    features_ddf, hypercube_shape = seismic_data2.get_all_seismic_data(
+        seismic_features_names + other_features_names)
 
     print("[main] Features DataFrame:")
-    print(features_df)
+    print(features_ddf.compute())
+    print(f'[main] hypercube_shape: {hypercube_shape}')
 
     # Real wells' data into a main dataframe
     print("[main] Loading wells values")
     main_df = wells_data.get_wells_data('./dados/porosity-canal.txt')
 
+    print(main_df)
+
+    return
+
     # Separate the main DataFrame into two, one with only canal points
     canal_df = main_df[main_df['real'] == 2]
     main_df = main_df[main_df['real'] != 2]
 
-    # Expand canal_df to have values across the whole hipercube
+    # Expand canal_df to have values across the whole hypercube
     # This allows expand to access each point with DataFrame.loc[]
     # instead of using DataFrame.isin() to check whether a canal point
     # is there.
