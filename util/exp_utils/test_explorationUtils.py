@@ -221,7 +221,7 @@ class TestWell(TestCase):
         well = Well(1, 1)
 
         it = 1
-        expected_num_predicted_points = plane_max_x*plane_max_y * depth
+        expected_num_predicted_points = (plane_max_x*plane_max_y - 1) * depth
         self.assertEqual(well.num_predicted(plane_max_x, plane_max_y, depth, it), expected_num_predicted_points)
     
     def test_num_predicted_points_passing_plane_size(self):
@@ -232,7 +232,7 @@ class TestWell(TestCase):
         well = Well(2, 2)
 
         it = 10
-        expected_num_predicted_points = (plane_max_x+1)*(plane_max_y+1) * depth
+        expected_num_predicted_points = ((plane_max_x+1)*(plane_max_y+1) -1) * depth
         self.assertEqual(well.num_predicted(plane_max_x, plane_max_y, depth, it), expected_num_predicted_points)
     
     def test_no_volume_overlap_between_wells(self):
@@ -426,16 +426,83 @@ class TestWellSet(TestCase):
         expected_overlap = 4 * depth
         it = 2
         self.assertEqual(self.well_set.num_overlap_points_at_it(it, 10, 10, depth), expected_overlap)
-        
-        self.well_set.remove_all()
 
+    def test_num_overlap_points_considering_wells_coords(self):
         wells = [Well(1, 1), Well(3, 3)]
         self.well_set.add_all_wells(wells)
         
         depth = 10
-        expected_overlap = 9 * depth
+        expected_overlap = 7 * depth
         it = 2
         self.assertEqual(self.well_set.num_overlap_points_at_it(it, 10, 10, depth), expected_overlap)
+    
+    def test_num_predicted_points_one_well(self):
+        self.well_set.add_well_at(1, 1)
+
+        depth = 10
+        expected_predicted = depth * 8
+        it = 1
+        max_x = 2
+        max_y = 2
+        self.assertEqual(self.well_set.num_predicted_points_at_it(it, max_x, max_y, depth), expected_predicted)
+    
+    def test_num_predicted_points_two_non_overlapping_wells(self):
+        self.well_set.add_well_at(1, 1)
+        self.well_set.add_well_at(4, 4)
+
+        depth = 10
+        expected_predicted = depth * 8*2
+        it = 1
+        max_x = 5
+        max_y = 5
+        self.assertEqual(self.well_set.num_predicted_points_at_it(it, max_x, max_y, depth), expected_predicted)
+    
+    def test_num_predicted_points_two_overlapping_wells(self):
+        self.well_set.add_well_at(1, 1)
+        self.well_set.add_well_at(3, 3)
+
+        depth = 10
+        expected_predicted = depth * ((8 * 2) - 1)
+        it = 1
+        max_x = 4
+        max_y = 4
+        self.assertEqual(self.well_set.num_predicted_points_at_it(it, max_x, max_y, depth), expected_predicted)
+    
+    def test_num_predicted_points_three_non_overlapping_wells(self):
+        self.well_set.add_well_at(1, 1)
+        self.well_set.add_well_at(4, 4)
+        self.well_set.add_well_at(7, 7)
+
+        depth = 10
+        expected_predicted = depth * (8 * 3)
+        it = 1
+        max_x = 8
+        max_y = 8
+        self.assertEqual(self.well_set.num_predicted_points_at_it(it, max_x, max_y, depth), expected_predicted)
+    
+    def test_num_predicted_points_three_wells_with_two_overlapping(self):
+        self.well_set.add_well_at(1, 1)
+        self.well_set.add_well_at(4, 4)
+        self.well_set.add_well_at(6, 6)
+
+        depth = 10
+        expected_predicted = depth * ((8 * 3) - 1)
+        it = 1
+        max_x = 8
+        max_y = 8
+        self.assertEqual(self.well_set.num_predicted_points_at_it(it, max_x, max_y, depth), expected_predicted)
+    
+    def test_num_predicted_points_three_overlapping_wells(self):
+        self.well_set.add_well_at(1, 1)
+        self.well_set.add_well_at(1, 3)
+        self.well_set.add_well_at(3, 2)
+
+        depth = 10
+        expected_predicted = depth * 18
+        it = 1
+        max_x = 8
+        max_y = 8
+        self.assertEqual(self.well_set.num_predicted_points_at_it(it, max_x, max_y, depth), expected_predicted)
 
 class TestExplorationCube(TestCase):
 

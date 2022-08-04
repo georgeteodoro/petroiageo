@@ -293,7 +293,8 @@ class Well():
         x_range = bottom_right[0] - top_left[0] + 1
         y_range = bottom_right[1] - top_left[1] + 1
         
-        return (x_range * y_range) * depth
+        #Dont consider the x, y coords that the well already is
+        return ((x_range * y_range) - 1) * depth
 
 class WellSet():
     """
@@ -408,12 +409,19 @@ class WellSet():
     
     def num_overlap_points_at_it(self, it:int, max_x:int, max_y:int, depth:int) -> int:
         """
-        Returns the number of overlap points predicted at some iteration considering all wells
+        Returns the number of overlap points predicted at some iteration considering all wells.
         Based on: https://stackoverflow.com/a/25355331/16264901 
         it: The iteration
         max_x, max_y: The sizes of the area considered. If The area has a x range of 10, the max_x should be 9. Same for max_y
         depth: The cube depth. It assumes that every Well can predict along all this depth
         """
+        total_area = self._get_prediction_area(it, max_x, max_y)
+        
+        area_of_intersect = np.sum(total_area > 1)
+
+        return area_of_intersect * depth
+    
+    def _get_prediction_area(self, it:int, max_x:int, max_y:int) -> np.ndarray:
         wells_extremities = list()
 
         max_well_x_coord = -1
@@ -429,17 +437,33 @@ class WellSet():
 
             wells_extremities.append((top_left, bot_right))
 
-        total_area = np.zeros((max_well_x_coord, max_well_y_coord))
+        total_area = np.zeros((max_well_x_coord+1, max_well_y_coord+1))
 
         for well_extremities in wells_extremities:
             top_left, bot_right = well_extremities
             total_area[top_left[0]:bot_right[0]+1, top_left[1]:bot_right[1]+1] += 1
         
-        area_of_intersect = np.sum(total_area > 1)
-        total_area = None
+        #Zeroes the wells coordinates as one well can't predict there
+        for well in self._wells:
+            x, y = well.coords
+            total_area[x, y] = 0
+        
+        return total_area
+    
+    def num_predicted_points_at_it(self, it:int, max_x:int, max_y:int, depth:int) -> int:
+        """
+        Returns the number of overlap points predicted at some iteration considering all wells.
+        Based on: https://stackoverflow.com/a/25355331/16264901 
+        it: The iteration
+        max_x, max_y: The sizes of the area considered. If The area has a x range of 10, the max_x should be 9. Same for max_y
+        depth: The cube depth. It assumes that every Well can predict along all this depth
+        """
+        total_area = self._get_prediction_area(it, max_x, max_y)
+        
+        area_of_intersect = np.sum(total_area > 0)
 
         return area_of_intersect * depth
-
+        
 
 class ExplorationCube():
     """
