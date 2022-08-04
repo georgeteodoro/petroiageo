@@ -110,6 +110,9 @@ class NonNegativeInteger2DPoint():
         self._y = NonNegativeIntegerSingleCoordinate(new_y)
     
     def as_tuple(self):
+        """
+        Returns (x, y)
+        """
         return (self._x.value, self._y.value)
     
     def __getitem__(self, key:int) -> int:
@@ -173,6 +176,11 @@ class Well():
         return f"Well(x={self._coords.x}, y={self._coords.y})"
 
     def its_to_point(self, target_point:tuple) -> int:
+        """
+        Returns the number of iterations to reach the target_point
+
+        target_point: Tuple of (x, y)
+        """
         if not type(target_point) == tuple:
             raise TypeError("target_point should be a tuple!")
         
@@ -184,6 +192,11 @@ class Well():
     def overlap_with_well_at_it(self, other:'Well', it:int, max_x:int, max_y:int) -> bool:
         """
         Returns if at iteration 'it' this well overlaps with 'other' well
+
+        other: Another Well instance to compare
+        it: Iteration number
+        max_x: The max x value starting at 0
+        max_y: The max y value starting at 0
         """
         if not isinstance(other, Well):
             raise TypeError("other_well should be a Well!")
@@ -219,6 +232,11 @@ class Well():
         """
         Returns the num of points overlapping for this well with other well at iteration it.
         Based on: https://www.geeksforgeeks.org/total-area-two-overlapping-rectangles/
+
+        it: The iteration
+        max_x: The max x value starting at 0
+        max_y: The max y value starting at 0
+        depth: The cube depth
         """
         area_well1 = self.num_predicted(max_x, max_y, depth, it)
         area_well2 = other.num_predicted(max_x, max_y, depth, it)
@@ -285,6 +303,15 @@ class Well():
         return tuple(top_left_copy), tuple(bot_right_copy)
     
     def num_predicted(self, max_x:int, max_y:int, depth:int, it:int) -> int:
+        """
+        Returns the num of points this well predicts at some it. Dont consider the points the well is already in.
+
+        max_x: The max x value starting at 0
+        max_y: The max y value starting at 0
+        depth: The cube depth
+        it: Iteration number
+
+        """
         if not type(depth) == int or depth < 1:
             raise TypeError("'depth' should be a positive int!")
         
@@ -319,6 +346,7 @@ class WellSet():
     def add_all_wells(self, wells:Iterable):
         """
         Adds all Well objects inside the iterable
+
         wells: Should be an iterable of Well instances
         """
         for well in wells:
@@ -327,6 +355,7 @@ class WellSet():
     def add_all_wells_at(self, coords:Iterable):
         """
         Adds wells for each tuple inside the coords
+
         coords: Should be an iterable of tuples. Each tuple should be of (x, y) coordinates
         """
         for coord in coords:
@@ -366,6 +395,9 @@ class WellSet():
     def get_well_at(self, x:int, y:int) -> Well:
         """
         Returns the Well with the specified position if it is present. Otherwise, it returns None
+
+        x: The x coordinate
+        y: The y coordinate
         """
         target_well = None
         wells_it = iter(self._wells)
@@ -383,7 +415,8 @@ class WellSet():
     def its_until_point(self, target_point:tuple) -> int:
         """
         Returns the minimun number of its until target_point is reached.
-        If there is no wells present, it returns float('inf')
+        If there are no wells present, it returns float('inf')
+
         target_point: Should be a (x, y) tuple
         """
         min_its = float("inf")
@@ -395,6 +428,7 @@ class WellSet():
     def first_to_point(self, target_point:tuple) -> Well:
         """
         Returns the first well to get to the target_point
+
         target_point: Should be a (x, y) tuple
         """
         min_its = float("inf")
@@ -410,7 +444,8 @@ class WellSet():
     def num_overlap_points_at_it(self, it:int, max_x:int, max_y:int, depth:int) -> int:
         """
         Returns the number of overlap points predicted at some iteration considering all wells.
-        Based on: https://stackoverflow.com/a/25355331/16264901 
+        Based on: https://stackoverflow.com/a/25355331/16264901
+
         it: The iteration
         max_x, max_y: The sizes of the area considered. If The area has a x range of 10, the max_x should be 9. Same for max_y
         depth: The cube depth. It assumes that every Well can predict along all this depth
@@ -452,8 +487,9 @@ class WellSet():
     
     def num_predicted_points_at_it(self, it:int, max_x:int, max_y:int, depth:int) -> int:
         """
-        Returns the number of overlap points predicted at some iteration considering all wells.
-        Based on: https://stackoverflow.com/a/25355331/16264901 
+        Returns the number of predicted points at some iteration considering all wells and overlaps.
+        Based on: https://stackoverflow.com/a/25355331/16264901
+
         it: The iteration
         max_x, max_y: The sizes of the area considered. If The area has a x range of 10, the max_x should be 9. Same for max_y
         depth: The cube depth. It assumes that every Well can predict along all this depth
@@ -463,7 +499,7 @@ class WellSet():
         area_of_intersect = np.sum(total_area > 0)
 
         return area_of_intersect * depth
-        
+
 
 class ExplorationCube():
     """
