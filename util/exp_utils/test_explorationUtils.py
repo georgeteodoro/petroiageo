@@ -178,34 +178,39 @@ class TestWell(TestCase):
         self.assertEqual(well.its_to_point(target_point), 5)
     
     def test_get_extremity_points_at_some_it(self):
+        max_x = 10
+        max_y = 10
+        
         well = Well(1, 1)
 
         it = 1
         expected_extremity_points = ((0, 0), (2, 2))
-        self.assertTupleEqual(well.extremity_points_at_it(it), expected_extremity_points)
+        self.assertTupleEqual(well.extremity_points_at_it(it, max_x, max_y), expected_extremity_points)
 
         well = Well(4, 6)
         it = 3
         expected_extremity_points = ((1, 3), (7, 9))
-        self.assertTupleEqual(well.extremity_points_at_it(it), expected_extremity_points)
+        self.assertTupleEqual(well.extremity_points_at_it(it, max_x, max_y), expected_extremity_points)
     
     def test_has_overlap_at_some_it(self):
         well1 = Well(1, 1)
         well2 = Well(4, 4)
+        max_x = 10
+        max_y = 10
 
         it = 1
-        self.assertFalse(well1.overlap_with_well_at_it(well2, it))
+        self.assertFalse(well1.overlap_with_well_at_it(well2, it, max_x, max_y))
 
         it = 2
-        self.assertTrue(well1.overlap_with_well_at_it(well2, it))
+        self.assertTrue(well1.overlap_with_well_at_it(well2, it, max_x, max_y))
 
         well1 = Well(1, 1)
         well2 = Well(1, 2)
         it = 1
-        self.assertTrue(well1.overlap_with_well_at_it(well2, it))
+        self.assertTrue(well1.overlap_with_well_at_it(well2, it, max_x, max_y))
 
         it = 0
-        self.assertFalse(well1.overlap_with_well_at_it(well2, it))
+        self.assertFalse(well1.overlap_with_well_at_it(well2, it, max_x, max_y))
     
     def test_num_predicted_points(self):
         plane_max_x = 3
@@ -391,6 +396,46 @@ class TestWellSet(TestCase):
 
         target_point = (1, 2)
         self.assertEqual(self.well_set.first_to_point(target_point), wells[1])
+    
+    def test_has_zero_overlap_points(self):
+        wells = [Well(1, 1), Well(2, 2), Well(3, 3), Well(4, 4)]
+        self.well_set.add_all_wells(wells)
+
+        depth = 10
+        self.assertEqual(self.well_set.num_overlap_points_at_it(0, 5, 5, depth), 0)
+
+        self.well_set.remove_all()
+        wells = [Well(1, 0), Well(4, 0)]
+        self.well_set.add_all_wells(wells)
+
+        self.assertEqual(self.well_set.num_overlap_points_at_it(0, 5, 5, depth), 0)
+    
+    def test_has_extremity_overlap_points(self):
+        wells = [Well(0, 0), Well(2, 2), Well(4, 4)]
+        self.well_set.add_all_wells(wells)
+        
+        depth = 10
+        expected_overlap = 2 * depth
+        self.assertEqual(self.well_set.num_overlap_points_at_it(1, 10, 10, depth), expected_overlap)
+    
+    def test_num_overlap_points(self):
+        wells = [Well(1, 1), Well(4, 4)]
+        self.well_set.add_all_wells(wells)
+        
+        depth = 10
+        expected_overlap = 4 * depth
+        it = 2
+        self.assertEqual(self.well_set.num_overlap_points_at_it(it, 10, 10, depth), expected_overlap)
+        
+        self.well_set.remove_all()
+
+        wells = [Well(1, 1), Well(3, 3)]
+        self.well_set.add_all_wells(wells)
+        
+        depth = 10
+        expected_overlap = 9 * depth
+        it = 2
+        self.assertEqual(self.well_set.num_overlap_points_at_it(it, 10, 10, depth), expected_overlap)
 
 class TestExplorationCube(TestCase):
 
