@@ -499,6 +499,9 @@ class WellSet():
         area_of_intersect = np.sum(total_area > 0)
 
         return area_of_intersect * depth
+    
+    def __len__(self):
+        return len(self._wells)
 
 
 class ExplorationCube():
@@ -560,6 +563,49 @@ class ExplorationCube():
         
         self._depth = new_depth
     
+    @property
+    def x_range(self):
+        """
+        The x range of this cube
+        """
+        return self.bottom_right[0] - self.top_left[0] + 1
+    
+    @property
+    def y_range(self):
+        """
+        The y range of this cube
+        """
+        return self.bottom_right[1] - self.top_left[1] + 1
+    
+    @property
+    def max_x(self):
+        """
+        The max x coordinate this cube occupies
+        """
+        return self.bottom_right[0]
+    
+    @property
+    def max_y(self):
+        """
+        The max y coordinate this cube occupies
+        """
+        return self.bottom_right[1]
+    
+    @property
+    def min_x(self):
+        """
+        The min x coordinate this cube occupies
+        """
+        return self.top_left[0]
+    
+    @property
+    def min_y(self):
+        """
+        The min y coordinate this cube occupies
+        """
+        return self.top_left[1]
+
+
     def _set_extremity_points(self, new_top_left:tuple, new_bottom_right:tuple):
         if not any([new_top_left, new_bottom_right]):
             raise TypeError("A point should not be NoneType")
@@ -664,6 +710,30 @@ class ExplorationCube():
             raise TypeError("well should be a Well!")
         
         return self._wells.has_well(well)
+    
+    def its_to_predict_n(self, n_points:int) -> int:
+        if not type(n_points) == int:
+            raise TypeError("n_points should be an int!")
+
+        if n_points < 0 or n_points > self.max_predictable_points_possible():
+            raiseMsg = "n_points should be a non negative integer and less-equal than the maximum number of "
+            raiseMsg += f"predictable points ({self.max_predictable_points_possible()})"
+            raise ValueError(raiseMsg)
+        
+        it_count = 0
+        while True:
+            if self._wells.num_predicted_points_at_it(it_count, self.max_x, self.max_y, self.depth) >= n_points:
+                return it_count
+            
+            it_count += 1
+        
+    def max_predictable_points_possible(self):
+        """
+        Returns the total number of points inside this cube minus the amount of points that wells occupy
+        """
+        all_points = self.x_range * self.y_range * self.depth
+        well_points = len(self._wells) * self.depth
+        return all_points - well_points
 
     def __eq__(self, other):
         if isinstance(other, ExplorationCube):

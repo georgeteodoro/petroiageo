@@ -734,6 +734,66 @@ class TestExplorationCube(TestCase):
             x = 1
             y = 2.5
             cube.add_well_at(x, y)
+    
+    def test_base_num_its_until_n_points_predicted(self):
+        top_left = (0, 0)
+        bottom_right = (5, 5)
+        depth = 10
+
+        cube = ExplorationCube(top_left, bottom_right, depth)
+
+        wells = [Well(1, 1), Well(3, 3)]
+
+        [cube.add_well(well) for well in wells]
+        num_points_to_predict = 0
+        expected_num_its = 0
+        self.assertEqual(expected_num_its, cube.its_to_predict_n(num_points_to_predict))
+    
+    def test_num_its_until_n_points_predicted(self):
+        top_left = (0, 0)
+        bottom_right = (5, 5)
+        depth = 10
+
+        cube = ExplorationCube(top_left, bottom_right, depth)
+
+        wells = [Well(1, 1), Well(3, 3)]
+
+        [cube.add_well(well) for well in wells]
+
+        num_points_to_predict = 8 * 15
+        expected_num_its = 1
+        self.assertEqual(expected_num_its, cube.its_to_predict_n(num_points_to_predict))
+    
+    def test_raise_if_pass_max_points_num_its_to_n_points_predicted(self):
+        top_left = (0, 0)
+        bottom_right = (5, 5)
+        depth = 10
+
+        cube = ExplorationCube(top_left, bottom_right, depth)
+
+        wells = [Well(1, 1), Well(3, 3)]
+
+        [cube.add_well(well) for well in wells]
+
+        num_points_to_predict = 1000000000
+        with self.assertRaises(ValueError):
+            self.assertEqual(0, cube.its_to_predict_n(num_points_to_predict))
+    
+    def test_raise_if_negative_num_points_num_its_to_n_points_predicted(self):
+        top_left = (0, 0)
+        bottom_right = (5, 5)
+        depth = 10
+
+        cube = ExplorationCube(top_left, bottom_right, depth)
+
+        wells = [Well(1, 1), Well(3, 3)]
+
+        [cube.add_well(well) for well in wells]
+
+        num_points_to_predict = -1
+        with self.assertRaises(ValueError):
+            self.assertEqual(0, cube.its_to_predict_n(num_points_to_predict))
+
 
 if __name__ == '__main__':
     main()
