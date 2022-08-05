@@ -507,7 +507,19 @@ class ExplorationCube():
     """
     def __init__(self, top_left_point:tuple, bottom_right_point:tuple, depth:int):
         self.depth = depth
+        self._wells = WellSet()
         self._set_extremity_points(top_left_point, bottom_right_point)
+    
+    @property
+    def wells(self) -> WellSet:
+        """
+        The wells inside this cube
+        """
+        return self._wells
+    
+    @wells.setter
+    def wells(self, new_well_set:WellSet):
+        raise AttributeError("Can't set well_set!")
     
     @property
     def top_left(self) -> tuple:
@@ -584,7 +596,75 @@ class ExplorationCube():
             return False
         
         return True
+
+    def add_well_at(self, x:int, y:int):
+        """
+        Adds a Well at the x and y positions. Raises ValueError if Well isn't inside the cube.
+        """
+        if not type(x) == int:
+            raise TypeError("x should be an int!")
+        
+        if not type(y) == int:
+            raise TypeError("y should be an int!")
+
+        self.add_well(Well(x, y))
+
+    def add_well(self, well:Well):
+        """
+        Adds a Well to this cube. Raises ValueError if Well isn't inside the cube.
+        """
+        if not isinstance(well, Well):
+            raise TypeError("well should be a Well!")
+
+        if self._well_is_inside_cube(well):
+            self._wells.add_well(well)
+        else:
+            raiseMsg = "Well is not inside ExplorationCube!"
+            raiseMsg += f"Well coords: {well}."
+            raiseMsg += f"ExplorationCube coords: {self}."
+            raise ValueError(raiseMsg)
     
+    def _well_is_inside_cube(self, well:Well) -> bool:
+        x_valid = well.coords[0] >= 0 and well.coords[0] <= self.bottom_right[0]
+        y_valid = well.coords[1] >= 0 and well.coords[1] <= self.bottom_right[1]
+        return x_valid and y_valid 
+    
+    def remove_all_wells(self):
+        """
+        Removes all wells inside this cube
+        """
+        self._wells.remove_all()
+    
+    def remove_well(self, well:Well):
+        """
+        Remove a well from this cube
+        """
+        if not isinstance(well, Well):
+            raise TypeError("well should be a Well!")
+        
+        self._wells.remove_well(well)
+    
+    def remove_well_at(self, x:int, y:int):
+        """
+        Remove a Well with x and y positions from this cube
+        """
+        if not type(x) == int:
+            raise TypeError("x should be an int!")
+        
+        if not type(y) == int:
+            raise TypeError("y should be an int!")
+        
+        self._wells.remove_well_at(x, y)
+    
+    def has_well(self, well:Well) -> bool:
+        """
+        Returns if this cube has a specific well
+        """
+        if not isinstance(well, Well):
+            raise TypeError("well should be a Well!")
+        
+        return self._wells.has_well(well)
+
     def __eq__(self, other):
         if isinstance(other, ExplorationCube):
             my_values = [self.top_left, self.bottom_right, self.depth]
@@ -595,3 +675,9 @@ class ExplorationCube():
     
     def __hash__(self):
         return sum(hash(value) for value in [self.top_left, self.bottom_right, self.depth])
+    
+    def __repr__(self):
+        return f"ExplorationCube(top_left={self.top_left}, bottom_right={self.bottom_right}, depth={self.depth})"
+    
+    def __str__(self):
+        return f"ExplorationCube(top_left={self.top_left}, bottom_right={self.bottom_right}, depth={self.depth})"

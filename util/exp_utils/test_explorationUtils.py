@@ -648,6 +648,92 @@ class TestExplorationCube(TestCase):
         cube2 = ExplorationCube(top_left, bottom_right_2, depth)
 
         self.assertNotEqual(cube1, cube2)
+    
+    def test_can_add_wells(self):
+        top_left = (0, 0)
+        bottom_right = (5, 5)
+        depth = 10
+
+        cube = ExplorationCube(top_left, bottom_right, depth)
+        wells = [Well(1, 1), Well(3, 3)]
+
+        [cube.add_well(well) for well in wells]
+        self.assertListEqual([True]*len(wells), [cube.has_well(well) for well in wells])
+    
+    def test_can_remove_all_wells(self):
+        top_left = (0, 0)
+        bottom_right = (5, 5)
+        depth = 10
+
+        cube = ExplorationCube(top_left, bottom_right, depth)
+        wells = [Well(1, 1), Well(3, 3)]
+
+        [cube.add_well(well) for well in wells]
+        cube.remove_all_wells()
+        
+        self.assertListEqual([False]*len(wells), [cube.has_well(well) for well in wells])
+    
+    def test_can_remove_well(self):
+        top_left = (0, 0)
+        bottom_right = (5, 5)
+        depth = 10
+
+        cube = ExplorationCube(top_left, bottom_right, depth)
+        wells = [Well(1, 1), Well(3, 3)]
+
+        [cube.add_well(well) for well in wells]
+        cube.remove_well(wells[0])
+        
+        self.assertListEqual([False, True], [cube.has_well(well) for well in wells])
+
+        cube.remove_well_at(wells[1].coords[0], wells[1].coords[1])
+
+        self.assertListEqual([False]*len(wells), [cube.has_well(well) for well in wells])
+    
+    def test_raise_if_well_isnt_inside_cube(self):
+        top_left = (0, 0)
+        bottom_right = (5, 5)
+        depth = 10
+
+        cube = ExplorationCube(top_left, bottom_right, depth)
+        with self.assertRaises(ValueError):
+            cube.add_well_at(6, 6)
+
+    def test_raise_cant_set_wellset(self):
+        top_left = (0, 0)
+        bottom_right = (5, 5)
+        depth = 10
+
+        cube = ExplorationCube(top_left, bottom_right, depth)
+        with self.assertRaises(AttributeError):
+            well_set = WellSet()
+            cube.wells = well_set
+    
+    def test_raise_add_non_well(self):
+        top_left = (0, 0)
+        bottom_right = (5, 5)
+        depth = 10
+
+        cube = ExplorationCube(top_left, bottom_right, depth)
+        with self.assertRaises(TypeError):
+            well = 1
+            cube.add_well(well)
+    
+    def test_raise_add_non_int_coords_well(self):
+        top_left = (0, 0)
+        bottom_right = (5, 5)
+        depth = 10
+
+        cube = ExplorationCube(top_left, bottom_right, depth)
+        with self.assertRaises(TypeError):
+            x = 1.9
+            y = 2.0
+            cube.add_well_at(x, y)
+        
+        with self.assertRaises(TypeError):
+            x = 1
+            y = 2.5
+            cube.add_well_at(x, y)
 
 if __name__ == '__main__':
     main()
