@@ -711,6 +711,12 @@ class ExplorationCube():
         
         return self._wells.has_well(well)
     
+    def has_well_at(self, x:int, y:int) -> bool:
+        """
+        Returns if this cube has a specific well at x and y coordinates
+        """
+        return self._wells.has_well_at(x, y)
+    
     def its_to_predict_n(self, n_points:int) -> int:
         if not type(n_points) == int:
             raise TypeError("n_points should be an int!")
