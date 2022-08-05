@@ -720,6 +720,9 @@ class ExplorationCube():
             raiseMsg += f"predictable points ({self.max_predictable_points_possible()})"
             raise ValueError(raiseMsg)
         
+        if len(self._wells) < 1:
+            raise ValueError(f"{self.__class__.__name__} doesnt have any wells!")
+        
         it_count = 0
         while True:
             if self._wells.num_predicted_points_at_it(it_count, self.max_x, self.max_y, self.depth) >= n_points:
@@ -727,13 +730,17 @@ class ExplorationCube():
             
             it_count += 1
         
-    def max_predictable_points_possible(self):
+    def max_predictable_points_possible(self) -> int:
         """
         Returns the total number of points inside this cube minus the amount of points that wells occupy
         """
         all_points = self.x_range * self.y_range * self.depth
         well_points = len(self._wells) * self.depth
         return all_points - well_points
+    
+    def its_to_predict_complete(self) -> int:
+        return self.its_to_predict_n(self.max_predictable_points_possible())
+
 
     def __eq__(self, other):
         if isinstance(other, ExplorationCube):
