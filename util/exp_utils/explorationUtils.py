@@ -755,6 +755,15 @@ class ExplorationCube():
             raise ValueError("it should be a positive integer!")
 
         return self._wells.num_predicted_points_at_it(it, self.max_x, self.max_y, self.depth)
+    
+    def num_overlaps_at_it(self, it:int) -> int:
+        if not type(it) == int:
+            raise TypeError("it should be an integer!")
+        
+        if it < 1:
+            raise ValueError("it should be a positive integer!")
+        
+        return self._wells.num_overlap_points_at_it(it, self.max_x, self.max_y, self.depth)
         
     def __eq__(self, other):
         if isinstance(other, ExplorationCube):

@@ -893,6 +893,58 @@ class TestExplorationCube(TestCase):
         expected_result = 0
         with self.assertRaises(ValueError):
             self.assertEqual(cube.num_predicted_at_it(it), expected_result)
+    
+    def test_raise_when_it_not_positive_num_overlap_at_it(self):
+        top_left = (0, 0)
+        bottom_right = (4, 4)
+        depth = 10
+
+        cube = ExplorationCube(top_left, bottom_right, depth)
+
+        well = Well(2, 2)
+        cube.add_well(well)
+
+        it = 0
+        expected_result = 0
+        with self.assertRaises(ValueError):
+            self.assertEqual(cube.num_overlaps_at_it(it), expected_result)
+    
+    def test_num_overlap_at_it_one_well(self):
+        top_left = (0, 0)
+        bottom_right = (4, 4)
+        depth = 10
+
+        cube = ExplorationCube(top_left, bottom_right, depth)
+
+        well = Well(2, 2)
+        cube.add_well(well)
+
+        it = 1
+        expected_result = 0
+        self.assertEqual(cube.num_overlaps_at_it(it), expected_result)
+
+        it = 2
+        expected_result = 0
+        self.assertEqual(cube.num_overlaps_at_it(it), expected_result)
+    
+    def test_num_overlap_at_it_two_well(self):
+        top_left = (0, 0)
+        bottom_right = (4, 4)
+        depth = 10
+
+        cube = ExplorationCube(top_left, bottom_right, depth)
+
+        wells = [Well(2, 2), Well(4, 4)]
+        [cube.add_well(well) for well in wells]
+
+        it = 1
+        expected_result = 1 * depth
+        self.assertEqual(cube.num_overlaps_at_it(it), expected_result)
+
+        it = 2
+        expected_result = 7 * depth
+        self.assertEqual(cube.num_overlaps_at_it(it), expected_result)
+
 
 if __name__ == '__main__':
     main()
