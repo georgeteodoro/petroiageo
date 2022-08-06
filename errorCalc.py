@@ -35,9 +35,9 @@ def getStructuredLineFromLine(line, sep=" "):
     lineSplit = line.split(sep)
     structLine = {}
     try:
-        structLine['X'] = int(lineSplit[0])
-        structLine['Y'] = int(lineSplit[1])
-        structLine['Z'] = int(lineSplit[2])
+        structLine['X'] = int(float(lineSplit[0]))
+        structLine['Y'] = int(float(lineSplit[1]))
+        structLine['Z'] = int(float(lineSplit[2]))
         structLine['Value'] = float(lineSplit[-1])
     except:
         print(f"ERROR: Original Line: {line}, sep: {sep}")
