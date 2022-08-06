@@ -746,8 +746,16 @@ class ExplorationCube():
     
     def its_to_predict_complete(self) -> int:
         return self.its_to_predict_n(self.max_predictable_points_possible())
+    
+    def num_predicted_at_it(self, it:int) -> int:
+        if not type(it) == int:
+            raise TypeError("it should be an integer!")
+        
+        if it < 1:
+            raise ValueError("it should be a positive integer!")
 
-
+        return self._wells.num_predicted_points_at_it(it, self.max_x, self.max_y, self.depth)
+        
     def __eq__(self, other):
         if isinstance(other, ExplorationCube):
             my_values = [self.top_left, self.bottom_right, self.depth]
