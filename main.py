@@ -10,9 +10,8 @@ import common
 import argparse
 import math
 
-import seismic_data
 import seismic_data2
-import wells_data
+import wells_data2
 import expand2
 import petro2
 import petro_dist
@@ -41,9 +40,6 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
     #   real => [3=expanded, to be propagated, 2=expanded canal,
     #            1=propagated, 0=real well point]
     #   phi  => Porosity value
-    #   rho  => ?
-    #   vp   => ?
-    #   vs   => ?
 
     # Read seismic data and add it to a dataframe
     seismic_features_names = [
@@ -95,9 +91,12 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
 
     # Real wells' data into a main dataframe
     print("[main] Loading wells values")
-    main_df = wells_data.get_wells_data('./dados/porosity-canal.txt')
+    main_df = wells_data2.get_canal_and_real_data('./dados/porosity-canal.npy',
+                                                  hypercube_shape, real_wells)
 
-    print(main_df)
+    print(main_df.compute())
+    print(main_df[main_df['real'] == common.RealValues.canal].compute())
+    print(main_df[main_df['real'] == common.RealValues.real].compute())
 
     return
 
