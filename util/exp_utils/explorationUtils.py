@@ -450,13 +450,13 @@ class WellSet():
         max_x, max_y: The sizes of the area considered. If The area has a x range of 10, the max_x should be 9. Same for max_y
         depth: The cube depth. It assumes that every Well can predict along all this depth
         """
-        total_area = self._get_prediction_area(it, max_x, max_y)
+        total_area = self.get_prediction_area(it, max_x, max_y)
         
         area_of_intersect = np.sum(total_area > 1)
 
         return area_of_intersect * depth
     
-    def _get_prediction_area(self, it:int, max_x:int, max_y:int) -> np.ndarray:
+    def get_prediction_area(self, it:int, max_x:int, max_y:int) -> np.ndarray:
         wells_extremities = list()
 
         max_well_x_coord = -1
@@ -494,7 +494,7 @@ class WellSet():
         max_x, max_y: The sizes of the area considered. If The area has a x range of 10, the max_x should be 9. Same for max_y
         depth: The cube depth. It assumes that every Well can predict along all this depth
         """
-        total_area = self._get_prediction_area(it, max_x, max_y)
+        total_area = self.get_prediction_area(it, max_x, max_y)
         
         area_of_intersect = np.sum(total_area > 0)
 
@@ -764,6 +764,18 @@ class ExplorationCube():
             raise ValueError("it should be a positive integer!")
         
         return self._wells.num_overlap_points_at_it(it, self.max_x, self.max_y, self.depth)
+    
+    def pred_config_at_it(self, it:int) -> np.ndarray:
+        """
+        Returns the num of wells that predicted some point at some it as a numpy.ndarray
+        """
+        if not type(it) == int:
+            raise TypeError("it should be an integer!")
+        
+        if it < 1:
+            raise ValueError("it should be a positive integer!")
+        
+        return self._wells.get_prediction_area(it, self.max_x, self.max_y)
         
     def __eq__(self, other):
         if isinstance(other, ExplorationCube):
