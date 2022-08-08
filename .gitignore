@@ -19,6 +19,8 @@ tmp_data/*
 *.dat
 *.out
 
+.ipynb_checkpoints
+
 !dados/xx.npy
 !dados/pp.npy
 !.gitkeep
