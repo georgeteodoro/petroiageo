@@ -2,17 +2,14 @@
 import pandas as pd
 import numpy as np
 import time
-# from collections import defaultdict
-# from os import linesep
 from mpi4py import MPI
-import sys
-import common
 import argparse
 import math
 
+import common
 import seismic_data2
 import wells_data2
-import expand2
+import expand3
 import petro2
 import petro_dist
 import apply4
@@ -81,6 +78,7 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
     # Features which do not need to be expanded on the window
     other_features_names = []
 
+    t1 = time.time()
     print("[main] Loading seismic data")
     features_ddf, hypercube_shape = seismic_data2.get_all_seismic_data(
         seismic_features_names + other_features_names)
@@ -91,60 +89,18 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
 
     # Real wells' data into a main dataframe
     print("[main] Loading wells values")
-    main_df = wells_data2.get_canal_and_real_data('./dados/porosity-canal.npy',
-                                                  hypercube_shape, real_wells)
+    # main_ddf, canal_ddf = wells_data2.get_canal_and_real_data(
+    main_ddf = wells_data2.get_canal_and_real_data(
+        './dados/porosity-canal.npy', hypercube_shape, real_wells)
 
-    print(main_df.compute())
-    print(main_df[main_df['real'] == common.RealValues.canal].compute())
-    print(main_df[main_df['real'] == common.RealValues.real].compute())
+    print('main_ddf:')
+    print(main_ddf.compute())
 
-    return
+    print('real well points:')
+    print(main_ddf[main_ddf['real'] == common.RealValues.real].compute())
 
-    # Separate the main DataFrame into two, one with only canal points
-    canal_df = main_df[main_df['real'] == 2]
-    main_df = main_df[main_df['real'] != 2]
-
-    # Expand canal_df to have values across the whole hypercube
-    # This allows expand to access each point with DataFrame.loc[]
-    # instead of using DataFrame.isin() to check whether a canal point
-    # is there.
-    t1 = time.time()
-    full_canal_np = np.zeros(math.prod(hypercube_shape))
-    xs_np = np.zeros(math.prod(hypercube_shape), dtype=int)
-    ys_np = np.zeros(math.prod(hypercube_shape), dtype=int)
-    zs_np = np.zeros(math.prod(hypercube_shape), dtype=int)
-    ii = 0
-    for i in range(hypercube_shape[0]):
-        for j in range(hypercube_shape[1]):
-            for k in range(hypercube_shape[2]):
-                xs_np[ii] = i
-                ys_np[ii] = j
-                zs_np[ii] = k
-                ii = ii + 1
-    for [x, y, z, phi] in canal_df[['x', 'y', 'z', 'phi']].values:
-        full_canal_np[int(x) * hypercube_shape[1] * hypercube_shape[2] +
-                      int(y) * hypercube_shape[2] + int(z)] = phi
-    canal_df = pd.DataFrame(full_canal_np, columns=['phi'])
-
-    # Add index of xyz and sort dataframe for better access times
-    print("[main] Indexing all data by (x,y,z)")
-    index = pd.MultiIndex.from_arrays(
-        [main_df['x'], main_df['y'], main_df['z']],
-        names=common.MAIN_DF_INDEX_NAMES)
-    main_df.set_index(index, inplace=True)
-    main_df.sort_index(inplace=True)
-
-    index = pd.MultiIndex.from_arrays([xs_np, ys_np, zs_np],
-                                      names=common.MAIN_DF_INDEX_NAMES)
-
-    canal_df.set_index(index, inplace=True)
-    canal_df.sort_index(inplace=True)
-
-    # Free indexes np arrays
-    xs = None
-    ys = None
-    zs = None
-    full_canal_np = None
+    print('canal points:')
+    print(main_ddf[main_ddf['real'] == common.RealValues.canal].compute())
 
     # Generate seismic features names
     window = 3
@@ -154,31 +110,36 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
             for j in range(-window, window + 1):
                 for k in range(-window, window + 1):
                     all_features.append((f, i, j, k))
-    t2 = time.time()
 
+    # Load previous iteration values, if required
     if load_iteration > 0:
-        main_df = pd.read_csv(f'./tmp_data/predicted{load_iteration}.csv')
-        index = pd.MultiIndex.from_arrays(
-            [main_df['x'], main_df['y'], main_df['z']],
-            names=common.MAIN_DF_INDEX_NAMES)
-        main_df.set_index(index, inplace=True)
-        main_df.sort_index(inplace=True)
+        print('TODO LOAD PREVIOUS IT')
+        return
+        # main_df = pd.read_csv(f'./tmp_data/predicted{load_iteration}.csv')
+        # index = pd.MultiIndex.from_arrays(
+        #     [main_df['x'], main_df['y'], main_df['z']],
+        #     names=common.MAIN_DF_INDEX_NAMES)
+        # main_df.set_index(index, inplace=True)
+        # main_df.sort_index(inplace=True)
 
+    t2 = time.time()
     print(f'[main] Initial data loading time: {t2-t1}')
-
-    print("[main] Main DataFrame [initial]:")
-    print(main_df)
 
     max_iteration = load_iteration + num_iterations + 1
     for it in range(load_iteration + 1, max_iteration):
         t1 = time.time()
 
         print(f"[main][{it}] Expanding points")
-        main_df = expand2.gen_expanded_points(main_df, canal_df, real_wells,
-                                              it)
-        main_df.sort_index(inplace=True)
-        main_df.to_csv(f'tmp_data/expanded{it}.csv', index=False)
-        print(main_df)
+        main_ddf = expand3.gen_expanded_points(main_ddf, hypercube_shape,
+                                               real_wells, it)
+
+        expanded_ddf = main_ddf[
+            (main_ddf['real'] == common.RealValues.expanded) |
+            (main_ddf['real'] == common.RealValues.canal_expanded)]
+        print(f'points to expand: {len(expanded_ddf.compute())}')
+        # main_ddf.to_csv(f'tmp_data/expanded{it}.csv', index=True)
+
+        return
 
         t2 = time.time()
 

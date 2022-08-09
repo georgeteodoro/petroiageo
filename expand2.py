@@ -8,6 +8,7 @@ import common
 
 MAX_DEPTH = 251  # Starts from 1
 
+
 def gen_expanded_points(main_df, canal_df, real_wells, it):
     # Set distance ring to be generated
     ring = it + 1
@@ -48,13 +49,16 @@ def gen_expanded_points(main_df, canal_df, real_wells, it):
 
                         if canal_phi == 0 or not is_real_point:
                             expanded_points_np[expanded_points_i] = (x, y, z,
-                                                                 well_id, 3)
+                                                                     well_id,
+                                                                     3)
                             expanded_points_phi_np[expanded_points_i] = 0
                         else:
                             expanded_points_np[expanded_points_i] = (x, y, z,
-                                                                     well_id, 2)
-                            expanded_points_phi_np[expanded_points_i] = canal_phi
-                        
+                                                                     well_id,
+                                                                     2)
+                            expanded_points_phi_np[
+                                expanded_points_i] = canal_phi
+
                         expanded_points_i = expanded_points_i + 1
 
         # # Filter the zero values [0.0, 0.0, ... 0.0]
@@ -71,11 +75,10 @@ def gen_expanded_points(main_df, canal_df, real_wells, it):
             dtype=np.int32)
         expanded_points_df['phi'] = expanded_points_phi_np
         index = pd.MultiIndex.from_arrays([
-                                            expanded_points_df['x'], expanded_points_df['y'],
-                                            expanded_points_df['z']
-                                            ],
-                                            names=common.MAIN_DF_INDEX_NAMES
-                                        )
+            expanded_points_df['x'], expanded_points_df['y'],
+            expanded_points_df['z']
+        ],
+                                          names=common.MAIN_DF_INDEX_NAMES)
         expanded_points_df.set_index(index, inplace=True)
         main_df = pd.concat([main_df, expanded_points_df])
 

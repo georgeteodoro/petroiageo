@@ -4,27 +4,27 @@ from math import prod
 
 import common
 
+
 def at_well(ddf, well_coords):
     return ddf[(ddf['x'] == well_coords[0]) & (ddf['y'] == well_coords[1])]
+
 
 def get_canal_and_real_data(filename, hypercube_shape, real_points):
 
     total_points = prod(hypercube_shape)
 
     # Creates the DataFrame for the whole hypercube
-    full_porosity_ddf = dd.from_array(np.full(total_points,
-                                              common.RealValues.empty),
-                                      columns=['real'])
-    full_porosity_ddf['phi'] = dd.from_array(
-        np.zeros(total_points, dtype=float))
-    full_porosity_ddf['phi_weights'] = dd.from_array(
-        np.zeros(total_points, dtype=float))
+    main_ddf = dd.from_array(np.full(total_points, common.RealValues.empty),
+                             columns=['real'])
+    main_ddf['phi'] = dd.from_array(np.zeros(total_points, dtype=float))
+    main_ddf['phi_weights'] = dd.from_array(np.zeros(total_points,
+                                                     dtype=float))
 
-    # Setup index
+    # Setup index for main_ddf
     index = np.array(list(range(total_points)))
-    full_porosity_ddf['index'] = dd.from_array(index)
-    full_porosity_ddf = full_porosity_ddf.astype({'index': 'int64'})
-    full_porosity_ddf = full_porosity_ddf.set_index('index')
+    main_ddf['index'] = dd.from_array(index)
+    main_ddf = main_ddf.astype({'index': 'int64'})
+    main_ddf = main_ddf.set_index('index')
 
     # Load known porosity canal points and add it to a dask DataFrame
     porosity_np = np.load(filename)
@@ -58,22 +58,25 @@ def get_canal_and_real_data(filename, hypercube_shape, real_points):
     real_mask_ddf['phi'] = 0
 
     # Set canal and real 'phi' values
-    full_porosity_ddf['phi'] = full_porosity_ddf['phi'].add(canal_ddf['phi'],
-                                                            fill_value=0)
+    main_ddf['phi'] = main_ddf['phi'].add(canal_ddf['phi'], fill_value=0)
 
     # Set canal 'real' values
-    full_porosity_ddf['real'] = full_porosity_ddf['real'].mul(
-        canal_mask_ddf['phi'], fill_value=1)
+    main_ddf['real'] = main_ddf['real'].mul(canal_mask_ddf['phi'],
+                                            fill_value=1)
     canal_mask_ddf['phi'] = common.RealValues.canal
-    full_porosity_ddf['real'] = full_porosity_ddf['real'].add(
-        canal_mask_ddf['phi'], fill_value=0)
+    main_ddf['real'] = main_ddf['real'].add(canal_mask_ddf['phi'],
+                                            fill_value=0)
 
     # Set real well points 'real' values
-    full_porosity_ddf['real'] = full_porosity_ddf['real'].mul(
-        real_mask_ddf['phi'], fill_value=1)
+    main_ddf['real'] = main_ddf['real'].mul(real_mask_ddf['phi'], fill_value=1)
     real_mask_ddf['phi'] = common.RealValues.real
-    full_porosity_ddf['real'] = full_porosity_ddf['real'].add(
-        real_mask_ddf['phi'], fill_value=0)
+    main_ddf['real'] = main_ddf['real'].add(real_mask_ddf['phi'], fill_value=0)
 
+    # # Filter real values from canal ddf and remove x,y,z coordinates
+    # canal_ddf = canal_ddf.drop(columns=['x', 'y', 'z'])
+    # real_mask_ddf['phi'] = 0
+    # canal_ddf['phi'] = canal_ddf['phi'].mul(real_mask_ddf['phi'], fill_value=1)
+    # canal_ddf = canal_ddf[canal_ddf['phi'] > 0]
 
-    return full_porosity_ddf.persist()
+    # return main_ddf.persist(), canal_ddf.persist()
+    return main_ddf.persist()
