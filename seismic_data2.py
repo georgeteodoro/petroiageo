@@ -1,11 +1,8 @@
 import numpy as np
-# import pandas as pd
 import dask.dataframe as dd
-# from numba import jit
+from math import prod
 
-import sys
-
-# # Prod of tuple (numba does not allows math.prod)
+# # Prod of tuple (numba does not allows prod)
 # @jit(nopython=True)
 # def prod(shape):
 #     p = 1
@@ -38,13 +35,30 @@ def get_all_seismic_data(seismic_columns):
     # Get the shape/dimensions of the 3D hypercube
     hypercube_shape = np.load(filenames[0]).shape
 
+    # Create coordinates values
+    xs_np = np.zeros(prod(hypercube_shape), dtype=int)
+    ys_np = np.zeros(prod(hypercube_shape), dtype=int)
+    zs_np = np.zeros(prod(hypercube_shape), dtype=int)
+    ii = 0
+    for i in range(hypercube_shape[0]):
+        for j in range(hypercube_shape[1]):
+            for k in range(hypercube_shape[2]):
+                xs_np[ii] = int(i)
+                ys_np[ii] = int(j)
+                zs_np[ii] = int(k)
+                ii = ii + 1
+
     # Prepare the DataFrame of features
     seismic_nps = np.array([np.load(f).flatten()
                             for f in filenames]).transpose()
     features_ddf = dd.from_array(seismic_nps, columns=seismic_columns)
 
+    features_ddf['x'] = dd.from_array(xs_np)
+    features_ddf['y'] = dd.from_array(ys_np)
+    features_ddf['z'] = dd.from_array(zs_np)
+
     # Setup index
-    index = np.array(list(range(seismic_nps.shape[0])))
+    index = np.array(list(range(seismic_nps.shape[0])), dtype=int)
     features_ddf['index'] = dd.from_array(index)
     features_ddf = features_ddf.set_index('index')
 

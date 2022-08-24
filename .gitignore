@@ -19,6 +19,8 @@ tmp_data/*
 *.dat
 *.out
 
+*parquet*
+
 !dados/xx.npy
 !dados/pp.npy
 !.gitkeep

@@ -10,8 +10,8 @@ import common
 import seismic_data2
 import wells_data2
 import expand3
-import petro2
-import petro_dist
+import petro3
+import petro_dist2
 import apply4
 
 # Initialization of mpi variables
@@ -73,7 +73,7 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
         "NEAR_sobel_5-5-11",
         "UFAR",
     ]
-    seismic_features_names = seismic_features_names[:2]
+    seismic_features_names = seismic_features_names[:1]
 
     # Features which do not need to be expanded on the window
     other_features_names = []
@@ -139,30 +139,35 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
         print(f'points to expand: {len(expanded_ddf.compute())}')
         # main_ddf.to_csv(f'tmp_data/expanded{it}.csv', index=True)
 
-        return
-
         t2 = time.time()
 
         print(f"[main][{it}] Performing feature selection")
-        # Only uses real, previously predicted and expanded canal points
+        # Only uses real, previously propagated and expanded canal points
         # for feature selection
-        feature_selection_points_df = main_df[main_df['real'] != 3]
+        feature_selection_points_ddf = main_ddf[
+            (main_ddf['real'] == common.RealValues.propagated) |
+            (main_ddf['real'] == common.RealValues.canal_expanded) |
+            (main_ddf['real'] == common.RealValues.real)]
+
         print('[main] Points for feature selection:')
-        print(feature_selection_points_df)
+        print(feature_selection_points_ddf.compute())
+
         if mpi_size == 1:
-            best_features_set, best_error = petro2.get_features_sets(
-                feature_selection_points_df, features_df, all_features,
+            best_features_set, best_error = petro3.get_features_sets(
+                feature_selection_points_ddf, features_ddf, all_features,
                 parallel_settings, 4, 4)
         else:
-            best_features_set, best_error = petro_dist.get_features_sets(
-                feature_selection_points_df, features_df, all_features,
-                parallel_settings, 10, 0)
+            best_features_set, best_error = petro_dist2.get_features_sets(
+                feature_selection_points_ddf, features_ddf, all_features,
+                hypercube_shape, parallel_settings, 10, 0)
 
         print(f'[main][{it}] Best features set:'\
               f' {best_features_set} with {best_error} error'
         )
 
         t3 = time.time()
+
+        return
 
         print(f"[main][{it}] Performing predictions on new expanded points")
         main_df = apply4.perf_predition(best_features_set, main_df,
