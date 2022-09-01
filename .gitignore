@@ -20,6 +20,7 @@ tmp_data/*
 *.out
 
 *parquet*
+*.html
 
 !dados/xx.npy
 !dados/pp.npy

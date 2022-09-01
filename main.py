@@ -5,10 +5,11 @@ import time
 from mpi4py import MPI
 import argparse
 import math
+from dask.dataframe import read_parquet
+from dask.distributed import performance_report
 
+import dask_utils
 import common
-import seismic_data2
-import wells_data2
 import expand3
 import petro3
 import petro_dist2
@@ -73,34 +74,43 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
         "NEAR_sobel_5-5-11",
         "UFAR",
     ]
-    seismic_features_names = seismic_features_names[:1]
+    seismic_features_names = seismic_features_names[:2]
 
     # Features which do not need to be expanded on the window
     other_features_names = []
 
     t1 = time.time()
     print("[main] Loading seismic data")
-    features_ddf, hypercube_shape = seismic_data2.get_all_seismic_data(
-        seismic_features_names + other_features_names)
+    # features_ddf, hypercube_shape = seismic_data2.get_all_seismic_data(
+    #     seismic_features_names + other_features_names)
+    hypercube_shape = np.load(f'./dados/{seismic_features_names[0]}.npy').shape
+    features_ddf = read_parquet('dados/seismic_features.parquet',
+                                calculate_divisions=True)
 
-    print("[main] Features DataFrame:")
-    print(features_ddf.compute())
+    # print("[main] Features DataFrame:")
+    # print(features_ddf.compute())
     print(f'[main] hypercube_shape: {hypercube_shape}')
+    print(f'[main] features_ddf with size {len(features_ddf)}:')
+    print(features_ddf)
 
     # Real wells' data into a main dataframe
     print("[main] Loading wells values")
     # main_ddf, canal_ddf = wells_data2.get_canal_and_real_data(
-    main_ddf = wells_data2.get_canal_and_real_data(
-        './dados/porosity-canal.npy', hypercube_shape, real_wells)
+    main_ddf = read_parquet('dados/initial_main_ddf.parquet',
+                            calculate_divisions=True)
 
-    print('main_ddf:')
-    print(main_ddf.compute())
+    print(f'main_ddf with size {len(main_ddf)}:')
+    print(main_ddf)
 
-    print('real well points:')
-    print(main_ddf[main_ddf['real'] == common.RealValues.real].compute())
+    all_points = len(main_ddf)
+    real_points = len(main_ddf[main_ddf['real'] == common.RealValues.real])
+    canal_points = len(main_ddf[main_ddf['real'] == common.RealValues.canal])
 
-    print('canal points:')
-    print(main_ddf[main_ddf['real'] == common.RealValues.canal].compute())
+    print(f'real well points: {real_points}/{all_points} '\
+          f'({(real_points/all_points):%})')
+
+    print(f'canal points: {canal_points}/{all_points} '\
+          f'({(canal_points/all_points):.2%})')
 
     # Generate seismic features names
     window = 3
@@ -136,7 +146,7 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
         expanded_ddf = main_ddf[
             (main_ddf['real'] == common.RealValues.expanded) |
             (main_ddf['real'] == common.RealValues.canal_expanded)]
-        print(f'points to expand: {len(expanded_ddf.compute())}')
+        print(f'points to expand: {len(expanded_ddf)}')
         # main_ddf.to_csv(f'tmp_data/expanded{it}.csv', index=True)
 
         t2 = time.time()
@@ -230,4 +240,7 @@ if __name__ == '__main__':
         # 'n_gpus': int(args.n_gpus),
         # 'gpu_thrds': int(args.gpu_thrds),
     }
-    main(int(args.load_it), int(args.num_its), parallel_settings)
+    
+    dask_utils.initialize_dask(w=8, t=1, mem=20, disk=20)
+    with performance_report(filename="dask-report.html"):
+        main(int(args.load_it), int(args.num_its), parallel_settings)
