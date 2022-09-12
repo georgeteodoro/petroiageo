@@ -9,6 +9,7 @@ def get_coord(x, y, z, hypercube_shape):
     return x * hypercube_shape[2] * hypercube_shape[1] + y * hypercube_shape[
         2] + z
 
+
 def gen_expanded_points(main_ddf, hypercube_shape, real_wells, it):
     depth_len = hypercube_shape[2]
 
@@ -26,10 +27,10 @@ def gen_expanded_points(main_ddf, hypercube_shape, real_wells, it):
                 if abs(i) == ring or abs(j) == ring:
                     expanded_indices = expanded_indices + list(
                         range(
-                            get_coord(well[0]+i, well[1]+j, 0, hypercube_shape),
-                            get_coord(well[0]+i, well[1]+j, depth_len,
+                            get_coord(well[0] + i, well[1] + j, 0,
+                                      hypercube_shape),
+                            get_coord(well[0] + i, well[1] + j, depth_len,
                                       hypercube_shape)))
-
 
     # Get the list of points to be expanded
     to_expand_ddf = main_ddf.loc[expanded_indices]
@@ -39,26 +40,27 @@ def gen_expanded_points(main_ddf, hypercube_shape, real_wells, it):
                                         common.RealValues.empty]
     empty_to_expand_ddf['real'] = 0
     main_ddf['real'] = main_ddf['real'].mul(empty_to_expand_ddf['real'],
-                                            fill_value=1)
+                                            fill_value=int(1))
     empty_to_expand_ddf['real'] = common.RealValues.expanded
     main_ddf['real'] = main_ddf['real'].add(empty_to_expand_ddf['real'],
-                                            fill_value=0)
+                                            fill_value=int(0))
 
     # Update canal points to canal_expanded
     canal_to_expand_ddf = to_expand_ddf[to_expand_ddf['real'] ==
                                         common.RealValues.canal]
     canal_to_expand_ddf['real'] = 0
     main_ddf['real'] = main_ddf['real'].mul(canal_to_expand_ddf['real'],
-                                            fill_value=1)
+                                            fill_value=int(1))
     canal_to_expand_ddf['real'] = common.RealValues.canal_expanded
     main_ddf['real'] = main_ddf['real'].add(canal_to_expand_ddf['real'],
-                                            fill_value=0)
+                                            fill_value=int(0))
 
     main_ddf = main_ddf.persist()
 
     t2 = time.time()
 
     return main_ddf
+
 
 # def gen_expanded_points(main_ddf, hypercube_shape, real_wells, it):
 #     depth_len = hypercube_shape[2]

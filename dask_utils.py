@@ -2,9 +2,14 @@ from dask.distributed import Client, LocalCluster, wait, progress
 import dask.config
 import logging
 import sys
-
+import os
 
 def initialize_dask(w, t, mem, disk):
+    # Solving mpi problem:
+    # getting local rank failed
+    # --> Returned value No permission (-17) instead of ORTE_SUCCESS
+    os.environ["PMIX_MCA_gds"] = "hash"
+
     virtual_mem = (mem + disk) / w
     spill = (mem / w) / virtual_mem
 

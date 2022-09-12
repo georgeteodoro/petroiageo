@@ -15,20 +15,24 @@ import petro3
 import petro_dist2
 import apply4
 
+# Constants
+# hypercube_shape = (434, 646, 251)
+real_wells = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
+              (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
+
 # Initialization of mpi variables
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 mpi_size = comm.Get_size()
 manager_rank = mpi_size - 1
 
-# Constants
-# hypercube_shape = (434, 646, 251)
-real_wells = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
-              (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
+
+def print_manager(string):
+    if rank == manager_rank:
+        print(string)
 
 
 def main(load_iteration: int, num_iterations: int, parallel_settings):
-
     # Instantiate pandas dataframe for all data
     # Data structure is composed by:
     #   x,y,z(depth),
@@ -80,36 +84,42 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
     other_features_names = []
 
     t1 = time.time()
-    print("[main] Loading seismic data")
+    print_manager("[main] Loading seismic data")
     # features_ddf, hypercube_shape = seismic_data2.get_all_seismic_data(
     #     seismic_features_names + other_features_names)
     hypercube_shape = np.load(f'./dados/{seismic_features_names[0]}.npy').shape
     features_ddf = read_parquet('dados/seismic_features.parquet',
                                 calculate_divisions=True)
 
-    # print("[main] Features DataFrame:")
-    # print(features_ddf.compute())
-    print(f'[main] hypercube_shape: {hypercube_shape}')
-    print(f'[main] features_ddf with size {len(features_ddf)}:')
-    print(features_ddf)
+    # For the whole dask indexing to work the chunksize must be set:
+    # All partitions have dask_chunksize points, while the last has
+    # dask_chunksize points or less.
+    # Otherwise, the algorithm may break (seg fault) or run with
+    # wrong displacements indices for features rows
+    dask_chunksize = len(features_ddf.get_partition(0))
+
+    # print_manager("[main] Features DataFrame:")
+    print_manager(f'[main] hypercube_shape: {hypercube_shape}')
+    print_manager(f'[main] features_ddf with size {len(features_ddf)}:')
+    print_manager(features_ddf)
 
     # Real wells' data into a main dataframe
-    print("[main] Loading wells values")
+    print_manager("[main] Loading wells values")
     # main_ddf, canal_ddf = wells_data2.get_canal_and_real_data(
     main_ddf = read_parquet('dados/initial_main_ddf.parquet',
                             calculate_divisions=True)
 
-    print(f'main_ddf with size {len(main_ddf)}:')
-    print(main_ddf)
+    print_manager(f'main_ddf with size {len(main_ddf)}:')
+    print_manager(main_ddf)
 
     all_points = len(main_ddf)
     real_points = len(main_ddf[main_ddf['real'] == common.RealValues.real])
     canal_points = len(main_ddf[main_ddf['real'] == common.RealValues.canal])
 
-    print(f'real well points: {real_points}/{all_points} '\
+    print_manager(f'real well points: {real_points}/{all_points} '\
           f'({(real_points/all_points):%})')
 
-    print(f'canal points: {canal_points}/{all_points} '\
+    print_manager(f'canal points: {canal_points}/{all_points} '\
           f'({(canal_points/all_points):.2%})')
 
     # Generate seismic features names
@@ -123,7 +133,7 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
 
     # Load previous iteration values, if required
     if load_iteration > 0:
-        print('TODO LOAD PREVIOUS IT')
+        print_manager('TODO LOAD PREVIOUS IT')
         return
         # main_df = pd.read_csv(f'./tmp_data/predicted{load_iteration}.csv')
         # index = pd.MultiIndex.from_arrays(
@@ -132,46 +142,54 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
         # main_df.set_index(index, inplace=True)
         # main_df.sort_index(inplace=True)
 
+    # Get divisions list to enable correct indexing
+    # (which is partition-dependent)
+    divisions = main_ddf.divisions
+
     t2 = time.time()
-    print(f'[main] Initial data loading time: {t2-t1}')
+    print_manager(f'[main] Initial data loading time: {t2-t1}')
 
     max_iteration = load_iteration + num_iterations + 1
     for it in range(load_iteration + 1, max_iteration):
         t1 = time.time()
 
-        print(f"[main][{it}] Expanding points")
+        print_manager(f"[main][{it}] Expanding points")
         main_ddf = expand3.gen_expanded_points(main_ddf, hypercube_shape,
                                                real_wells, it)
 
         expanded_ddf = main_ddf[
             (main_ddf['real'] == common.RealValues.expanded) |
             (main_ddf['real'] == common.RealValues.canal_expanded)]
-        print(f'points to expand: {len(expanded_ddf)}')
+        print_manager(f'points to expand: {len(expanded_ddf)}')
+        print_manager(expanded_ddf)
         # main_ddf.to_csv(f'tmp_data/expanded{it}.csv', index=True)
 
         t2 = time.time()
 
-        print(f"[main][{it}] Performing feature selection")
+        print_manager(f"[main][{it}] Performing feature selection")
         # Only uses real, previously propagated and expanded canal points
         # for feature selection
         feature_selection_points_ddf = main_ddf[
             (main_ddf['real'] == common.RealValues.propagated) |
             (main_ddf['real'] == common.RealValues.canal_expanded) |
             (main_ddf['real'] == common.RealValues.real)]
+        feature_selection_points_ddf = feature_selection_points_ddf.repartition(
+            divisions=divisions).persist()
 
-        print('[main] Points for feature selection:')
-        print(feature_selection_points_ddf.compute())
+        print_manager(f'[main] Points for feature selection with size '\
+              f'{len(feature_selection_points_ddf)}: ')
+        print_manager(feature_selection_points_ddf)
 
-        if mpi_size == 1:
-            best_features_set, best_error = petro3.get_features_sets(
-                feature_selection_points_ddf, features_ddf, all_features,
-                parallel_settings, 4, 4)
-        else:
-            best_features_set, best_error = petro_dist2.get_features_sets(
-                feature_selection_points_ddf, features_ddf, all_features,
-                hypercube_shape, parallel_settings, 10, 0)
+        # if mpi_size == 1:
+        #     best_features_set, best_error = petro3.get_features_sets(
+        #         feature_selection_points_ddf, features_ddf, all_features,
+        #         parallel_settings, 4, 4)
+        # else:
+        best_features_set, best_error = petro_dist2.get_features_sets(
+            feature_selection_points_ddf, features_ddf, all_features,
+            hypercube_shape, dask_chunksize, parallel_settings, 10, 0)
 
-        print(f'[main][{it}] Best features set:'\
+        print_manager(f'[main][{it}] Best features set:'\
               f' {best_features_set} with {best_error} error'
         )
 
@@ -179,20 +197,21 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
 
         return
 
-        print(f"[main][{it}] Performing predictions on new expanded points")
+        print_manager(
+            f"[main][{it}] Performing predictions on new expanded points")
         main_df = apply4.perf_predition(best_features_set, main_df,
                                         features_df)
-        print(main_df)
+        print_manager(main_df)
         # main_df.sort_index(inplace=True)
         main_df.to_csv(f'tmp_data/predicted{it}.csv',
                        index=True,
                        index_label=common.MAIN_DF_INDEX_NAMES)
 
         t4 = time.time()
-        print(f'[main][times][{it}] total_it_time {t4-t1}')
-        print(f'[main][times][{it}] expansion {t2-t1}')
-        print(f'[main][times][{it}] feature_selection {t3-t2}')
-        print(f'[main][times][{it}] propagation {t4-t3}')
+        print_manager(f'[main][times][{it}] total_it_time {t4-t1}')
+        print_manager(f'[main][times][{it}] expansion {t2-t1}')
+        print_manager(f'[main][times][{it}] feature_selection {t3-t2}')
+        print_manager(f'[main][times][{it}] propagation {t4-t3}')
 
 
 if __name__ == '__main__':
@@ -240,7 +259,8 @@ if __name__ == '__main__':
         # 'n_gpus': int(args.n_gpus),
         # 'gpu_thrds': int(args.gpu_thrds),
     }
-    
-    dask_utils.initialize_dask(w=8, t=1, mem=20, disk=20)
-    with performance_report(filename="dask-report.html"):
+
+    # dask_utils.initialize_dask(w=1, t=1, mem=20, disk=20)
+    # with performance_report(filename=f"dask-report-{rank}.html"):
+    if True:
         main(int(args.load_it), int(args.num_its), parallel_settings)

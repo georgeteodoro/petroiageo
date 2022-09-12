@@ -46,16 +46,16 @@ def initialize_dask(w, t, mem, disk):
         'distributed.worker.memory.pause': spill + 0.1,
         # 'distributed.worker.memory.terminate': False
     })
-    cluster = LocalCluster(
-        n_workers=w,
-        threads_per_worker=t,
-        memory_limit=f'{virtual_mem}GB',
-        processes=True,
-        silence_logs=logging.ERROR,
-    )
-    client = Client(cluster)
+    # cluster = LocalCluster(
+    #     n_workers=w,
+    #     threads_per_worker=t,
+    #     memory_limit=f'{virtual_mem}GB',
+    #     processes=True,
+    #     silence_logs=logging.ERROR,
+    # )
+    # client = Client(cluster)
 
-    return client
+    # return client
 
 
 def load_ddfs(name):

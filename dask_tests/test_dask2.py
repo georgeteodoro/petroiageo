@@ -5,9 +5,12 @@ from math import prod, ceil, floor
 from time import time
 from numba import jit, prange
 from dask.distributed import Client, LocalCluster, wait, progress
+from dask.diagnostics import ProgressBar
 import dask.config
 import logging
 import gc
+
+from concurrent.futures import ProcessPoolExecutor 
 
 import os, psutil, cProfile
 
@@ -32,7 +35,8 @@ import update_funcs
 
 
 def main():
-    client = update_funcs.initialize_dask(w=1, t=2, mem=16)
+    # client = update_funcs.initialize_dask(w=1, t=2, mem=16)
+    update_funcs.initialize_dask(w=1, t=2, mem=1, disk=40)
 
     # ddf1, features_ddf, shape, chunksize = update_funcs.load_ddfs('small')
     ddf1, features_ddf, shape, chunksize = update_funcs.load_ddfs('100M')
@@ -55,11 +59,12 @@ def main():
         meta=(None, int))
 
     # ddf1.visualize(filename='outside_part_graph.svg')
-    ddf1 = ddf1.persist()
+    with ProgressBar(), dask.config.set(num_workers=16, scheduler='processes'):
+        ddf1 = ddf1.persist()
     t2 = time()
     print(f'=============prepared partitions update {t2-t0}')
 
-    progress(ddf1)
+    # progress(ddf1)
     print('')
     # ddf1.to_parquet('out_ddf.parquet')
 
@@ -90,8 +95,9 @@ def main():
                                               align_dataframes=False,
                                               meta=(None, int))
 
-    ddf1 = ddf1.persist()
-    progress(ddf1)
+    with ProgressBar():
+        ddf1 = ddf1.persist()
+    # progress(ddf1)
 
     print(ddf1.compute())
 

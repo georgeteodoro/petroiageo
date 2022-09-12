@@ -19,6 +19,37 @@ def get_canal_and_real_data(filename, hypercube_shape, real_points):
     main_ddf = dd.from_array(np.full(total_points, common.RealValues.empty),
                              columns=['real'],
                              chunksize=chunksize)
+
+    # Create coordinates values
+    print('Creating coordinates')
+    xs_np = np.zeros(prod(hypercube_shape), dtype=np.int64)
+    ys_np = np.zeros(prod(hypercube_shape), dtype=np.int64)
+    zs_np = np.zeros(prod(hypercube_shape), dtype=np.int64)
+    ii = 0
+    for i in range(hypercube_shape[0]):
+        for j in range(hypercube_shape[1]):
+            for k in range(hypercube_shape[2]):
+                xs_np[ii] = int(i)
+                ys_np[ii] = int(j)
+                zs_np[ii] = int(k)
+                ii = ii + 1
+
+    print('Setting coordinates')
+    main_ddf['x'] = dd.from_array(xs_np, chunksize=chunksize)
+    main_ddf['y'] = dd.from_array(ys_np, chunksize=chunksize)
+    main_ddf['z'] = dd.from_array(zs_np, chunksize=chunksize)
+
+    main_ddf = main_ddf[['x','y','z','real']]
+
+    main_ddf = main_ddf.persist()
+    print('')
+    del xs_np
+    del ys_np
+    del zs_np
+
+    main_ddf['well_id'] = dd.from_array(np.full(total_points, -1, dtype=np.int64),
+                                    chunksize=chunksize)
+
     main_ddf['phi'] = dd.from_array(np.zeros(total_points, dtype=float),
                                     chunksize=chunksize)
     main_ddf['phi_weights'] = dd.from_array(np.zeros(total_points,
@@ -44,9 +75,14 @@ def get_canal_and_real_data(filename, hypercube_shape, real_points):
     # Create a dask DataFrame with only the real points
     print('Loading real points')
     real_ddf = at_well(canal_ddf, real_points[0])
+    well_id = 0
+    real_ddf['well_id'] = well_id
     concat_list = []
     for well_coord in real_points[1:]:
-        concat_list = concat_list + [at_well(canal_ddf, well_coord)]
+        well_rows_ddf = at_well(canal_ddf, well_coord)
+        well_id = well_id + 1
+        well_rows_ddf['well_id'] = well_id
+        concat_list = concat_list + [well_rows_ddf]
     real_ddf = dd.concat([real_ddf] + concat_list)
 
     # Create 'index' for canal points with (x,y,z) (x is the highest dimension)
@@ -92,6 +128,10 @@ def get_canal_and_real_data(filename, hypercube_shape, real_points):
     main_ddf['real'] = main_ddf['real'].mul(real_mask_ddf['phi'], fill_value=1)
     real_mask_ddf['phi'] = common.RealValues.real
     main_ddf['real'] = main_ddf['real'].add(real_mask_ddf['phi'], fill_value=0)
+
+    # Set 'well_id' values
+    main_ddf['well_id'] = real_ddf['well_id']
+    main_ddf['well_id'] = main_ddf['well_id'].fillna(-1)
     main_ddf = main_ddf.persist()
 
     # # Filter real values from canal ddf and remove x,y,z coordinates
@@ -115,5 +155,6 @@ if __name__ == '__main__':
 
     print('Writing data')
     print(main_ddf)
+    print(main_ddf.head())
     main_ddf.to_parquet('./dados/initial_main_ddf.parquet')
     # print(features.compute())
