@@ -3,6 +3,7 @@ import scipy.ndimage
 import scipy.signal
 from algs import *
 
+n_cpu = 1
 files = ["NEAR"]
 windows3D = [
         (5,5,11), (5,5,9), (5,5,7),
@@ -101,10 +102,10 @@ for f in files:
 
     for w in windows3D:
         if "marfurt" in algs:
-            coh = moving_window(seismic, w, marfurt_semblance)
+            coh = moving_window(seismic, w, marfurt_semblance, n_cpu)
             np.save("results/"+f+"_marfurt_"+name(w)+".npy", coh)
         if "gersz" in algs:
-            coh = moving_window(seismic, w, gersztenkorn)
+            coh = moving_window(seismic, w, gersztenkorn, n_cpu)
             np.save("results/"+f+"_gersz_"+name(w)+".npy", coh)
         if "gst" in algs:
             coh = gst_coherence(seismic, w, sigma=1)
@@ -114,16 +115,16 @@ for f in files:
             np.save("results/"+f+"_sobel_"+name(w)+".npy", coh)
         if "median" in algs:
             coh = moving_window(seismic, w, np.median)
-            np.save("results/"+f+"_median_"+name(w)+".npy", coh)
+            np.save("results/"+f+"_median_"+name(w)+".npy", coh, n_cpu)
         if "mean" in algs:
             coh = moving_window(seismic, w, np.mean)
-            np.save("results/"+f+"_mean_"+name(w)+".npy", coh)
+            np.save("results/"+f+"_mean_"+name(w)+".npy", coh, n_cpu)
         if "min" in algs:
             coh = moving_window(seismic, w, np.min)
-            np.save("results/"+f+"_min_"+name(w)+".npy", coh)
+            np.save("results/"+f+"_min_"+name(w)+".npy", coh, n_cpu)
         if "max" in algs:
             coh = moving_window(seismic, w, np.max)
-            np.save("results/"+f+"_max_"+name(w)+".npy", coh)
+            np.save("results/"+f+"_max_"+name(w)+".npy", coh, n_cpu)
         if "sum" in algs:
             coh = moving_window(seismic, w, np.sum)
-            np.save("results/"+f+"_sum_"+name(w)+".npy", coh)
+            np.save("results/"+f+"_sum_"+name(w)+".npy", coh, n_cpu)
