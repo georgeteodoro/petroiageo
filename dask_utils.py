@@ -4,7 +4,7 @@ import logging
 import sys
 import os
 
-def initialize_dask(w, t, mem, disk):
+def initialize_dask(np, w, t, mem, disk):
     # Solving mpi problem:
     # getting local rank failed
     # --> Returned value No permission (-17) instead of ORTE_SUCCESS
@@ -20,11 +20,12 @@ def initialize_dask(w, t, mem, disk):
         # 'distributed.worker.memory.terminate': False
     })
     cluster = LocalCluster(
+        scheduler_port=8790+np,
         n_workers=w,
         threads_per_worker=t,
         memory_limit=f'{virtual_mem}GB',
         processes=True,
-        silence_logs=logging.ERROR,
+        # silence_logs=logging.ERROR,
     )
     client = Client(cluster)
 

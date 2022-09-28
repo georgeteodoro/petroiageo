@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 import time
-from mpi4py import MPI
+from mpi4py import MPI, rc
 import argparse
 import math
 from dask.dataframe import read_parquet
@@ -25,6 +25,8 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 mpi_size = comm.Get_size()
 manager_rank = mpi_size - 1
+
+print(f'=== MPI threadsafeness level: {rc.thread_level}')
 
 
 def print_manager(string):
@@ -260,7 +262,7 @@ if __name__ == '__main__':
         # 'gpu_thrds': int(args.gpu_thrds),
     }
 
-    # dask_utils.initialize_dask(w=1, t=1, mem=20, disk=20)
-    # with performance_report(filename=f"dask-report-{rank}.html"):
-    if True:
+    dask_utils.initialize_dask(np=rank, w=1, t=1, mem=20, disk=20)
+    with performance_report(filename=f"dask-report-{rank}.html"):
+    # if True:
         main(int(args.load_it), int(args.num_its), parallel_settings)
