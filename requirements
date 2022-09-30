@@ -5,6 +5,4 @@ scipy
 scikit-learn
 lightgbm
 numba
-dask
 mpi4py
-dask_ml

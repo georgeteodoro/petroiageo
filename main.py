@@ -1,14 +1,11 @@
-#import multiprocessing as mp
 import pandas as pd
 import numpy as np
 import time
-from mpi4py import MPI, rc
+from mpi4py import MPI
 import argparse
-import math
-from dask.dataframe import read_parquet
-from dask.distributed import performance_report
+from math import prod
+import h5py
 
-import dask_utils
 import common
 import expand3
 import petro3
@@ -25,9 +22,6 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 mpi_size = comm.Get_size()
 manager_rank = mpi_size - 1
-
-print(f'=== MPI threadsafeness level: {rc.thread_level}')
-
 
 def print_manager(string):
     if rank == manager_rank:
@@ -89,25 +83,19 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
     print_manager("[main] Loading seismic data")
     # features_ddf, hypercube_shape = seismic_data2.get_all_seismic_data(
     #     seismic_features_names + other_features_names)
-    hypercube_shape = np.load(f'./dados/{seismic_features_names[0]}.npy').shape
-    features_ddf = read_parquet('dados/seismic_features.parquet',
-                                calculate_divisions=True)
-
-    # For the whole dask indexing to work the chunksize must be set:
-    # All partitions have dask_chunksize points, while the last has
-    # dask_chunksize points or less.
-    # Otherwise, the algorithm may break (seg fault) or run with
-    # wrong displacements indices for features rows
-    dask_chunksize = len(features_ddf.get_partition(0))
+    features_files_dict = {}
+    features_dict = {}
+    for f in seismic_features_names:
+        features_files_dict[f] = h5py.File(f'./dados/{f}.h5', 'r')
+        features_dict[f] = features_files_dict[f]['f']
+    hypercube_shape = next(iter(features_dict.values())).shape
 
     # print_manager("[main] Features DataFrame:")
     print_manager(f'[main] hypercube_shape: {hypercube_shape}')
-    print_manager(f'[main] features_ddf with size {len(features_ddf)}:')
-    print_manager(features_ddf)
+    print_manager(f'[main] hypercube size {prod(hypercube_shape)}:')
 
     # Real wells' data into a main dataframe
     print_manager("[main] Loading wells values")
-    # main_ddf, canal_ddf = wells_data2.get_canal_and_real_data(
     main_ddf = read_parquet('dados/initial_main_ddf.parquet',
                             calculate_divisions=True)
 
@@ -262,7 +250,4 @@ if __name__ == '__main__':
         # 'gpu_thrds': int(args.gpu_thrds),
     }
 
-    dask_utils.initialize_dask(np=rank, w=1, t=1, mem=20, disk=20)
-    with performance_report(filename=f"dask-report-{rank}.html"):
-    # if True:
-        main(int(args.load_it), int(args.num_its), parallel_settings)
+    main(int(args.load_it), int(args.num_its), parallel_settings)
