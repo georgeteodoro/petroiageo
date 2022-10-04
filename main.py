@@ -7,6 +7,7 @@ from math import prod
 import h5py
 
 import common
+import hdf5_util
 import expand3
 import petro3
 import petro_dist2
@@ -22,6 +23,7 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 mpi_size = comm.Get_size()
 manager_rank = mpi_size - 1
+
 
 def print_manager(string):
     if rank == manager_rank:
@@ -81,35 +83,32 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
 
     t1 = time.time()
     print_manager("[main] Loading seismic data")
-    # features_ddf, hypercube_shape = seismic_data2.get_all_seismic_data(
-    #     seismic_features_names + other_features_names)
-    features_files_dict = {}
-    features_dict = {}
+    features_files_dict_h5 = {}
+    features_dict_h5 = {}
     for f in seismic_features_names:
-        features_files_dict[f] = h5py.File(f'./dados/{f}.h5', 'r')
-        features_dict[f] = features_files_dict[f]['f']
-    hypercube_shape = next(iter(features_dict.values())).shape
-
-    # print_manager("[main] Features DataFrame:")
-    print_manager(f'[main] hypercube_shape: {hypercube_shape}')
-    print_manager(f'[main] hypercube size {prod(hypercube_shape)}:')
+        features_files_dict_h5[f] = h5py.File(f'./dados/{f}.h5', 'r')
+        features_dict_h5[f] = features_files_dict_h5[f]['f']
 
     # Real wells' data into a main dataframe
     print_manager("[main] Loading wells values")
-    main_ddf = read_parquet('dados/initial_main_ddf.parquet',
-                            calculate_divisions=True)
+    porosity_data_h5 = h5py.File(f'./dados/porosity_data.h5', 'r+')['p']
+    hypercube_shape = porosity_data_h5.shape
+    all_points = porosity_data_h5.size
 
-    print_manager(f'main_ddf with size {len(main_ddf)}:')
-    print_manager(main_ddf)
+    real_points = hdf5_util.fold_h5_all_clusters(
+        porosity_data_h5,
+        lambda d: len(d[d['real'] == common.RealValues.real]), 0)
+    canal_points = hdf5_util.fold_h5_all_clusters(
+        porosity_data_h5,
+        lambda d: len(d[d['real'] == common.RealValues.canal]), 0)
 
-    all_points = len(main_ddf)
-    real_points = len(main_ddf[main_ddf['real'] == common.RealValues.real])
-    canal_points = len(main_ddf[main_ddf['real'] == common.RealValues.canal])
+    print_manager(f'[main] hypercube_shape: {hypercube_shape}')
+    print_manager(f'[main] hypercube size: {all_points}')
 
-    print_manager(f'real well points: {real_points}/{all_points} '\
+    print_manager(f'[main] real well points: {real_points}/{all_points} '\
           f'({(real_points/all_points):%})')
 
-    print_manager(f'canal points: {canal_points}/{all_points} '\
+    print_manager(f'[main] canal points: {canal_points}/{all_points} '\
           f'({(canal_points/all_points):.2%})')
 
     # Generate seismic features names
@@ -121,20 +120,20 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
                 for k in range(-window, window + 1):
                     all_features.append((f, i, j, k))
 
-    # Load previous iteration values, if required
-    if load_iteration > 0:
-        print_manager('TODO LOAD PREVIOUS IT')
-        return
-        # main_df = pd.read_csv(f'./tmp_data/predicted{load_iteration}.csv')
-        # index = pd.MultiIndex.from_arrays(
-        #     [main_df['x'], main_df['y'], main_df['z']],
-        #     names=common.MAIN_DF_INDEX_NAMES)
-        # main_df.set_index(index, inplace=True)
-        # main_df.sort_index(inplace=True)
+    # # Load previous iteration values, if required
+    # if load_iteration > 0:
+    #     print_manager('TODO LOAD PREVIOUS IT')
+    #     return
+    #     # main_df = pd.read_csv(f'./tmp_data/predicted{load_iteration}.csv')
+    #     # index = pd.MultiIndex.from_arrays(
+    #     #     [main_df['x'], main_df['y'], main_df['z']],
+    #     #     names=common.MAIN_DF_INDEX_NAMES)
+    #     # main_df.set_index(index, inplace=True)
+    #     # main_df.sort_index(inplace=True)
 
-    # Get divisions list to enable correct indexing
-    # (which is partition-dependent)
-    divisions = main_ddf.divisions
+    # # Get divisions list to enable correct indexing
+    # # (which is partition-dependent)
+    # divisions = main_ddf.divisions
 
     t2 = time.time()
     print_manager(f'[main] Initial data loading time: {t2-t1}')
@@ -142,6 +141,8 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
     max_iteration = load_iteration + num_iterations + 1
     for it in range(load_iteration + 1, max_iteration):
         t1 = time.time()
+
+        return
 
         print_manager(f"[main][{it}] Expanding points")
         main_ddf = expand3.gen_expanded_points(main_ddf, hypercube_shape,
