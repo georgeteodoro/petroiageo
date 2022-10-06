@@ -1,6 +1,7 @@
 import numpy as np
 from math import prod
 import h5py
+from tqdm import tqdm
 
 import common
 
@@ -21,12 +22,21 @@ def porosity_points_py2hdf5(filename, hypercube_shape, chunk_shape,
         chunks=chunk_shape,
     )
 
-    print(f'[porosity_points_py2hdf5] Filling all '\
-          f'{prod(porosity_h5_dset.shape)} points with empty values')
-    porosity_h5_dset[:, :, :] = (0, 0, 0, 0, common.RealValues.empty, 0)
+    print(f'[porosity_points_py2hdf5] Filling coordinates')
+    for i in tqdm(range(x)):
+        # Batching of yz coordinates for writing on hdf5 file
+        all_yz = []
+        for j in range(y):
+            # Batching of z coordinates for writing on hdf5 file
+            all_z = []
+            for k in range(z):
+                all_z = all_z + [(i, j, k, 0, common.RealValues.empty, 0)]
+            all_yz = all_yz + [all_z]
+        # Commit all points for a given x coordinate
+        porosity_h5_dset[i, ...] = all_yz
 
     print(f'[porosity_points_py2hdf5] Updating {len(porosity_np)} values')
-    for (x, y, z, p) in porosity_np:
+    for (x, y, z, p) in tqdm(porosity_np):
         if (x, y) in real_points:
             real = common.RealValues.real
             well_id = real_points.index((x, y))

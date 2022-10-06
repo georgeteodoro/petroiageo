@@ -5,10 +5,11 @@ from mpi4py import MPI
 import argparse
 from math import prod
 import h5py
+from tqdm import tqdm
 
 import common
 import hdf5_util
-import expand3
+import expand4_hdf5
 import petro3
 import petro_dist2
 import apply4
@@ -25,12 +26,21 @@ mpi_size = comm.Get_size()
 manager_rank = mpi_size - 1
 
 
+# Print function for only the manager process
 def print_manager(string):
     if rank == manager_rank:
         print(string)
 
 
-def main(load_iteration: int, num_iterations: int, parallel_settings):
+def print_progress(with_progress, r):
+    if with_progress:
+        return tqdm(r)
+    else:
+        return r
+
+
+def main(load_iteration: int, num_iterations: int, parallel_settings,
+         with_progress: bool):
     # Instantiate pandas dataframe for all data
     # Data structure is composed by:
     #   x,y,z(depth),
@@ -40,6 +50,12 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
     #   real => [3=expanded, to be propagated, 2=expanded canal,
     #            1=propagated, 0=real well point]
     #   phi  => Porosity value
+
+    # Progress printing only enabled for manager process
+    if rank == manager_rank:
+        pp = lambda r: print_progress(with_progress, r)
+    else:
+        pp = lambda r: r
 
     # Read seismic data and add it to a dataframe
     seismic_features_names = [
@@ -140,56 +156,70 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
 
     max_iteration = load_iteration + num_iterations + 1
     for it in range(load_iteration + 1, max_iteration):
+        it_str = f'[it{it}]'
+        it_str_manager = ""
+        if rank == manager_rank:
+            it_str_manager = it_str
+
         t1 = time.time()
 
-        return
+        empty_points = hdf5_util.fold_h5_all_clusters(
+            porosity_data_h5,
+            lambda d: len(d[d['real'] == common.RealValues.empty]), 0)
+        print_manager(f'[main] empty points: {empty_points}')
 
-        print_manager(f"[main][{it}] Expanding points")
-        main_ddf = expand3.gen_expanded_points(main_ddf, hypercube_shape,
-                                               real_wells, it)
+        print_manager(f"[main]{it_str} Expanding points")
+        expand4_hdf5.gen_expanded_points(porosity_data_h5, hypercube_shape,
+                                         real_wells, it, it_str_manager, pp)
 
-        expanded_ddf = main_ddf[
-            (main_ddf['real'] == common.RealValues.expanded) |
-            (main_ddf['real'] == common.RealValues.canal_expanded)]
-        print_manager(f'points to expand: {len(expanded_ddf)}')
-        print_manager(expanded_ddf)
-        # main_ddf.to_csv(f'tmp_data/expanded{it}.csv', index=True)
+        to_expand = hdf5_util.fold_h5_all_clusters(
+            porosity_data_h5,
+            lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
+                            (d['real'] == common.RealValues.expanded)]), 0)
+        print_manager(f'[main] Expanded points: {to_expand}')
 
         t2 = time.time()
 
-        print_manager(f"[main][{it}] Performing feature selection")
+        print_manager(f"[main]{it_str} Performing feature selection")
+
         # Only uses real, previously propagated and expanded canal points
         # for feature selection
-        feature_selection_points_ddf = main_ddf[
-            (main_ddf['real'] == common.RealValues.propagated) |
-            (main_ddf['real'] == common.RealValues.canal_expanded) |
-            (main_ddf['real'] == common.RealValues.real)]
-        feature_selection_points_ddf = feature_selection_points_ddf.repartition(
-            divisions=divisions).persist()
+        f_sel_points = hdf5_util.fold_h5_all_clusters(
+            porosity_data_h5,
+            lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
+                            (d['real'] == common.RealValues.propagated) |
+                            (d['real'] == common.RealValues.real)]), 0)
+        print_manager(f'[main] Points for feature selection: {f_sel_points}')
 
-        print_manager(f'[main] Points for feature selection with size '\
-              f'{len(feature_selection_points_ddf)}: ')
-        print_manager(feature_selection_points_ddf)
+        if mpi_size == 1:
+            best_features_set, best_error = petro4_hdf5.get_features_sets(
+                porosity_data_h5, features_dict_h5, all_features,
+                hypercube_shape, 4, 4)
+        else:
+            best_features_set, best_error = petro_dist3_hdf5.get_features_sets(
+                porosity_data_h5, features_dict_h5, all_features,
+                hypercube_shape, 10, 0)
+            
+        return
 
         # if mpi_size == 1:
         #     best_features_set, best_error = petro3.get_features_sets(
         #         feature_selection_points_ddf, features_ddf, all_features,
         #         parallel_settings, 4, 4)
         # else:
-        best_features_set, best_error = petro_dist2.get_features_sets(
-            feature_selection_points_ddf, features_ddf, all_features,
-            hypercube_shape, dask_chunksize, parallel_settings, 10, 0)
+        # best_features_set, best_error = petro_dist2.get_features_sets(
+        #     feature_selection_points_ddf, features_ddf, all_features,
+        #     hypercube_shape, dask_chunksize, parallel_settings, 10, 0)
 
-        print_manager(f'[main][{it}] Best features set:'\
-              f' {best_features_set} with {best_error} error'
-        )
+        print_manager(f'[main]{it_str} Best features set:'\
+              f' {best_features_set} with {best_error} error')
 
         t3 = time.time()
 
         return
 
         print_manager(
-            f"[main][{it}] Performing predictions on new expanded points")
+            f"[main]{it_str} Performing predictions on new expanded points")
         main_df = apply4.perf_predition(best_features_set, main_df,
                                         features_df)
         print_manager(main_df)
@@ -199,10 +229,10 @@ def main(load_iteration: int, num_iterations: int, parallel_settings):
                        index_label=common.MAIN_DF_INDEX_NAMES)
 
         t4 = time.time()
-        print_manager(f'[main][times][{it}] total_it_time {t4-t1}')
-        print_manager(f'[main][times][{it}] expansion {t2-t1}')
-        print_manager(f'[main][times][{it}] feature_selection {t3-t2}')
-        print_manager(f'[main][times][{it}] propagation {t4-t3}')
+        print_manager(f'[main][times]{it_str} total_it_time {t4-t1}')
+        print_manager(f'[main][times]{it_str} expansion {t2-t1}')
+        print_manager(f'[main][times]{it_str} feature_selection {t3-t2}')
+        print_manager(f'[main][times]{it_str} propagation {t4-t3}')
 
 
 if __name__ == '__main__':
@@ -243,6 +273,17 @@ if __name__ == '__main__':
                         help='Number of CPU threads to be used '\
                              'per LGB execution (default: 1)')
 
+    parser.add_argument('--wp',
+                        dest='with_progress',
+                        action='store_true',
+                        default=True,
+                        help='Enable showing progress of iterations. '\
+                             'This can mess the slurm output up.')
+    parser.add_argument('--no-wp',
+                        dest='with_progress',
+                        action='store_false',
+                        help='Disables showing progress of iterations.')
+
     args = parser.parse_args()
     parallel_settings = {
         'n_cpus': int(args.n_cpus),
@@ -251,4 +292,5 @@ if __name__ == '__main__':
         # 'gpu_thrds': int(args.gpu_thrds),
     }
 
-    main(int(args.load_it), int(args.num_its), parallel_settings)
+    main(int(args.load_it), int(args.num_its), parallel_settings,
+         args.with_progress)

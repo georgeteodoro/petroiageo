@@ -1,12 +1,11 @@
 import numpy as np
 import time
-from tqdm import tqdm
 
 import common
 import hdf5_util
 
-
-def gen_expanded_points(d_h5, hypercube_shape, real_wells, it):
+# pp is for showing the iteration progress, which can be enabled or disabled
+def gen_expanded_points(d_h5, hypercube_shape, real_wells, it, it_str, pp):
     depth_len = hypercube_shape[2]
     ring = it
 
@@ -17,9 +16,10 @@ def gen_expanded_points(d_h5, hypercube_shape, real_wells, it):
         lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
                         (d['real'] == common.RealValues.expanded)]), 0)
 
-    print(f'[gen_expanded_points] Expanding points on ring {ring}')
+    if len(it_str) > 0:
+        print(f'[gen_expanded_points]{it_str} Expanding points on ring {ring}')
     # Generate a list of points to be expanded
-    for well in tqdm(real_wells):
+    for well in pp(real_wells):
         x_left = well[0] - ring
         x_right = well[0] + ring
         y_top = well[1] - ring
