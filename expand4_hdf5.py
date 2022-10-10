@@ -11,10 +11,10 @@ def gen_expanded_points(d_h5, hypercube_shape, real_wells, it, it_str, pp):
 
     t1 = time.time()
 
-    to_expand = hdf5_util.fold_h5_all_clusters(
-        d_h5,
-        lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
-                        (d['real'] == common.RealValues.expanded)]), 0)
+    # to_expand = hdf5_util.fold_h5_all_clusters(
+    #     d_h5,
+    #     lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
+    #                     (d['real'] == common.RealValues.expanded)]), 0)
 
     if len(it_str) > 0:
         print(f'[gen_expanded_points]{it_str} Expanding points on ring {ring}')
@@ -47,7 +47,12 @@ def gen_expanded_points(d_h5, hypercube_shape, real_wells, it, it_str, pp):
                 d) | right_wall_cond(d) | top_wall_cond(d) | bot_wall_cond(d)),
             common.RealValues.canal_expanded)
 
-        to_expand = hdf5_util.fold_h5_all_clusters(
-            d_h5,
-            lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
-                            (d['real'] == common.RealValues.expanded)]), 0)
+
+        # DOESNT IT UPDATES ALL VALUES TO common.RealValues.canal_expanded ????
+        problema aqui
+
+
+        # to_expand = hdf5_util.fold_h5_all_clusters(
+        #     d_h5,
+        #     lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
+        #                     (d['real'] == common.RealValues.expanded)]), 0)

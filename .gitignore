@@ -9,6 +9,8 @@ dados/wells-*
 dados/*.npy
 dados/*.h5
 
+*.h5
+
 coherence_features/*.npy
 
 tmp_data/*

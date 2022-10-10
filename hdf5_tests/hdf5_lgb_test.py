@@ -20,6 +20,12 @@ n_real_points = 1000
 data_len = prod(data_shape)
 n_real_wells = 5
 
+data_type = np.dtype([('x', np.int64), ('y', np.int64), ('z', np.int64),
+                      ('phi', np.float64), ('real', np.int64),
+                      ('well_id', np.int64)])
+
+max_features = 2
+
 
 def coord_from_index(idx, shape):
     c = []
@@ -33,6 +39,16 @@ def coord_from_index(idx, shape):
     return tuple(c)
 
 
+def index_from_coord(coord, shape):
+    index = 0
+    stride = 1
+    for i in reversed(range(len(shape))):
+        index = index + (coord[i] * stride)
+        stride = stride * shape[i]
+
+    return index
+
+
 def create_h5_feature(name):
     with h5py.File(f'f_{name}.h5', 'w') as h5_f:
         # Prepare numpy synthetic data
@@ -43,19 +59,14 @@ def create_h5_feature(name):
                 for k in range(data_shape[2]):
                     data_np[i, j, k] = random()
 
-        h5_dset = h5_f.create_dataset('f',
-                                      data_shape,
+        h5_dset = h5_f.create_dataset('f', (prod(data_shape), ),
                                       dtype=np.float64,
-                                      chunks=chunk_shape,
+                                      chunks=(prod(chunk_shape), ),
                                       data=data_np)
 
 
 def create_h5_porosity():
     with h5py.File(f'porosity_full.h5', 'w') as h5_f:
-        data_type = np.dtype([('x', np.int64), ('y', np.int64),
-                              ('z', np.int64), ('phi', np.float64),
-                              ('real', np.int64), ('well_id', np.int64)])
-
         # Prepare numpy synthetic data
         data_np = np.empty(data_shape, dtype=data_type)
 
@@ -246,7 +257,7 @@ class HDFMultiColTrainSequence(lgb.Sequence):
         return prod(self.porosity_h5.shape)
 
 
-if __name__ == '__main__':
+def read_all():
     # Create synthetic data
     create_h5_feature('feature1')
     create_h5_feature('feature2')
@@ -261,6 +272,13 @@ if __name__ == '__main__':
     f1_h5 = h5py.File('f_feature1.h5', 'r')['f']
     f2_h5 = h5py.File('f_feature2.h5', 'r')['f']
     print(f'real points: {real_points}')
+
+    cur_h5 = h5py.File('f_feature1.h5', 'w')
+    cur_h5_dset = h5_f.create_dataset('c',
+                                      data_shape,
+                                      dtype=data_type,
+                                      chunks=chunk_shape,
+                                      data=data_np)
 
     # Prepare hdf5 sequences objects
     train_seq = HDFMultiColTrainSequence(porosity_h5, {
@@ -319,6 +337,73 @@ if __name__ == '__main__':
         num_boost_round=100,
         # valid_sets=lgb_eval_dataset,
         # callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)]
-        )
+    )
 
     # Create multi-sequence X data:
+
+
+def read_only_expanded():
+    # Create synthetic data
+    create_h5_feature('feature1')
+    create_h5_feature('feature2')
+    create_h5_porosity()
+
+    well_out = 1
+
+    # Open data files
+    porosity_h5 = h5py.File('porosity_full.h5', 'r')['p']
+    real_points = fold_h5_all_clusters(porosity_h5,
+                                       lambda d: len(d[d['real'] == 1]), 0)
+    f1_h5 = h5py.File('f_feature1.h5', 'r')['f']
+    f2_h5 = h5py.File('f_feature2.h5', 'r')['f']
+
+    print(f'real points: {real_points}')
+
+    cur_data_type = [('x', np.int64), ('y', np.int64), ('z', np.int64),
+                     ('phi', np.float64)]
+    cur_data_type = cur_data_type + [(f'f{f}', np.float64)
+                                     for f in range(max_features)]
+    cur_data_type = np.dtype(cur_data_type)
+    print(cur_data_type)
+
+    cur_h5 = h5py.File('cur.h5', 'w')
+    cur_chunksize = prod(data_shape) / prod(chunk_shape) * 10
+    cur_h5_dset = cur_h5.create_dataset('c', (real_points, ),
+                                        dtype=cur_data_type,
+                                        chunks=(cur_chunksize, ))
+
+    # Fill current dataset porosity values
+    prev_end = 0
+    for x_c, y_c, z_c in porosity_h5.iter_chunks():
+        # Get current chunk
+        chunk_np = porosity_h5[x_c, y_c, z_c]
+
+        # Filter only one type of points
+        real_points = chunk_np[chunk_np['real'] == 1]
+
+        # Assign these porosity values to the current dataset
+        cur_h5_dset['x', 'y', 'z', 'phi',
+                    prev_end:(prev_end + len(real_points))] = real_points[[
+                        'x', 'y', 'z', 'phi'
+                    ]]
+        prev_end = prev_end + len(real_points)
+
+    # Fill current dataset features values
+    for chunk_slice in cur_h5_dset.iter_chunks():
+        # Get coordinates of the current dataset slice
+        coords = cur_h5_dset['x', 'y', 'z',chunk_slice[0]]
+
+        # Get list of points to be updated
+        linear_coords = [index_from_coord(c, data_shape) for c in coords.flat]
+        linear_coords.sort()
+        
+        # Update feature values
+        cur_h5_dset['f1', chunk_slice[0]] = f2_h5[linear_coords]
+
+
+    print(len(cur_h5_dset))
+    print(cur_h5_dset[20:24])
+
+
+if __name__ == '__main__':
+    read_only_expanded()

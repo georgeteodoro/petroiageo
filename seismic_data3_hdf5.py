@@ -1,6 +1,6 @@
 import numpy as np
 import h5py
-
+from math import prod
 
 def seismic_feature_np2hdf5(feature, chunk_shape):
 
@@ -12,10 +12,10 @@ def seismic_feature_np2hdf5(feature, chunk_shape):
     print(f'[seismic_feature_np2hdf5] writing {feature} to hdf5')
     with h5py.File(f'./dados/{feature}.h5', 'w') as h5_f:
         h5_dset = h5_f.create_dataset('f',
-                                      data_shape,
+                                      (prod(data_shape),),
                                       dtype=np.float64,
-                                      chunks=chunk_shape,
-                                      data=feature_np)
+                                      chunks=(prod(chunk_shape),),
+                                      data=feature_np.flat)
 
 
 if __name__ == '__main__':
