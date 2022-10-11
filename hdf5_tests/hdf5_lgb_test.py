@@ -9,13 +9,13 @@ import numbers
 import lightgbm as lgb
 from tqdm import tqdm
 
-data_shape = (10, 20, 30)
-chunk_shape = (10, 10, 10)
-n_real_points = 1000
+# data_shape = (10, 20, 30)
+# chunk_shape = (10, 10, 10)
+# n_real_points = 1000
 
-# data_shape = (1000, 200, 300)
-# chunk_shape = (100, 100, 100)
-# n_real_points = 20000
+data_shape = (1000, 200, 300)
+chunk_shape = (100, 100, 100)
+n_real_points = 20000
 
 data_len = prod(data_shape)
 n_real_wells = 5
@@ -342,6 +342,138 @@ def read_all():
     # Create multi-sequence X data:
 
 
+# From LGB example dataset_from_multi_hdf5.py
+class HDFMultiColSequence(lgb.Sequence):
+
+    def __init__(self, cur_dset_h5, base_features, train):
+        # cur_dset_h5 must be 1D
+        self.cur_dset_h5 = cur_dset_h5
+
+        # should be a list of strings
+        self.all_features = base_features
+
+        # Indicates whether this sequence is for training
+        # If for validation, only returns the subset of the
+        # selected well_id instead of the remaining of points
+        self.train = train
+        self.well_id = -1
+        self.lenn = -1
+
+    # Updates length of data as well
+    def set_well_id(self, well_id):
+        self.well_id = well_id
+        if self.train:
+            self.lenn = len(
+                self.cur_dset_h5[self.cur_dset_h5['well_id'] != self.well_id])
+        else:
+            self.lenn = len(
+                self.cur_dset_h5[self.cur_dset_h5['well_id'] == self.well_id])
+
+    def add_feature(self, f_str):
+        # if not self.train:
+        #      raise Exception('[HDFMultiColSequence] Only the training '\
+        #         'sequence can have new feature added.')
+        # for chunk_slice in self.cur_dset_h5.iter_chunks():
+        #     # Get coordinates of the current dataset slice
+        #     coords = cur_dset_h5['x', 'y', 'z', chunk_slice[0]]
+
+        #     # Get list of points to be updated
+        #     linear_coords = [
+        #         index_from_coord(c, data_shape) for c in coords.flat
+        #     ]
+        #     linear_coords.sort()
+
+        #     # Update feature values
+        #     cur_dset_h5[f_str, chunk_slice[0]] = f_h5[linear_coords]
+
+        self.all_features.append(f_str)
+
+    def __getitem__(self, idx):
+        if isinstance(idx, numbers.Integral):
+            min_index = 0
+            for cur_slice in self.cur_dset_h5.iter_chunks():
+                cur_chunk = self.cur_dset_h5[cur_slice]
+                if self.train:
+                    well_chunk = cur_chunk[
+                        cur_chunk['well_id'] != self.well_id]
+                else:
+                    well_chunk = cur_chunk[cur_chunk['well_id'] ==
+                                           self.well_id]
+
+                if (idx >= min_index) & (idx < min_index + len(well_chunk)):
+                    return np.array(
+                        well_chunk[idx -
+                                   min_index][self.all_features].tolist())
+                min_index = min_index + len(well_chunk)
+
+        elif isinstance(idx, slice):
+            print(f'slice: {idx}')
+            output = []
+            min_index = 0
+            for cur_slice in self.cur_dset_h5.iter_chunks():
+                cur_chunk = self.cur_dset_h5[cur_slice]
+                if self.train:
+                    well_chunk = cur_chunk[
+                        cur_chunk['well_id'] != self.well_id]
+                else:
+                    well_chunk = cur_chunk[cur_chunk['well_id'] ==
+                                           self.well_id]
+
+                # Check if the initial idx point is inside this chunk
+                if (idx.start >= min_index) & (idx.start <
+                                               min_index + len(well_chunk)):
+                    # Check if the end of the idx slice is inside this chunk
+                    if idx.stop < min_index + len(well_chunk):
+                        output = output + well_chunk[
+                            idx.start - min_index:idx.stop -
+                            min_index][self.all_features].tolist()
+                        break
+                    # If not, add all points from idx.start to the end
+                    # of the chunk
+                    else:
+                        output = output + well_chunk[idx.start - min_index:len(
+                            well_chunk)][self.all_features].tolist()
+                # Check if the initial idx point was behind, but the end point
+                # is on a chunk ahead
+                elif (idx.start < min_index) & (idx.stop >
+                                                min_index + len(well_chunk)):
+                    output = output + well_chunk[:][self.all_features].tolist()
+                # Otherwise, this chunk is the one with the idx stop position
+                else:
+                    output = output + well_chunk[0:idx.stop - min_index][
+                        self.all_features].tolist()
+
+                min_index = min_index + len(well_chunk)
+
+            return np.array(output)
+        # elif isinstance(idx, list):
+        # 3/0
+        # return self.porosity_h5[[coord_from_index(i) for i in idx]]
+        else:
+            raise TypeError('Sequence index must be integer, '\
+                f'slice or list. Got {type(idx).__name__}')
+
+    def __len__(self):
+        return self.lenn
+
+
+def add_feature_to_dset(cur_h5_dset, features):
+    # Fill current dataset features values
+    for (f_str, f_h5) in features:
+        for chunk_slice in cur_h5_dset.iter_chunks():
+            # Get coordinates of the current dataset slice
+            coords = cur_h5_dset['x', 'y', 'z', chunk_slice[0]]
+
+            # Get list of points to be updated
+            linear_coords = [
+                index_from_coord(c, data_shape) for c in coords.flat
+            ]
+            linear_coords.sort()
+
+            # Update feature values
+            cur_h5_dset[f_str, chunk_slice[0]] = f_h5[linear_coords]
+
+
 def read_only_expanded():
     # Create synthetic data
     create_h5_feature('feature1')
@@ -360,7 +492,7 @@ def read_only_expanded():
     print(f'real points: {real_points}')
 
     cur_data_type = [('x', np.int64), ('y', np.int64), ('z', np.int64),
-                     ('phi', np.float64)]
+                     ('phi', np.float64), ('well_id', np.int64)]
     cur_data_type = cur_data_type + [(f'f{f}', np.float64)
                                      for f in range(max_features)]
     cur_data_type = np.dtype(cur_data_type)
@@ -382,27 +514,67 @@ def read_only_expanded():
         real_points = chunk_np[chunk_np['real'] == 1]
 
         # Assign these porosity values to the current dataset
-        cur_h5_dset['x', 'y', 'z', 'phi',
+        cur_h5_dset['x', 'y', 'z', 'phi', 'well_id',
                     prev_end:(prev_end + len(real_points))] = real_points[[
-                        'x', 'y', 'z', 'phi'
+                        'x', 'y', 'z', 'phi', 'well_id'
                     ]]
         prev_end = prev_end + len(real_points)
 
-    # Fill current dataset features values
-    for chunk_slice in cur_h5_dset.iter_chunks():
-        # Get coordinates of the current dataset slice
-        coords = cur_h5_dset['x', 'y', 'z',chunk_slice[0]]
+    # Set training and validation datasets
+    well_out = 0
 
-        # Get list of points to be updated
-        linear_coords = [index_from_coord(c, data_shape) for c in coords.flat]
-        linear_coords.sort()
-        
-        # Update feature values
-        cur_h5_dset['f1', chunk_slice[0]] = f2_h5[linear_coords]
+    x_train_seq = HDFMultiColSequence(cur_h5_dset, ['x', 'y', 'z'], True)
+    x_train_seq.set_well_id(well_out)
+    y_train_np = cur_h5_dset[cur_h5_dset['well_id'] != well_out]['phi']
 
+    x_val_seq = HDFMultiColSequence(cur_h5_dset, ['x', 'y', 'z'], False)
+    x_val_seq.set_well_id(well_out)
+    y_val_np = cur_h5_dset[cur_h5_dset['well_id'] == well_out]
+
+    # add_feature_to_dset(cur_h5_dset, [('f0', f1_h5), ('f1', f2_h5)])
+    add_feature_to_dset(cur_h5_dset, [('f0', f1_h5)])
+    x_train_seq.add_feature('f0')
+    x_val_seq.add_feature('f0')
 
     print(len(cur_h5_dset))
     print(cur_h5_dset[20:24])
+
+    print(f'y_train_np: {y_train_np.shape}')
+
+    lgb_train_dataset = lgb.Dataset(x_train_seq, y_train_np)
+    # x_tmp = np.empty((len(y_train_np), 3),
+    #                  dtype=np.float64)
+    # x_tmp[:,0] = cur_h5_dset[cur_h5_dset['well_id'] != well_out]['x']
+    # x_tmp[:,1] = cur_h5_dset[cur_h5_dset['well_id'] != well_out]['y']
+    # x_tmp[:,2] = cur_h5_dset[cur_h5_dset['well_id'] != well_out]['z']
+    # print(x_tmp.shape)
+    # lgb_train_dataset = lgb.Dataset(x_tmp, y_train_np)
+
+    params = {
+        "max_bin": 128,
+        "max_depth": 10,
+        "learning_rate": 0.1,
+        "boosting_type": "gbdt",
+        "objective": "regression",
+        "metric": "mae",
+        "num_leaves": 20,
+        "verbose": -1,
+        "min_data": 10,
+        "boost_from_average": True,
+        "bagging_freq": 1,
+        "random_state": 0,
+        # "tree_learner": "data",
+    }
+
+    # Perform training
+    print('training...')
+    regressor = lgb.train(
+        params,
+        lgb_train_dataset,
+        num_boost_round=100,
+        # valid_sets=lgb_eval_dataset,
+        # callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)]
+    )
 
 
 if __name__ == '__main__':
