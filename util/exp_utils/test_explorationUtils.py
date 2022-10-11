@@ -27,30 +27,30 @@ class TestWell(TestCase):
         self.assertEqual(point.y, valid_y)
     
     def test_cant_set_invalid_key(self):
-        point = Well(0, 1)
+        well = Well(0, 1)
 
         with self.assertRaises(IndexError):
-            point[2] = 3
+            well[2] = 3
     
     def test_cant_set_key_invalid_value(self):
         valid_x = 0
         valid_y = 1
-        point = Well(valid_x, valid_y)
+        well = Well(valid_x, valid_y)
 
         with self.assertRaises(ValueError):
-            point[1] = -1
+            well[1] = -1
         
         with self.assertRaises(TypeError):
-            point[0] = 'a'
+            well[0] = 'a'
 
-        self.assertEqual(point[0], valid_x)
-        self.assertEqual(point[1], valid_y)
+        self.assertEqual(well[0], valid_x)
+        self.assertEqual(well[1], valid_y)
     
     def test_can_get_coords(self):
         valid_x = 0
         valid_y = 1
-        point = Well(valid_x, valid_y)
-        self.assertTupleEqual(point.coords, (valid_x, valid_y))
+        well = Well(valid_x, valid_y)
+        self.assertTupleEqual(well.coords, (valid_x, valid_y))
     
     def test_well_equality(self):
         x = 0
@@ -944,6 +944,84 @@ class TestExplorationCube(TestCase):
         it = 2
         expected_result = 7 * depth
         self.assertEqual(cube.num_overlaps_at_it(it), expected_result)
+    
+    def test_can_get_well_influence_at_point_at_it(self):
+        top_left = (0, 0)
+        bottom_right = (5, 5)
+        depth = 10
+
+        cube = ExplorationCube(top_left, bottom_right, depth)
+
+        well = Well(1, 1)
+        cube.add_well(well)
+
+        it = 3
+        target_point = (1, 4)
+
+        self.assertListEqual(cube.wells_influencing_point_at_it(target_point, it), [(1, 1)])
+    
+    def test_get_no_wells_influencing_point_at_it(self):
+        top_left = (0, 0)
+        bottom_right = (5, 5)
+        depth = 10
+
+        cube = ExplorationCube(top_left, bottom_right, depth)
+
+        well = Well(1, 1)
+        cube.add_well(well)
+
+        it = 1
+        target_point = (1, 4)
+
+        self.assertListEqual(cube.wells_influencing_point_at_it(target_point, it), [])
+    
+    def test_get_many_wells_influencing_point_at_minimun_it_to_reach(self):
+        top_left = (0, 0)
+        bottom_right = (5, 5)
+        depth = 10
+
+        cube = ExplorationCube(top_left, bottom_right, depth)
+
+        wells = [Well(1, 1), Well(5, 3)]
+        for well in wells:
+            cube.add_well(well)
+
+        it = 4
+        target_point = (1, 3)
+        expected_result = [(1, 1), (5, 3)]
+        self.assertListEqual(cube.wells_influencing_point_at_it(target_point, it), expected_result)
+    
+    def test_get_many_wells_influencing_point_pass_minimun_it_to_reach(self):
+        top_left = (0, 0)
+        bottom_right = (5, 5)
+        depth = 10
+
+        cube = ExplorationCube(top_left, bottom_right, depth)
+
+        wells = [Well(1, 1), Well(5, 3)]
+        for well in wells:
+            cube.add_well(well)
+
+        it = 10
+        target_point = (1, 3)
+        expected_result = [(1, 1), (5, 3)]
+        self.assertListEqual(cube.wells_influencing_point_at_it(target_point, it), expected_result)
+    
+    def test_get_only_wells_influencing_point_at_it(self):
+        top_left = (0, 0)
+        bottom_right = (5, 5)
+        depth = 10
+
+        cube = ExplorationCube(top_left, bottom_right, depth)
+
+        wells = [Well(1, 1), Well(5, 3)]
+        for well in wells:
+            cube.add_well(well)
+
+        it = 2
+        target_point = (4, 3)
+        expected_result = [(5, 3)]
+        self.assertListEqual(cube.wells_influencing_point_at_it(target_point, it), expected_result)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
 from contextlib import suppress
-from typing import Iterable
+from typing import Iterable, List
 import numpy as np
 
 
@@ -425,6 +425,37 @@ class WellSet():
         
         return min_its
     
+    def wells_in_point_at_it(self, target_point:tuple, it:int) -> List[tuple]:
+        """
+        Returns a list of wells that get to the target_point at iteration it. The wells are
+        ordered by arrival it.
+        target_point: Should be a (x, y) tuple
+        it: The iteration (int) to check arrival
+
+        returns:
+        A list of tuples with the pattern: [(x, y)] where (x, y) are the well's coordinates.
+        This list is in ascending order by its arrival it.
+        """
+        if not type(it) == int:
+            raise TypeError("it should be an integer!")
+        
+        if it < 1:
+            raise ValueError("it should be a positive integer!")
+        
+        wells_and_num_its_till_point = list()
+        for well in self._wells:
+            well_its_to_point = well.its_to_point(target_point)
+            if well_its_to_point <= it:
+                wells_and_num_its_till_point.append((well.coords, well_its_to_point))
+        
+        sorted_list = sorted(
+            wells_and_num_its_till_point, key=lambda t: t[1]
+        )
+
+        only_wells_list = [t[0] for t in sorted_list]
+
+        return only_wells_list
+    
     def first_to_point(self, target_point:tuple) -> Well:
         """
         Returns the first well to get to the target_point
@@ -776,6 +807,19 @@ class ExplorationCube():
             raise ValueError("it should be a positive integer!")
         
         return self._wells.get_prediction_area(it, self.max_x, self.max_y)
+    
+    def wells_influencing_point_at_it(self, point:tuple, it:int) -> List[tuple]:
+        if not type(it) == int:
+            raise TypeError("it should be an integer!")
+        
+        if it < 1:
+            raise ValueError("it should be a positive integer!")
+
+        #This checks if it is a valid point
+        cube_point = NonNegativeInteger2DPoint(point[0], point[1])
+
+        return self.wells.wells_in_point_at_it(cube_point.as_tuple(), it)
+
         
     def __eq__(self, other):
         if isinstance(other, ExplorationCube):
