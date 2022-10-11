@@ -809,6 +809,16 @@ class ExplorationCube():
         return self._wells.get_prediction_area(it, self.max_x, self.max_y)
     
     def wells_influencing_point_at_it(self, point:tuple, it:int) -> List[tuple]:
+        """
+        Returns a list of wells that get to the target_point at iteration it. The wells are
+        ordered by arrival it.
+        target_point: Should be a (x, y) tuple
+        it: The iteration (int) to check arrival
+
+        returns:
+        A list of tuples with the pattern: [(x, y)] where (x, y) are the well's coordinates.
+        This list is in ascending order by its arrival it.
+        """
         if not type(it) == int:
             raise TypeError("it should be an integer!")
         
