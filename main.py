@@ -180,8 +180,6 @@ def main(load_iteration: int, num_iterations: int, parallel_settings,
 
         print(porosity_data_h5)
 
-        return
-
         t2 = time.time()
 
         print_manager(f"[main]{it_str} Performing feature selection")
@@ -197,13 +195,12 @@ def main(load_iteration: int, num_iterations: int, parallel_settings,
 
         if mpi_size == 1:
             best_features_set, best_error = petro4_hdf5.get_features_sets(
-                porosity_data_h5, features_dict_h5, all_features,
-                hypercube_shape, 4, 4)
+                porosity_data_h5, features_dict_h5, all_features, it_str, 4, 4)
         else:
             best_features_set, best_error = petro_dist3_hdf5.get_features_sets(
                 porosity_data_h5, features_dict_h5, all_features,
                 hypercube_shape, 10, 0)
-            
+
         return
 
         # if mpi_size == 1:
