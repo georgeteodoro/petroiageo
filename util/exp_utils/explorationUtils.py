@@ -483,7 +483,7 @@ class WellSet():
         """
         total_area = self.get_prediction_area(it, max_x, max_y)
         
-        area_of_intersect = np.sum(total_area > 1)
+        area_of_intersect = np.sum(total_area > 1, dtype="int64")
 
         return area_of_intersect * depth
     
@@ -527,7 +527,7 @@ class WellSet():
         """
         total_area = self.get_prediction_area(it, max_x, max_y)
         
-        area_of_intersect = np.sum(total_area > 0)
+        area_of_intersect = np.sum(total_area > 0, dtype="int64")
 
         return area_of_intersect * depth
     
@@ -759,21 +759,38 @@ class ExplorationCube():
         
         if len(self._wells) < 1:
             raise ValueError(f"{self.__class__.__name__} doesnt have any wells!")
-        
+
+        if n_points == 0:
+            return 0
+
         it_count = 0
         while True:
-            if self._wells.num_predicted_points_at_it(it_count, self.max_x, self.max_y, self.depth) >= n_points:
-                return it_count
-            
-            it_count += 1
+            n_predicted = self._wells.num_predicted_points_at_it(it_count, self.max_x, self.max_y, self.depth)
+            if n_predicted  < n_points:
+                it_count += 10
+            else:
+                break
+        
+        #passou dos pontos
+        while True:
+            n_predicted = self._wells.num_predicted_points_at_it(it_count, self.max_x, self.max_y, self.depth) 
+            if n_predicted >= n_points:
+                it_count -= 1
+            else:
+                if it_count < 0:
+                    return 0
+
+                if self._wells.num_predicted_points_at_it(it_count+1, self.max_x, self.max_y, self.depth) >= n_points:
+                    return it_count+1
+                else:
+                    return it_count
         
     def max_predictable_points_possible(self) -> int:
         """
         Returns the total number of points inside this cube minus the amount of points that wells occupy
         """
-        all_points = self.x_range * self.y_range * self.depth
-        well_points = len(self._wells) * self.depth
-        return all_points - well_points
+        area_points = self.x_range * self.y_range
+        return (area_points - len(self._wells)) * self.depth
     
     def its_to_predict_complete(self) -> int:
         return self.its_to_predict_n(self.max_predictable_points_possible())

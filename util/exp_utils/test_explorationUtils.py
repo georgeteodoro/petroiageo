@@ -747,7 +747,8 @@ class TestExplorationCube(TestCase):
         [cube.add_well(well) for well in wells]
         num_points_to_predict = 0
         expected_num_its = 0
-        self.assertEqual(expected_num_its, cube.its_to_predict_n(num_points_to_predict))
+        result = cube.its_to_predict_n(num_points_to_predict)
+        self.assertEqual(expected_num_its, result)
     
     def test_num_its_until_n_points_predicted(self):
         top_left = (0, 0)
@@ -762,7 +763,9 @@ class TestExplorationCube(TestCase):
 
         num_points_to_predict = 8 * 15
         expected_num_its = 1
-        self.assertEqual(expected_num_its, cube.its_to_predict_n(num_points_to_predict))
+
+        result = cube.its_to_predict_n(num_points_to_predict)
+        self.assertEqual(expected_num_its, result)
     
     def test_raise_if_pass_max_points_num_its_to_n_points_predicted(self):
         top_left = (0, 0)
@@ -817,7 +820,8 @@ class TestExplorationCube(TestCase):
         [cube.add_well(well) for well in wells]
 
         expected_num_its = 3
-        self.assertEqual(expected_num_its, cube.its_to_predict_complete())
+        result = cube.its_to_predict_complete()
+        self.assertEqual(expected_num_its, result)
     
     def test_num_its_to_complete_cube_with_1_well(self):
         top_left = (0, 0)
@@ -830,7 +834,8 @@ class TestExplorationCube(TestCase):
         cube.add_well(well)
 
         expected_num_its = 2
-        self.assertEqual(expected_num_its, cube.its_to_predict_complete())
+        result = cube.its_to_predict_complete()
+        self.assertEqual(expected_num_its, result)
     
     def test_raise_if_cube_doesnt_have_wells_num_its_to_complete_cube(self):
         top_left = (0, 0)
