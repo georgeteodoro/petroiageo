@@ -2,6 +2,7 @@ import numpy as np
 import scipy.ndimage
 import scipy.signal
 from algs import *
+import pathlib
 
 n_cpu = 1
 files = ["NEAR"]
@@ -40,52 +41,47 @@ if algs == {"all"}:
                 "sum"
         }
 
+def apply_and_save(func, save_path, *args, **kwargs):
+    result = func(*args, **kwargs)
+    np.save(save_path, result)
+
 name = lambda w: "-".join(str(x) for x in w)
 for f in files:
-    seismic = np.load("dados/"+f+".npy")
+    data_folder = pathlib.Path("dados/")
+    results_folder = pathlib.Path("results/")
+    results_folder.mkdir(exist_ok=True)
+
+    seismic = np.load(data_folder / f"{f}.npy")
 
     curvature = curvature_parameters(seismic)
     if "dip_angle" in algs:
-        coh = dip_angle(curvature)
-        np.save("results/"+f+"_dip-angle_.npy", coh)
+        apply_and_save(dip_angle, results_folder / f"{f}_dip-angle_.npy", curvature)
     if "azimuth" in algs:
-        coh = azimuth(curvature)
-        np.save("results/"+f+"_azimuth_.npy", coh)
+        apply_and_save(azimuth, results_folder / f"{f}_azimuth_.npy", curvature)
     if "mean_curvature" in algs:
-        coh = mean_curvature(curvature)
-        np.save("results/"+f+"_mean-curvature_.npy", coh)
+        apply_and_save(mean_curvature, results_folder / f"{f}_mean-curvature_.npy", curvature)
     if "gaussian_curvature" in algs:
-        coh = gaussian_curvature(curvature)
-        np.save("results/"+f+"_gaussian-curvature_.npy", coh)
+        apply_and_save(gaussian_curvature, results_folder / f"{f}_gaussian-curvature_.npy", curvature)
     if "max_curvature" in algs:
-        coh = max_curvature(curvature)
-        np.save("results/"+f+"_max-curvature_.npy", coh)
+        apply_and_save(max_curvature, results_folder / f"{f}_max-curvature_.npy", curvature)
     if "min_curvature" in algs:
-        coh = min_curvature(curvature)
-        np.save("results/"+f+"_min-curvature_.npy", coh)
+        apply_and_save(min_curvature, results_folder / f"{f}_min-curvature_.npy", curvature)
     if "most_positive_curvature" in algs:
-        coh = most_positive_curvature(curvature)
-        np.save("results/"+f+"_most-positive-curvature_.npy", coh)
+        apply_and_save(most_positive_curvature, results_folder / f"{f}_most-positive-curvature_.npy", curvature)
     if "most_negative_curvature" in algs:
-        coh = most_negative_curvature(curvature)
-        np.save("results/"+f+"_most-negative-curvature_.npy", coh)
+        apply_and_save(most_negative_curvature, results_folder / f"{f}_most-negative-curvature_.npy", curvature)
     if "shape_index" in algs:
-        coh = shape_index(curvature)
-        np.save("results/"+f+"_shape-index_.npy", coh)
+        apply_and_save(shape_index, results_folder / f"{f}_shape-index_.npy", curvature)
     if "dip_curvature" in algs:
-        coh = dip_curvature(curvature)
-        np.save("results/"+f+"_dip-curvature_.npy", coh)
+        apply_and_save(dip_curvature, results_folder / f"{f}_dip-curvature_.npy", curvature)
     if "contour_curvature" in algs:
-        coh = contour_curvature(curvature)
-        np.save("results/"+f+"_contur-curvature_.npy", coh)
+        apply_and_save(contour_curvature, results_folder / f"{f}_contur-curvature_.npy", curvature)
     if "curvedness" in algs:
-        coh = curvedness(curvature)
-        np.save("results/"+f+"_curvedness_.npy", coh)
+        apply_and_save(curvedness, results_folder / f"{f}_curvedness_.npy", curvature)
     
     for window1D in windows1D:
         if "rms" in algs:
-            rmsCube = rms(window1D, seismic)
-            np.save("results/"+f+"_rms-"+str(window1D)+"_.npy", rmsCube)
+            apply_and_save(rms, results_folder / f"{f}_rms-"+str(window1D)+"_.npy", window1D, seismic)
     
     runEnvelope = "envelope" in algs
     runInstFrequency = "instFrequency" in algs
@@ -93,38 +89,27 @@ for f in files:
         analiticCube = analiticOf(seismic)
         
         if runEnvelope:
-            envelopeCube = envelopeOf(analiticCube)
-            np.save("results/"+f+"_envelope_.npy", envelopeCube)
+            apply_and_save(envelopeOf, results_folder / f"{f}_envelope_.npy", analiticCube)
 
         if runInstFrequency:
-            instFrequencyCube = instantaneousFrequencyOf(analiticCube)
-            np.save("results/"+f+"_instantaneous-frequency_.npy", instFrequencyCube)
+            apply_and_save(instantaneousFrequencyOf, results_folder / f"{f}_instantaneous-frequency_.npy", analiticCube)
 
     for w in windows3D:
         if "marfurt" in algs:
-            coh = moving_window(seismic, w, marfurt_semblance, n_cpu)
-            np.save("results/"+f+"_marfurt_"+name(w)+".npy", coh)
+            apply_and_save(moving_window, results_folder / f"{f}_marfurt_"+name(w)+".npy", seismic, w, marfurt_semblance, n_cpu)
         if "gersz" in algs:
-            coh = moving_window(seismic, w, gersztenkorn, n_cpu)
-            np.save("results/"+f+"_gersz_"+name(w)+".npy", coh)
+            apply_and_save(moving_window, results_folder / f"{f}_gersz_"+name(w)+".npy", seismic, w, gersztenkorn, n_cpu)
         if "gst" in algs:
-            coh = gst_coherence(seismic, w, sigma=1)
-            np.save("results/"+f+"_gst_"+name(w)+".npy", coh)
+            apply_and_save(gst_coherence, results_folder / f"{f}_gst_"+name(w)+".npy", seismic, w, {'sigma':1})
         if "sobel" in algs:
-            coh = gersz_sobel(seismic, w)
-            np.save("results/"+f+"_sobel_"+name(w)+".npy", coh)
+            apply_and_save(gersz_sobel, results_folder / f"{f}_sobel_"+name(w)+".npy", seismic, w)
         if "median" in algs:
-            coh = moving_window(seismic, w, np.median)
-            np.save("results/"+f+"_median_"+name(w)+".npy", coh, n_cpu)
+            apply_and_save(moving_window, results_folder / f"{f}_median_"+name(w)+".npy", seismic, w, np.median)
         if "mean" in algs:
-            coh = moving_window(seismic, w, np.mean)
-            np.save("results/"+f+"_mean_"+name(w)+".npy", coh, n_cpu)
+            apply_and_save(moving_window, results_folder / f"{f}_mean_"+name(w)+".npy", seismic, w, np.mean, n_cpu)
         if "min" in algs:
-            coh = moving_window(seismic, w, np.min)
-            np.save("results/"+f+"_min_"+name(w)+".npy", coh, n_cpu)
+            apply_and_save(moving_window, results_folder / f"{f}_min_"+name(w)+".npy", seismic, w, np.min, n_cpu)
         if "max" in algs:
-            coh = moving_window(seismic, w, np.max)
-            np.save("results/"+f+"_max_"+name(w)+".npy", coh, n_cpu)
+            apply_and_save(moving_window, results_folder / f"{f}_max_"+name(w)+".npy", seismic, w, np.max, n_cpu)
         if "sum" in algs:
-            coh = moving_window(seismic, w, np.sum)
-            np.save("results/"+f+"_sum_"+name(w)+".npy", coh, n_cpu)
+            apply_and_save(moving_window, results_folder / f"{f}_sum_"+name(w)+".npy", seismic, w, np.sum, n_cpu)
