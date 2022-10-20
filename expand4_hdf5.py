@@ -40,16 +40,12 @@ def gen_expanded_points(d_h5, hypercube_shape, real_wells, it, it_str, pp):
             d_h5, lambda d:
             (d['real'] == common.RealValues.empty) & (left_wall_cond(
                 d) | right_wall_cond(d) | top_wall_cond(d) | bot_wall_cond(d)),
-            common.RealValues.expanded)
+            'real', common.RealValues.expanded)
         hdf5_util.conditional_map_h5_all_clusters(
             d_h5, lambda d:
             (d['real'] == common.RealValues.canal) & (left_wall_cond(
                 d) | right_wall_cond(d) | top_wall_cond(d) | bot_wall_cond(d)),
-            common.RealValues.canal_expanded)
-
-
-        # DOESNT IT UPDATES ALL VALUES TO common.RealValues.canal_expanded ????
-        problema aqui
+            'real', common.RealValues.canal_expanded)
 
 
         # to_expand = hdf5_util.fold_h5_all_clusters(

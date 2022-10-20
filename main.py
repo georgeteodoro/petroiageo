@@ -10,9 +10,9 @@ from tqdm import tqdm
 import common
 import hdf5_util
 import expand4_hdf5
-import petro3
-import petro_dist2
-import apply4
+import petro4_hdf5
+# import petro_dist2
+# import apply4
 
 # Constants
 # hypercube_shape = (434, 646, 251)
@@ -177,6 +177,10 @@ def main(load_iteration: int, num_iterations: int, parallel_settings,
             lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
                             (d['real'] == common.RealValues.expanded)]), 0)
         print_manager(f'[main] Expanded points: {to_expand}')
+
+        print(porosity_data_h5)
+
+        return
 
         t2 = time.time()
 

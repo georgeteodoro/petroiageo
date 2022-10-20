@@ -1,4 +1,5 @@
 from math import ceil
+import numpy as np
 
 
 def fold_h5_all_clusters(d_h5, f, out_0):
@@ -28,7 +29,7 @@ def fold_h5_all_clusters(d_h5, f, out_0):
 
     return out
 
-def conditional_map_h5_all_clusters(d_h5, cond_f, val):
+def conditional_map_h5_all_clusters(d_h5, cond_f, column, val):
     chunks = d_h5.chunks
     x_shape = d_h5.shape[0]
     y_shape = d_h5.shape[1]
@@ -50,7 +51,7 @@ def conditional_map_h5_all_clusters(d_h5, cond_f, val):
                 # print(f'=======points to update: {len(d_np[cond_f(d_np)])}')
                 
                 # Update values on condition
-                d_np[cond_f(d_np)] = val
+                d_np['real'] = np.where(cond_f(d_np), val, d_np[column])
 
                 # Forward values to hdf5 file
                 d_h5[x_i:x_o, y_i:y_o, z_i:z_o] = d_np

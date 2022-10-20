@@ -8,6 +8,7 @@ import importlib
 import numbers
 import lightgbm as lgb
 from tqdm import tqdm
+from time import time
 
 # data_shape = (10, 20, 30)
 # chunk_shape = (10, 10, 10)
@@ -128,220 +129,6 @@ def fold_h5_all_clusters(d_h5, f, out_0):
     return out
 
 
-# From https://stackoverflow.com/questions/15182381
-def fields_view(arr, fields):
-    dtype2 = np.dtype({name: arr.dtype.fields[name] for name in fields})
-    return np.ndarray(arr.shape, dtype2, arr, 0, arr.strides)
-
-
-# From LGB example dataset_from_multi_hdf5.py
-class HDFMultiColTrainSequence(lgb.Sequence):
-
-    def __init__(self, porosity_h5, features_dict_h5, batch_size, train,
-                 well_out):
-        """
-        Construct a sequence object from HDF5 with required interface.
-        Parameters
-        ----------
-        hdf_dataset : h5py.Dataset
-            Dataset in HDF5 file.
-        batch_size : int
-            Size of a batch. When reading data to construct lightgbm 
-            Dataset, each read reads batch_size rows.
-        """
-        # We can also open HDF5 file once and get access to
-        # self.data = hdf_dataset
-        self.batch_size = batch_size
-
-        self.porosity_h5 = porosity_h5
-        self.features_dict_h5 = features_dict_h5
-        self.selected_features = []
-        self.cur_feature = ""
-
-        self.train = train
-        self.well_out = well_out
-
-    # Updates the current feature to be used besides the previously
-    # selected features
-    def set_current_feature(self, cur_feature):
-        # Check if this feature wasn't already added
-        if cur_feature in self.selected_features:
-            raise Exception('[HDFMultiColSequence] Feature '\
-                f'{cur_feature} already added.')
-        if cur_feature == self.cur_feature:
-            raise Exception('[HDFMultiColSequence] Feature '\
-                f'{cur_feature} was already the current feature.')
-
-        self.cur_feature = cur_feature
-
-    # Pushes the current feature into the selected features.
-    # Fails if there ware no selected features
-    def push_current_feature(self):
-        if len(cur_feature) == 0:
-            raise Exception('[HDFMultiColSequence] Pushing empty feature.')
-
-        self.selected_features.append(self.cur_feature)
-        self.cur_feature = ''
-
-    def __getitem__(self, idx):
-        if isinstance(idx, numbers.Integral):
-            nd_idx = coord_from_index(idx, self.porosity_h5.shape)
-            data = self.porosity_h5[nd_idx]
-            coordinates = [data['x'], data['y'], data['z']]
-            features = [
-                self.features_dict_h5[f][nd_idx]
-                for f in self.selected_features + [self.cur_feature]
-            ]
-            # print(coordinates + features)
-            return np.array(coordinates + features)
-        elif isinstance(idx, slice):
-            # Loading a simple slice and then linearly slicing it as a np array
-            # Can be optimized later to read as little as possible on
-            # the big_slice
-            min_x = int(
-                floor(idx.start /
-                      (porosity_h5.shape[1] * porosity_h5.shape[2])))
-            max_x = int(1 +
-                        floor(idx.stop /
-                              (porosity_h5.shape[1] * porosity_h5.shape[2])))
-
-            # Create output array
-            # All points are float to enable the flattening of data on a
-            # single np array
-            all_features = self.selected_features + [self.cur_feature]
-            output = np.empty((idx.stop - idx.start, 3 + len(all_features)),
-                              dtype=np.float64)
-
-            # Find coordinates for the flat big_slice
-            first_idx_3d = coord_from_index(idx.start, porosity_h5.shape)
-            first_idx = porosity_h5.shape[2] * first_idx_3d[1] + first_idx_3d[2]
-
-            # Get coordinates
-            big_slice = self.porosity_h5[min_x:max_x, :, :]
-            accurate_slice = big_slice.flat[first_idx:first_idx + idx.stop -
-                                            idx.start]
-
-            # print(f'doing slices: {idx}')
-            # print(f'shape: {porosity_h5.shape}')
-            # print(f'big_slice shape: {big_slice.shape}')
-            # print(f'acc_slice shape: {accurate_slice.shape}')
-            # print(f'first idx3d: {first_idx_3d}')
-            # print(f'first idx: {first_idx}')
-
-            output[:, 0] = accurate_slice['x']
-            output[:, 1] = accurate_slice['y']
-            output[:, 2] = accurate_slice['z']
-
-            # Update the values for each feature column
-            i = 3
-            for f in all_features:
-                big_slice = self.features_dict_h5[f][min_x:max_x, :, :]
-                output[:, i] = big_slice.flat[first_idx:first_idx + idx.stop -
-                                              idx.start]
-                i = i + 1
-
-            return output
-        elif isinstance(idx, list):
-            return self.porosity_h5[[coord_from_index(i) for i in idx]]
-        else:
-            raise TypeError('Sequence index must be integer, '\
-                f'slice or list. Got {type(idx).__name__}')
-
-    def __len__(self):
-        # if self.train:
-        #     all_data = self.porosity_h5[
-        #         self.porosity_h5['well_id'] != self.well_out]
-        # else:
-        #     all_data = self.porosity_h5[self.porosity_h5['well_id'] ==
-        #                                 self.well_out]
-        return prod(self.porosity_h5.shape)
-
-
-def read_all():
-    # Create synthetic data
-    create_h5_feature('feature1')
-    create_h5_feature('feature2')
-    create_h5_porosity()
-
-    well_out = 1
-
-    # Open data files
-    porosity_h5 = h5py.File('porosity_full.h5', 'r')['p']
-    real_points = fold_h5_all_clusters(porosity_h5,
-                                       lambda d: len(d[d['real'] == 1]), 0)
-    f1_h5 = h5py.File('f_feature1.h5', 'r')['f']
-    f2_h5 = h5py.File('f_feature2.h5', 'r')['f']
-    print(f'real points: {real_points}')
-
-    cur_h5 = h5py.File('f_feature1.h5', 'w')
-    cur_h5_dset = h5_f.create_dataset('c',
-                                      data_shape,
-                                      dtype=data_type,
-                                      chunks=chunk_shape,
-                                      data=data_np)
-
-    # Prepare hdf5 sequences objects
-    train_seq = HDFMultiColTrainSequence(porosity_h5, {
-        'feature1': f1_h5,
-        'feature2': f2_h5
-    },
-                                         prod(chunk_shape),
-                                         train=True,
-                                         well_out=well_out)
-    train_seq.set_current_feature('feature1')
-
-    val_seq = HDFMultiColTrainSequence(porosity_h5, {
-        'feature1': f1_h5,
-        'feature2': f2_h5
-    },
-                                       prod(chunk_shape),
-                                       train=False,
-                                       well_out=well_out)
-
-    # lgb doesn't accept label sequence
-    # label_seq = HDFLabelsSequence(porosity_h5, prod(chunk_shape))
-    # lgb_train_dataset = lgb.Dataset(train_seq, label=label_seq)
-
-    # Prepare label points with 1 well out
-    label_np = porosity_h5['phi']
-    # label_np = porosity_h5[porosity_h5['well_id'] != well_out]['phi']
-    # label_val_np = porosity_h5[porosity_h5['well_id'] == well_out]['phi']
-
-    # Prepare LGB datasets
-    lgb_train_dataset = lgb.Dataset(train_seq, label_np.ravel())
-    # lgb_eval_dataset = lgb.Dataset(eval_seq,
-    #                                label_val_np.ravel,
-    #                                reference=lgb_train_dataset)
-
-    params = {
-        "max_bin": 128,
-        "max_depth": 10,
-        "learning_rate": 0.1,
-        "boosting_type": "gbdt",
-        "objective": "regression",
-        "metric": "mae",
-        "num_leaves": 20,
-        "verbose": -1,
-        "min_data": 10,
-        "boost_from_average": True,
-        "bagging_freq": 1,
-        "random_state": 0,
-        # "tree_learner": "data",
-    }
-
-    # Perform training
-    print('training...')
-    regressor = lgb.train(
-        params,
-        lgb_train_dataset,
-        num_boost_round=100,
-        # valid_sets=lgb_eval_dataset,
-        # callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)]
-    )
-
-    # Create multi-sequence X data:
-
-
 # From LGB example dataset_from_multi_hdf5.py
 class HDFMultiColSequence(lgb.Sequence):
 
@@ -358,6 +145,7 @@ class HDFMultiColSequence(lgb.Sequence):
         self.train = train
         self.well_id = -1
         self.lenn = -1
+        self.batch_size = 10000
 
     # Updates length of data as well
     def set_well_id(self, well_id):
@@ -370,22 +158,6 @@ class HDFMultiColSequence(lgb.Sequence):
                 self.cur_dset_h5[self.cur_dset_h5['well_id'] == self.well_id])
 
     def add_feature(self, f_str):
-        # if not self.train:
-        #      raise Exception('[HDFMultiColSequence] Only the training '\
-        #         'sequence can have new feature added.')
-        # for chunk_slice in self.cur_dset_h5.iter_chunks():
-        #     # Get coordinates of the current dataset slice
-        #     coords = cur_dset_h5['x', 'y', 'z', chunk_slice[0]]
-
-        #     # Get list of points to be updated
-        #     linear_coords = [
-        #         index_from_coord(c, data_shape) for c in coords.flat
-        #     ]
-        #     linear_coords.sort()
-
-        #     # Update feature values
-        #     cur_dset_h5[f_str, chunk_slice[0]] = f_h5[linear_coords]
-
         self.all_features.append(f_str)
 
     def __getitem__(self, idx):
@@ -405,9 +177,7 @@ class HDFMultiColSequence(lgb.Sequence):
                         well_chunk[idx -
                                    min_index][self.all_features].tolist())
                 min_index = min_index + len(well_chunk)
-
         elif isinstance(idx, slice):
-            print(f'slice: {idx}')
             output = []
             min_index = 0
             for cur_slice in self.cur_dset_h5.iter_chunks():
@@ -442,13 +212,10 @@ class HDFMultiColSequence(lgb.Sequence):
                 else:
                     output = output + well_chunk[0:idx.stop - min_index][
                         self.all_features].tolist()
+                    return np.array(output)
 
                 min_index = min_index + len(well_chunk)
 
-            return np.array(output)
-        # elif isinstance(idx, list):
-        # 3/0
-        # return self.porosity_h5[[coord_from_index(i) for i in idx]]
         else:
             raise TypeError('Sequence index must be integer, '\
                 f'slice or list. Got {type(idx).__name__}')
@@ -475,6 +242,7 @@ def add_feature_to_dset(cur_h5_dset, features):
 
 
 def read_only_expanded():
+    t0 = time()
     # Create synthetic data
     create_h5_feature('feature1')
     create_h5_feature('feature2')
@@ -520,35 +288,22 @@ def read_only_expanded():
                     ]]
         prev_end = prev_end + len(real_points)
 
-    # Set training and validation datasets
-    well_out = 0
+    t1 = time()
 
+    # Set training Sequence objects
     x_train_seq = HDFMultiColSequence(cur_h5_dset, ['x', 'y', 'z'], True)
-    x_train_seq.set_well_id(well_out)
-    y_train_np = cur_h5_dset[cur_h5_dset['well_id'] != well_out]['phi']
-
     x_val_seq = HDFMultiColSequence(cur_h5_dset, ['x', 'y', 'z'], False)
-    x_val_seq.set_well_id(well_out)
-    y_val_np = cur_h5_dset[cur_h5_dset['well_id'] == well_out]
+    
 
     # add_feature_to_dset(cur_h5_dset, [('f0', f1_h5), ('f1', f2_h5)])
-    add_feature_to_dset(cur_h5_dset, [('f0', f1_h5)])
+    add_feature_to_dset(cur_h5_dset, 0, [('f0', f1_h5)])
     x_train_seq.add_feature('f0')
     x_val_seq.add_feature('f0')
 
     print(len(cur_h5_dset))
     print(cur_h5_dset[20:24])
 
-    print(f'y_train_np: {y_train_np.shape}')
-
-    lgb_train_dataset = lgb.Dataset(x_train_seq, y_train_np)
-    # x_tmp = np.empty((len(y_train_np), 3),
-    #                  dtype=np.float64)
-    # x_tmp[:,0] = cur_h5_dset[cur_h5_dset['well_id'] != well_out]['x']
-    # x_tmp[:,1] = cur_h5_dset[cur_h5_dset['well_id'] != well_out]['y']
-    # x_tmp[:,2] = cur_h5_dset[cur_h5_dset['well_id'] != well_out]['z']
-    # print(x_tmp.shape)
-    # lgb_train_dataset = lgb.Dataset(x_tmp, y_train_np)
+    t2 = time()
 
     params = {
         "max_bin": 128,
@@ -566,16 +321,39 @@ def read_only_expanded():
         # "tree_learner": "data",
     }
 
-    # Perform training
-    print('training...')
-    regressor = lgb.train(
-        params,
-        lgb_train_dataset,
-        num_boost_round=100,
-        # valid_sets=lgb_eval_dataset,
-        # callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)]
-    )
+    for well_out in [0,1,2]:
+        t21 = time()
+        # Update well out on sequence objects
+        x_train_seq.set_well_id(well_out)
+        x_val_seq.set_well_id(well_out)
 
+        # Update y values for the current well out
+        y_train_np = cur_h5_dset[cur_h5_dset['well_id'] != well_out]['phi']
+        y_val_np = cur_h5_dset[cur_h5_dset['well_id'] == well_out]['phi']
+
+        print(f'y_train_np: {y_train_np.shape}')
+
+        # Generate datasets for the current well out
+        lgb_train_dataset = lgb.Dataset(x_train_seq, y_train_np)
+        lgb_eval_dataset = lgb.Dataset(x_val_seq, y_val_np)
+        
+        # Perform training
+        print('training...')
+        regressor = lgb.train(
+            params,
+            lgb_train_dataset,
+            num_boost_round=100,
+            valid_sets=lgb_eval_dataset,
+            callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)]
+        )
+        t22 = time()
+        print(f'Trained well_out {well_out} in {t22-t21}')
+
+    t3 = time()
+
+    print(f'Data-gen-time: {t1-t0}')
+    print(f'Dataset-setup-time: {t2-t1}')
+    print(f'Training-time: {t3-t2}')
 
 if __name__ == '__main__':
     read_only_expanded()
