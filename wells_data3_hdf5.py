@@ -30,7 +30,7 @@ def porosity_points_py2hdf5(filename, hypercube_shape, chunk_shape,
             # Batching of z coordinates for writing on hdf5 file
             all_z = []
             for k in range(z):
-                all_z = all_z + [(i, j, k, 0, common.RealValues.empty, 0)]
+                all_z = all_z + [(i, j, k, 0, common.RealValues.empty, -1)]
             all_yz = all_yz + [all_z]
         # Commit all points for a given x coordinate
         porosity_h5_dset[i, ...] = all_yz

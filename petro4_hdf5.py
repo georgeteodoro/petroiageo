@@ -4,6 +4,7 @@ from time import time
 # from numba import jit
 import h5py
 from math import prod
+from copy import copy
 
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.model_selection import LeaveOneGroupOut
@@ -54,16 +55,26 @@ def eval_bootstrap(cur_h5_seq, wells_id, num_threads=24):
 
     rmse_list = []
     mae_list = []
+    well_id = 0
+
+    # Shallow-copy of the data
+    X_train_seq = copy(cur_h5_seq)
+    X_val_seq = copy(cur_h5_seq)
+
     for w in wells_id:
         t0 = time()
 
         # Create a sequence object for training and validation
         # This custom sequence allows for partial, out-of-core
         # data loading by lgb
-        X_train_seq = cur_h5_seq
         X_train_seq.set_lowo_train(w)
-        X_val_seq = cur_h5_seq
         X_val_seq.set_lowo_val(w)
+
+        # print(f'[eval_bootstrap][w{well_id}] train_size: '\
+        #       f'{X_train_seq.__len__()}')
+        # print(f'[eval_bootstrap][w{well_id}] val_size: '\
+        #       f'{X_val_seq.__len__()}')
+        well_id = well_id + 1
 
         # Setup for the datasets
         y_train_np = X_train_seq.get_y_np()
@@ -307,7 +318,7 @@ def get_features_sets(
                 best_error = rmse
                 best_feature = cur_feature
 
-            print(f'[petro2]{it_str} Tested feature'\
+            print(f'[get_features_sets][it{it}] Tested feature'\
                   f'{cur_f_set+ [cur_feature]} with error {rmse}')
 
         t7 = time()

@@ -172,14 +172,15 @@ class HDFMultiColSequence(Sequence):
             min_index = 0
             for cur_slice in self.cur_h5_dset.iter_chunks():
                 cur_chunk = self.cur_h5_dset[cur_slice]
+                # print(cur_chunk.shape)
                 if self.train:
-                    # print('[HDFMultiColSequence] training data')
                     well_chunk = cur_chunk[
                         cur_chunk['well_id'] != self.well_id]
+                    # print(f'[HDFMultiColSequence] training data: {well_chunk.shape}')
                 else:
-                    # print('[HDFMultiColSequence] validation data')
                     well_chunk = cur_chunk[cur_chunk['well_id'] ==
                                            self.well_id]
+                    # print(f'[HDFMultiColSequence] validation data: {well_chunk.shape}')
 
                 # print(
                 #     f'[HDFMultiColSequence] len(well_chunk): {len(well_chunk)}'
