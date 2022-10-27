@@ -1,6 +1,6 @@
 # import pandas as pd
 import numpy as np
-import time
+from time import time
 # from numba import jit
 import h5py
 from math import prod
@@ -55,6 +55,8 @@ def eval_bootstrap(cur_h5_seq, wells_id, num_threads=24):
     rmse_list = []
     mae_list = []
     for w in wells_id:
+        t0 = time()
+
         # Create a sequence object for training and validation
         # This custom sequence allows for partial, out-of-core
         # data loading by lgb
@@ -68,6 +70,8 @@ def eval_bootstrap(cur_h5_seq, wells_id, num_threads=24):
         y_val_np = X_val_seq.get_y_np()
         lgb_train_dataset = lgb.Dataset(X_train_seq, y_train_np)
         lgb_eval_dataset = lgb.Dataset(X_val_seq, y_val_np)
+        t1 = time()
+        print(f'[petro4_hdf5][eval_bootstrap][w{w}] Setup in {t1-t0}')
 
         # Perform training
         regressor = lgb.train(
@@ -76,57 +80,19 @@ def eval_bootstrap(cur_h5_seq, wells_id, num_threads=24):
             num_boost_round=100,
             valid_sets=lgb_eval_dataset,
             callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)])
+        t2 = time()
+        print(f'[petro4_hdf5][eval_bootstrap][w{w}] Training in {t2-t1}')
 
         # Calculate error metrics
-        pred = regressor.predict(X_val)
-        rmse = np.sqrt(np.mean((pred - y_val)**2))
-        mae = mean_absolute_error(pred, y_val)
+        pred = regressor.predict(X_val_seq.get_X_np())
+        rmse = np.sqrt(np.mean((pred - y_val_np)**2))
+        mae = mean_absolute_error(pred, y_val_np)
         rmse_list.append(rmse)
         mae_list.append(mae)
+        t3 = time()
+        print(f'[petro4_hdf5][eval_bootstrap][w{w}] Evaluating in {t3-t2}')
 
-    # X = df.values
-    # y = df[LABEL_COLUMN_NAME].values
-    # a = []
-    # b = []
-
-    # # Create groups for one-well-out training
-    # logo = LeaveOneGroupOut()
-    # groups = df['well']
-    # logo.get_n_splits(X, y, groups)
-    # logo.get_n_splits(groups=groups)
-    # for (train, val) in logo.split(X, y, groups):
-
-    #     # Create training dataset
-    #     train_df = df.iloc[train]
-    #     X_train = train_df.drop([LABEL_COLUMN_NAME] + UNWANTED_COLUMNS,
-    #                             axis=1).values
-    #     y_train = train_df[LABEL_COLUMN_NAME].values
-    #     lgb_train = lgb.Dataset(X_train, y_train)
-
-    #     # Create validation dataset
-    #     val_df = df.iloc[val]
-    #     val_df = val_df[val_df['real'] == 0]  # Select real values only
-    #     X_val = val_df.drop([LABEL_COLUMN_NAME] + UNWANTED_COLUMNS,
-    #                         axis=1).values
-    #     y_val = val_df[LABEL_COLUMN_NAME].values
-    #     lgb_eval = lgb.Dataset(X_val, y_val, reference=lgb_train)
-
-    #     # Perform training
-    #     regressor = lgb.train(
-    #         params,
-    #         lgb_train,
-    #         num_boost_round=100,
-    #         valid_sets=lgb_eval,
-    #         callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)])
-
-    #     # Calculate error metrics
-    #     pred = regressor.predict(X_val)
-    #     rmse = np.sqrt(np.mean((pred - y_val)**2))
-    #     mae = mean_absolute_error(pred, y_val)
-    #     a.append(rmse)
-    #     b.append(mae)
-
-    return np.mean(a), np.mean(b)
+    return np.mean(rmse_list), np.mean(mae_list)
 
 
 # Convert the feature tuple (e.g., ('NEAR', -3, 1, 2)) to
@@ -138,73 +104,75 @@ def f2str(f_tuple):
         return f_tuple
 
 
-# @jit(nopython=True)
-# def parallel_read(array_np, indexes, f_x, f_y, f_z):
-#     ret = np.empty((len(indexes)), dtype=np.float64)
+def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
+                            cur_feature, hypercube_shape,
+                            displacement_cube_shape):
 
-#     ii = 0
-#     for i in indexes:
-#         x = max(0, min(SEISMIC_MAX_X, i['x'] + f_x))
-#         y = max(0, min(SEISMIC_MAX_Y, i['y'] + f_y))
-#         z = max(0, min(SEISMIC_MAX_Z, i['z'] + f_z))
-#         # array_np is 1D with 3D indexed data
-#         coord = x * (SEISMIC_MAX_Y + 1) * (SEISMIC_MAX_Z +
-#                                            1) + y * (SEISMIC_MAX_Z + 1) + z
-#         ret[ii] = array_np[coord]
-#         ii = ii + 1
+    t0 = time()
+    for chunk_slice in cur_h5_dset.iter_chunks():
+        t1 = time()
+        chunk_np = cur_h5_dset[chunk_slice]
+        print(f'[insert_filtered_feature] cur slice: {chunk_slice}')
+        print(f'[insert_filtered_feature] chunk size: {len(chunk_np)}')
 
-#     return ret
+        # Get the coordinates list
+        coord_3d_np = chunk_np[['x', 'y', 'z']]
 
-# # Uses ndarray instead of pandas access
-# def get_feature_col2(indexes, feature, features_df):
-#     if type(feature) is tuple:
-#         sub_features_np = features_df[feature[0]].values
+        # Get the shape of the hypercube with a border of minimum and maximum
+        # displaced points
+        displaced_hypercube_shape = [x + 1 for x in displacement_cube_shape]
+        displaced_hypercube_shape = np.array(
+            hypercube_shape) + displaced_hypercube_shape
 
-#         # Numba only accepts ndarrays of concrete types (not object)
-#         indexes_ndarray = np.array(indexes.values,
-#                                    dtype=[('x', '<u4'), ('y', '<u4'),
-#                                           ('z', '<u4')])
-#         return parallel_read(sub_features_np, indexes_ndarray, feature[1],
-#                              feature[2], feature[3])
-#     else:
-#         print(f'[petro2][WARNING] non-seismic column created: {feature}')
-#         return features_df[features_df.index.isin(indexes)][feature].values
+        t2 = time()
+        print(f'[insert_filtered_feature] get_slice_time: {t2-t1}')
 
-# # This version loads the entire numpy ndarray of features to be evaluated.
-# # The data loading is done through a chunked hdf5 file
-# # def single_feature_run(cur_df, features_df, cur_feature, num_threads):
-# def single_feature_run(cur_h5_seq, features_dict_h5, cur_feature, it_str):
+        # Apply the displacement
+        coord_planar_np = coord_3d_np.copy()
+        for (coord_s, d_id) in [('x', 0), ('y', 1), ('z', 2)]:
+            coord_planar_np[coord_s] = coord_planar_np[coord_s] + cur_feature[
+                d_id + 1] + (displacement_cube_shape[d_id] - 1) / 2
 
-#     t1 = time.time()
-#     print(f'[single_feature_run]{it_str} begin {t1}')
-#     cur_feature_s = f2str(cur_feature)
+        t3 = time()
+        print(f'[insert_filtered_feature] appply_disp_time: {t3-t2}')
 
-#     # Add feature column to current DataFrame
-#     # A copy of the current rolling DataFrame is done
-#     # in order to avoid inserting and removing columns
-#     # The current rolling DataFrame is updated after all
-#     # features are tested
-#     # test_df = cur_df.copy(deep=False)
-#     # t2 = time.time()
-#     # test_df.loc[:, cur_feature_s] = get_feature_col2(test_df.index,
-#     #                                                  cur_feature, features_df)
+        # Convert 3d coordinates to planar
+        coord_planar_np = coord_planar_np[
+            'z'].flat + coord_planar_np['y'].flat * displaced_hypercube_shape[
+                2] + coord_planar_np['x'].flat * displaced_hypercube_shape[
+                    2] * displaced_hypercube_shape[1]
+        coord_planar_np.sort()
 
-#     # Copy the current feature values to the current dataset
-#     cur_h5_seq.update_last_col(features_dict_h5[cur_feature_s])
+        t4 = time()
+        print(f'[insert_filtered_feature] 3d_2_planar_time: {t4-t3}')
 
-#     t3 = time.time()
+        # We use a generator in order to avoid copying the displaced feature
+        # data into a ndarray variable, to later copy it to the cur_h5_seq
+        # object.
+        def _feature_generator(features_dict_h5, coord_planar_np, f):
+            chunk_size = 10
+            chunk_len = len(coord_planar_np)
+            if len(coord_planar_np) / chunk_size > chunk_size:
+                chunk_len = int(len(coord_planar_np) / chunk_len)
 
-#     # Test current feature set
-#     rmse, mae = eval_bootstrap(cur_h5_seq, num_threads)
-#     t4 = time.time()
+            for beg in range(0, len(coord_planar_np) - chunk_len, chunk_len):
+                chunk_slice = slice(beg, beg + chunk_len)
+                yield chunk_slice, features_dict_h5[f][
+                    coord_planar_np[chunk_slice]]
 
-#     print(f'[petro2][single_feature_run] copy_time {t2-t1}')
-#     print(f'[petro2][single_feature_run] add_col_time {t3-t2}')
-#     print(f'[petro2][single_feature_run] eval_bootstrap {t4-t3}')
+        feature_gen = _feature_generator(features_dict_h5, coord_planar_np,
+                                         cur_feature[0])
+        t5 = time()
+        print(f'[insert_filtered_feature] generator_time: {t5-t4}')
 
-#     print(f'[single_feature_run] end {t4}')
+        # Insert the generator displaced feature data into cur_h5_seq
+        cur_h5_seq.update_last_col_chunk(feature_gen, coord_planar_np)
 
-#     return rmse, mae
+        t6 = time()
+        print(f'[insert_filtered_feature] insert_disp_feature_time: {t6-t5}')
+
+    t7 = time()
+    print(f'[insert_filtered_feature] full_time: {t7-t0}')
 
 
 # exp_n_features: number of features to be selected
@@ -215,14 +183,13 @@ def get_features_sets(
         porosity_data_h5,
         features_dict_h5,
         all_features,
+        displacement_cube_shape,
         # num_threads,
         it_str,
         exp_n_features,
         f_width=0):
 
-    # # Create a shallow copy of main_df for adding new columns
-    # # Data from is main_df is only referenced, not copied
-    # cur_df = main_df.copy(deep=False)
+    t0 = time()
 
     # Creates a temporary h5 structure to maintain the porosity
     # and features data
@@ -233,13 +200,22 @@ def get_features_sets(
     cur_data_type = cur_data_type + [(f'f{f}', np.float64)
                                      for f in range(exp_n_features)]
     cur_data_type = np.dtype(cur_data_type)
+
+    # Points used for training: real, expanded and propagated
+    is_training_point_f = lambda d: (
+        (d['real'] == common.RealValues.real) |
+        (d['real'] == common.RealValues.canal_expanded) |
+        (d['real'] == common.RealValues.expanded) |
+        (d['real'] == common.RealValues.propagated))
+
     n_training_points = hdf5_util.fold_h5_all_clusters(
-        porosity_data_h5,
-        lambda d: len(d[d['real'] != common.RealValues.empty]), 0)
-    print(n_training_points)
+        porosity_data_h5, lambda d: len(d[is_training_point_f(d)]), 0)
+    print(f'[get_features_sets] non-empty points: {n_training_points}')
     cur_h5_dset = cur_h5.create_dataset('c', (n_training_points, ),
                                         dtype=cur_data_type,
-                                        chunks=(prod(cur_chunksize), ))
+                                        chunks=(n_training_points / 10, ))
+    t1 = time()
+    print(f'[get_features_sets] cur_create_time: {t1-t0}')
 
     # Copy porosity data to cur structure
     # Only copy points which will be used for training, i.e., not empty.
@@ -248,20 +224,21 @@ def get_features_sets(
     # just filtering these out would return a ndarray in-memory structure.
     # This ndarray can be too large to fit in memory.
     prev_end = 0
-    for x_c, y_c, z_c in porosity_data_h5.iter_chunks():
+    for chunk_slice in porosity_data_h5.iter_chunks():
         # Get current chunk
-        chunk_np = porosity_data_h5[x_c, y_c, z_c]
-
-        # Filter only one type of points
-        training_points = chunk_np[chunk_np['real'] != common.RealValues.empty]
+        chunk_np = porosity_data_h5[chunk_slice]
 
         # Append these porosity values to the current dataset
+        training_points = chunk_np[is_training_point_f(chunk_np)]
         cur_h5_dset['x', 'y', 'z', 'phi', 'well_id',
                     prev_end:(prev_end +
                               len(training_points))] = training_points[[
                                   'x', 'y', 'z', 'phi', 'well_id'
                               ]]
         prev_end = prev_end + len(training_points)
+
+    t2 = time()
+    print(f'[get_features_sets] cur_copy_porosity_time: {t2-t1}')
 
     # Create sequence object
     cur_h5_seq = hdf5_util.HDFMultiColSequence(cur_h5_dset, ['x', 'y', 'z'])
@@ -273,17 +250,20 @@ def get_features_sets(
     results = []
 
     # Find a feature set with exp_n_features features
-    for _ in range(exp_n_features):
+    for it in range(exp_n_features):
 
-        t0 = time.time()
-
+        t3 = time()
         # Reset best feature and its error
         best_error = 10000
         best_feature = ()
 
+        # Setup the new column to be tested
+        cur_h5_seq.add_new_col()
+
         # Test each available feature
         ii = 0
         for cur_feature in all_features:
+            t4 = time()
             if cur_feature in cur_f_set:
                 continue
 
@@ -292,13 +272,22 @@ def get_features_sets(
                 break
             ii = ii + 1
 
-            # rmse, mae = single_feature_run(cur_df, features_df, cur_feature,
-            #                                num_threads)
+            # Insert a temporary feature
+            insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
+                                    cur_feature, porosity_data_h5.shape,
+                                    displacement_cube_shape)
+            t5 = time()
+            print(f'[get_features_sets][{cur_feature}] '\
+                  f'insert_feature_time: {t5-t4}')
 
-            # "Add" a column to the dataset. This added feature is later
-            # replaced by other features to be tested
-            cur_h5_seq.update_last_col(features_dict_h5[f2str(cur_feature)])
-            rmse, mae = eval_bootstrap(cur_h5_seq, num_threads)
+            # Test the model with cur_feature
+            # rmse, mae = eval_bootstrap(cur_h5_seq, list(range(1,11)))
+            rmse, mae = eval_bootstrap(cur_h5_seq, list(range(10)))
+            t6 = time()
+            print(f'[get_features_sets][{cur_feature}] '\
+                  f'train_time: {t6-t5}')
+            print(f'[get_features_sets][{cur_feature}] '\
+                  f'error: {rmse}')
 
             results.append((cur_f_set + [cur_feature], rmse, mae))
 
@@ -307,22 +296,22 @@ def get_features_sets(
                 best_error = rmse
                 best_feature = cur_feature
 
-            t4 = time.time()
             print(f'[petro2]{it_str} Tested feature'\
                   f'{cur_f_set+ [cur_feature]} with error {rmse}')
 
-        # # Update current DataFrame to add best feature of current iteration
-        # cur_f_set.append(best_feature)
-        # cur_df.loc[:, f2str(best_feature)] = get_feature_col2(
-        #     cur_df.index, best_feature, features_df)
+        t7 = time()
+        print(f'[get_features_sets][it{it}] '\
+              f'full_it_time: {t7-t3}')
 
-        # Append the best column to the dataset. This is permanent, with
-        # regards to the current dataset
-        cur_h5_seq.set_last_col(features_dict_h5[f2str(best_feature)])
+        # Update the last column of the sequence object to the best feature
+        insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
+                                best_feature, cur_h5_dset.shape,
+                                displacement_cube_shape)
+        t8 = time()
+        print(f'[get_features_sets][{cur_feature}] '\
+              f'commit_feature_time: {t8-t7}')
 
-        t5 = time.time()
-
-        # Print iteration statistics
-        print(f'[petro2] fullIt time: {t5-t0}')
+    t9 = time()
+    print(f'[get_features_sets] full_time: {t9-t0}')
 
     return get_best_features_set(results)

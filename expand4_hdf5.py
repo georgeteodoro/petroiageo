@@ -4,6 +4,7 @@ import time
 import common
 import hdf5_util
 
+
 # pp is for showing the iteration progress, which can be enabled or disabled
 def gen_expanded_points(d_h5, hypercube_shape, real_wells, it, it_str, pp):
     depth_len = hypercube_shape[2]
@@ -11,14 +12,10 @@ def gen_expanded_points(d_h5, hypercube_shape, real_wells, it, it_str, pp):
 
     t1 = time.time()
 
-    # to_expand = hdf5_util.fold_h5_all_clusters(
-    #     d_h5,
-    #     lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
-    #                     (d['real'] == common.RealValues.expanded)]), 0)
-
     if len(it_str) > 0:
         print(f'[gen_expanded_points]{it_str} Expanding points on ring {ring}')
     # Generate a list of points to be expanded
+    well_id = 0
     for well in pp(real_wells):
         x_left = well[0] - ring
         x_right = well[0] + ring
@@ -40,15 +37,11 @@ def gen_expanded_points(d_h5, hypercube_shape, real_wells, it, it_str, pp):
             d_h5, lambda d:
             (d['real'] == common.RealValues.empty) & (left_wall_cond(
                 d) | right_wall_cond(d) | top_wall_cond(d) | bot_wall_cond(d)),
-            'real', common.RealValues.expanded)
+            [('real', common.RealValues.expanded), ('well_id', well_id)])
         hdf5_util.conditional_map_h5_all_clusters(
             d_h5, lambda d:
             (d['real'] == common.RealValues.canal) & (left_wall_cond(
                 d) | right_wall_cond(d) | top_wall_cond(d) | bot_wall_cond(d)),
-            'real', common.RealValues.canal_expanded)
+            [('real', common.RealValues.canal_expanded), ('well_id', well_id)])
 
-
-        # to_expand = hdf5_util.fold_h5_all_clusters(
-        #     d_h5,
-        #     lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
-        #                     (d['real'] == common.RealValues.expanded)]), 0)
+        well_id = well_id + 1

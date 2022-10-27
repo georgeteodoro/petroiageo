@@ -1,6 +1,7 @@
 from math import ceil
 import numpy as np
 from lightgbm import Sequence
+import numbers
 
 
 # Perform a fold on a clustered h5 object, using the least amount
@@ -36,7 +37,7 @@ def fold_h5_all_clusters(d_h5, f, out_0):
 # Perform a conditional update on a clustered h5 object, using the least amount
 # of memory. All rows from the given 'column' for which the condition is True
 # are updated to 'val'.
-def conditional_map_h5_all_clusters(d_h5, cond_f, column, val):
+def conditional_map_h5_all_clusters(d_h5, cond_f, column_val_list):
     chunks = d_h5.chunks
     x_shape = d_h5.shape[0]
     y_shape = d_h5.shape[1]
@@ -57,8 +58,9 @@ def conditional_map_h5_all_clusters(d_h5, cond_f, column, val):
                 d_np = d_h5[x_i:x_o, y_i:y_o, z_i:z_o]
                 # print(f'=======points to update: {len(d_np[cond_f(d_np)])}')
 
-                # Update values on condition
-                d_np['real'] = np.where(cond_f(d_np), val, d_np[column])
+                # Update values of each column on condition
+                for column, val in column_val_list:
+                    d_np['real'] = np.where(cond_f(d_np), val, d_np[column])
 
                 # Forward values to hdf5 file
                 d_h5[x_i:x_o, y_i:y_o, z_i:z_o] = d_np
@@ -70,8 +72,6 @@ def conditional_map_h5_all_clusters(d_h5, cond_f, column, val):
 # Training objects shows all data, except for the ones with the given
 # self.well_id.
 # Validation objects only show the rows for the given self.well_id.
-
-
 class HDFMultiColSequence(Sequence):
 
     def __init__(self, cur_h5_dset, base_features, train=True):
@@ -80,7 +80,8 @@ class HDFMultiColSequence(Sequence):
 
         # should be a list of strings
         self.all_features = base_features
-        self.last_col = len(base_features) - 1
+        # self.last_col = len(base_features) - 2
+        self.last_col = -1
 
         # Indicates whether this sequence is for training
         # If for validation, only returns the subset of the
@@ -108,9 +109,6 @@ class HDFMultiColSequence(Sequence):
         self.train = False
         self.set_well_id(well_id)
 
-    # def add_feature(self, f_str):
-    #     self.all_features.append(f_str)
-
     def index_from_coord(coord, shape):
         index = 0
         stride = 1
@@ -120,24 +118,33 @@ class HDFMultiColSequence(Sequence):
 
         return index
 
-    def update_last_col(self, feature_h5_dset):
+    def update_last_col_chunk(self, feature_gen, coords):
+        f_str = f'f{self.last_col}'
+
+        for f_slice, f_vals in feature_gen:
+            self.cur_h5_dset[f_str, f_slice] = f_vals
+
+    def add_new_col(self):
         self.last_col = self.last_col + 1
         f_str = f'f{self.last_col}'
         self.all_features.append(f_str)
 
-        for chunk_slice in self.cur_h5_dset.iter_chunks():
-            # Get coordinates of the current dataset slice
-            coords = self.cur_h5_dset['x', 'y', 'z', chunk_slice[0]]
+    def get_y_np(self):
+        if self.train:
+            return self.cur_h5_dset[
+                'phi', self.cur_h5_dset['well_id'] != self.well_id]
+        else:
+            return self.cur_h5_dset['phi', self.cur_h5_dset['well_id'] ==
+                                    self.well_id]
 
-            # Get list of points to be updated
-            linear_coords = [
-                index_from_coord(c, data_shape) for c in coords.flat
-            ]
-            linear_coords.sort()
-
-            # Update feature values
-            self.cur_h5_dset[f_str,
-                             chunk_slice[0]] = feature_h5_dset[linear_coords]
+    # Should only be used for small validation data
+    def get_X_np(self):
+        if self.train:
+            raise Exception('[HDFMultiColSequence][get_X_np] Can only get '\
+                            'data from validation sequence.')
+        out_ndarray = self.cur_h5_dset[self.cur_h5_dset['well_id'] ==
+                                       self.well_id][self.all_features]
+        return np.array([np.array(a) for a in out_ndarray.tolist()])
 
     def __getitem__(self, idx):
         if isinstance(idx, numbers.Integral):
@@ -156,7 +163,11 @@ class HDFMultiColSequence(Sequence):
                         well_chunk[idx -
                                    min_index][self.all_features].tolist())
                 min_index = min_index + len(well_chunk)
+
+            raise Exception('[HDFMultiColSequence][__getitem__] Index '\
+                           f'not found: {idx}.')
         elif isinstance(idx, slice):
+            print(f'[HDFMultiColSequence] getting slice {idx}')
             output = []
             min_index = 0
             for cur_slice in self.cur_h5_dset.iter_chunks():
@@ -168,15 +179,21 @@ class HDFMultiColSequence(Sequence):
                     well_chunk = cur_chunk[cur_chunk['well_id'] ==
                                            self.well_id]
 
+                print(
+                    f'[HDFMultiColSequence] len(well_chunk): {len(well_chunk)}'
+                )
+
                 # Check if the initial idx point is inside this chunk
                 if (idx.start >= min_index) & (idx.start <
                                                min_index + len(well_chunk)):
+                    print('[HDFMultiColSequence] initial')
                     # Check if the end of the idx slice is inside this chunk
-                    if idx.stop < min_index + len(well_chunk):
+                    if idx.stop <= min_index + len(well_chunk):
                         output = output + well_chunk[
                             idx.start - min_index:idx.stop -
                             min_index][self.all_features].tolist()
-                        break
+                        return np.array(output)
+
                     # If not, add all points from idx.start to the end
                     # of the chunk
                     else:
@@ -186,14 +203,19 @@ class HDFMultiColSequence(Sequence):
                 # is on a chunk ahead
                 elif (idx.start < min_index) & (idx.stop >
                                                 min_index + len(well_chunk)):
+                    print('[HDFMultiColSequence] mid')
                     output = output + well_chunk[:][self.all_features].tolist()
                 # Otherwise, this chunk is the one with the idx stop position
-                else:
+                elif idx.stop <= min_index + len(well_chunk):
+                    print('[HDFMultiColSequence] end')
                     output = output + well_chunk[0:idx.stop - min_index][
                         self.all_features].tolist()
                     return np.array(output)
 
                 min_index = min_index + len(well_chunk)
+
+            raise Exception('[HDFMultiColSequence][__getitem__] Couldn\'t '\
+                           f'find slice: {idx}.')
 
         else:
             raise TypeError('Sequence index must be integer, '\

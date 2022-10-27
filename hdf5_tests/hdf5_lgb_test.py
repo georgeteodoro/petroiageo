@@ -10,13 +10,13 @@ import lightgbm as lgb
 from tqdm import tqdm
 from time import time
 
-# data_shape = (10, 20, 30)
-# chunk_shape = (10, 10, 10)
-# n_real_points = 1000
+data_shape = (10, 20, 30)
+chunk_shape = (10, 10, 10)
+n_real_points = 1000
 
-data_shape = (1000, 200, 300)
-chunk_shape = (100, 100, 100)
-n_real_points = 20000
+# data_shape = (1000, 200, 300)
+# chunk_shape = (100, 100, 100)
+# n_real_points = 20000
 
 data_len = prod(data_shape)
 n_real_wells = 5
@@ -160,6 +160,10 @@ class HDFMultiColSequence(lgb.Sequence):
     def add_feature(self, f_str):
         self.all_features.append(f_str)
 
+    def get_X_np(self):
+        return self.cur_dset_h5[self.cur_dset_h5['well_id'] == self.well_id][
+            self.all_features]
+
     def __getitem__(self, idx):
         if isinstance(idx, numbers.Integral):
             min_index = 0
@@ -293,10 +297,9 @@ def read_only_expanded():
     # Set training Sequence objects
     x_train_seq = HDFMultiColSequence(cur_h5_dset, ['x', 'y', 'z'], True)
     x_val_seq = HDFMultiColSequence(cur_h5_dset, ['x', 'y', 'z'], False)
-    
 
     # add_feature_to_dset(cur_h5_dset, [('f0', f1_h5), ('f1', f2_h5)])
-    add_feature_to_dset(cur_h5_dset, 0, [('f0', f1_h5)])
+    add_feature_to_dset(cur_h5_dset, [('f0', f1_h5)])
     x_train_seq.add_feature('f0')
     x_val_seq.add_feature('f0')
 
@@ -321,7 +324,7 @@ def read_only_expanded():
         # "tree_learner": "data",
     }
 
-    for well_out in [0,1,2]:
+    for well_out in [0, 1, 2]:
         t21 = time()
         # Update well out on sequence objects
         x_train_seq.set_well_id(well_out)
@@ -336,7 +339,7 @@ def read_only_expanded():
         # Generate datasets for the current well out
         lgb_train_dataset = lgb.Dataset(x_train_seq, y_train_np)
         lgb_eval_dataset = lgb.Dataset(x_val_seq, y_val_np)
-        
+
         # Perform training
         print('training...')
         regressor = lgb.train(
@@ -344,16 +347,21 @@ def read_only_expanded():
             lgb_train_dataset,
             num_boost_round=100,
             valid_sets=lgb_eval_dataset,
-            callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)]
-        )
+            callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)])
         t22 = time()
         print(f'Trained well_out {well_out} in {t22-t21}')
+
+        x_val_np = x_val_seq.get_X_np()
+        x_val_np = np.array([np.array(a) for a in x_val_np.tolist()])
+        print(x_val_seq.get_X_np()[0])
+        pred = regressor.predict(x_val_np)
 
     t3 = time()
 
     print(f'Data-gen-time: {t1-t0}')
     print(f'Dataset-setup-time: {t2-t1}')
     print(f'Training-time: {t3-t2}')
+
 
 if __name__ == '__main__':
     read_only_expanded()
