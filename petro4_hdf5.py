@@ -107,6 +107,8 @@ def f2str(f_tuple):
 def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
                             cur_feature, hypercube_shape,
                             displacement_cube_shape):
+    
+    profile_time = False
 
     t0 = time()
     for chunk_slice in cur_h5_dset.iter_chunks():
@@ -125,7 +127,8 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
             np.array(displacement_cube_shape) - 1)
 
         t2 = time()
-        print(f'[insert_filtered_feature] get_slice_time: {t2-t1}')
+        if profile_time:
+            print(f'[insert_filtered_feature] get_slice_time: {t2-t1}')
 
         # Apply the displacement
         coord_planar_np = coord_3d_np.copy()
@@ -135,7 +138,8 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
                 d_id + 1] + ((displacement_cube_shape[d_id] - 1) / 2)
 
         t3 = time()
-        print(f'[insert_filtered_feature] appply_disp_time: {t3-t2}')
+        if profile_time:
+            print(f'[insert_filtered_feature] appply_disp_time: {t3-t2}')
 
         # Convert 3d coordinates to planar
         coord_planar_np = coord_planar_np[
@@ -146,7 +150,8 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
         coord_planar_np.sort()
 
         t4 = time()
-        print(f'[insert_filtered_feature] 3d_2_planar_time: {t4-t3}')
+        if profile_time:
+            print(f'[insert_filtered_feature] 3d_2_planar_time: {t4-t3}')
 
         # We use a generator in order to avoid copying the displaced feature
         # data into a ndarray variable, to later copy it to the cur_h5_seq
@@ -165,16 +170,19 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
         feature_gen = _feature_generator(features_dict_h5, coord_planar_np,
                                          cur_feature[0])
         t5 = time()
-        print(f'[insert_filtered_feature] generator_time: {t5-t4}')
+        if profile_time:
+            print(f'[insert_filtered_feature] generator_time: {t5-t4}')
 
         # Insert the generator displaced feature data into cur_h5_seq
         cur_h5_seq.update_last_col_chunk(feature_gen, coord_planar_np)
 
         t6 = time()
-        print(f'[insert_filtered_feature] insert_disp_feature_time: {t6-t5}')
+        if profile_time:
+            print(f'[insert_filtered_feature] insert_disp_feature_time: {t6-t5}')
 
     t7 = time()
-    print(f'[insert_filtered_feature] full_time: {t7-t0}')
+    if profile_time:
+        print(f'[insert_filtered_feature] full_time: {t7-t0}')
 
 
 # exp_n_features: number of features to be selected
