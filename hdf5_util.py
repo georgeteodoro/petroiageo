@@ -60,7 +60,7 @@ def conditional_map_h5_all_clusters(d_h5, cond_f, column_val_list):
 
                 # Update values of each column on condition
                 for column, val in column_val_list:
-                    d_np['real'] = np.where(cond_f(d_np), val, d_np[column])
+                    d_np[column] = np.where(cond_f(d_np), val, d_np[column])
 
                 # Forward values to hdf5 file
                 d_h5[x_i:x_o, y_i:y_o, z_i:z_o] = d_np
@@ -167,26 +167,28 @@ class HDFMultiColSequence(Sequence):
             raise Exception('[HDFMultiColSequence][__getitem__] Index '\
                            f'not found: {idx}.')
         elif isinstance(idx, slice):
-            print(f'[HDFMultiColSequence] getting slice {idx}')
+            # print(f'[HDFMultiColSequence] getting slice {idx}')
             output = []
             min_index = 0
             for cur_slice in self.cur_h5_dset.iter_chunks():
                 cur_chunk = self.cur_h5_dset[cur_slice]
                 if self.train:
+                    # print('[HDFMultiColSequence] training data')
                     well_chunk = cur_chunk[
                         cur_chunk['well_id'] != self.well_id]
                 else:
+                    # print('[HDFMultiColSequence] validation data')
                     well_chunk = cur_chunk[cur_chunk['well_id'] ==
                                            self.well_id]
 
-                print(
-                    f'[HDFMultiColSequence] len(well_chunk): {len(well_chunk)}'
-                )
+                # print(
+                #     f'[HDFMultiColSequence] len(well_chunk): {len(well_chunk)}'
+                # )
 
                 # Check if the initial idx point is inside this chunk
                 if (idx.start >= min_index) & (idx.start <
                                                min_index + len(well_chunk)):
-                    print('[HDFMultiColSequence] initial')
+                    # print('[HDFMultiColSequence] initial')
                     # Check if the end of the idx slice is inside this chunk
                     if idx.stop <= min_index + len(well_chunk):
                         output = output + well_chunk[
@@ -203,11 +205,11 @@ class HDFMultiColSequence(Sequence):
                 # is on a chunk ahead
                 elif (idx.start < min_index) & (idx.stop >
                                                 min_index + len(well_chunk)):
-                    print('[HDFMultiColSequence] mid')
+                    # print('[HDFMultiColSequence] mid')
                     output = output + well_chunk[:][self.all_features].tolist()
                 # Otherwise, this chunk is the one with the idx stop position
                 elif idx.stop <= min_index + len(well_chunk):
-                    print('[HDFMultiColSequence] end')
+                    # print('[HDFMultiColSequence] end')
                     output = output + well_chunk[0:idx.stop - min_index][
                         self.all_features].tolist()
                     return np.array(output)

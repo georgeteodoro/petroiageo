@@ -112,26 +112,27 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
     for chunk_slice in cur_h5_dset.iter_chunks():
         t1 = time()
         chunk_np = cur_h5_dset[chunk_slice]
-        print(f'[insert_filtered_feature] cur slice: {chunk_slice}')
-        print(f'[insert_filtered_feature] chunk size: {len(chunk_np)}')
+        # print(f'[insert_filtered_feature] cur slice: {chunk_slice}')
+        # print(f'[insert_filtered_feature] chunk size: {len(chunk_np)}')
 
         # Get the coordinates list
         coord_3d_np = chunk_np[['x', 'y', 'z']]
 
         # Get the shape of the hypercube with a border of minimum and maximum
         # displaced points
-        displaced_hypercube_shape = [x + 1 for x in displacement_cube_shape]
-        displaced_hypercube_shape = np.array(
-            hypercube_shape) + displaced_hypercube_shape
+        # displaced_hypercube_shape = [x + 1 for x in displacement_cube_shape]
+        displaced_hypercube_shape = np.array(hypercube_shape) + (
+            np.array(displacement_cube_shape) - 1)
 
         t2 = time()
         print(f'[insert_filtered_feature] get_slice_time: {t2-t1}')
 
         # Apply the displacement
         coord_planar_np = coord_3d_np.copy()
+
         for (coord_s, d_id) in [('x', 0), ('y', 1), ('z', 2)]:
             coord_planar_np[coord_s] = coord_planar_np[coord_s] + cur_feature[
-                d_id + 1] + (displacement_cube_shape[d_id] - 1) / 2
+                d_id + 1] + ((displacement_cube_shape[d_id] - 1) / 2)
 
         t3 = time()
         print(f'[insert_filtered_feature] appply_disp_time: {t3-t2}')
@@ -141,6 +142,7 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
             'z'].flat + coord_planar_np['y'].flat * displaced_hypercube_shape[
                 2] + coord_planar_np['x'].flat * displaced_hypercube_shape[
                     2] * displaced_hypercube_shape[1]
+
         coord_planar_np.sort()
 
         t4 = time()
@@ -153,7 +155,7 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
             chunk_size = 10
             chunk_len = len(coord_planar_np)
             if len(coord_planar_np) / chunk_size > chunk_size:
-                chunk_len = int(len(coord_planar_np) / chunk_len)
+                chunk_len = int(len(coord_planar_np) / chunk_size)
 
             for beg in range(0, len(coord_planar_np) - chunk_len, chunk_len):
                 chunk_slice = slice(beg, beg + chunk_len)
@@ -210,7 +212,7 @@ def get_features_sets(
 
     n_training_points = hdf5_util.fold_h5_all_clusters(
         porosity_data_h5, lambda d: len(d[is_training_point_f(d)]), 0)
-    print(f'[get_features_sets] non-empty points: {n_training_points}')
+    # print(f'[get_features_sets] non-empty points: {n_training_points}')
     cur_h5_dset = cur_h5.create_dataset('c', (n_training_points, ),
                                         dtype=cur_data_type,
                                         chunks=(n_training_points / 10, ))
@@ -224,6 +226,7 @@ def get_features_sets(
     # just filtering these out would return a ndarray in-memory structure.
     # This ndarray can be too large to fit in memory.
     prev_end = 0
+    hypercube_shape = porosity_data_h5.shape
     for chunk_slice in porosity_data_h5.iter_chunks():
         # Get current chunk
         chunk_np = porosity_data_h5[chunk_slice]
@@ -274,7 +277,7 @@ def get_features_sets(
 
             # Insert a temporary feature
             insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
-                                    cur_feature, porosity_data_h5.shape,
+                                    cur_feature, hypercube_shape,
                                     displacement_cube_shape)
             t5 = time()
             print(f'[get_features_sets][{cur_feature}] '\
@@ -305,7 +308,7 @@ def get_features_sets(
 
         # Update the last column of the sequence object to the best feature
         insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
-                                best_feature, cur_h5_dset.shape,
+                                best_feature, hypercube_shape,
                                 displacement_cube_shape)
         t8 = time()
         print(f'[get_features_sets][{cur_feature}] '\

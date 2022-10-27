@@ -25,9 +25,16 @@ def seismic_feature_np2hdf5_planar(feature, chunk_shape, displacement_window):
     # feature_np[1, 1, 1] = 8
     data_shape = feature_np.shape
 
+    print(f'[seismic_feature_np2hdf5_planar] original shape: {data_shape} '\
+          f'with length {prod(data_shape)}')
+
     # Create new 3d np array with borders
     large_data_shape = (np.array(data_shape) +
                         (2 * displacement_window)).tolist()
+    
+    print(f'[seismic_feature_np2hdf5_planar] new shape: {large_data_shape} '\
+          f'with length {prod(large_data_shape)}')
+
     feature_full_np = np.empty(shape=large_data_shape, dtype=np.float64)
     # feature_full_np = np.empty(shape=large_data_shape, dtype=int)
 
