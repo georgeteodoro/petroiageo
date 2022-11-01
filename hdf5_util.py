@@ -74,7 +74,7 @@ def conditional_map_h5_all_clusters(d_h5, cond_f, column_val_list):
 # Validation objects only show the rows for the given self.well_id.
 class HDFMultiColSequence(Sequence):
 
-    def __init__(self, cur_h5_dset, base_features, train=True):
+    def __init__(self, cur_h5_dset, base_features=[], train=True):
         # cur_h5_dset must be 1D
         self.cur_h5_dset = cur_h5_dset
 
@@ -87,19 +87,28 @@ class HDFMultiColSequence(Sequence):
         # If for validation, only returns the subset of the
         # selected well_id instead of the remaining of points
         self.train = train
+        
+        # well_id = -1 indicates no well selected
         self.well_id = -1
+
         self.lenn = -1
         self.batch_size = 10000
+
+    def update_len(self):
+        self.lenn = len(self.cur_h5_dset)
 
     # Updates length of data as well
     def set_well_id(self, well_id):
         self.well_id = well_id
-        if self.train:
-            self.lenn = len(
-                self.cur_h5_dset[self.cur_h5_dset['well_id'] != self.well_id])
+        if self.well_id == -1:
+            self.lenn = len(self.cur_h5_dset)
         else:
-            self.lenn = len(
-                self.cur_h5_dset[self.cur_h5_dset['well_id'] == self.well_id])
+            if self.train:
+                self.lenn = len(self.cur_h5_dset[
+                    self.cur_h5_dset['well_id'] != self.well_id])
+            else:
+                self.lenn = len(self.cur_h5_dset[self.cur_h5_dset['well_id'] ==
+                                                 self.well_id])
 
     def set_lowo_train(self, well_id):
         self.train = True
@@ -130,12 +139,15 @@ class HDFMultiColSequence(Sequence):
         self.all_features.append(f_str)
 
     def get_y_np(self):
-        if self.train:
-            return self.cur_h5_dset[
-                'phi', self.cur_h5_dset['well_id'] != self.well_id]
+        if self.well_id == -1:
+            return self.cur_h5_dset['phi']
         else:
-            return self.cur_h5_dset['phi', self.cur_h5_dset['well_id'] ==
-                                    self.well_id]
+            if self.train:
+                return self.cur_h5_dset[
+                    'phi', self.cur_h5_dset['well_id'] != self.well_id]
+            else:
+                return self.cur_h5_dset['phi', self.cur_h5_dset['well_id'] ==
+                                        self.well_id]
 
     # Should only be used for small validation data
     def get_X_np(self):
@@ -151,12 +163,15 @@ class HDFMultiColSequence(Sequence):
             min_index = 0
             for cur_slice in self.cur_h5_dset.iter_chunks():
                 cur_chunk = self.cur_h5_dset[cur_slice]
-                if self.train:
-                    well_chunk = cur_chunk[
-                        cur_chunk['well_id'] != self.well_id]
+                if self.well_id == -1:
+                    well_chunk = cur_chunk
                 else:
-                    well_chunk = cur_chunk[cur_chunk['well_id'] ==
-                                           self.well_id]
+                    if self.train:
+                        well_chunk = cur_chunk[
+                            cur_chunk['well_id'] != self.well_id]
+                    else:
+                        well_chunk = cur_chunk[cur_chunk['well_id'] ==
+                                               self.well_id]
 
                 if (idx >= min_index) & (idx < min_index + len(well_chunk)):
                     return np.array(
@@ -173,14 +188,19 @@ class HDFMultiColSequence(Sequence):
             for cur_slice in self.cur_h5_dset.iter_chunks():
                 cur_chunk = self.cur_h5_dset[cur_slice]
                 # print(cur_chunk.shape)
-                if self.train:
-                    well_chunk = cur_chunk[
-                        cur_chunk['well_id'] != self.well_id]
-                    # print(f'[HDFMultiColSequence] training data: {well_chunk.shape}')
+                if self.well_id == -1:
+                    well_chunk = cur_chunk
                 else:
-                    well_chunk = cur_chunk[cur_chunk['well_id'] ==
-                                           self.well_id]
-                    # print(f'[HDFMultiColSequence] validation data: {well_chunk.shape}')
+                    if self.train:
+                        well_chunk = cur_chunk[
+                            cur_chunk['well_id'] != self.well_id]
+                        # print(f'[HDFMultiColSequence] training data: '\
+                        #       f'{well_chunk.shape}')
+                    else:
+                        well_chunk = cur_chunk[cur_chunk['well_id'] ==
+                                               self.well_id]
+                        # print(f'[HDFMultiColSequence] validation data: '\
+                        #       f'{well_chunk.shape}')
 
                 # print(
                 #     f'[HDFMultiColSequence] len(well_chunk): {len(well_chunk)}'

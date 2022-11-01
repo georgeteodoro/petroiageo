@@ -12,7 +12,7 @@ import hdf5_util
 import expand4_hdf5
 import petro4_hdf5
 # import petro_dist2
-# import apply4
+import apply5_hdf5
 
 # Constants
 # hypercube_shape = (434, 646, 251)
@@ -197,39 +197,28 @@ def main(load_iteration: int, num_iterations: int, parallel_settings,
         if mpi_size == 1:
             best_features_set, best_error = petro4_hdf5.get_features_sets(
                 porosity_data_h5, features_dict_h5, all_features,
-                displacement_cube_shape, it_str, 4, 4)
+                displacement_cube_shape, it_str, 4, 2)
         else:
             best_features_set, best_error = petro_dist3_hdf5.get_features_sets(
                 porosity_data_h5, features_dict_h5, all_features,
                 hypercube_shape, 10, 0)
-
-        return
-
-        # if mpi_size == 1:
-        #     best_features_set, best_error = petro3.get_features_sets(
-        #         feature_selection_points_ddf, features_ddf, all_features,
-        #         parallel_settings, 4, 4)
-        # else:
-        # best_features_set, best_error = petro_dist2.get_features_sets(
-        #     feature_selection_points_ddf, features_ddf, all_features,
-        #     hypercube_shape, dask_chunksize, parallel_settings, 10, 0)
 
         print_manager(f'[main]{it_str} Best features set:'\
               f' {best_features_set} with {best_error} error')
 
         t3 = time.time()
 
-        return
-
         print_manager(
             f"[main]{it_str} Performing predictions on new expanded points")
-        main_df = apply4.perf_predition(best_features_set, main_df,
-                                        features_df)
-        print_manager(main_df)
+        main_df = apply5_hdf5.perf_predition(best_features_set,
+                                             porosity_data_h5,
+                                             features_dict_h5,
+                                             displacement_cube_shape)
+        # print_manager(main_df)
         # main_df.sort_index(inplace=True)
-        main_df.to_csv(f'tmp_data/predicted{it}.csv',
-                       index=True,
-                       index_label=common.MAIN_DF_INDEX_NAMES)
+        # main_df.to_csv(f'tmp_data/predicted{it}.csv',
+        #                index=True,
+        #                index_label=common.MAIN_DF_INDEX_NAMES)
 
         t4 = time.time()
         print_manager(f'[main][times]{it_str} total_it_time {t4-t1}')

@@ -56,4 +56,4 @@ if __name__ == '__main__':
     hypercube_shape = np.load(f'./dados/NEAR.npy').shape
 
     porosity_points_py2hdf5('./dados/porosity-canal.npy', hypercube_shape,
-                            (100, 100, 100), real_wells)
+                            (100, 10, 10), real_wells)

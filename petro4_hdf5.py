@@ -106,19 +106,10 @@ def eval_bootstrap(cur_h5_seq, wells_id, num_threads=24):
     return np.mean(rmse_list), np.mean(mae_list)
 
 
-# Convert the feature tuple (e.g., ('NEAR', -3, 1, 2)) to
-# string (e.g., 'NEAR/-3,1,2')
-def f2str(f_tuple):
-    if type(f_tuple) is tuple:
-        return f'{f_tuple[0]}/{f_tuple[1]},{f_tuple[2]},{f_tuple[3]}'
-    else:
-        return f_tuple
-
-
 def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
                             cur_feature, hypercube_shape,
                             displacement_cube_shape):
-    
+
     profile_time = False
 
     t0 = time()
@@ -173,10 +164,13 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
             if len(coord_planar_np) / chunk_size > chunk_size:
                 chunk_len = int(len(coord_planar_np) / chunk_size)
 
-            for beg in range(0, len(coord_planar_np) - chunk_len, chunk_len):
-                chunk_slice = slice(beg, beg + chunk_len)
-                yield chunk_slice, features_dict_h5[f][
-                    coord_planar_np[chunk_slice]]
+                for beg in range(0,
+                                 len(coord_planar_np) - chunk_len, chunk_len):
+                    chunk_slice = slice(beg, beg + chunk_len)
+                    yield chunk_slice, features_dict_h5[f][
+                        coord_planar_np[chunk_slice]]
+            else:
+                yield slice(0, chunk_len), features_dict_h5[f][coord_planar_np]
 
         feature_gen = _feature_generator(features_dict_h5, coord_planar_np,
                                          cur_feature[0])
@@ -189,45 +183,34 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
 
         t6 = time()
         if profile_time:
-            print(f'[insert_filtered_feature] insert_disp_feature_time: {t6-t5}')
+            print(
+                f'[insert_filtered_feature] insert_disp_feature_time: {t6-t5}')
 
     t7 = time()
     if profile_time:
         print(f'[insert_filtered_feature] full_time: {t7-t0}')
 
 
-# exp_n_features: number of features to be selected
-# f_width: number of features to be compared
-#   default=0 means all features.
-#   Used for debugging and reducing computing cost
-def get_features_sets(
-        porosity_data_h5,
-        features_dict_h5,
-        all_features,
-        displacement_cube_shape,
-        # num_threads,
-        it_str,
-        exp_n_features,
-        f_width=0):
-
+def create_tmp_dset(porosity_data_h5,
+                    is_training_point_f,
+                    n_features,
+                    features_only=False):
     t0 = time()
-
     # Creates a temporary h5 structure to maintain the porosity
     # and features data
     cur_h5 = h5py.File('cur.h5', 'w')
-    cur_chunksize = (100, 100, 100)  # AUTOMATE LATER
-    cur_data_type = [('x', np.int64), ('y', np.int64), ('z', np.int64),
-                     ('phi', np.float64), ('well_id', np.int64)]
-    cur_data_type = cur_data_type + [(f'f{f}', np.float64)
-                                     for f in range(exp_n_features)]
-    cur_data_type = np.dtype(cur_data_type)
+    # cur_chunksize = (100, 100, 100)  # AUTOMATE LATER
+    cur_chunksize = (100, 10, 10)  # AUTOMATE LATER
+    if features_only:
+        cur_data_type = [('x', np.int64), ('y', np.int64), ('z', np.int64),
+                         ('phi', np.float64)]
+    else:
+        cur_data_type = [('x', np.int64), ('y', np.int64), ('z', np.int64),
+                         ('phi', np.float64), ('well_id', np.int64)]
 
-    # Points used for training: real, expanded and propagated
-    is_training_point_f = lambda d: (
-        (d['real'] == common.RealValues.real) |
-        (d['real'] == common.RealValues.canal_expanded) |
-        (d['real'] == common.RealValues.expanded) |
-        (d['real'] == common.RealValues.propagated))
+    cur_data_type = cur_data_type + [(f'f{f}', np.float64)
+                                     for f in range(n_features)]
+    cur_data_type = np.dtype(cur_data_type)
 
     n_training_points = hdf5_util.fold_h5_all_clusters(
         porosity_data_h5, lambda d: len(d[is_training_point_f(d)]), 0)
@@ -252,15 +235,51 @@ def get_features_sets(
 
         # Append these porosity values to the current dataset
         training_points = chunk_np[is_training_point_f(chunk_np)]
-        cur_h5_dset['x', 'y', 'z', 'phi', 'well_id',
-                    prev_end:(prev_end +
-                              len(training_points))] = training_points[[
-                                  'x', 'y', 'z', 'phi', 'well_id'
-                              ]]
+        if features_only:
+            cur_h5_dset['x', 'y', 'z', 'phi',
+                        prev_end:(prev_end +
+                                  len(training_points))] = training_points[[
+                                      'x', 'y', 'z', 'phi'
+                                  ]]
+        else:
+            cur_h5_dset['x', 'y', 'z', 'phi', 'well_id',
+                        prev_end:(prev_end +
+                                  len(training_points))] = training_points[[
+                                      'x', 'y', 'z', 'phi', 'well_id'
+                                  ]]
         prev_end = prev_end + len(training_points)
 
     t2 = time()
     print(f'[get_features_sets] cur_copy_porosity_time: {t2-t1}')
+
+    return cur_h5, cur_h5_dset
+
+
+# exp_n_features: number of features to be selected
+# f_width: number of features to be compared
+#   default=0 means all features.
+#   Used for debugging and reducing computing cost
+def get_features_sets(
+        porosity_data_h5,
+        features_dict_h5,
+        all_features,
+        displacement_cube_shape,
+        # num_threads,
+        it_str,
+        exp_n_features,
+        f_width=0):
+
+    t0 = time()
+
+    # Points used for training: real, expanded and propagated
+    is_training_point_f = lambda d: (
+        (d['real'] == common.RealValues.real) |
+        (d['real'] == common.RealValues.canal_expanded) |
+        (d['real'] == common.RealValues.expanded) |
+        (d['real'] == common.RealValues.propagated))
+
+    cur_h5, cur_h5_dset = create_tmp_dset(porosity_data_h5,
+                                          is_training_point_f, exp_n_features)
 
     # Create sequence object
     cur_h5_seq = hdf5_util.HDFMultiColSequence(cur_h5_dset, ['x', 'y', 'z'])
@@ -270,6 +289,8 @@ def get_features_sets(
 
     # List of features sets and their error metric
     results = []
+
+    hypercube_shape = porosity_data_h5.shape
 
     # Find a feature set with exp_n_features features
     for it in range(exp_n_features):
@@ -321,6 +342,9 @@ def get_features_sets(
             print(f'[get_features_sets][it{it}] Tested feature'\
                   f'{cur_f_set+ [cur_feature]} with error {rmse}')
 
+        # Remove the best feature from the features list
+        all_features.remove(best_feature)
+
         t7 = time()
         print(f'[get_features_sets][it{it}] '\
               f'full_it_time: {t7-t3}')
@@ -335,5 +359,7 @@ def get_features_sets(
 
     t9 = time()
     print(f'[get_features_sets] full_time: {t9-t0}')
+
+    cur_h5.close()
 
     return get_best_features_set(results)
