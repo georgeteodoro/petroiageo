@@ -197,7 +197,7 @@ def main(load_iteration: int, num_iterations: int, parallel_settings,
         if mpi_size == 1:
             best_features_set, best_error = petro4_hdf5.get_features_sets(
                 porosity_data_h5, features_dict_h5, all_features,
-                displacement_cube_shape, it_str, 4, 2)
+                displacement_cube_shape, it_str, 1, 1)
         else:
             best_features_set, best_error = petro_dist3_hdf5.get_features_sets(
                 porosity_data_h5, features_dict_h5, all_features,
@@ -210,10 +210,8 @@ def main(load_iteration: int, num_iterations: int, parallel_settings,
 
         print_manager(
             f"[main]{it_str} Performing predictions on new expanded points")
-        main_df = apply5_hdf5.perf_predition(best_features_set,
-                                             porosity_data_h5,
-                                             features_dict_h5,
-                                             displacement_cube_shape)
+        apply5_hdf5.perf_predition(best_features_set, porosity_data_h5,
+                                   features_dict_h5, displacement_cube_shape)
         # print_manager(main_df)
         # main_df.sort_index(inplace=True)
         # main_df.to_csv(f'tmp_data/predicted{it}.csv',

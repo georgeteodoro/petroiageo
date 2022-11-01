@@ -105,45 +105,36 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
 
     t1 = time()
 
-    # # Remove coordinates from features set
-    # best_features_set.remove('x')
-    # best_features_set.remove('y')
-    # best_features_set.remove('z')
+    # Remove coordinates from features set
+    best_features_set.remove('x')
+    best_features_set.remove('y')
+    best_features_set.remove('z')
 
     # # Create a DataFrame for the features to be used for prediction
     # cur_features_df = main_df.copy(deep=False)
 
-    # Points used for training: real, expanded and propagated
+    # Points used for training: real and propagated
     is_training_point_f = lambda d: (
         (d['real'] == common.RealValues.real) |
         (d['real'] == common.RealValues.propagated))
-
-    # (d['real'] == common.RealValues.canal_expanded) |
-    # (d['real'] == common.RealValues.expanded) |
 
     # Creates a temporary h5 structure to perform the training
     cur_h5, cur_h5_dset = petro4_hdf5.create_tmp_dset(porosity_data_h5,
                                                       is_training_point_f,
                                                       len(best_features_set),
                                                       True)
-    cur_h5_seq = hdf5_util.HDFMultiColSequence(cur_h5_dset)
+    cur_h5_seq = hdf5_util.HDFMultiColSequence(cur_h5_dset, [])
 
     hypercube_shape = porosity_data_h5.shape
 
     # Add each feature to the DataFrame
     for feature in best_features_set:
-        # feature_s = common.f2str(feature)
-        # cur_features_df.loc[:, feature_s] = get_feature_col2(
-        #     main_df.index, feature, features_df)
         cur_h5_seq.add_new_col()
         petro4_hdf5.insert_filtered_feature(cur_h5_dset, cur_h5_seq,
                                             features_dict_h5, feature,
                                             hypercube_shape,
                                             displacement_cube_shape)
     cur_h5_seq.update_len()
-
-    # # This sets the sequence to use all features
-    # cur_h5_seq.set_all_features(len(best_features_set))
 
     t2 = time()
     if profiling > 0:

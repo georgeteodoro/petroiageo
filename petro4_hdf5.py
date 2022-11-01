@@ -53,6 +53,8 @@ def get_best_features_set(features_sets):
 def eval_bootstrap(cur_h5_seq, wells_id, num_threads=24):
     params['num_threads'] = num_threads
 
+    profiling = False
+
     rmse_list = []
     mae_list = []
     well_id = 0
@@ -82,7 +84,8 @@ def eval_bootstrap(cur_h5_seq, wells_id, num_threads=24):
         lgb_train_dataset = lgb.Dataset(X_train_seq, y_train_np)
         lgb_eval_dataset = lgb.Dataset(X_val_seq, y_val_np)
         t1 = time()
-        print(f'[petro4_hdf5][eval_bootstrap][w{w}] Setup in {t1-t0}')
+        if profiling:
+            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Setup in {t1-t0}')
 
         # Perform training
         regressor = lgb.train(
@@ -92,7 +95,8 @@ def eval_bootstrap(cur_h5_seq, wells_id, num_threads=24):
             valid_sets=lgb_eval_dataset,
             callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)])
         t2 = time()
-        print(f'[petro4_hdf5][eval_bootstrap][w{w}] Training in {t2-t1}')
+        if profiling:
+            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Training in {t2-t1}')
 
         # Calculate error metrics
         pred = regressor.predict(X_val_seq.get_X_np())
@@ -101,7 +105,8 @@ def eval_bootstrap(cur_h5_seq, wells_id, num_threads=24):
         rmse_list.append(rmse)
         mae_list.append(mae)
         t3 = time()
-        print(f'[petro4_hdf5][eval_bootstrap][w{w}] Evaluating in {t3-t2}')
+        if profiling:
+            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Evaluating in {t3-t2}')
 
     return np.mean(rmse_list), np.mean(mae_list)
 
@@ -195,6 +200,9 @@ def create_tmp_dset(porosity_data_h5,
                     is_training_point_f,
                     n_features,
                     features_only=False):
+
+    profiling = False
+
     t0 = time()
     # Creates a temporary h5 structure to maintain the porosity
     # and features data
@@ -219,7 +227,8 @@ def create_tmp_dset(porosity_data_h5,
                                         dtype=cur_data_type,
                                         chunks=(n_training_points / 10, ))
     t1 = time()
-    print(f'[get_features_sets] cur_create_time: {t1-t0}')
+    if profiling:
+        print(f'[get_features_sets] cur_create_time: {t1-t0}')
 
     # Copy porosity data to cur structure
     # Only copy points which will be used for training, i.e., not empty.
@@ -250,7 +259,8 @@ def create_tmp_dset(porosity_data_h5,
         prev_end = prev_end + len(training_points)
 
     t2 = time()
-    print(f'[get_features_sets] cur_copy_porosity_time: {t2-t1}')
+    if profiling:
+        print(f'[get_features_sets] cur_copy_porosity_time: {t2-t1}')
 
     return cur_h5, cur_h5_dset
 
@@ -339,7 +349,7 @@ def get_features_sets(
                 best_error = rmse
                 best_feature = cur_feature
 
-            print(f'[get_features_sets][it{it}] Tested feature'\
+            print(f'[get_features_sets][it{it}] Tested features '\
                   f'{cur_f_set+ [cur_feature]} with error {rmse}')
 
         # Remove the best feature from the features list
@@ -353,6 +363,8 @@ def get_features_sets(
         insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
                                 best_feature, hypercube_shape,
                                 displacement_cube_shape)
+        cur_f_set.append(best_feature)
+
         t8 = time()
         print(f'[get_features_sets][{cur_feature}] '\
               f'commit_feature_time: {t8-t7}')
