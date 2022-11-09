@@ -133,7 +133,6 @@ class HDFMultiColSequence(Sequence):
             self.cur_h5_dset[f_str, f_slice] = f_vals
 
     def add_new_col(self):
-        print(f'++++++++ adding col. started with {self.all_features}')
         self.last_col = self.last_col + 1
         f_str = f'f{self.last_col}'
         self.all_features.append(f_str)

@@ -1,7 +1,5 @@
-# import pandas as pd
 import numpy as np
 from time import time
-# from numba import jit
 import h5py
 from math import prod
 from copy import copy
@@ -12,10 +10,6 @@ import lightgbm as lgb
 
 import hdf5_util
 import common
-
-# Parameters
-LABEL_COLUMN_NAME = 'phi'
-UNWANTED_COLUMNS = ['real', 'well']
 
 RANDOM_STATE = 1
 
@@ -35,10 +29,6 @@ params = {
     # "tree_learner": "data",
 }
 
-# SEISMIC_MAX_X = 433
-# SEISMIC_MAX_Y = 645
-# SEISMIC_MAX_Z = 250
-
 
 def get_best_features_set(features_sets):
     # Sort by second column (id 1)
@@ -53,7 +43,7 @@ def get_best_features_set(features_sets):
 def eval_bootstrap(cur_h5_seq, wells_id, num_threads=24):
     params['num_threads'] = num_threads
 
-    profiling = False
+    profiling = True
 
     rmse_list = []
     mae_list = []
@@ -115,7 +105,7 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
                             cur_feature, hypercube_shape,
                             displacement_cube_shape):
 
-    profile_time = False
+    profile_time = True
 
     t0 = time()
     for chunk_slice in cur_h5_dset.iter_chunks():
@@ -201,7 +191,7 @@ def create_tmp_dset(porosity_data_h5,
                     n_features,
                     features_only=False):
 
-    profiling = False
+    profiling = True
 
     t0 = time()
     # Creates a temporary h5 structure to maintain the porosity

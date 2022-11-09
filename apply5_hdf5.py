@@ -5,14 +5,11 @@ from time import time
 import lightgbm as lgb
 from math import prod
 
-# from numba import jit
-
 import common
 import petro4_hdf5
 import hdf5_util
 
 # Parameters
-LABEL_COLUMN_NAME = 'phi'
 RANDOM_STATE = 1
 
 params = {
@@ -29,55 +26,6 @@ params = {
     "bagging_freq": 1,
     "random_state": 0
 }
-
-SEISMIC_MAX_X = 433
-SEISMIC_MAX_Y = 645
-SEISMIC_MAX_Z = 250
-
-# def eval_model(orig_df, main_df, features):
-
-#     # Get points marked for prediction
-#     X_to_predict = main_df[(main_df['real'] == 2) | (main_df['real'] == 3)]
-#     X_to_predict = X_to_predict[[common.f2str(f) for f in features]]
-
-#     # Only train on points with phi value
-#     X_with_phi = main_df[(main_df['real'] == 0) | (main_df['real'] == 1)]
-#     X_with_phi = X_with_phi[[common.f2str(f) for f in features]]
-
-#     # Results (phi) only for predicted or original points
-#     y_df = main_df[(main_df['real'] == 0) |
-#                    (main_df['real'] == 1)][LABEL_COLUMN_NAME]
-
-#     # Train
-#     lgb_train = lgb.Dataset(X_with_phi.values, y_df.values)
-#     regressor = lgb.train(
-#         params,
-#         lgb_train,
-#         num_boost_round=100,
-#     )
-
-#     # Predict expanded points
-#     pred = regressor.predict(X_to_predict.values)
-
-#     # Get the two disjoint set of points, real + previously expanded
-#     # and expanded on this iteration
-#     remaining_df = orig_df[(orig_df['real'] != 2) & (orig_df['real'] != 3)]
-#     predicted_df = orig_df[(orig_df['real'] == 2) | (orig_df['real'] == 3)]
-
-#     # SettingWithCopyWarning is false positive on the two .loc lines below
-#     pd.options.mode.chained_assignment = None
-
-#     # Update real value from 3 (to predict) and 2 (to expand) to 1 (propagated)
-#     predicted_df.loc[:, 'real'] = 1
-
-#     # Assign predicted values
-#     predicted_df.loc[:, 'phi'] = pred
-
-#     # Re-enable SettingWithCopyWarning
-#     pd.options.mode.chained_assignment = 'warn'
-
-#     return pd.concat([remaining_df, predicted_df])
-
 
 def get_feature_col(features_dict_h5, feature, coords_3d_np, hypercube_shape,
                     displacement_cube_shape):
@@ -101,7 +49,7 @@ def get_feature_col(features_dict_h5, feature, coords_3d_np, hypercube_shape,
 
 def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
                    displacement_cube_shape):
-    profiling = 0
+    profiling = 2
 
     t1 = time()
 
@@ -109,9 +57,6 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
     best_features_set.remove('x')
     best_features_set.remove('y')
     best_features_set.remove('z')
-
-    # # Create a DataFrame for the features to be used for prediction
-    # cur_features_df = main_df.copy(deep=False)
 
     # Points used for training: real and propagated
     is_training_point_f = lambda d: (
@@ -231,8 +176,6 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
             print(f'[apply5_hdf5] update-real {t35-t34}')
             print(f'[apply5_hdf5] done-in {t35-t31}')
 
-    # # Train model and predict porosity for new expanded points
-    # ret = eval_model(main_df, cur_features_df, best_features_set)
     t4 = time()
     if profiling > 0:
         print(f'[apply5_hdf5] updated-values: {t4-t3}')
