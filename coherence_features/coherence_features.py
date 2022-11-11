@@ -4,11 +4,12 @@ import scipy.signal
 from algs import *
 import pathlib
 from timeit import default_timer as timer
+from datetime import datetime
 
 def apply_and_save(func, save_path, *args, **kwargs):
     print(f"Calculando {func.__name__}")
     try:
-        print("Começando cálculo")
+        print(f'Começando cálculo {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
         start = timer()
         result = func(*args, **kwargs)
         end = timer()
@@ -145,7 +146,7 @@ def load_seismic_data(data_folder, current_file):
     
 
 if __name__ == "__main__":
-    N_CPU = 20
+    N_CPU = 20 #Must be a positive integer
 
     seismic_files = ["Franco_florin_buzios_28_09-2"]
 
