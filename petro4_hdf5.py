@@ -189,6 +189,7 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
 def create_tmp_dset(porosity_data_h5,
                     is_training_point_f,
                     n_features,
+                    suf_str='',
                     features_only=False):
 
     profiling = True
@@ -196,7 +197,7 @@ def create_tmp_dset(porosity_data_h5,
     t0 = time()
     # Creates a temporary h5 structure to maintain the porosity
     # and features data
-    cur_h5 = h5py.File('cur.h5', 'w')
+    cur_h5 = h5py.File(f'cur{suf_str}.h5', 'w')
     # cur_chunksize = (100, 100, 100)  # AUTOMATE LATER
     cur_chunksize = (100, 10, 10)  # AUTOMATE LATER
     if features_only:

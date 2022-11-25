@@ -6,12 +6,13 @@ import argparse
 from math import prod
 import h5py
 from tqdm import tqdm
+import os
 
 import common
 import hdf5_util
 import expand4_hdf5
 import petro4_hdf5
-# import petro_dist2
+import petro_dist3_hdf5
 import apply5_hdf5
 
 # Constants
@@ -39,6 +40,38 @@ def print_progress(with_progress, r):
         return r
 
 
+# Perform 'func' one rank at a time
+def mpi_perform_ordered(func):
+    to_update_rank = 0
+    while True:
+        if rank == to_update_rank:
+            to_update_rank = to_update_rank + 1
+            ret = func()
+            for r in range(to_update_rank, mpi_size):
+                comm.send(to_update_rank, r)
+            return ret
+        else:
+            to_update_rank = comm.recv(source=to_update_rank)
+
+
+# Check whether the current process should update the local h5 files
+# Only one process per node should do this
+# Although multiple updates works on h5, it is inefficient
+def should_update_local():
+    lock_file_str = '.h5rank.loc'
+    # Remove old files
+    mpi_perform_ordered(lambda: os.remove(lock_file_str)
+                        if os.path.exists(lock_file_str) else None)
+    comm.Barrier()
+
+    # Create lock file locally, if there aren't any
+    # mpi_perform_ordered(lambda: open(lock_file_str, 'w').close()
+    ret = mpi_perform_ordered(lambda: open(lock_file_str, 'w').close()
+                              if not os.path.exists(lock_file_str) else False)
+
+    return ret == None
+
+
 def main(load_iteration: int, num_iterations: int, parallel_settings,
          with_progress: bool):
     # Instantiate pandas dataframe for all data
@@ -51,8 +84,14 @@ def main(load_iteration: int, num_iterations: int, parallel_settings,
     #            1=propagated, 0=real well point]
     #   phi  => Porosity value
 
-    # Progress printing only enabled for manager process
-    if rank == manager_rank:
+    # Assign a single process per node to update the local h5 file
+    should_update = should_update_local()
+    if should_update:
+        print(f'[main] Rank {rank} is updating h5 file')
+
+    # Progress printing only enabled for updating process
+    # if rank == manager_rank:
+    if should_update:
         pp = lambda r: print_progress(with_progress, r)
     else:
         pp = lambda r: r
@@ -102,12 +141,28 @@ def main(load_iteration: int, num_iterations: int, parallel_settings,
     features_files_dict_h5 = {}
     features_dict_h5 = {}
     for f in seismic_features_names:
-        features_files_dict_h5[f] = h5py.File(f'./dados/{f}.h5', 'r')
+        # features_files_dict_h5[f] = h5py.File(f'./dados/{f}.h5', 'r')
+        features_files_dict_h5[f] = h5py.File(f'./dados/{f}.h5',
+                                              'r',
+                                              driver='mpio',
+                                              comm=comm)
         features_dict_h5[f] = features_files_dict_h5[f]['f']
+
+    # Forces only the updating process to be enabled to actually
+    # write to the h5 file
+    # The use of h5 + openmpi with concurrent write may require
+    # the use of uncompressed files, which is space-inefficient
+    if should_update:
+        write_str = 'r+'  # Open existing file with write permission
+    else:
+        write_str = 'r'  # Read-only permission
 
     # Real wells' data into a main dataframe
     print_manager("[main] Loading wells values")
-    porosity_data_h5 = h5py.File(f'./dados/porosity_data.h5', 'r+')['p']
+    porosity_data_h5 = h5py.File(f'./dados/porosity_data.h5',
+                                 write_str,
+                                 driver='mpio',
+                                 comm=comm)['p']
     hypercube_shape = porosity_data_h5.shape
     all_points = porosity_data_h5.size
 
@@ -170,14 +225,17 @@ def main(load_iteration: int, num_iterations: int, parallel_settings,
         print_manager(f'[main] empty points: {empty_points}')
 
         print_manager(f"[main]{it_str} Expanding points")
-        expand4_hdf5.gen_expanded_points(porosity_data_h5, hypercube_shape,
-                                         real_wells, it, it_str_manager, pp)
+        if should_update:
+            expand4_hdf5.gen_expanded_points(porosity_data_h5, hypercube_shape,
+                                             real_wells, it, it_str, pp)
+        print(f'{rank} waiting')
+        comm.Barrier()
 
         to_expand = hdf5_util.fold_h5_all_clusters(
             porosity_data_h5,
             lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
                             (d['real'] == common.RealValues.expanded)]), 0)
-        print_manager(f'[main] Expanded points: {to_expand}')
+        print(f'[main][{rank}] Expanded points: {to_expand}')
 
         print(porosity_data_h5)
 
@@ -201,7 +259,7 @@ def main(load_iteration: int, num_iterations: int, parallel_settings,
         else:
             best_features_set, best_error = petro_dist3_hdf5.get_features_sets(
                 porosity_data_h5, features_dict_h5, all_features,
-                hypercube_shape, 10, 0)
+                displacement_cube_shape, it_str, 2, 2)
 
         print_manager(f'[main]{it_str} Best features set:'\
               f' {best_features_set} with {best_error} error')
@@ -210,8 +268,10 @@ def main(load_iteration: int, num_iterations: int, parallel_settings,
 
         print_manager(
             f"[main]{it_str} Performing predictions on new expanded points")
-        apply5_hdf5.perf_predition(best_features_set, porosity_data_h5,
-                                   features_dict_h5, displacement_cube_shape)
+        if should_update:
+            apply5_hdf5.perf_predition(best_features_set, porosity_data_h5,
+                                       features_dict_h5,
+                                       displacement_cube_shape)
         # print_manager(main_df)
         # main_df.sort_index(inplace=True)
         # main_df.to_csv(f'tmp_data/predicted{it}.csv',
