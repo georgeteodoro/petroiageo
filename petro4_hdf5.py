@@ -340,7 +340,7 @@ def get_features_sets(
                 best_error = rmse
                 best_feature = cur_feature
 
-            print(f'[get_features_sets][it{it}] Tested features '\
+            print(f'[get_features_sets][it{it}]{it_str} Tested features '\
                   f'{cur_f_set+ [cur_feature]} with error {rmse}')
 
         # Remove the best feature from the features list
