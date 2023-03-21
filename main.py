@@ -46,7 +46,9 @@ def mpi_perform_ordered(func):
     while True:
         if rank == to_update_rank:
             to_update_rank = to_update_rank + 1
+            print('[mpi_perform_ordered] check file')
             ret = func()
+            print('[mpi_perform_ordered] done')
             for r in range(to_update_rank, mpi_size):
                 comm.send(to_update_rank, r)
             return ret
@@ -72,8 +74,7 @@ def should_update_local():
     return ret == None
 
 
-def main(load_iteration: int, num_iterations: int, parallel_settings,
-         with_progress: bool):
+def main(load_iteration: int, num_iterations: int, num_features: int, num_select_features: int, parallel_settings, with_progress: bool):
     # Instantiate pandas dataframe for all data
     # Data structure is composed by:
     #   x,y,z(depth),
@@ -131,7 +132,7 @@ def main(load_iteration: int, num_iterations: int, parallel_settings,
         "NEAR_sobel_5-5-11",
         "UFAR",
     ]
-    seismic_features_names = seismic_features_names[:2]
+    seismic_features_names = seismic_features_names[:num_features]
 
     # Features which do not need to be expanded on the window
     other_features_names = []
@@ -142,6 +143,7 @@ def main(load_iteration: int, num_iterations: int, parallel_settings,
     features_dict_h5 = {}
     for f in seismic_features_names:
         # features_files_dict_h5[f] = h5py.File(f'./dados/{f}.h5', 'r')
+        print(f'[main] loading file {f}')
         features_files_dict_h5[f] = h5py.File(f'./dados/{f}.h5',
                                               'r',
                                               driver='mpio',
@@ -152,10 +154,14 @@ def main(load_iteration: int, num_iterations: int, parallel_settings,
     # write to the h5 file
     # The use of h5 + openmpi with concurrent write may require
     # the use of uncompressed files, which is space-inefficient
-    if should_update:
-        write_str = 'r+'  # Open existing file with write permission
-    else:
-        write_str = 'r'  # Read-only permission
+    #if should_update:
+    #    write_str = 'r+'  # Open existing file with write permission
+    #else:
+    #    write_str = 'r'  # Read-only permission
+    
+    # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
+    # with the same access/mode
+    write_str = 'r+'
 
     # Real wells' data into a main dataframe
     print_manager("[main] Loading wells values")
@@ -208,7 +214,7 @@ def main(load_iteration: int, num_iterations: int, parallel_settings,
     # divisions = main_ddf.divisions
 
     t2 = time.time()
-    print_manager(f'[main] Initial data loading time: {t2-t1}')
+    print(f'[main] Initial data loading time: {t2-t1}')
 
     max_iteration = load_iteration + num_iterations + 1
     for it in range(load_iteration + 1, max_iteration):
@@ -222,9 +228,9 @@ def main(load_iteration: int, num_iterations: int, parallel_settings,
         empty_points = hdf5_util.fold_h5_all_clusters(
             porosity_data_h5,
             lambda d: len(d[d['real'] == common.RealValues.empty]), 0)
-        print_manager(f'[main] empty points: {empty_points}')
+        print(f'[main] empty points: {empty_points}')
 
-        print_manager(f"[main]{it_str} Expanding points")
+        print(f"[main]{it_str} Expanding points")
         if should_update:
             expand4_hdf5.gen_expanded_points(porosity_data_h5, hypercube_shape,
                                              real_wells, it, it_str, pp)
@@ -241,7 +247,7 @@ def main(load_iteration: int, num_iterations: int, parallel_settings,
 
         t2 = time.time()
 
-        print_manager(f"[main]{it_str} Performing feature selection")
+        print(f"[main]{it_str} Performing feature selection")
 
         # Only uses real, previously propagated and expanded canal points
         # for feature selection
@@ -250,23 +256,23 @@ def main(load_iteration: int, num_iterations: int, parallel_settings,
             lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
                             (d['real'] == common.RealValues.propagated) |
                             (d['real'] == common.RealValues.real)]), 0)
-        print_manager(f'[main] Points for feature selection: {f_sel_points}')
+        print(f'[main] Points for feature selection: {f_sel_points}')
 
         if mpi_size == 1:
             best_features_set, best_error = petro4_hdf5.get_features_sets(
                 porosity_data_h5, features_dict_h5, all_features,
-                displacement_cube_shape, it_str, 1, 1)
+                displacement_cube_shape, it_str, num_select_features, 1)
         else:
             best_features_set, best_error = petro_dist3_hdf5.get_features_sets(
                 porosity_data_h5, features_dict_h5, all_features,
-                displacement_cube_shape, it_str, 2, 2)
+                displacement_cube_shape, it_str, num_select_features, 1)
 
         print_manager(f'[main]{it_str} Best features set:'\
               f' {best_features_set} with {best_error} error')
 
         t3 = time.time()
 
-        print_manager(
+        print(
             f"[main]{it_str} Performing predictions on new expanded points")
         if should_update:
             apply5_hdf5.perf_predition(best_features_set, porosity_data_h5,
@@ -279,10 +285,10 @@ def main(load_iteration: int, num_iterations: int, parallel_settings,
         #                index_label=common.MAIN_DF_INDEX_NAMES)
 
         t4 = time.time()
-        print_manager(f'[main][times]{it_str} total_it_time {t4-t1}')
-        print_manager(f'[main][times]{it_str} expansion {t2-t1}')
-        print_manager(f'[main][times]{it_str} feature_selection {t3-t2}')
-        print_manager(f'[main][times]{it_str} propagation {t4-t3}')
+        print(f'[main][times]{it_str} total_it_time {t4-t1}')
+        print(f'[main][times]{it_str} expansion {t2-t1}')
+        print(f'[main][times]{it_str} feature_selection {t3-t2}')
+        print(f'[main][times]{it_str} propagation {t4-t3}')
 
 
 if __name__ == '__main__':
@@ -298,6 +304,16 @@ if __name__ == '__main__':
                         action='store',
                         default=10,
                         help='Number of iterations to run (default: 10)')
+    parser.add_argument('--nf',
+                        dest='num_features',
+                        action='store',
+                        default=10,
+                        help='Number of total features (default: 10)')
+    parser.add_argument('--nsf',
+                        dest='num_select_features',
+                        action='store',
+                        default=1,
+                        help='Number of maximum features to be selected (default: 1)')
     # parser.add_argument('--gpu',
     #                     dest='n_gpus',
     #                     action='store',
@@ -342,5 +358,4 @@ if __name__ == '__main__':
         # 'gpu_thrds': int(args.gpu_thrds),
     }
 
-    main(int(args.load_it), int(args.num_its), parallel_settings,
-         args.with_progress)
+    main(int(args.load_it), int(args.num_its), int(args.num_features), int(args.num_select_features), parallel_settings, args.with_progress)
