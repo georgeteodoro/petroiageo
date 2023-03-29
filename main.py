@@ -74,7 +74,8 @@ def should_update_local():
     return ret == None
 
 
-def main(load_iteration: int, num_iterations: int, num_features: int, num_select_features: int, parallel_settings, with_progress: bool):
+def main(load_iteration: int, num_iterations: int, num_features: int,
+         num_select_features: int, parallel_settings, with_progress: bool):
     # Instantiate pandas dataframe for all data
     # Data structure is composed by:
     #   x,y,z(depth),
@@ -158,7 +159,7 @@ def main(load_iteration: int, num_iterations: int, num_features: int, num_select
     #    write_str = 'r+'  # Open existing file with write permission
     #else:
     #    write_str = 'r'  # Read-only permission
-    
+
     # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
     # with the same access/mode
     write_str = 'r+'
@@ -272,8 +273,7 @@ def main(load_iteration: int, num_iterations: int, num_features: int, num_select
 
         t3 = time.time()
 
-        print(
-            f"[main]{it_str} Performing predictions on new expanded points")
+        print(f"[main]{it_str} Performing predictions on new expanded points")
         if should_update:
             apply5_hdf5.perf_predition(best_features_set, porosity_data_h5,
                                        features_dict_h5,
@@ -309,11 +309,12 @@ if __name__ == '__main__':
                         action='store',
                         default=10,
                         help='Number of total features (default: 10)')
-    parser.add_argument('--nsf',
-                        dest='num_select_features',
-                        action='store',
-                        default=1,
-                        help='Number of maximum features to be selected (default: 1)')
+    parser.add_argument(
+        '--nsf',
+        dest='num_select_features',
+        action='store',
+        default=1,
+        help='Number of maximum features to be selected (default: 1)')
     # parser.add_argument('--gpu',
     #                     dest='n_gpus',
     #                     action='store',
@@ -358,4 +359,11 @@ if __name__ == '__main__':
         # 'gpu_thrds': int(args.gpu_thrds),
     }
 
-    main(int(args.load_it), int(args.num_its), int(args.num_features), int(args.num_select_features), parallel_settings, args.with_progress)
+    # import cProfile
+    # cProfile.runctx('main(int(args.load_it), int(args.num_its), '\
+    #                 'int(args.num_features), int(args.num_select_features), '\
+    #                 'parallel_settings, args.with_progress)',
+    #                 globals(), locals())
+
+    main(int(args.load_it), int(args.num_its), int(args.num_features),
+         int(args.num_select_features), parallel_settings, args.with_progress)

@@ -51,15 +51,15 @@ def get_features_sets(
         return None
 
     if rank == manager_rank:
-        return manager(all_features, exp_n_features, f_width)
+        return manager(all_features, exp_n_features, f_width, it_str)
     elif rank != manager_rank:
         # return worker(main_ddf, features_ddf, hypercube_shape, dask_chunksize,
         #               parallel_settings)
         return worker(porosity_data_h5, features_dict_h5,
-                      displacement_cube_shape, exp_n_features)
+                      displacement_cube_shape, exp_n_features, it_str)
 
 
-def manager(all_features, exp_n_features, f_width):
+def manager(all_features, exp_n_features, f_width, it_str):
     # print("[petro-dist][manager]")
 
     # Current features set with the best error
@@ -171,6 +171,7 @@ def worker(porosity_data_h5,
            features_dict_h5,
            displacement_cube_shape,
            exp_n_features,
+           it_str,
            parallel_settings=None):
     # print(f"[petro-dist][w{rank}]")
 

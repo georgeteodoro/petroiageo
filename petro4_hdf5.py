@@ -41,7 +41,8 @@ def get_best_features_set(features_sets):
 
 # def eval_bootstrap(df, num_threads=24):
 def eval_bootstrap(cur_h5_seq, wells_id, num_threads=24):
-    params['num_threads'] = num_threads
+    # params['num_threads'] = num_threads
+    params['num_threads'] = 1
 
     profiling = True
 
@@ -72,10 +73,19 @@ def eval_bootstrap(cur_h5_seq, wells_id, num_threads=24):
         y_train_np = X_train_seq.get_y_np()
         y_val_np = X_val_seq.get_y_np()
         lgb_train_dataset = lgb.Dataset(X_train_seq, y_train_np)
-        lgb_eval_dataset = lgb.Dataset(X_val_seq, y_val_np)
+        lgb_eval_dataset = lgb.Dataset(X_val_seq,
+                                       y_val_np,
+                                       reference=lgb_train_dataset)
         t1 = time()
         if profiling:
             print(f'[petro4_hdf5][eval_bootstrap][w{w}] Setup in {t1-t0}')
+
+        # import cProfile
+        # cProfile.runctx('lgb.train(params,lgb_train_dataset,'\
+        #             'num_boost_round=100,valid_sets=lgb_eval_dataset,'\
+        #             'callbacks=[lgb.early_stopping('\
+        #             'stopping_rounds=30, verbose=False)])',
+        #             globals(), locals())
 
         # Perform training
         regressor = lgb.train(
@@ -84,6 +94,7 @@ def eval_bootstrap(cur_h5_seq, wells_id, num_threads=24):
             num_boost_round=100,
             valid_sets=lgb_eval_dataset,
             callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)])
+        0 / 0
         t2 = time()
         if profiling:
             print(f'[petro4_hdf5][eval_bootstrap][w{w}] Training in {t2-t1}')
@@ -105,7 +116,7 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
                             cur_feature, hypercube_shape,
                             displacement_cube_shape):
 
-    profile_time = True
+    profile_time = False
 
     t0 = time()
     for chunk_slice in cur_h5_dset.iter_chunks():
@@ -182,8 +193,8 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
                 f'[insert_filtered_feature] insert_disp_feature_time: {t6-t5}')
 
     t7 = time()
-    if profile_time:
-        print(f'[insert_filtered_feature] full_time: {t7-t0}')
+    # if profile_time:
+    print(f'[insert_filtered_feature] full_time: {t7-t0}')
 
 
 def create_tmp_dset(porosity_data_h5,
@@ -199,7 +210,6 @@ def create_tmp_dset(porosity_data_h5,
     # and features data
     cur_h5 = h5py.File(f'cur{suf_str}.h5', 'w')
     # cur_chunksize = (100, 100, 100)  # AUTOMATE LATER
-    cur_chunksize = (100, 10, 10)  # AUTOMATE LATER
     if features_only:
         cur_data_type = [('x', np.int64), ('y', np.int64), ('z', np.int64),
                          ('phi', np.float64)]
@@ -213,10 +223,11 @@ def create_tmp_dset(porosity_data_h5,
 
     n_training_points = hdf5_util.fold_h5_all_clusters(
         porosity_data_h5, lambda d: len(d[is_training_point_f(d)]), 0)
-    # print(f'[get_features_sets] non-empty points: {n_training_points}')
+    cur_chunksize = (n_training_points / 10, )
+    print(f'[get_features_sets] non-empty points: {n_training_points}')
     cur_h5_dset = cur_h5.create_dataset('c', (n_training_points, ),
                                         dtype=cur_data_type,
-                                        chunks=(n_training_points / 10, ))
+                                        chunks=cur_chunksize)
     t1 = time()
     if profiling:
         print(f'[get_features_sets] cur_create_time: {t1-t0}')
@@ -252,6 +263,7 @@ def create_tmp_dset(porosity_data_h5,
     t2 = time()
     if profiling:
         print(f'[get_features_sets] cur_copy_porosity_time: {t2-t1}')
+        print(f'[get_features_sets] final_lenght: {cur_h5_dset.shape}')
 
     return cur_h5, cur_h5_dset
 

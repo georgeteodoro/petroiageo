@@ -157,88 +157,93 @@ class HDFMultiColSequence(Sequence):
                                        self.well_id][self.all_features]
         return np.array([np.array(a) for a in out_ndarray.tolist()])
 
-    def __getitem__(self, idx):
-        if isinstance(idx, numbers.Integral):
-            min_index = 0
-            for cur_slice in self.cur_h5_dset.iter_chunks():
-                cur_chunk = self.cur_h5_dset[cur_slice]
-                if self.well_id == -1:
-                    well_chunk = cur_chunk
+    def get_item_int(self, idx):
+        min_index = 0
+        for cur_slice in self.cur_h5_dset.iter_chunks():
+            cur_chunk = self.cur_h5_dset[cur_slice]
+            if self.well_id == -1:
+                well_chunk = cur_chunk
+            else:
+                if self.train:
+                    well_chunk = cur_chunk[
+                        cur_chunk['well_id'] != self.well_id]
                 else:
-                    if self.train:
-                        well_chunk = cur_chunk[
-                            cur_chunk['well_id'] != self.well_id]
-                    else:
-                        well_chunk = cur_chunk[cur_chunk['well_id'] ==
-                                               self.well_id]
+                    well_chunk = cur_chunk[cur_chunk['well_id'] ==
+                                           self.well_id]
 
-                if (idx >= min_index) & (idx < min_index + len(well_chunk)):
-                    return np.array(
-                        well_chunk[idx -
-                                   min_index][self.all_features].tolist())
-                min_index = min_index + len(well_chunk)
+            if (idx >= min_index) & (idx < min_index + len(well_chunk)):
+                return np.array(
+                    well_chunk[idx -
+                               min_index][self.all_features].tolist())
+            min_index = min_index + len(well_chunk)
 
-            raise Exception('[HDFMultiColSequence][__getitem__] Index '\
-                           f'not found: {idx}.')
-        elif isinstance(idx, slice):
-            # print(f'[HDFMultiColSequence] getting slice {idx}')
-            output = []
-            min_index = 0
-            for cur_slice in self.cur_h5_dset.iter_chunks():
-                cur_chunk = self.cur_h5_dset[cur_slice]
-                # print(cur_chunk.shape)
-                if self.well_id == -1:
-                    well_chunk = cur_chunk
+        raise Exception('[HDFMultiColSequence][__getitem__] Index '\
+                       f'not found: {idx}.')
+
+    def get_item_slice(self, idx):
+        # print(f'[HDFMultiColSequence] getting slice {idx}')
+        output = []
+        min_index = 0
+        for cur_slice in self.cur_h5_dset.iter_chunks():
+            cur_chunk = self.cur_h5_dset[cur_slice]
+            # print(cur_chunk.shape)
+            if self.well_id == -1:
+                well_chunk = cur_chunk
+            else:
+                if self.train:
+                    well_chunk = cur_chunk[
+                        cur_chunk['well_id'] != self.well_id]
+                    # print(f'[HDFMultiColSequence] training data: '\
+                    #       f'{well_chunk.shape}')
                 else:
-                    if self.train:
-                        well_chunk = cur_chunk[
-                            cur_chunk['well_id'] != self.well_id]
-                        # print(f'[HDFMultiColSequence] training data: '\
-                        #       f'{well_chunk.shape}')
-                    else:
-                        well_chunk = cur_chunk[cur_chunk['well_id'] ==
-                                               self.well_id]
-                        # print(f'[HDFMultiColSequence] validation data: '\
-                        #       f'{well_chunk.shape}')
+                    well_chunk = cur_chunk[cur_chunk['well_id'] ==
+                                           self.well_id]
+                    # print(f'[HDFMultiColSequence] validation data: '\
+                    #       f'{well_chunk.shape}')
 
-                # print(
-                #     f'[HDFMultiColSequence] len(well_chunk): {len(well_chunk)}'
-                # )
+            # print(
+            #     f'[HDFMultiColSequence] len(well_chunk): {len(well_chunk)}'
+            # )
 
-                # Check if the initial idx point is inside this chunk
-                if (idx.start >= min_index) & (idx.start <
-                                               min_index + len(well_chunk)):
-                    # print('[HDFMultiColSequence] initial')
-                    # Check if the end of the idx slice is inside this chunk
-                    if idx.stop <= min_index + len(well_chunk):
-                        output = output + well_chunk[
-                            idx.start - min_index:idx.stop -
-                            min_index][self.all_features].tolist()
-                        return np.array(output)
-
-                    # If not, add all points from idx.start to the end
-                    # of the chunk
-                    else:
-                        output = output + well_chunk[idx.start - min_index:len(
-                            well_chunk)][self.all_features].tolist()
-                # Check if the initial idx point was behind, but the end point
-                # is on a chunk ahead
-                elif (idx.start < min_index) & (idx.stop >
-                                                min_index + len(well_chunk)):
-                    # print('[HDFMultiColSequence] mid')
-                    output = output + well_chunk[:][self.all_features].tolist()
-                # Otherwise, this chunk is the one with the idx stop position
-                elif idx.stop <= min_index + len(well_chunk):
-                    # print('[HDFMultiColSequence] end')
-                    output = output + well_chunk[0:idx.stop - min_index][
-                        self.all_features].tolist()
+            # Check if the initial idx point is inside this chunk
+            if (idx.start >= min_index) & (idx.start <
+                                           min_index + len(well_chunk)):
+                # print('[HDFMultiColSequence] initial')
+                # Check if the end of the idx slice is inside this chunk
+                if idx.stop <= min_index + len(well_chunk):
+                    output = output + well_chunk[
+                        idx.start - min_index:idx.stop -
+                        min_index][self.all_features].tolist()
                     return np.array(output)
 
-                min_index = min_index + len(well_chunk)
+                # If not, add all points from idx.start to the end
+                # of the chunk
+                else:
+                    output = output + well_chunk[idx.start - min_index:len(
+                        well_chunk)][self.all_features].tolist()
+            # Check if the initial idx point was behind, but the end point
+            # is on a chunk ahead
+            elif (idx.start < min_index) & (idx.stop >
+                                            min_index + len(well_chunk)):
+                # print('[HDFMultiColSequence] mid')
+                output = output + well_chunk[:][self.all_features].tolist()
+            # Otherwise, this chunk is the one with the idx stop position
+            elif idx.stop <= min_index + len(well_chunk):
+                # print('[HDFMultiColSequence] end')
+                output = output + well_chunk[0:idx.stop - min_index][
+                    self.all_features].tolist()
+                return np.array(output)
 
-            raise Exception('[HDFMultiColSequence][__getitem__] Couldn\'t '\
-                           f'find slice: {idx}.')
+            min_index = min_index + len(well_chunk)
 
+        raise Exception('[HDFMultiColSequence][__getitem__] Couldn\'t '\
+                       f'find slice: {idx}.')
+
+    def __getitem__(self, idx):
+        if isinstance(idx, numbers.Integral):
+            return self.get_item_int(idx)
+        elif isinstance(idx, slice):
+            return self.get_item_slice(idx)
         else:
             raise TypeError('Sequence index must be integer, '\
                 f'slice or list. Got {type(idx).__name__}')
