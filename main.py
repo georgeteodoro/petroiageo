@@ -11,7 +11,7 @@ import os
 import common
 import hdf5_util
 import expand4_hdf5
-import petro4_hdf5
+import petro5_hdf5
 import petro_dist3_hdf5
 import apply5_hdf5
 
@@ -260,7 +260,7 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
         print(f'[main] Points for feature selection: {f_sel_points}')
 
         if mpi_size == 1:
-            best_features_set, best_error = petro4_hdf5.get_features_sets(
+            best_features_set, best_error = petro5_hdf5.get_features_sets(
                 porosity_data_h5, features_dict_h5, all_features,
                 displacement_cube_shape, it_str, num_select_features, 1)
         else:

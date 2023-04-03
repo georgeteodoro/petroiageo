@@ -40,7 +40,7 @@ def get_best_features_set(features_sets):
 
 
 # def eval_bootstrap(df, num_threads=24):
-def eval_bootstrap(cur_h5_seq, wells_id, num_threads=24):
+def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
     # params['num_threads'] = num_threads
     params['num_threads'] = 1
 
@@ -50,49 +50,78 @@ def eval_bootstrap(cur_h5_seq, wells_id, num_threads=24):
     mae_list = []
     well_id = 0
 
-    # Shallow-copy of the data
-    X_train_seq = copy(cur_h5_seq)
-    X_val_seq = copy(cur_h5_seq)
+    # # Shallow-copy of the data
+    # X_train_seq = copy(cur_h5_seq)
+    # X_val_seq = copy(cur_h5_seq)
 
     for w in wells_id:
         t0 = time()
 
-        # Create a sequence object for training and validation
-        # This custom sequence allows for partial, out-of-core
-        # data loading by lgb
-        X_train_seq.set_lowo_train(w)
-        X_val_seq.set_lowo_val(w)
+        # Extract the validation data
+        # Since the same validation data is supposed to be used for
+        # all incremental trainings and is small enough to fit in
+        # memory
+        X_val_np, y_val_np = cur_h5_train_list.get_well_out_data(w)
 
-        # print(f'[eval_bootstrap][w{well_id}] train_size: '\
-        #       f'{X_train_seq.__len__()}')
-        # print(f'[eval_bootstrap][w{well_id}] val_size: '\
-        #       f'{X_val_seq.__len__()}')
-        well_id = well_id + 1
+        print(f'X_val_np.shape: {X_val_np.shape}')
+        print(f'X_val_np: {X_val_np}')
+        print(f'X_val_np[0]: {X_val_np[0]}')
+        print(f'X_val_np[0] type: {type(X_val_np[0])}')
+        print(f'y_val_np.shape: {y_val_np.shape}')
 
-        # Setup for the datasets
-        y_train_np = X_train_seq.get_y_np()
-        y_val_np = X_val_seq.get_y_np()
-        lgb_train_dataset = lgb.Dataset(X_train_seq, y_train_np)
-        lgb_eval_dataset = lgb.Dataset(X_val_seq,
-                                       y_val_np,
-                                       reference=lgb_train_dataset)
-        t1 = time()
+        # Incremental training on all cur_h5_train_list chunks
+        regressor = None
+        setup_time = 0
+        training_time = 0
+        for c in range(cur_h5_train_list.n_chunks):
+            t0 = time()
+            # Generate a training dataset for all data on chunk c without
+            # data from well w
+            X_train_np, y_train_np = cur_h5_train_list.get_all_well_data(w, c)
+            lgb_train_dataset = lgb.Dataset(X_train_np, y_train_np)
+
+            # Create validation dataset
+            lgb_eval_dataset = lgb.Dataset(X_val_np,
+                                           y_val_np,
+                                           reference=lgb_train_dataset)
+
+            print(f'X_val_np.shape: {X_train_np.shape}')
+            print(f'y_val_np.shape: {y_train_np.shape}')
+            t1 = time()
+
+            # Perform training
+            # See discussion for incremental learning:
+            # https://stackoverflow.com/questions/73664093/lightgbm-train-vs-update-vs-refit
+            # import cProfile
+            # cProfile.runctx('lgb.train(params,lgb_train_dataset,init_model=regressor,num_boost_round=100,valid_sets=lgb_eval_dataset,keep_training_booster=True,callbacks=[lgb.early_stopping(stopping_rounds=30,verbose=False)])',
+            #         globals(), locals())
+            # 0/0
+            regressor = lgb.train(params,
+                                  lgb_train_dataset,
+                                  init_model=regressor,
+                                  num_boost_round=100,
+                                  valid_sets=lgb_eval_dataset,
+                                  keep_training_booster=True,
+                                  callbacks=[
+                                      lgb.early_stopping(stopping_rounds=30,
+                                                         verbose=False)
+                                  ])
+            t2 = time()
+
+            setup_time += t1 - t0
+            training_time += t2 - t1
+
+            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Setup in {setup_time}')
+            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Training in '\
+                  f'{training_time}')
+
         if profiling:
-            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Setup in {t1-t0}')
-
-        # Perform training
-        regressor = lgb.train(
-            params,
-            lgb_train_dataset,
-            num_boost_round=100,
-            valid_sets=lgb_eval_dataset,
-            callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)])
-        t2 = time()
-        if profiling:
-            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Training in {t2-t1}')
+            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Setup in {setup_time}')
+            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Training in '\
+                  f'{training_time}')
 
         # Calculate error metrics
-        pred = regressor.predict(X_val_seq.get_X_np())
+        pred = regressor.predict(X_val_np)
         rmse = np.sqrt(np.mean((pred - y_val_np)**2))
         mae = mean_absolute_error(pred, y_val_np)
         rmse_list.append(rmse)
@@ -108,7 +137,7 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
                             cur_feature, hypercube_shape,
                             displacement_cube_shape):
 
-    profile_time = False
+    profile_time = True
 
     t0 = time()
     for chunk_slice in cur_h5_dset.iter_chunks():
@@ -177,7 +206,7 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
             print(f'[insert_filtered_feature] generator_time: {t5-t4}')
 
         # Insert the generator displaced feature data into cur_h5_seq
-        cur_h5_seq.update_last_col_chunk(feature_gen, coord_planar_np)
+        cur_h5_seq.update_last_col_chunk(feature_gen)
 
         t6 = time()
         if profile_time:
@@ -287,7 +316,8 @@ def get_features_sets(
                                           is_training_point_f, exp_n_features)
 
     # Create sequence object
-    cur_h5_seq = hdf5_util.HDFMultiColSequence(cur_h5_dset, ['x', 'y', 'z'])
+    # cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset, ['x', 'y', 'z'])
+    cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
 
     # Current features set with the best error
     cur_f_set = ['x', 'y', 'z']
@@ -306,7 +336,7 @@ def get_features_sets(
         best_feature = ()
 
         # Setup the new column to be tested
-        cur_h5_seq.add_new_col()
+        cur_h5_train_list.add_new_col()
 
         # Test each available feature
         ii = 0
@@ -321,16 +351,15 @@ def get_features_sets(
             ii = ii + 1
 
             # Insert a temporary feature
-            insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
-                                    cur_feature, hypercube_shape,
-                                    displacement_cube_shape)
+            insert_filtered_feature(cur_h5_dset, cur_h5_train_list,
+                                    features_dict_h5, cur_feature,
+                                    hypercube_shape, displacement_cube_shape)
             t5 = time()
             print(f'[get_features_sets][{cur_feature}] '\
                   f'insert_feature_time: {t5-t4}')
 
             # Test the model with cur_feature
-            # rmse, mae = eval_bootstrap(cur_h5_seq, list(range(1,11)))
-            rmse, mae = eval_bootstrap(cur_h5_seq, list(range(10)))
+            rmse, mae = eval_bootstrap(cur_h5_train_list, list(range(10)))
             t6 = time()
             print(f'[get_features_sets][{cur_feature}] '\
                   f'train_time: {t6-t5}')

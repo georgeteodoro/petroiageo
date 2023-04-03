@@ -6,7 +6,7 @@ import ctypes
 import multiprocessing as mp
 import sys
 
-import petro4_hdf5
+import petro5_hdf5
 import hdf5_util
 import common
 
@@ -154,7 +154,7 @@ def manager(all_features, exp_n_features, f_width, it_str):
         comm.send(None, dest=worker_rank, tag=MPI_TAGS.MANAGER_FINISH.value)
 
     # Broadcast resulting features and errors
-    best_result = petro4_hdf5.get_best_features_set(results)
+    best_result = petro5_hdf5.get_best_features_set(results)
     comm.bcast(best_result, root=manager_rank)
 
     return best_result
@@ -194,7 +194,7 @@ def worker(porosity_data_h5,
         (d['real'] == common.RealValues.expanded) |
         (d['real'] == common.RealValues.propagated))
 
-    cur_h5, cur_h5_dset = petro4_hdf5.create_tmp_dset(porosity_data_h5,
+    cur_h5, cur_h5_dset = petro5_hdf5.create_tmp_dset(porosity_data_h5,
                                                       is_training_point_f,
                                                       exp_n_features,
                                                       f'-r{rank}')
@@ -243,13 +243,13 @@ def worker(porosity_data_h5,
             if n_cpus == 1:
                 t1 = time.time()
                 # Insert temporary feature
-                petro4_hdf5.insert_filtered_feature(cur_h5_dset, cur_h5_seq,
+                petro5_hdf5.insert_filtered_feature(cur_h5_dset, cur_h5_seq,
                                                     features_dict_h5,
                                                     new_features[0],
                                                     hypercube_shape,
                                                     displacement_cube_shape)
 
-                rmse, mae = petro4_hdf5.eval_bootstrap(cur_h5_seq,
+                rmse, mae = petro5_hdf5.eval_bootstrap(cur_h5_seq,
                                                        list(range(10)))
 
                 # (rmse, mae) = single_feature_run(
@@ -303,7 +303,7 @@ def worker(porosity_data_h5,
         cur_f_set.append(new_best_feature)
 
         # Insert best selected feature
-        petro4_hdf5.insert_filtered_feature(cur_h5_dset, cur_h5_seq,
+        petro5_hdf5.insert_filtered_feature(cur_h5_dset, cur_h5_seq,
                                             features_dict_h5, new_features[0],
                                             hypercube_shape,
                                             displacement_cube_shape)
