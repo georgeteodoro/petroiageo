@@ -310,7 +310,7 @@ class HDFMultiColList:
         # Border case: single feature returns a (n,) shape instead of (n,1)
         if len(X_val_np.shape) == 1:
             X_val_np = np.reshape(X_val_np, (X_val_np.shape[0], 1))
-            # y_val_np = np.reshape(y_val_np, (y_val_np.shape[0], 1))
+            y_val_np = np.reshape(y_val_np, (y_val_np.shape[0], 1))
 
         return X_val_np, y_val_np
 
@@ -336,5 +336,6 @@ class HDFMultiColList:
         # Border case: single feature returns a (n,) shape instead of (n,1)
         if len(X_val_np.shape) == 1:
             X_val_np = np.reshape(X_val_np, (X_val_np.shape[0], 1))
+            y_val_np = np.reshape(y_val_np, (y_val_np.shape[0], 1))
 
         return X_val_np, y_val_np

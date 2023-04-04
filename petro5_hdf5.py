@@ -63,12 +63,6 @@ def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
         # memory
         X_val_np, y_val_np = cur_h5_train_list.get_well_out_data(w)
 
-        print(f'X_val_np.shape: {X_val_np.shape}')
-        print(f'X_val_np: {X_val_np}')
-        print(f'X_val_np[0]: {X_val_np[0]}')
-        print(f'X_val_np[0] type: {type(X_val_np[0])}')
-        print(f'y_val_np.shape: {y_val_np.shape}')
-
         # Incremental training on all cur_h5_train_list chunks
         regressor = None
         setup_time = 0
@@ -85,8 +79,9 @@ def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
                                            y_val_np,
                                            reference=lgb_train_dataset)
 
-            print(f'X_val_np.shape: {X_train_np.shape}')
-            print(f'y_val_np.shape: {y_train_np.shape}')
+            print(f'X_val_np: {X_val_np}')
+            print(f'y_val_np: {y_val_np}')
+
             t1 = time()
 
             # Perform training
@@ -140,6 +135,7 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
     profile_time = True
 
     t0 = time()
+    chunk_start = 0
     for chunk_slice in cur_h5_dset.iter_chunks():
         t1 = time()
         chunk_np = cur_h5_dset[chunk_slice]
@@ -185,22 +181,16 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
         # We use a generator in order to avoid copying the displaced feature
         # data into a ndarray variable, to later copy it to the cur_h5_seq
         # object.
-        def _feature_generator(features_dict_h5, coord_planar_np, f):
-            chunk_size = 10
-            chunk_len = len(coord_planar_np)
-            if len(coord_planar_np) / chunk_size > chunk_size:
-                chunk_len = int(len(coord_planar_np) / chunk_size)
-
-                for beg in range(0,
-                                 len(coord_planar_np) - chunk_len, chunk_len):
-                    chunk_slice = slice(beg, beg + chunk_len)
-                    yield chunk_slice, features_dict_h5[f][
-                        coord_planar_np[chunk_slice]]
-            else:
-                yield slice(0, chunk_len), features_dict_h5[f][coord_planar_np]
+        def _feature_generator(features_dict_h5, coord_planar_np, chunk_start,
+                               f):
+            yield slice(
+                chunk_start, chunk_start +
+                len(coord_planar_np)), features_dict_h5[f][coord_planar_np]
 
         feature_gen = _feature_generator(features_dict_h5, coord_planar_np,
-                                         cur_feature[0])
+                                         chunk_start, cur_feature[0])
+        chunk_start += chunk_slice[0].stop - chunk_slice[0].start - 1
+
         t5 = time()
         if profile_time:
             print(f'[insert_filtered_feature] generator_time: {t5-t4}')

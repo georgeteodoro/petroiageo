@@ -135,6 +135,8 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
     ]
     seismic_features_names = seismic_features_names[:num_features]
 
+    print('================= H5 FILES ARE WRONG!!!! wrong conversion to planar')
+
     # Features which do not need to be expanded on the window
     other_features_names = []
 
@@ -190,7 +192,7 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
           f'({(canal_points/all_points):.2%})')
 
     # Generate seismic features names
-    window = 3
+    window = 0
     displacement_cube_shape = (window * 2 + 1, window * 2 + 1, window * 2 + 1)
     all_features = other_features_names
     for f in seismic_features_names:
@@ -198,6 +200,8 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
             for j in range(-window, window + 1):
                 for k in range(-window, window + 1):
                     all_features.append((f, i, j, k))
+
+    print(all_features)
 
     # # Load previous iteration values, if required
     # if load_iteration > 0:
