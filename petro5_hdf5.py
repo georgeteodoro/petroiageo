@@ -79,9 +79,6 @@ def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
                                            y_val_np,
                                            reference=lgb_train_dataset)
 
-            print(f'X_val_np: {X_val_np}')
-            print(f'y_val_np: {y_val_np}')
-
             t1 = time()
 
             # Perform training
@@ -106,13 +103,14 @@ def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
             setup_time += t1 - t0
             training_time += t2 - t1
 
-            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Setup in {setup_time}')
+            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Setup in {t1 - t0}')
             print(f'[petro4_hdf5][eval_bootstrap][w{w}] Training in '\
-                  f'{training_time}')
+                  f'{t2 - t1}')
 
         if profiling:
-            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Setup in {setup_time}')
-            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Training in '\
+            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Final setup in '\
+                  f'{setup_time}')
+            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Final training in '\
                   f'{training_time}')
 
         # Calculate error metrics
@@ -128,8 +126,11 @@ def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
     return np.mean(rmse_list), np.mean(mae_list)
 
 
+# window_sizes relates to the size of the window on which a displacement can
+# occur: e.g., [-3:3] have a window size of 3. window_sizes is a tuple with
+# a value for each dimension.
 def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
-                            cur_feature, hypercube_shape,
+                            cur_feature, window_sizes, hypercube_shape,
                             displacement_cube_shape):
 
     profile_time = True
@@ -167,11 +168,16 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
             print(f'[insert_filtered_feature] appply_disp_time: {t3-t2}')
 
         # Convert 3d coordinates to planar
-        coord_planar_np = coord_planar_np[
-            'z'].flat + coord_planar_np['y'].flat * displaced_hypercube_shape[
-                2] + coord_planar_np['x'].flat * displaced_hypercube_shape[
-                    2] * displaced_hypercube_shape[1]
-
+        # Also adds the pad created to fill all displacements
+        disp_planar_coord_x_np = (
+            coord_planar_np['x'] + window_sizes[0]
+        ) * displaced_hypercube_shape[2] * displaced_hypercube_shape[1]
+        disp_planar_coord_y_np = (coord_planar_np['y'] + window_sizes[1]
+                                  ) * displaced_hypercube_shape[2]
+        disp_planar_coord_z_np = coord_planar_np['z'] + window_sizes[2]
+        coord_planar_np = (disp_planar_coord_x_np + disp_planar_coord_y_np +
+                           disp_planar_coord_z_np)
+        coord_planar_np = coord_planar_np.flatten()
         coord_planar_np.sort()
 
         t4 = time()
@@ -220,7 +226,7 @@ def create_tmp_dset(porosity_data_h5,
     # Creates a temporary h5 structure to maintain the porosity
     # and features data
     cur_h5 = h5py.File(f'cur{suf_str}.h5', 'w')
-    # cur_chunksize = (100, 100, 100)  # AUTOMATE LATER
+
     if features_only:
         cur_data_type = [('x', np.int64), ('y', np.int64), ('z', np.int64),
                          ('phi', np.float64)]
@@ -234,6 +240,7 @@ def create_tmp_dset(porosity_data_h5,
 
     n_training_points = hdf5_util.fold_h5_all_clusters(
         porosity_data_h5, lambda d: len(d[is_training_point_f(d)]), 0)
+    print('============== NEED TO AUTOMATE TMP_LIST CHUNK_SIZE')
     cur_chunksize = (n_training_points / 10, )
     print(f'[get_features_sets] non-empty points: {n_training_points}')
     cur_h5_dset = cur_h5.create_dataset('c', (n_training_points, ),
@@ -287,6 +294,7 @@ def get_features_sets(
         porosity_data_h5,
         features_dict_h5,
         all_features,
+        window_sizes,
         displacement_cube_shape,
         # num_threads,
         it_str,
@@ -343,7 +351,8 @@ def get_features_sets(
             # Insert a temporary feature
             insert_filtered_feature(cur_h5_dset, cur_h5_train_list,
                                     features_dict_h5, cur_feature,
-                                    hypercube_shape, displacement_cube_shape)
+                                    window_sizes, hypercube_shape,
+                                    displacement_cube_shape)
             t5 = time()
             print(f'[get_features_sets][{cur_feature}] '\
                   f'insert_feature_time: {t5-t4}')
@@ -374,9 +383,9 @@ def get_features_sets(
               f'full_it_time: {t7-t3}')
 
         # Update the last column of the sequence object to the best feature
-        insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
-                                best_feature, hypercube_shape,
-                                displacement_cube_shape)
+        insert_filtered_feature(cur_h5_dset, cur_h5_train_list,
+                                features_dict_h5, best_feature, window_sizes,
+                                hypercube_shape, displacement_cube_shape)
         cur_f_set.append(best_feature)
 
         t8 = time()

@@ -135,8 +135,6 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
     ]
     seismic_features_names = seismic_features_names[:num_features]
 
-    print('================= H5 FILES ARE WRONG!!!! wrong conversion to planar')
-
     # Features which do not need to be expanded on the window
     other_features_names = []
 
@@ -192,7 +190,8 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
           f'({(canal_points/all_points):.2%})')
 
     # Generate seismic features names
-    window = 0
+    window = 3
+    window_sizes = (window, window, window)
     displacement_cube_shape = (window * 2 + 1, window * 2 + 1, window * 2 + 1)
     all_features = other_features_names
     for f in seismic_features_names:
@@ -200,8 +199,6 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
             for j in range(-window, window + 1):
                 for k in range(-window, window + 1):
                     all_features.append((f, i, j, k))
-
-    print(all_features)
 
     # # Load previous iteration values, if required
     # if load_iteration > 0:
@@ -265,7 +262,7 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
 
         if mpi_size == 1:
             best_features_set, best_error = petro5_hdf5.get_features_sets(
-                porosity_data_h5, features_dict_h5, all_features,
+                porosity_data_h5, features_dict_h5, all_features, window_sizes,
                 displacement_cube_shape, it_str, num_select_features, 1)
         else:
             best_features_set, best_error = petro_dist3_hdf5.get_features_sets(

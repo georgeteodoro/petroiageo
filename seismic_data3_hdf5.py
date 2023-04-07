@@ -240,20 +240,21 @@ def seismic_feature_np2hdf5_3d(feature, chunk_shape, max_displacement):
 
 if __name__ == '__main__':
 
-    #features = ['NEAR', 'MID', 'FAR', 'UFAR', 'GERSZ', 'GST']
-    features = [
-        "FAR", "MID", "NEAR_azimuth_", "NEAR_contour-curvature_",
-        "NEAR_curvedness_", "NEAR_dip-angle_", "NEAR_dip-curvature_",
-        "NEAR_envelope_", "NEAR_gaussian-curvature_",
-        "NEAR_gersztenkorn_3-3-11", "NEAR_gersztenkorn_3-3-7",
-        "NEAR_gersztenkorn_3-3-9", "NEAR_gersztenkorn_5-5-11",
-        "NEAR_gersztenkorn_5-5-7", "NEAR_gersztenkorn_5-5-9",
-        "NEAR_gst_3-3-11", "NEAR_gst_3-3-7", "NEAR_gst_3-3-9",
-        "NEAR_gst_5-5-11", "NEAR_gst_5-5-7", "NEAR_gst_5-5-9",
-        "NEAR_instantaneous-frequency_", "NEAR_max-curvature_",
-        "NEAR_mean-curvature_", "NEAR_min-curvature_",
-        "NEAR_most-negative-curvature_", "NEAR_most-positive-curvature_",
-        "NEAR", "NEAR_rms-5_", "NEAR_shape-index_", "NEAR_sobel_5-5-11", "UFAR"
-    ]
+    # features = ['NEAR', 'MID', 'FAR', 'UFAR', 'GERSZ', 'GST']
+    features = ['FAR']
+    # features = [
+    #     "FAR", "MID", "NEAR_azimuth_", "NEAR_contour-curvature_",
+    #     "NEAR_curvedness_", "NEAR_dip-angle_", "NEAR_dip-curvature_",
+    #     "NEAR_envelope_", "NEAR_gaussian-curvature_",
+    #     "NEAR_gersztenkorn_3-3-11", "NEAR_gersztenkorn_3-3-7",
+    #     "NEAR_gersztenkorn_3-3-9", "NEAR_gersztenkorn_5-5-11",
+    #     "NEAR_gersztenkorn_5-5-7", "NEAR_gersztenkorn_5-5-9",
+    #     "NEAR_gst_3-3-11", "NEAR_gst_3-3-7", "NEAR_gst_3-3-9",
+    #     "NEAR_gst_5-5-11", "NEAR_gst_5-5-7", "NEAR_gst_5-5-9",
+    #     "NEAR_instantaneous-frequency_", "NEAR_max-curvature_",
+    #     "NEAR_mean-curvature_", "NEAR_min-curvature_",
+    #     "NEAR_most-negative-curvature_", "NEAR_most-positive-curvature_",
+    #     "NEAR", "NEAR_rms-5_", "NEAR_shape-index_", "NEAR_sobel_5-5-11", "UFAR"
+    # ]
 
     [seismic_feature_np2hdf5_planar(f, (100, 200, 251), 3) for f in features]
