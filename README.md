@@ -24,3 +24,4 @@ Os arquivos .npy acima estão disponíveis, atualmente, na [página do professor
 
 * Executar o código na versão original:
     * bash exec
+teste
