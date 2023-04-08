@@ -12,7 +12,7 @@ import common
 import hdf5_util
 import expand4_hdf5
 import petro5_hdf5
-import petro_dist3_hdf5
+import petro_dist4_hdf5
 import apply5_hdf5
 
 # Constants
@@ -263,11 +263,11 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
         if mpi_size == 1:
             best_features_set, best_error = petro5_hdf5.get_features_sets(
                 porosity_data_h5, features_dict_h5, all_features, window_sizes,
-                displacement_cube_shape, it_str, num_select_features, 1)
+                displacement_cube_shape, it_str, num_select_features, 0)
         else:
-            best_features_set, best_error = petro_dist3_hdf5.get_features_sets(
-                porosity_data_h5, features_dict_h5, all_features,
-                displacement_cube_shape, it_str, num_select_features, 1)
+            best_features_set, best_error = petro_dist4_hdf5.get_features_sets(
+                porosity_data_h5, features_dict_h5, all_features, window_sizes,
+                displacement_cube_shape, it_str, num_select_features, 0)
 
         print_manager(f'[main]{it_str} Best features set:'\
               f' {best_features_set} with {best_error} error')
@@ -310,12 +310,12 @@ if __name__ == '__main__':
                         action='store',
                         default=10,
                         help='Number of total features (default: 10)')
-    parser.add_argument(
-        '--nsf',
-        dest='num_select_features',
-        action='store',
-        default=1,
-        help='Number of maximum features to be selected (default: 1)')
+    parser.add_argument('--nsf',
+                        dest='num_select_features',
+                        action='store',
+                        default=1,
+                        help='Number of maximum features to be '\
+                             'selected (default: 1)')
     # parser.add_argument('--gpu',
     #                     dest='n_gpus',
     #                     action='store',

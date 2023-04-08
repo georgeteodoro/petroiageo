@@ -44,7 +44,7 @@ def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
     # params['num_threads'] = num_threads
     params['num_threads'] = 1
 
-    profiling = True
+    profiling = False
 
     rmse_list = []
     mae_list = []
@@ -103,14 +103,16 @@ def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
             setup_time += t1 - t0
             training_time += t2 - t1
 
-            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Setup in {t1 - t0}')
-            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Training in '\
-                  f'{t2 - t1}')
+            if profiling:
+                print(f'[petro5_hdf5][eval_bootstrap][w{w}] Setup in '\
+                      f'{t1 - t0}')
+                print(f'[petro5_hdf5][eval_bootstrap][w{w}] Training in '\
+                      f'{t2 - t1}')
 
         if profiling:
-            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Final setup in '\
+            print(f'[petro5_hdf5][eval_bootstrap][w{w}] Final setup in '\
                   f'{setup_time}')
-            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Final training in '\
+            print(f'[petro5_hdf5][eval_bootstrap][w{w}] Final training in '\
                   f'{training_time}')
 
         # Calculate error metrics
@@ -121,19 +123,19 @@ def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
         mae_list.append(mae)
         t3 = time()
         if profiling:
-            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Evaluating in {t3-t2}')
+            print(f'[petro5_hdf5][eval_bootstrap][w{w}] Evaluating in {t3-t2}')
 
     return np.mean(rmse_list), np.mean(mae_list)
 
 
-# window_sizes relates to the size of the window on which a displacement can
+# window_sizes: relates to the size of the window on which a displacement can
 # occur: e.g., [-3:3] have a window size of 3. window_sizes is a tuple with
 # a value for each dimension.
 def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
                             cur_feature, window_sizes, hypercube_shape,
                             displacement_cube_shape):
 
-    profile_time = True
+    profile_time = False
 
     t0 = time()
     chunk_start = 0
@@ -210,8 +212,8 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
                 f'[insert_filtered_feature] insert_disp_feature_time: {t6-t5}')
 
     t7 = time()
-    # if profile_time:
-    print(f'[insert_filtered_feature] full_time: {t7-t0}')
+    if profile_time:
+        print(f'[insert_filtered_feature] full_time: {t7-t0}')
 
 
 def create_tmp_dset(porosity_data_h5,
@@ -313,8 +315,7 @@ def get_features_sets(
     cur_h5, cur_h5_dset = create_tmp_dset(porosity_data_h5,
                                           is_training_point_f, exp_n_features)
 
-    # Create sequence object
-    # cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset, ['x', 'y', 'z'])
+    # Create training temporary object
     cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
 
     # Current features set with the best error

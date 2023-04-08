@@ -304,13 +304,13 @@ class HDFMultiColList:
             X_val_list.append(well_data[self.all_features])
             y_val_list.append(well_data['phi'])
 
-        X_val_np = np.concatenate(X_val_list)
-        y_val_np = np.concatenate(y_val_list)
+        X_val_np = np.concatenate(X_val_list).reshape(-1)
+        y_val_np = np.concatenate(y_val_list).reshape(-1)
 
-        # Border case: single feature returns a (n,) shape instead of (n,1)
-        if len(X_val_np.shape) == 1:
-            X_val_np = np.reshape(X_val_np, (X_val_np.shape[0], 1))
-            y_val_np = np.reshape(y_val_np, (y_val_np.shape[0], 1))
+        # Convert from structured array to simple array
+        # This conversion from array->list->array may be inefficient...
+        X_val_np = np.array(X_val_np.tolist())
+        y_val_np = np.array(y_val_np.tolist())
 
         return X_val_np, y_val_np
 
@@ -329,13 +329,12 @@ class HDFMultiColList:
 
         # Filter all data which is not related to the input well_id
         well_data = cur_chunk[cur_chunk['well_id'] != well_id]
+        X_val_np = well_data[self.all_features]
+        y_val_np = well_data['phi']
 
-        X_val_np = np.array(well_data[self.all_features])
-        y_val_np = np.array(well_data['phi'])
-
-        # Border case: single feature returns a (n,) shape instead of (n,1)
-        if len(X_val_np.shape) == 1:
-            X_val_np = np.reshape(X_val_np, (X_val_np.shape[0], 1))
-            y_val_np = np.reshape(y_val_np, (y_val_np.shape[0], 1))
+        # Convert from structured array to simple array
+        # This conversion from array->list->array may be inefficient...
+        X_val_np = np.array(X_val_np.tolist())
+        y_val_np = np.array(y_val_np.tolist())
 
         return X_val_np, y_val_np
