@@ -6,7 +6,7 @@ import lightgbm as lgb
 from math import prod
 
 import common
-import petro4_hdf5
+import petro5_hdf5
 import hdf5_util
 
 # Parameters
@@ -64,7 +64,7 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
         (d['real'] == common.RealValues.propagated))
 
     # Creates a temporary h5 structure to perform the training
-    cur_h5, cur_h5_dset = petro4_hdf5.create_tmp_dset(porosity_data_h5,
+    cur_h5, cur_h5_dset = petro5_hdf5.create_tmp_dset(porosity_data_h5,
                                                       is_training_point_f,
                                                       len(best_features_set),
                                                       True)
@@ -75,7 +75,7 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
     # Add each feature to the DataFrame
     for feature in best_features_set:
         cur_h5_seq.add_new_col()
-        petro4_hdf5.insert_filtered_feature(cur_h5_dset, cur_h5_seq,
+        petro5_hdf5.insert_filtered_feature(cur_h5_dset, cur_h5_seq,
                                             features_dict_h5, feature,
                                             hypercube_shape,
                                             displacement_cube_shape)

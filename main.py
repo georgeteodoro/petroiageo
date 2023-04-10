@@ -151,17 +151,9 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
                                               comm=comm)
         features_dict_h5[f] = features_files_dict_h5[f]['f']
 
-    # Forces only the updating process to be enabled to actually
-    # write to the h5 file
-    # The use of h5 + openmpi with concurrent write may require
-    # the use of uncompressed files, which is space-inefficient
-    #if should_update:
-    #    write_str = 'r+'  # Open existing file with write permission
-    #else:
-    #    write_str = 'r'  # Read-only permission
-
     # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
-    # with the same access/mode
+    # with the same access/mode: existing file with write permission
+    # However, only one process updates this porosity_data_h5 structure
     write_str = 'r+'
 
     # Real wells' data into a main dataframe
@@ -199,21 +191,6 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
             for j in range(-window, window + 1):
                 for k in range(-window, window + 1):
                     all_features.append((f, i, j, k))
-
-    # # Load previous iteration values, if required
-    # if load_iteration > 0:
-    #     print_manager('TODO LOAD PREVIOUS IT')
-    #     return
-    #     # main_df = pd.read_csv(f'./tmp_data/predicted{load_iteration}.csv')
-    #     # index = pd.MultiIndex.from_arrays(
-    #     #     [main_df['x'], main_df['y'], main_df['z']],
-    #     #     names=common.MAIN_DF_INDEX_NAMES)
-    #     # main_df.set_index(index, inplace=True)
-    #     # main_df.sort_index(inplace=True)
-
-    # # Get divisions list to enable correct indexing
-    # # (which is partition-dependent)
-    # divisions = main_ddf.divisions
 
     t2 = time.time()
     print(f'[main] Initial data loading time: {t2-t1}')
@@ -279,11 +256,6 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
             apply5_hdf5.perf_predition(best_features_set, porosity_data_h5,
                                        features_dict_h5,
                                        displacement_cube_shape)
-        # print_manager(main_df)
-        # main_df.sort_index(inplace=True)
-        # main_df.to_csv(f'tmp_data/predicted{it}.csv',
-        #                index=True,
-        #                index_label=common.MAIN_DF_INDEX_NAMES)
 
         t4 = time.time()
         print(f'[main][times]{it_str} total_it_time {t4-t1}')
