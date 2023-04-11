@@ -13,6 +13,9 @@ dados/*.h5
 
 *.h5
 
+pocos_ANP/
+__MACOSX/
+
 coherence_features/*.npy
 
 tmp_data/*
@@ -26,6 +29,8 @@ tmp_data/*
 
 *parquet*
 *.html
+
+venv/
 
 !dados/xx.npy
 !dados/pp.npy

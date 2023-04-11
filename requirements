@@ -7,3 +7,6 @@ lightgbm
 numba
 dask
 mpi4py
+lasio
+ipykernel
+matplotlib
