@@ -10,6 +10,10 @@ data/*/*.npy
 dados/*.h5
 
 .h5rank.loc
+pocos_ANP/
+__MACOSX/
+
+coherence_features/*.npy
 
 *.h5
 
