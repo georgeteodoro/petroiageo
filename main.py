@@ -46,9 +46,7 @@ def mpi_perform_ordered(func):
     while True:
         if rank == to_update_rank:
             to_update_rank = to_update_rank + 1
-            print('[mpi_perform_ordered] check file')
             ret = func()
-            print('[mpi_perform_ordered] done')
             for r in range(to_update_rank, mpi_size):
                 comm.send(to_update_rank, r)
             return ret
@@ -76,7 +74,6 @@ def should_update_local():
 
 def main(load_iteration: int, num_iterations: int, num_features: int,
          num_select_features: int, parallel_settings, with_progress: bool):
-    # Instantiate pandas dataframe for all data
     # Data structure is composed by:
     #   x,y,z(depth),
     #   well => Well ID (-1 if it's not an original real point.)
@@ -143,7 +140,6 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
     features_files_dict_h5 = {}
     features_dict_h5 = {}
     for f in seismic_features_names:
-        # features_files_dict_h5[f] = h5py.File(f'./dados/{f}.h5', 'r')
         print(f'[main] loading file {f}')
         features_files_dict_h5[f] = h5py.File(f'./dados/{f}.h5',
                                               'r',
@@ -158,10 +154,11 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
 
     # Real wells' data into a main dataframe
     print_manager("[main] Loading wells values")
-    porosity_data_h5 = h5py.File(f'./dados/porosity_data.h5',
+    porosity_data_h5_f = h5py.File(f'./dados/porosity_data.h5',
                                  write_str,
                                  driver='mpio',
-                                 comm=comm)['p']
+                                 comm=comm)
+    porosity_data_h5 = porosity_data_h5_f['p']
     hypercube_shape = porosity_data_h5.shape
     all_points = porosity_data_h5.size
 
@@ -262,6 +259,11 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
         print(f'[main][times]{it_str} expansion {t2-t1}')
         print(f'[main][times]{it_str} feature_selection {t3-t2}')
         print(f'[main][times]{it_str} propagation {t4-t3}')
+
+    # Close all hdf5 files
+    porosity_data_h5_f.close()
+    for f in seismic_features_names:
+        features_files_dict_h5[f].close()
 
 
 if __name__ == '__main__':
