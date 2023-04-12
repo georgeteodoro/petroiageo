@@ -1,12 +1,12 @@
 teste.py
 teste.csv
 
-dados/o*
-dados/v*
-dados/w-*
-dados/p
-dados/wells-*
-dados/*.npy
+data/*/o*
+data/*/v*
+data/*/w-*
+data/*/p
+data/*/wells-*
+data/*/*.npy
 dados/*.h5
 
 .h5rank.loc
@@ -15,10 +15,6 @@ dados/*.h5
 
 pocos_ANP/
 __MACOSX/
-
-coherence_features/*.npy
-
-tmp_data/*
 
 *__pycache__*
 
