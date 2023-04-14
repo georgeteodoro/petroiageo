@@ -3,7 +3,7 @@ Para a execução local do POV é necessário:
 * Instalar as dependencias do sistema (no meu caso gawk)
     * sudo apt-get install gawk
 
-* Dependências existentes do python estão listadas no arquivo `requirements`
+* Dependências existentes do python estão listadas no arquivo `requirements` 
     * segyio está listado mas não é utilizado ainda
 
 * Instalar as dependencias do python 

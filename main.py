@@ -1,19 +1,24 @@
-import multiprocessing as mp
 import pandas as pd
 import numpy as np
 import time
-from collections import defaultdict
-from os import linesep
 from mpi4py import MPI
-import sys
-import common
+import argparse
+from math import prod
+import h5py
+from tqdm import tqdm
+import os
 
-import seismic_data
-import wells_data
-import expand2
-import petro2
-import petro_dist
-import apply4
+import common
+import hdf5_util
+import expand4_hdf5
+import petro5_hdf5
+import petro_dist4_hdf5
+import apply5_hdf5
+
+# Constants
+# hypercube_shape = (434, 646, 251)
+real_wells = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
+              (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
 
 # Initialization of mpi variables
 comm = MPI.COMM_WORLD
@@ -21,15 +26,54 @@ rank = comm.Get_rank()
 mpi_size = comm.Get_size()
 manager_rank = mpi_size - 1
 
-# Constants
 
-real_wells = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
-              (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
+# Print function for only the manager process
+def print_manager(string):
+    if rank == manager_rank:
+        print(string)
 
 
-def main(initialIteration:int, numIterations:int):
+def print_progress(with_progress, r):
+    if with_progress:
+        return tqdm(r)
+    else:
+        return r
 
-    # Instantiate pandas dataframe for all data
+
+# Perform 'func' one rank at a time
+def mpi_perform_ordered(func):
+    to_update_rank = 0
+    while True:
+        if rank == to_update_rank:
+            to_update_rank = to_update_rank + 1
+            ret = func()
+            for r in range(to_update_rank, mpi_size):
+                comm.send(to_update_rank, r)
+            return ret
+        else:
+            to_update_rank = comm.recv(source=to_update_rank)
+
+
+# Check whether the current process should update the local h5 files
+# Only one process per node should do this
+# Although multiple updates works on h5, it is inefficient
+def should_update_local():
+    lock_file_str = '.h5rank.loc'
+    # Remove old files
+    mpi_perform_ordered(lambda: os.remove(lock_file_str)
+                        if os.path.exists(lock_file_str) else None)
+    comm.Barrier()
+
+    # Create lock file locally, if there aren't any
+    # mpi_perform_ordered(lambda: open(lock_file_str, 'w').close()
+    ret = mpi_perform_ordered(lambda: open(lock_file_str, 'w').close()
+                              if not os.path.exists(lock_file_str) else False)
+
+    return ret == None
+
+
+def main(load_iteration: int, num_iterations: int, num_features: int,
+         num_select_features: int, parallel_settings, with_progress: bool):
     # Data structure is composed by:
     #   x,y,z(depth),
     #   well => Well ID (-1 if it's not an original real point.)
@@ -38,9 +82,18 @@ def main(initialIteration:int, numIterations:int):
     #   real => [3=expanded, to be propagated, 2=expanded canal,
     #            1=propagated, 0=real well point]
     #   phi  => Porosity value
-    #   rho  => ?
-    #   vp   => ?
-    #   vs   => ?
+
+    # Assign a single process per node to update the local h5 file
+    should_update = should_update_local()
+    if should_update:
+        print(f'[main] Rank {rank} is updating h5 file')
+
+    # Progress printing only enabled for updating process
+    # if rank == manager_rank:
+    if should_update:
+        pp = lambda r: print_progress(with_progress, r)
+    else:
+        pp = lambda r: r
 
     # Read seismic data and add it to a dataframe
     seismic_features_names = [
@@ -77,139 +130,215 @@ def main(initialIteration:int, numIterations:int):
         "NEAR_sobel_5-5-11",
         "UFAR",
     ]
+    seismic_features_names = seismic_features_names[:num_features]
 
     # Features which do not need to be expanded on the window
     other_features_names = []
 
-    print("[main] Loading seismic data")
-    features_df = seismic_data.get_all_seismic_data(seismic_features_names +
-                                                    other_features_names)
+    t1 = time.time()
+    print_manager("[main] Loading seismic data")
+    features_files_dict_h5 = {}
+    features_dict_h5 = {}
+    for f in seismic_features_names:
+        print(f'[main] loading file {f}')
+        features_files_dict_h5[f] = h5py.File(f'./dados/{f}.h5',
+                                              'r',
+                                              driver='mpio',
+                                              comm=comm)
+        features_dict_h5[f] = features_files_dict_h5[f]['f']
 
-    print("[main] Features DataFrame:")
-    print(features_df)
+    # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
+    # with the same access/mode: existing file with write permission
+    # However, only one process updates this porosity_data_h5 structure
+    write_str = 'r+'
 
     # Real wells' data into a main dataframe
-    print("[main] Loading wells values")
-    main_df = wells_data.get_wells_data('./dados/porosity-canal.txt')
+    print_manager("[main] Loading wells values")
+    porosity_data_h5_f = h5py.File(f'./dados/porosity_data.h5',
+                                 write_str,
+                                 driver='mpio',
+                                 comm=comm)
+    porosity_data_h5 = porosity_data_h5_f['p']
+    hypercube_shape = porosity_data_h5.shape
+    all_points = porosity_data_h5.size
 
-    # Separate the main DataFrame into two, one with only canal points
-    canal_df = main_df[main_df['real'] == 2]
-    main_df = main_df[main_df['real'] != 2]
+    real_points = hdf5_util.fold_h5_all_clusters(
+        porosity_data_h5,
+        lambda d: len(d[d['real'] == common.RealValues.real]), 0)
+    canal_points = hdf5_util.fold_h5_all_clusters(
+        porosity_data_h5,
+        lambda d: len(d[d['real'] == common.RealValues.canal]), 0)
 
-    # Expand canal_df to have values across the whole hipercube
-    # This allows expand to access each point with DataFrame.loc[]
-    # instead of using DataFrame.isin() to check whether a canal point
-    # is there.
-    t1 = time.time()
-    full_canal_np = np.zeros(434 * 646 * 251)
-    xs_np = np.zeros(434 * 646 * 251)
-    ys_np = np.zeros(434 * 646 * 251)
-    zs_np = np.zeros(434 * 646 * 251)
-    ii = 0
-    for i in range(434):
-        for j in range(646):
-            for k in range(251):
-                xs_np[ii] = i
-                ys_np[ii] = j
-                zs_np[ii] = k
-                ii = ii + 1
-    for [x, y, z, phi] in canal_df[['x', 'y', 'z', 'phi']].values:
-        full_canal_np[int(x) * 646 * 251 + int(y) * 251 + int(z)] = phi
-    canal_df = pd.DataFrame(full_canal_np, columns=['phi'])
+    print_manager(f'[main] hypercube_shape: {hypercube_shape}')
+    print_manager(f'[main] hypercube size: {all_points}')
 
-    # Add index of xyz and sort dataframe for better access times
-    print("[main] Indexing all data by (x,y,z)")
-    index = pd.MultiIndex.from_arrays(
-        [main_df['x'], main_df['y'], main_df['z']],
-        names=common.MAIN_DF_INDEX_NAMES)
-    main_df.set_index(index, inplace=True)
-    main_df.sort_index(inplace=True)
+    print_manager(f'[main] real well points: {real_points}/{all_points} '\
+          f'({(real_points/all_points):%})')
 
-    index = pd.MultiIndex.from_arrays(  [xs_np, ys_np, zs_np],
-                                        names=common.MAIN_DF_INDEX_NAMES)
-                                        
-    canal_df.set_index(index, inplace=True)
-    canal_df.sort_index(inplace=True)
-
-    # Free indexes np arrays
-    xs = None
-    ys = None
-    zs = None
-    full_canal_np = None
+    print_manager(f'[main] canal points: {canal_points}/{all_points} '\
+          f'({(canal_points/all_points):.2%})')
 
     # Generate seismic features names
     window = 3
+    window_sizes = (window, window, window)
+    displacement_cube_shape = (window * 2 + 1, window * 2 + 1, window * 2 + 1)
     all_features = other_features_names
     for f in seismic_features_names:
         for i in range(-window, window + 1):
             for j in range(-window, window + 1):
                 for k in range(-window, window + 1):
                     all_features.append((f, i, j, k))
-    t2 = time.time()
 
+    t2 = time.time()
     print(f'[main] Initial data loading time: {t2-t1}')
 
-    print("[main] Main DataFrame [initial]:")
-    print(main_df)
+    max_iteration = load_iteration + num_iterations + 1
+    for it in range(load_iteration + 1, max_iteration):
+        it_str = f'[it{it}]'
+        it_str_manager = ""
+        if rank == manager_rank:
+            it_str_manager = it_str
 
-    maxIteration = initialIteration+numIterations
-    for it in range(initialIteration, maxIteration):
         t1 = time.time()
 
-        print(f"[main][{it}] Expanding points")
-        main_df = expand2.gen_expanded_points(main_df, canal_df, real_wells,
-                                              it)
-        main_df.sort_index(inplace=True)
-        main_df.to_csv(f'tmp_data/expanded{it}.csv', index=False)
-        print(main_df)
+        empty_points = hdf5_util.fold_h5_all_clusters(
+            porosity_data_h5,
+            lambda d: len(d[d['real'] == common.RealValues.empty]), 0)
+        print(f'[main] empty points: {empty_points}')
+
+        print(f"[main]{it_str} Expanding points")
+        if should_update:
+            expand4_hdf5.gen_expanded_points(porosity_data_h5, hypercube_shape,
+                                             real_wells, it, it_str, pp)
+        print(f'{rank} waiting')
+        comm.Barrier()
+
+        to_expand = hdf5_util.fold_h5_all_clusters(
+            porosity_data_h5,
+            lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
+                            (d['real'] == common.RealValues.expanded)]), 0)
+        print(f'[main][{rank}] Expanded points: {to_expand}')
+
+        print(porosity_data_h5)
 
         t2 = time.time()
 
-        print(f"[main][{it}] Performing feature selection")
-        # Only uses real, previously predicted and expanded canal points
-        # for feature selection
-        feature_selection_points_df = main_df[main_df['real'] != 3]
-        print('[main] Points for feature selection:')
-        print(feature_selection_points_df)
-        if mpi_size == 1:
-            best_features_set, best_error = petro2.get_features_sets(
-                feature_selection_points_df, features_df, all_features, 2, 4)
-        else:
-            best_features_set, best_error = petro_dist.get_features_sets(
-                feature_selection_points_df, features_df, all_features, 10, 0)
+        print(f"[main]{it_str} Performing feature selection")
 
-        print(f'[main][{it}] Best features set:'\
-              f' {best_features_set} with {best_error} error'
-        )
+        # Only uses real, previously propagated and expanded canal points
+        # for feature selection
+        f_sel_points = hdf5_util.fold_h5_all_clusters(
+            porosity_data_h5,
+            lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
+                            (d['real'] == common.RealValues.propagated) |
+                            (d['real'] == common.RealValues.real)]), 0)
+        print(f'[main] Points for feature selection: {f_sel_points}')
+
+        if mpi_size == 1:
+            best_features_set, best_error = petro5_hdf5.get_features_sets(
+                porosity_data_h5, features_dict_h5, all_features, window_sizes,
+                displacement_cube_shape, it_str, num_select_features, 0)
+        else:
+            best_features_set, best_error = petro_dist4_hdf5.get_features_sets(
+                porosity_data_h5, features_dict_h5, all_features, window_sizes,
+                displacement_cube_shape, it_str, num_select_features, 0)
+
+        print_manager(f'[main]{it_str} Best features set:'\
+              f' {best_features_set} with {best_error} error')
 
         t3 = time.time()
 
-        print(f"[main][{it}] Performing predictions on new expanded points")
-        main_df = apply4.perf_predition(best_features_set, main_df,
-                                        features_df)
-        print(main_df)
-        # main_df.sort_index(inplace=True)
-        main_df.to_csv( f'tmp_data/predicted{it}.csv', index=True,
-                        index_label=common.MAIN_DF_INDEX_NAMES)
+        print(f"[main]{it_str} Performing predictions on new expanded points")
+        if should_update:
+            apply5_hdf5.perf_predition(best_features_set, porosity_data_h5,
+                                       features_dict_h5,
+                                       displacement_cube_shape)
 
         t4 = time.time()
-        print(f'[main][times][{it}] total_it_time {t4-t1}')
-        print(f'[main][times][{it}] expansion {t2-t1}')
-        print(f'[main][times][{it}] feature_selection {t3-t2}')
-        print(f'[main][times][{it}] propagation {t4-t3}')
+        print(f'[main][times]{it_str} total_it_time {t4-t1}')
+        print(f'[main][times]{it_str} expansion {t2-t1}')
+        print(f'[main][times]{it_str} feature_selection {t3-t2}')
+        print(f'[main][times]{it_str} propagation {t4-t3}')
+
+    # Close all hdf5 files
+    porosity_data_h5_f.close()
+    for f in seismic_features_names:
+        features_files_dict_h5[f].close()
 
 
 if __name__ == '__main__':
-    BASE_INIT_ITERATION = 0
-    BASE_NUM_ITERATIONS = 10
-    
-    initialIteration = BASE_INIT_ITERATION
-    numIterations = BASE_NUM_ITERATIONS
+    parser = argparse.ArgumentParser(description='POV')
 
-    if len(sys.argv) >= 2:
-        initialIteration = int(sys.argv[1])
+    parser.add_argument('--it',
+                        dest='load_it',
+                        action='store',
+                        default=0,
+                        help='Iteration to load (default: 0=none)')
+    parser.add_argument('--nits',
+                        dest='num_its',
+                        action='store',
+                        default=10,
+                        help='Number of iterations to run (default: 10)')
+    parser.add_argument('--nf',
+                        dest='num_features',
+                        action='store',
+                        default=10,
+                        help='Number of total features (default: 10)')
+    parser.add_argument('--nsf',
+                        dest='num_select_features',
+                        action='store',
+                        default=1,
+                        help='Number of maximum features to be '\
+                             'selected (default: 1)')
+    # parser.add_argument('--gpu',
+    #                     dest='n_gpus',
+    #                     action='store',
+    #                     default=0,
+    #                     help='Number of GPUs to be used (default: 0)')
+    # parser.add_argument('--gput',
+    #                     dest='gpu_thrds',
+    #                     action='store',
+    #                     default=0,
+    #                     help='Number of threads to be executed '\
+    #                          'per GPU (default: 0)')
+    parser.add_argument('--cpu',
+                        dest='n_cpus',
+                        action='store',
+                        default=1,
+                        help='Number of LGB execution threads to be '\
+                             'executed by node. Parallel multithreading per '\
+                             'LGB thread can be enabled (default: 1)')
+    parser.add_argument('--cput',
+                        dest='cpu_thrds',
+                        action='store',
+                        default=1,
+                        help='Number of CPU threads to be used '\
+                             'per LGB execution (default: 1)')
 
-        if len(sys.argv) >= 3:
-            numIterations = int(sys.argv[2])
+    parser.add_argument('--wp',
+                        dest='with_progress',
+                        action='store_true',
+                        default=True,
+                        help='Enable showing progress of iterations. '\
+                             'This can mess the slurm output up.')
+    parser.add_argument('--no-wp',
+                        dest='with_progress',
+                        action='store_false',
+                        help='Disables showing progress of iterations.')
 
-    main(initialIteration, numIterations)
+    args = parser.parse_args()
+    parallel_settings = {
+        'n_cpus': int(args.n_cpus),
+        'cpu_thrds': int(args.cpu_thrds),
+        # 'n_gpus': int(args.n_gpus),
+        # 'gpu_thrds': int(args.gpu_thrds),
+    }
+
+    # import cProfile
+    # cProfile.runctx('main(int(args.load_it), int(args.num_its), '\
+    #                 'int(args.num_features), int(args.num_select_features), '\
+    #                 'parallel_settings, args.with_progress)',
+    #                 globals(), locals())
+
+    main(int(args.load_it), int(args.num_its), int(args.num_features),
+         int(args.num_select_features), parallel_settings, args.with_progress)

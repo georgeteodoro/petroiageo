@@ -7,6 +7,11 @@ dados/w-*
 dados/p
 dados/wells-*
 dados/*.npy
+dados/*.h5
+
+.h5rank.loc
+
+*.h5
 
 coherence_features/*.npy
 
@@ -19,7 +24,8 @@ tmp_data/*
 *.dat
 *.out
 
-.ipynb_checkpoints
+*parquet*
+*.html
 
 !dados/xx.npy
 !dados/pp.npy
