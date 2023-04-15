@@ -26,6 +26,8 @@ __MACOSX/
 *parquet*
 *.html
 
+*.ipynb_checkpoints/
+
 venv/
 
 !dados/xx.npy
