@@ -155,9 +155,9 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
     # Real wells' data into a main dataframe
     print_manager("[main] Loading wells values")
     porosity_data_h5_f = h5py.File(f'./dados/porosity_data.h5',
-                                 write_str,
-                                 driver='mpio',
-                                 comm=comm)
+                                   write_str,
+                                   driver='mpio',
+                                   comm=comm)
     porosity_data_h5 = porosity_data_h5_f['p']
     hypercube_shape = porosity_data_h5.shape
     all_points = porosity_data_h5.size
@@ -210,14 +210,15 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
         if should_update:
             expand4_hdf5.gen_expanded_points(porosity_data_h5, hypercube_shape,
                                              real_wells, it, it_str, pp)
-        print(f'{rank} waiting')
+        else:
+            print(f'[main]{it_str}[R{rank}] waiting points expansion')
         comm.Barrier()
 
         to_expand = hdf5_util.fold_h5_all_clusters(
             porosity_data_h5,
             lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
                             (d['real'] == common.RealValues.expanded)]), 0)
-        print(f'[main][{rank}] Expanded points: {to_expand}')
+        print(f'[main]{it_str}[R{rank}] Expanded points: {to_expand}')
 
         print(porosity_data_h5)
 
@@ -233,6 +234,12 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
                             (d['real'] == common.RealValues.propagated) |
                             (d['real'] == common.RealValues.real)]), 0)
         print(f'[main] Points for feature selection: {f_sel_points}')
+
+        tmp = porosity_data_h5
+        print(tmp[(tmp['real'] == common.RealValues.canal_expanded) |
+                   (tmp['real'] == common.RealValues.propagated) |
+                   (tmp['real'] == common.RealValues.real)])
+        0 / 0
 
         if mpi_size == 1:
             best_features_set, best_error = petro5_hdf5.get_features_sets(

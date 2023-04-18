@@ -257,4 +257,4 @@ if __name__ == '__main__':
     #     "NEAR", "NEAR_rms-5_", "NEAR_shape-index_", "NEAR_sobel_5-5-11", "UFAR"
     # ]
 
-    [seismic_feature_np2hdf5_planar(f, (100, 200, 251), 3) for f in features]
+    [seismic_feature_np2hdf5_planar(f, (100, 100, 251), 3) for f in features]

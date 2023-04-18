@@ -32,16 +32,19 @@ def gen_expanded_points(d_h5, hypercube_shape, real_wells, it, it_str, pp):
         bot_wall_cond = lambda d: (d['y'] == y_bot) & (d['x'] <= x_right) & (d[
             'x'] >= x_left)
 
-        # Update 'empty' values to 'expanded' if point is on any ring border
-        hdf5_util.conditional_map_h5_all_clusters(
-            d_h5, lambda d:
-            (d['real'] == common.RealValues.empty) & (left_wall_cond(
-                d) | right_wall_cond(d) | top_wall_cond(d) | bot_wall_cond(d)),
-            [('real', common.RealValues.expanded), ('well_id', well_id)])
-        hdf5_util.conditional_map_h5_all_clusters(
-            d_h5, lambda d:
-            (d['real'] == common.RealValues.canal) & (left_wall_cond(
-                d) | right_wall_cond(d) | top_wall_cond(d) | bot_wall_cond(d)),
-            [('real', common.RealValues.canal_expanded), ('well_id', well_id)])
+        # Iterate on all chunks
+        for chunk_slice in d_h5.iter_chunks():
+            # Update 'empty' values to 'expanded' if point is on any ring border
+            hdf5_util.conditional_map_h5_chunk(
+                d_h5, lambda d: (d['real'] == common.RealValues.empty) &
+                (left_wall_cond(d) | right_wall_cond(d) | top_wall_cond(d) |
+                 bot_wall_cond(d)), [('real', common.RealValues.expanded),
+                                     ('well_id', well_id)], chunk_slice)
+            hdf5_util.conditional_map_h5_chunk(
+                d_h5, lambda d: (d['real'] == common.RealValues.canal) &
+                (left_wall_cond(d) | right_wall_cond(d) | top_wall_cond(d) |
+                 bot_wall_cond(d)),
+                [('real', common.RealValues.canal_expanded),
+                 ('well_id', well_id)], chunk_slice)
 
         well_id = well_id + 1
