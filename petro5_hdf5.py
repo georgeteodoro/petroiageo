@@ -139,10 +139,10 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
 
     t0 = time()
     chunk_start = 0
-    for chunk_slice in cur_h5_dset.iter_chunks():
+    for list_chunk_slice in cur_h5_dset.iter_chunks():
         t1 = time()
-        chunk_np = cur_h5_dset[chunk_slice]
-        # print(f'[insert_filtered_feature] cur slice: {chunk_slice}')
+        chunk_np = cur_h5_dset[list_chunk_slice]
+        # print(f'[insert_filtered_feature] cur slice: {list_chunk_slice}')
         # print(f'[insert_filtered_feature] chunk size: {len(chunk_np)}')
 
         # Get the coordinates list
@@ -159,61 +159,48 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
             print(f'[insert_filtered_feature] get_slice_time: {t2-t1}')
 
         # Apply the displacement
-        coord_planar_np = coord_3d_np.copy()
-
         for (coord_s, d_id) in [('x', 0), ('y', 1), ('z', 2)]:
-            coord_planar_np[coord_s] = coord_planar_np[coord_s] + cur_feature[
+            coord_3d_np[coord_s] = coord_3d_np[coord_s] + cur_feature[
                 d_id + 1] + ((displacement_cube_shape[d_id] - 1) / 2)
 
         t3 = time()
         if profile_time:
             print(f'[insert_filtered_feature] appply_disp_time: {t3-t2}')
 
-        # Convert 3d coordinates to planar
-        # Also adds the pad created to fill all displacements
-        disp_planar_coord_x_np = (
-            coord_planar_np['x'] + window_sizes[0]
-        ) * displaced_hypercube_shape[2] * displaced_hypercube_shape[1]
-        disp_planar_coord_y_np = (coord_planar_np['y'] + window_sizes[1]
-                                  ) * displaced_hypercube_shape[2]
-        disp_planar_coord_z_np = coord_planar_np['z'] + window_sizes[2]
-        coord_planar_np = (disp_planar_coord_x_np + disp_planar_coord_y_np +
-                           disp_planar_coord_z_np)
-        coord_planar_np = coord_planar_np.flatten()
-        coord_planar_np.sort()
-
-        t4 = time()
-        if profile_time:
-            print(f'[insert_filtered_feature] 3d_2_planar_time: {t4-t3}')
-
         # We use a generator in order to avoid copying the displaced feature
         # data into a ndarray variable, to later copy it to the cur_h5_seq
         # object.
-        def _feature_generator(features_dict_h5, coord_planar_np, chunk_start,
-                               f):
-            yield slice(
-                chunk_start, chunk_start +
-                len(coord_planar_np)), features_dict_h5[f][coord_planar_np]
+        def _feature_generator(feature_dset, coord_3d_np, chunk_start):
 
-        feature_gen = _feature_generator(features_dict_h5, coord_planar_np,
-                                         chunk_start, cur_feature[0])
-        chunk_start += chunk_slice[0].stop - chunk_slice[0].start - 1
+            def _gen_list_features(feature_dset, coord_3d_np):
+                for coord in coord_3d_np:
+                    yield feature_dset[tuple(coord)]
 
-        t5 = time()
+            # Append slice of current chunk to features list
+            yield slice(chunk_start,
+                        chunk_start + len(coord_3d_np)), _gen_list_features(
+                            feature_dset, coord_3d_np)
+
+        feature_gen = _feature_generator(features_dict_h5[cur_feature[0]],
+                                         coord_3d_np, chunk_start)
+
+        chunk_start += list_chunk_slice[0].stop - list_chunk_slice[0].start - 1
+
+        t4 = time()
         if profile_time:
-            print(f'[insert_filtered_feature] generator_time: {t5-t4}')
+            print(f'[insert_filtered_feature] generator_time: {t4-t3}')
 
         # Insert the generator displaced feature data into cur_h5_seq
         cur_h5_seq.update_last_col_chunk(feature_gen)
 
-        t6 = time()
+        t5 = time()
         if profile_time:
             print(
-                f'[insert_filtered_feature] insert_disp_feature_time: {t6-t5}')
+                f'[insert_filtered_feature] insert_disp_feature_time: {t5-t4}')
 
-    t7 = time()
+    t6 = time()
     if profile_time:
-        print(f'[insert_filtered_feature] full_time: {t7-t0}')
+        print(f'[insert_filtered_feature] full_time: {t6-t0}')
 
 
 def create_tmp_dset(porosity_data_h5,

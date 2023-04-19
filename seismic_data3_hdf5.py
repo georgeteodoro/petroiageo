@@ -205,9 +205,13 @@ def seismic_feature_np2hdf5_planar(feature, chunk_shape, displacement_window):
     print(
         f'[seismic_feature_np2hdf5_planar] creating hdf5 of feature {feature}')
     with h5py.File(f'./dados/{feature}.h5', 'w') as h5_f:
-        h5_dset = h5_f.create_dataset('f', (prod(large_data_shape), ),
+        # h5_dset = h5_f.create_dataset('f', (prod(large_data_shape), ),
+        #                               dtype=np.float64,
+        #                               chunks=(prod(chunk_shape), ),
+        #                               data=feature_full_np.flat)
+        h5_dset = h5_f.create_dataset('f', large_data_shape,
                                       dtype=np.float64,
-                                      chunks=(prod(chunk_shape), ),
+                                      chunks=chunk_shape,
                                       data=feature_full_np.flat)
 
 
@@ -257,4 +261,9 @@ if __name__ == '__main__':
     #     "NEAR", "NEAR_rms-5_", "NEAR_shape-index_", "NEAR_sobel_5-5-11", "UFAR"
     # ]
 
-    [seismic_feature_np2hdf5_planar(f, (100, 100, 251), 3) for f in features]
+    disp_window = 3
+    [
+        seismic_feature_np2hdf5_planar(
+            f, (100, 100, 251 + disp_window + disp_window), disp_window)
+        for f in features
+    ]

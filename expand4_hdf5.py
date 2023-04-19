@@ -5,8 +5,17 @@ import common
 import hdf5_util
 
 
-# pp is for showing the iteration progress, which can be enabled or disabled
-def gen_expanded_points(d_h5, hypercube_shape, real_wells, it, it_str, pp):
+# pp: is for showing the iteration progress, which can be enabled or disabled.
+# full_depth_chunks: whether the chunks for d_h5 includes the full depth, i.e.,
+# there are no 2 chunks which are stacked upon each other. This allows faster
+# checking for well/chunk overlaps
+def gen_expanded_points(d_h5,
+                        hypercube_shape,
+                        real_wells,
+                        it,
+                        it_str,
+                        pp,
+                        full_depth_chunks=True):
     depth_len = hypercube_shape[2]
     ring = it
 
@@ -17,23 +26,48 @@ def gen_expanded_points(d_h5, hypercube_shape, real_wells, it, it_str, pp):
     # Generate a list of points to be expanded
     well_id = 0
     for well in pp(real_wells):
-        x_left = well[0] - ring
-        x_right = well[0] + ring
-        y_top = well[1] - ring
-        y_bot = well[1] + ring
+        well_x_left = well[0] - ring
+        well_x_right = well[0] + ring
+        well_y_top = well[1] - ring
+        well_y_bot = well[1] + ring
 
         # Conditions for points on each ring wall
-        left_wall_cond = lambda d: (d['x'] == x_left) & (d['y'] <= y_bot) & (d[
-            'y'] >= y_top)
-        right_wall_cond = lambda d: (d['x'] == x_right) & (d['y'] <= y_bot) & (
-            d['y'] >= y_top)
-        top_wall_cond = lambda d: (d['y'] == y_top) & (d['x'] <= x_right) & (d[
-            'x'] >= x_left)
-        bot_wall_cond = lambda d: (d['y'] == y_bot) & (d['x'] <= x_right) & (d[
-            'x'] >= x_left)
+        left_wall_cond = lambda d: (d['x'] == well_x_left) & (d[
+            'y'] <= well_y_bot) & (d['y'] >= well_y_top)
+        right_wall_cond = lambda d: (d['x'] == well_x_right) & (d[
+            'y'] <= well_y_bot) & (d['y'] >= well_y_top)
+        top_wall_cond = lambda d: (d['y'] == well_y_top) & (d[
+            'x'] <= well_x_right) & (d['x'] >= well_x_left)
+        bot_wall_cond = lambda d: (d['y'] == well_y_bot) & (d[
+            'x'] <= well_x_right) & (d['x'] >= well_x_left)
 
         # Iterate on all chunks
         for chunk_slice in d_h5.iter_chunks():
+            # Given the two rectangular regions: chunk and well, chunk have points
+            # to be updated whenever chunk and well overlaps.
+
+            chunk_x_left = chunk_slice[0].start
+            chunk_x_right = chunk_slice[0].stop - 1
+            chunk_y_top = chunk_slice[1].start
+            chunk_y_bot = chunk_slice[1].stop - 1
+
+            # chunk is used as a base to compare
+            no_ovlp_x = (chunk_x_right < well_x_left) | (chunk_x_left >
+                                                         well_x_right)
+            no_ovlp_y = (chunk_y_bot < well_y_top) | (chunk_y_top >
+                                                      well_y_bot)
+
+            if full_depth_chunks:
+                # Ignore the current chunk if no overlapping is found
+                if no_ovlp_x | no_ovlp_y:
+                    continue
+            else:
+                print('[expand4_hdf5] Not using full_depth_chunks=True')
+                raise NotImplementedError
+
+            # Calculate whether the current chunk has any points to update/expand
+            # print(chunk_slice)
+
             # Update 'empty' values to 'expanded' if point is on any ring border
             hdf5_util.conditional_map_h5_chunk(
                 d_h5, lambda d: (d['real'] == common.RealValues.empty) &

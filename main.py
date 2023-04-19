@@ -235,20 +235,19 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
                             (d['real'] == common.RealValues.real)]), 0)
         print(f'[main] Points for feature selection: {f_sel_points}')
 
-        tmp = porosity_data_h5
-        print(tmp[(tmp['real'] == common.RealValues.canal_expanded) |
-                   (tmp['real'] == common.RealValues.propagated) |
-                   (tmp['real'] == common.RealValues.real)])
-        0 / 0
+        # tmp = porosity_data_h5
+        # print(tmp[(tmp['real'] == common.RealValues.canal_expanded) |
+        #            (tmp['real'] == common.RealValues.propagated) |
+        #            (tmp['real'] == common.RealValues.real)])
 
         if mpi_size == 1:
             best_features_set, best_error = petro5_hdf5.get_features_sets(
                 porosity_data_h5, features_dict_h5, all_features, window_sizes,
-                displacement_cube_shape, it_str, num_select_features, 0)
+                displacement_cube_shape, it_str, num_select_features, 1)
         else:
             best_features_set, best_error = petro_dist4_hdf5.get_features_sets(
                 porosity_data_h5, features_dict_h5, all_features, window_sizes,
-                displacement_cube_shape, it_str, num_select_features, 0)
+                displacement_cube_shape, it_str, num_select_features, 1)
 
         print_manager(f'[main]{it_str} Best features set:'\
               f' {best_features_set} with {best_error} error')

@@ -66,15 +66,13 @@ def conditional_map_h5_all_clusters(d_h5, cond_f, column_val_list):
                 d_h5[x_i:x_o, y_i:y_o, z_i:z_o] = d_np
 
 
-
 def conditional_map_h5_chunk(d_h5, cond_f, column_val_list, chunk_slice):
     # Read numpy chunk
     chunk_np = d_h5[chunk_slice]
 
     # Update values of each column on condition
     for column, val in column_val_list:
-        chunk_np[column] = np.where(cond_f(chunk_np), val,
-                                    chunk_np[column])
+        chunk_np[column] = np.where(cond_f(chunk_np), val, chunk_np[column])
 
     # Forward values to hdf5 file
     d_h5[chunk_slice] = chunk_np
@@ -107,7 +105,7 @@ class HDFMultiColList:
         f_str = f'f{self.last_col}'
 
         for f_slice, f_vals in feature_gen:
-            self.cur_h5_dset[f_str, f_slice] = f_vals
+            self.cur_h5_dset[f_str, f_slice] = np.fromiter(f_vals, np.float64)
 
     # Setup a new empty last column, thus committing the current
     # last column
