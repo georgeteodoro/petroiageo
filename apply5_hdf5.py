@@ -30,7 +30,7 @@ params = {
 
 def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
                    window_sizes, displacement_cube_shape):
-    profiling = 2
+    profiling = 0
 
     t1 = time()
 
@@ -49,7 +49,6 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
                                                       is_training_point_f,
                                                       len(best_features_set),
                                                       True)
-    # cur_h5_seq = hdf5_util.HDFMultiColSequence(cur_h5_dset, [])
     cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
 
     hypercube_shape = porosity_data_h5.shape
@@ -114,8 +113,8 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
 
         to_propagate_count = len(expanded_points_np)
         p_sum = p_sum + to_propagate_count
-        print(f'to_propagate: {to_propagate_count}')
-        print(f'propagating {p_sum}/{total_to_propagate} points')
+        # print(f'to_propagate: {to_propagate_count}')
+        # print(f'propagating {p_sum}/{total_to_propagate} points')
 
         # Get coordinates of points to predict
         coords_3d_np = expanded_points_np[['x', 'y', 'z']]
@@ -136,7 +135,6 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
         i = 0
         for feature in best_features_set:
             # Apply the displacement
-            print(coords_3d_np.shape)
             cur_coords_3d_np = coords_3d_np.copy()
             for (coord_s, d_id) in [('x', 0), ('y', 1), ('z', 2)]:
                 cur_coords_3d_np[coord_s] = cur_coords_3d_np[
@@ -148,7 +146,6 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
                                                 cur_coords_3d_np.flat)
 
             to_predict_np[f'f{i}'] = np.fromiter(feature_values, np.float64)
-            print('done')
 
             i = i + 1
         t32 = time()

@@ -247,7 +247,7 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
         else:
             best_features_set, best_error = petro_dist4_hdf5.get_features_sets(
                 porosity_data_h5, features_dict_h5, all_features, window_sizes,
-                displacement_cube_shape, it_str, num_select_features, 1)
+                displacement_cube_shape, it_str, num_select_features, 10)
 
         print_manager(f'[main]{it_str} Best features set:'\
               f' {best_features_set} with {best_error} error')

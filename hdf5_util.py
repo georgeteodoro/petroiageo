@@ -84,8 +84,7 @@ def conditional_map_h5_chunk(d_h5, cond_f, column_val_list, chunk_slice):
 # Able to add new features columns on the fly as well as change a given column
 class HDFMultiColList:
 
-    # def __init__(self, cur_h5_dset, base_features=[], chunk_size=10000):
-    def __init__(self, cur_h5_dset, chunk_size=10000):
+    def __init__(self, cur_h5_dset):
         # cur_h5_dset must be 1D
         # This cur_h5_dset holds the hdf5 data
         self.cur_h5_dset = cur_h5_dset
@@ -95,9 +94,8 @@ class HDFMultiColList:
         self.all_features = []
         self.last_col = -1
 
-        self.chunk_size = chunk_size
-
-        self.n_chunks = cur_h5_dset.size // chunk_size + 1
+        self.chunk_size = self.cur_h5_dset.chunks[0]
+        self.n_chunks = int(np.ceil(cur_h5_dset.size / self.chunk_size))
 
     # Updates the last column with new values from a generator
     # Overwrites the previous values on this column
