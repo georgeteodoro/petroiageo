@@ -2,7 +2,7 @@ import numpy as np
 from time import time
 import h5py
 from math import prod
-from copy import copy
+import os
 
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.model_selection import LeaveOneGroupOut
@@ -29,6 +29,13 @@ params = {
     # "tree_learner": "data",
 }
 
+# This version only works for the first iteration.
+# The tmp dataset is a list based on the sparse data of the
+# porosity dataset. It can either be incremental or need to be
+# reassembled each iteration. If incremental, indices will be
+# mismatched between features and tmp list. If reassembling, 
+# it will be inefficient.
+
 
 def get_best_features_set(features_sets):
     # Sort by second column (id 1)
@@ -39,7 +46,8 @@ def get_best_features_set(features_sets):
     return best_features_set, best_error
 
 
-# def eval_bootstrap(df, num_threads=24):
+# See discussion for incremental learning:
+# https://stackoverflow.com/questions/73664093/lightgbm-train-vs-update-vs-refit
 def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
     # params['num_threads'] = num_threads
     params['num_threads'] = 1
@@ -49,10 +57,6 @@ def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
     rmse_list = []
     mae_list = []
     well_id = 0
-
-    # # Shallow-copy of the data
-    # X_train_seq = copy(cur_h5_seq)
-    # X_val_seq = copy(cur_h5_seq)
 
     for w in wells_id:
         t0 = time()
@@ -71,7 +75,7 @@ def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
             t0 = time()
             # Generate a training dataset for all data on chunk c without
             # data from well w
-            X_train_np, y_train_np = cur_h5_train_list.get_all_well_data(w, c)
+            X_train_np, y_train_np = cur_h5_train_list.get_all_well_data(c, w)
             lgb_train_dataset = lgb.Dataset(X_train_np, y_train_np)
 
             # Create validation dataset
@@ -82,12 +86,6 @@ def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
             t1 = time()
 
             # Perform training
-            # See discussion for incremental learning:
-            # https://stackoverflow.com/questions/73664093/lightgbm-train-vs-update-vs-refit
-            # import cProfile
-            # cProfile.runctx('lgb.train(params,lgb_train_dataset,init_model=regressor,num_boost_round=100,valid_sets=lgb_eval_dataset,keep_training_booster=True,callbacks=[lgb.early_stopping(stopping_rounds=30,verbose=False)])',
-            #         globals(), locals())
-            # 0/0
             regressor = lgb.train(params,
                                   lgb_train_dataset,
                                   init_model=regressor,
@@ -207,14 +205,22 @@ def create_tmp_dset(porosity_data_h5,
                     is_training_point_f,
                     n_features,
                     suf_str='',
+                    list_chunk_size=1000,
                     features_only=False):
 
     profiling = True
 
+    filename = f'cur{suf_str}.h5'
+
     t0 = time()
+    # If the cur file exists, it should be deleted
+    # A new tmp file is created by iteration
+    if os.path.exists(filename):
+        os.remove(filename)
+
     # Creates a temporary h5 structure to maintain the porosity
     # and features data
-    cur_h5 = h5py.File(f'cur{suf_str}.h5', 'w')
+    cur_h5 = h5py.File(f'{filename}', 'w')
 
     if features_only:
         cur_data_type = [('x', np.int64), ('y', np.int64), ('z', np.int64),

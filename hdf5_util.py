@@ -143,7 +143,7 @@ class HDFMultiColList:
 
     # Return a single chunk of data which is not related to well_id
     # No guarantees are made about the size of the output
-    def get_all_well_data(self, well_id, chunk):
+    def get_all_well_data(self, chunk, well_id=-1):
 
         # Seeks the chunk to be read
         cur_slice_it = self.cur_h5_dset.iter_chunks()
@@ -155,7 +155,10 @@ class HDFMultiColList:
         cur_chunk = self.cur_h5_dset[cur_slice]
 
         # Filter all data which is not related to the input well_id
-        well_data = cur_chunk[cur_chunk['well_id'] != well_id]
+        if well_id != -1:
+            well_data = cur_chunk[cur_chunk['well_id'] != well_id]
+        else:
+            well_data = cur_chunk
         X_val_np = well_data[self.all_features]
         y_val_np = well_data['phi']
 

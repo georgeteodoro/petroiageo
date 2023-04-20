@@ -257,7 +257,7 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
         print(f"[main]{it_str} Performing predictions on new expanded points")
         if should_update:
             apply5_hdf5.perf_predition(best_features_set, porosity_data_h5,
-                                       features_dict_h5,
+                                       features_dict_h5, window_sizes,
                                        displacement_cube_shape)
 
         t4 = time.time()
