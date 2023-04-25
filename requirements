@@ -12,3 +12,4 @@ ipykernel
 matplotlib
 h5py
 tqdm
+coverage

@@ -51,8 +51,8 @@ alg:
       alpha: 1
       beta: 1
   
-  # Feature selection type. Options: ['forward', 'None']. Default: forward
-  feature_selection_type: "forward"
+  # Feature selection type. Options: ['FORWARD', 'NONE']. Default: FORWARD
+  feature_selection_type: "FORWARD"
   
   # Max num of features to select in the feature_selection_step. Default: 10
   max_num_features: 10

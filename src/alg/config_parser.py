@@ -6,6 +6,47 @@ except ImportError:
     from yaml import BaseLoader as Loader
 
 import pathlib
+import enum
+
+class FeatureSelection(enum.Enum):
+    FORWARD = 0
+    NONE = 1
+
+    @staticmethod
+    def new_from_key(key):
+        try:
+            new_feat_selection = FeatureSelection[key] 
+            return new_feat_selection
+        except:
+            error_msg = "Key error for FeatureSelectionType. "
+            error_msg += f"Got {key} but should be one of {[key for key in FeatureSelection.__members__]}"
+            raise KeyError(error_msg) 
+
+class SaveModelTypes():
+    ALL = 'all'
+    LAST = 'last'
+
+    @staticmethod
+    def _has_positives_only(my_list:list) -> bool:
+        return all([element > 0 for element in my_list])
+
+    @staticmethod
+    def raise_if_not_valid(save_model_type: str|list):
+        if isinstance(save_model_type, list):
+            if not self._has_positives_only(save_model_type):
+                raise ValueError("alg.save_models_on: The list should have positive integers only!")
+        elif isinstance(save_model_type, str):
+            valid_strs = [SaveModelTypes.ALL, SaveModelTypes.LAST]
+            if save_model_type[:6] == 'every_':
+                try:
+                    n = int(save_model_type[6:])
+                    if n == 0:
+                        raise
+                except:
+                    raise ValueError("alg.save_models_on: 'n' should be a positive integer!")
+            elif save_model_type not in valid_strs:
+                raise ValueError(f"alg.save_models_on: This str is not valid. Should be one of {valid_strs} but '{save_models_on}' was given!")
+
 
 
 class Config():
@@ -117,38 +158,40 @@ class Config():
         if not self._under_max_value_only(alg_configs['test_only_wells'], num_wells):
             raise ValueError(f'alg.test_only_wells: Invalid well index. Max: {num_wells-1}')
 
-        feature_selection_types = ["forward", "None"]
-        if not alg_configs['feature_selection_type'] in feature_selection_types:
-            raise ValueError(f"alg.feature_selection_type should be on of {feature_selection_types}!")
+        try:
+            #Just try to access a feature selection type
+            FeatureSelection[alg_configs['feature_selection_type'].name]
+        except:
+            raise ValueError(f"alg.feature_selection_type should be one of {[type for type in FeatureSelection.__members__]}!")
+        
+        self._raise_if_beta_dist_params_not_valid(alg_configs['sampling'])
         
         if alg_configs['max_num_features'] < 0:
             raise ValueError(f"alg.max_num_features: Should be a positive integer but {alg_configs['max_num_features']} was given!")
         
-        self._raise_if_not_valid_save_models_on(alg_configs['save_models_on'])
-    
-    def _raise_if_not_valid_save_models_on(self, save_models_on:str|list):
-        if isinstance(save_models_on, list):
-            return self._has_positives_only(save_models_on)
-        elif isinstance(save_models_on, str):
-            valid_strs = ['last', 'all']
-            if save_models_on[:6] == 'every_':
-                try:
-                    n = int(save_models_on[6:])
-                    assert n > 0
-                except:
-                    raise ValueError("alg.save_models_on: 'n' should be a positive integer!")
-            elif save_models_on not in valid_strs:
-                raise ValueError(f"alg.save_models_on: This str is not valid. Should be one of {valid_strs} but '{save_models_on}' was given!")
+        SaveModelTypes.raise_if_not_valid(alg_configs['save_models_on'])
+
     
     def _raise_if_wells_config_not_valid(self, config_dict:dict):
         wells_config = config_dict['wells']
+
+        if len(wells_config['coords']) == 0:
+            raise ValueError(f"wells.coords: There should be at least one well coords provided!")
 
         for index, well_dict in enumerate(wells_config['coords']):
             if well_dict['x'] < 0 or well_dict['y'] < 0:
                 raise ValueError(f"wells.coords: Error at well {index} index: x and y should be non negative integers!")
 
+    def _raise_if_beta_dist_params_not_valid(self, config_dict:dict):
+        beta_dist_dict = config_dict['beta_dist']
+        if beta_dist_dict['beta'] < 0:
+            raise ValueError(f"alg.sampling.beta_dist.beta: Beta value cant be negative!")
+        
+        if beta_dist_dict['alpha'] < 0:
+            raise ValueError(f"alg.sampling.beta_dist.alpha: Alpha value cant be negative!")
+        
     def _has_positives_only(self, my_list:list) -> bool:
-        return all([element >= 0 for element in my_list])
+        return all([element > 0 for element in my_list])
     
     def _under_max_value_only(self, my_list:list, max_value:float) -> bool:
         return all([element < max_value for element in my_list])
@@ -170,7 +213,7 @@ class Config():
         base_config['validation_only_wells'] = list()
         base_config['test_only_wells'] = list()
         base_config['sampling'] = self._base_sampling_config()
-        base_config['feature_selection_type'] = 'forward'
+        base_config['feature_selection_type'] = FeatureSelection['FORWARD']
         base_config['max_num_features'] = 10
         base_config['max_exec_time'] = -1
         base_config['metrics_by_it'] = True
@@ -268,7 +311,8 @@ class YAMLConfig(Config):
             'max_num_features': int,
             'max_exec_time': int,
             'generate_porosity_cube': self._treat_boolean_from_yaml,
-            'metrics_by_it': self._treat_boolean_from_yaml
+            'metrics_by_it': self._treat_boolean_from_yaml,
+            'feature_selection_type': FeatureSelection.new_from_key
         }
 
         self._apply_key_func_mapping_to_dict_and_modify_target_dict(
@@ -278,7 +322,7 @@ class YAMLConfig(Config):
         )
         
         if 'sampling' in alg_configs:
-            treated_sampling_config = self._treat_sampling_configs(self, alg_configs['sampling'])
+            treated_sampling_config = self._treat_sampling_configs(alg_configs['sampling'])
             treated_alg_configs['sampling'] = treated_sampling_config
 
         return treated_alg_configs
@@ -297,7 +341,7 @@ class YAMLConfig(Config):
         self._apply_key_func_mapping_to_dict_and_modify_target_dict(
             key_func_map= key_func_to_apply_dict,
             base_dict=sampling_configs,
-            dict_to_modify=treated_beta_dist_configs
+            dict_to_modify=treated_sampling_config
         )
 
         if 'beta_dist' in sampling_configs:
