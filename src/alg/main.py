@@ -15,6 +15,8 @@ import petro5_hdf5
 import petro_dist4_hdf5
 import apply5_hdf5
 
+import config_parser
+
 # Constants
 # hypercube_shape = (434, 646, 251)
 real_wells = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
@@ -72,8 +74,7 @@ def should_update_local():
     return ret == None
 
 
-def main(load_iteration: int, num_iterations: int, num_features: int,
-         num_select_features: int, parallel_settings, with_progress: bool):
+def main(config:config_parser.Config, num_features: int, parallel_settings, with_progress: bool):
     # Data structure is composed by:
     #   x,y,z(depth),
     #   well => Well ID (-1 if it's not an original real point.)
@@ -192,8 +193,8 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
     t2 = time.time()
     print(f'[main] Initial data loading time: {t2-t1}')
 
-    max_iteration = load_iteration + num_iterations + 1
-    for it in range(load_iteration + 1, max_iteration):
+    max_iteration = config.alg['starting_it'] + config.alg['num_its'] + 1
+    for it in range(config.alg['starting_it'] + 1, max_iteration):
         it_str = f'[it{it}]'
         it_str_manager = ""
         if rank == manager_rank:
@@ -271,31 +272,35 @@ def main(load_iteration: int, num_iterations: int, num_features: int,
     for f in seismic_features_names:
         features_files_dict_h5[f].close()
 
-
-if __name__ == '__main__':
+def config_parser():
     parser = argparse.ArgumentParser(description='POV')
 
+    parser.add_argument('--config',
+                        dest='config_file',
+                        action='store',
+                        required=True,
+                        help="The yaml config file path to be read")
     parser.add_argument('--it',
                         dest='load_it',
                         action='store',
-                        default=0,
-                        help='Iteration to load (default: 0=none)')
+                        required=False,
+                        help='Iteration to load')
     parser.add_argument('--nits',
                         dest='num_its',
                         action='store',
-                        default=10,
-                        help='Number of iterations to run (default: 10)')
+                        required=False,
+                        help='Number of iterations to run')
     parser.add_argument('--nf',
                         dest='num_features',
                         action='store',
                         default=10,
-                        help='Number of total features (default: 10)')
+                        help='Number of total features')
     parser.add_argument('--nsf',
                         dest='num_select_features',
                         action='store',
-                        default=1,
+                        required=False,
                         help='Number of maximum features to be '\
-                             'selected (default: 1)')
+                            'selected')
     # parser.add_argument('--gpu',
     #                     dest='n_gpus',
     #                     action='store',
@@ -312,26 +317,43 @@ if __name__ == '__main__':
                         action='store',
                         default=1,
                         help='Number of LGB execution threads to be '\
-                             'executed by node. Parallel multithreading per '\
-                             'LGB thread can be enabled (default: 1)')
+                            'executed by node. Parallel multithreading per '\
+                            'LGB thread can be enabled (default: 1)')
     parser.add_argument('--cput',
                         dest='cpu_thrds',
                         action='store',
                         default=1,
                         help='Number of CPU threads to be used '\
-                             'per LGB execution (default: 1)')
+                            'per LGB execution (default: 1)')
 
     parser.add_argument('--wp',
                         dest='with_progress',
                         action='store_true',
                         default=True,
                         help='Enable showing progress of iterations. '\
-                             'This can mess the slurm output up.')
+                            'This can mess the slurm output up.')
     parser.add_argument('--no-wp',
                         dest='with_progress',
                         action='store_false',
                         help='Disables showing progress of iterations.')
 
+    return parser
+    
+def update_config_file_params_with_args(config:config_parser.Config, args) -> config_parser.Config:
+    if args.num_features is not None:
+        config.alg['max_num_features'] = int(args.num_features)
+    
+    if args.load_it is not None:
+        config.alg['starting_it'] = int(args.load_it)
+    
+    if args.num_its is not None:
+        config.alg['num_its'] = int(args.num_its)
+    
+    return config
+
+if __name__ == '__main__':
+
+    parser = config_parser()
     args = parser.parse_args()
     parallel_settings = {
         'n_cpus': int(args.n_cpus),
@@ -345,6 +367,9 @@ if __name__ == '__main__':
     #                 'int(args.num_features), int(args.num_select_features), '\
     #                 'parallel_settings, args.with_progress)',
     #                 globals(), locals())
+    
+    my_config = config_parser.YAMLConfig(args.config)
 
-    main(int(args.load_it), int(args.num_its), int(args.num_features),
-         int(args.num_select_features), parallel_settings, args.with_progress)
+    my_config = update_config_file_params_with_args(my_config, args)
+
+    main(my_config, int(args.num_features), parallel_settings, args.with_progress)
