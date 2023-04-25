@@ -73,7 +73,6 @@ def should_update_local():
 
     return ret == None
 
-
 def main(config:config_parser.Config, num_features: int, parallel_settings, with_progress: bool):
     # Data structure is composed by:
     #   x,y,z(depth),
@@ -89,7 +88,7 @@ def main(config:config_parser.Config, num_features: int, parallel_settings, with
     if should_update:
         print(f'[main] Rank {rank} is updating h5 file')
 
-    # Progress printing only enabled for updating process
+    # # Progress printing only enabled for updating process
     # if rank == manager_rank:
     if should_update:
         pp = lambda r: print_progress(with_progress, r)
@@ -97,43 +96,11 @@ def main(config:config_parser.Config, num_features: int, parallel_settings, with
         pp = lambda r: r
 
     # Read seismic data and add it to a dataframe
-    seismic_features_names = [
-        "FAR",
-        "MID",
-        "NEAR_azimuth_",
-        "NEAR_contour-curvature_",
-        "NEAR_curvedness_",
-        "NEAR_dip-angle_",
-        "NEAR_dip-curvature_",
-        "NEAR_envelope_",
-        "NEAR_gaussian-curvature_",
-        "NEAR_gersztenkorn_3-3-11",
-        "NEAR_gersztenkorn_3-3-7",
-        "NEAR_gersztenkorn_3-3-9",
-        "NEAR_gersztenkorn_5-5-11",
-        "NEAR_gersztenkorn_5-5-7",
-        "NEAR_gersztenkorn_5-5-9",
-        "NEAR_gst_3-3-11",
-        "NEAR_gst_3-3-7",
-        "NEAR_gst_3-3-9",
-        "NEAR_gst_5-5-11",
-        "NEAR_gst_5-5-7",
-        "NEAR_gst_5-5-9",
-        "NEAR_instantaneous-frequency_",
-        "NEAR_max-curvature_",
-        "NEAR_mean-curvature_",
-        "NEAR_min-curvature_",
-        "NEAR_most-negative-curvature_",
-        "NEAR_most-positive-curvature_",
-        "NEAR",
-        "NEAR_rms-5_",
-        "NEAR_shape-index_",
-        "NEAR_sobel_5-5-11",
-        "UFAR",
-    ]
+    seismic_features_names = my_config.features_files
     seismic_features_names = seismic_features_names[:num_features]
 
-    # Features which do not need to be expanded on the window
+
+    # # Features which do not need to be expanded on the window
     other_features_names = []
 
     t1 = time.time()
@@ -142,7 +109,7 @@ def main(config:config_parser.Config, num_features: int, parallel_settings, with
     features_dict_h5 = {}
     for f in seismic_features_names:
         print(f'[main] loading file {f}')
-        features_files_dict_h5[f] = h5py.File(f'./dados/{f}.h5',
+        features_files_dict_h5[f] = h5py.File(f,
                                               'r',
                                               driver='mpio',
                                               comm=comm)
@@ -272,7 +239,7 @@ def main(config:config_parser.Config, num_features: int, parallel_settings, with
     for f in seismic_features_names:
         features_files_dict_h5[f].close()
 
-def config_parser():
+def config_arg_parser():
     parser = argparse.ArgumentParser(description='POV')
 
     parser.add_argument('--config',
@@ -353,7 +320,7 @@ def update_config_file_params_with_args(config:config_parser.Config, args) -> co
 
 if __name__ == '__main__':
 
-    parser = config_parser()
+    parser = config_arg_parser()
     args = parser.parse_args()
     parallel_settings = {
         'n_cpus': int(args.n_cpus),
@@ -368,7 +335,7 @@ if __name__ == '__main__':
     #                 'parallel_settings, args.with_progress)',
     #                 globals(), locals())
     
-    my_config = config_parser.YAMLConfig(args.config)
+    my_config = config_parser.YAMLConfig(args.config_file)
 
     my_config = update_config_file_params_with_args(my_config, args)
 
