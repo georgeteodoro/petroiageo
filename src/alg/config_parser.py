@@ -69,6 +69,8 @@ class ConfigTypeCaster():
     @classmethod
     def treat_input_config(cls, config_dict: dict) -> dict:
         treated_dict = dict()
+
+        treated_dict.update(config_dict)
         if 'alg' in config_dict:
             treated_dict['alg'] = cls._type_cast_alg_configs(config_dict['alg'])
         
@@ -461,11 +463,26 @@ class Config():
     
     @property
     def por_cube_output_path(self):
+        """
+        Porosity cube output path
+        """
         return self.config['porosity_cube_output_path']
     
     @por_cube_output_path.setter
     def por_cube_output_path(self, new_path):
         raise AttributeError("por_cube_output_path is read only!")
+
+    @property
+    def features_files(self) -> list:
+        """
+        Returns a list with the complete path to every feature in the feature folder
+        """
+        features_folder_path = pathlib.Path(self.config['features_folder'])
+        features_paths = [path for path in list(features_folder_path.glob("*")) if path.is_file()]
+        complete_paths = [path.absolute() for path in features_paths]
+        return complete_paths
+    
+
     
 class YAMLConfig(Config):
     def __init__(self, config_path: str|pathlib.Path = None,
