@@ -45,7 +45,7 @@ class SaveModelTypes():
                 except:
                     raise ValueError("alg.save_models_on: 'n' should be a positive integer!")
             elif save_model_type not in valid_strs:
-                raise ValueError(f"alg.save_models_on: This str is not valid. Should be one of {valid_strs} but '{save_models_on}' was given!")
+                raise ValueError(f"alg.save_models_on: This str is not valid. Should be one of {valid_strs} but '{save_model_type}' was given!")
 
 def list_func_applier_decorator(func):
         """
