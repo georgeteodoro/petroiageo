@@ -73,6 +73,66 @@ def should_update_local():
 
     return ret == None
 
+def get_window_sizes(window:int) -> tuple:
+    return (window, window, window)
+
+def get_displacement_cube_shape(window:int) -> tuple:
+    return (window * 2 + 1, window * 2 + 1, window * 2 + 1)
+
+def load_data(config:config_parser.Config,
+              other_features_names:list, window:int):
+    print_manager("[main] Loading seismic data")
+    features_files_dict_h5 = {}
+    features_dict_h5 = {}
+    for f in config.features_files_paths:
+        print(f'[main] loading file {f}')
+        features_files_dict_h5[f] = h5py.File(f,
+                                              'r',
+                                              driver='mpio',
+                                              comm=comm)
+        features_dict_h5[f] = features_files_dict_h5[f]['f']
+
+    # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
+    # with the same access/mode: existing file with write permission
+    # However, only one process updates this porosity_data_h5 structure
+    write_str = 'r+'
+
+    # Real wells' data into a main dataframe
+    print_manager("[main] Loading wells values")
+    porosity_data_h5_f = h5py.File(config.alg['starting_porosity_cube_path'],
+                                 write_str,
+                                 driver='mpio',
+                                 comm=comm)
+    porosity_data_h5 = porosity_data_h5_f['p']
+    hypercube_shape = porosity_data_h5.shape
+    all_points = porosity_data_h5.size
+
+    real_points = hdf5_util.fold_h5_all_clusters(
+        porosity_data_h5,
+        lambda d: len(d[d['real'] == common.RealValues.real]), 0)
+    canal_points = hdf5_util.fold_h5_all_clusters(
+        porosity_data_h5,
+        lambda d: len(d[d['real'] == common.RealValues.canal]), 0)
+
+    print_manager(f'[main] hypercube_shape: {hypercube_shape}')
+    print_manager(f'[main] hypercube size: {all_points}')
+
+    print_manager(f'[main] real well points: {real_points}/{all_points} '\
+          f'({(real_points/all_points):%})')
+
+    print_manager(f'[main] canal points: {canal_points}/{all_points} '\
+          f'({(canal_points/all_points):.2%})')
+
+    # Generate seismic features names
+    all_features = other_features_names
+    for f in config.features_files_names:
+        for i in range(-window, window + 1):
+            for j in range(-window, window + 1):
+                for k in range(-window, window + 1):
+                    all_features.append((f, i, j, k))
+    
+    return porosity_data_h5, hypercube_shape, features_dict_h5, all_features, porosity_data_h5_f
+
 def main(config:config_parser.Config, num_features: int, parallel_settings, with_progress: bool):
     # Data structure is composed by:
     #   x,y,z(depth),
@@ -96,69 +156,24 @@ def main(config:config_parser.Config, num_features: int, parallel_settings, with
         pp = lambda r: r
 
     # Read seismic data and add it to a dataframe
-    seismic_features_names = my_config.features_files
+    seismic_features_names = config.features_files_names
     seismic_features_names = seismic_features_names[:num_features]
-
 
     # # Features which do not need to be expanded on the window
     other_features_names = []
 
     t1 = time.time()
-    print_manager("[main] Loading seismic data")
-    features_files_dict_h5 = {}
-    features_dict_h5 = {}
-    for f in seismic_features_names:
-        print(f'[main] loading file {f}')
-        features_files_dict_h5[f] = h5py.File(f,
-                                              'r',
-                                              driver='mpio',
-                                              comm=comm)
-        features_dict_h5[f] = features_files_dict_h5[f]['f']
-
-    # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
-    # with the same access/mode: existing file with write permission
-    # However, only one process updates this porosity_data_h5 structure
-    write_str = 'r+'
-
-    # Real wells' data into a main dataframe
-    print_manager("[main] Loading wells values")
-    porosity_data_h5_f = h5py.File(f'./dados/porosity_data.h5',
-                                   write_str,
-                                   driver='mpio',
-                                   comm=comm)
-    porosity_data_h5 = porosity_data_h5_f['p']
-    hypercube_shape = porosity_data_h5.shape
-    all_points = porosity_data_h5.size
-
-    real_points = hdf5_util.fold_h5_all_clusters(
-        porosity_data_h5,
-        lambda d: len(d[d['real'] == common.RealValues.real]), 0)
-    canal_points = hdf5_util.fold_h5_all_clusters(
-        porosity_data_h5,
-        lambda d: len(d[d['real'] == common.RealValues.canal]), 0)
-
-    print_manager(f'[main] hypercube_shape: {hypercube_shape}')
-    print_manager(f'[main] hypercube size: {all_points}')
-
-    print_manager(f'[main] real well points: {real_points}/{all_points} '\
-          f'({(real_points/all_points):%})')
-
-    print_manager(f'[main] canal points: {canal_points}/{all_points} '\
-          f'({(canal_points/all_points):.2%})')
-
-    # Generate seismic features names
+    
     window = 3
-    window_sizes = (window, window, window)
-    displacement_cube_shape = (window * 2 + 1, window * 2 + 1, window * 2 + 1)
-    all_features = other_features_names
-    for f in seismic_features_names:
-        for i in range(-window, window + 1):
-            for j in range(-window, window + 1):
-                for k in range(-window, window + 1):
-                    all_features.append((f, i, j, k))
+    
+    porosity_data_h5, hypercube_shape, features_dict_h5, all_features, porosity_data_h5_f = load_data(config,
+                                                                    other_features_names, window)
 
     t2 = time.time()
     print(f'[main] Initial data loading time: {t2-t1}')
+
+    displacement_cube_shape = get_displacement_cube_shape(window)
+    window_sizes = get_window_sizes(window)
 
     max_iteration = config.alg['starting_it'] + config.alg['num_its'] + 1
     for it in range(config.alg['starting_it'] + 1, max_iteration):

@@ -473,7 +473,7 @@ class Config():
         raise AttributeError("por_cube_output_path is read only!")
 
     @property
-    def features_files(self) -> list:
+    def features_files_paths(self) -> list[pathlib.Path]:
         """
         Returns a list with the complete path to every feature in the feature folder
         """
@@ -482,7 +482,17 @@ class Config():
         complete_paths = [path.absolute() for path in features_paths]
         return complete_paths
     
-
+    @property
+    def features_files_names(self) -> list[str]:
+        """
+        Returns a list with the name of every feature in the feature folder.
+        A feature name is equal to the name of its file without the suffix.
+        Example: feature1.h5 -> name:feature1
+        """
+        features_folder_path = pathlib.Path(self.config['features_folder'])
+        features_paths = [path for path in list(features_folder_path.glob("*")) if path.is_file()]
+        features_names = [path.stem for path in features_paths]
+        return features_names
     
 class YAMLConfig(Config):
     def __init__(self, config_path: str|pathlib.Path = None,
