@@ -120,7 +120,6 @@ def load_starting_porosity_cube(config:config_parser.Config):
                                  driver='mpio',
                                  comm=comm)
     porosity_data_h5 = porosity_data_h5_f['p']
-    hypercube_shape = porosity_data_h5.shape
     all_points = porosity_data_h5.size
 
     real_points = hdf5_util.fold_h5_all_clusters(
@@ -130,6 +129,7 @@ def load_starting_porosity_cube(config:config_parser.Config):
         porosity_data_h5,
         lambda d: len(d[d['real'] == common.RealValues.canal]), 0)
 
+    hypercube_shape = porosity_data_h5.shape
     print_manager(f'[main] hypercube_shape: {hypercube_shape}')
     print_manager(f'[main] hypercube size: {all_points}')
 
@@ -139,7 +139,7 @@ def load_starting_porosity_cube(config:config_parser.Config):
     print_manager(f'[main] canal points: {canal_points}/{all_points} '\
           f'({(canal_points/all_points):.2%})')
     
-    return porosity_data_h5, hypercube_shape, porosity_data_h5_f
+    return porosity_data_h5, porosity_data_h5_f
 
 def main(config:config_parser.Config, num_features: int, parallel_settings, with_progress: bool):
     # Data structure is composed by:
@@ -175,7 +175,7 @@ def main(config:config_parser.Config, num_features: int, parallel_settings, with
     window = 3
     
     features_dict_h5, features_files_dict_h5 = load_features_data(config.features_files_paths)
-    porosity_data_h5, hypercube_shape, porosity_data_h5_f = load_starting_porosity_cube(config)
+    porosity_data_h5, porosity_data_h5_f = load_starting_porosity_cube(config)
     all_features = generate_seismic_features_names(config, other_features_names, window)
 
     t2 = time.time()
@@ -200,6 +200,7 @@ def main(config:config_parser.Config, num_features: int, parallel_settings, with
 
         print(f"[main]{it_str} Expanding points")
         if should_update:
+            hypercube_shape = porosity_data_h5.shape
             expand4_hdf5.gen_expanded_points(porosity_data_h5, hypercube_shape,
                                              real_wells, it, it_str, pp)
         else:
