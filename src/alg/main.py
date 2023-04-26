@@ -143,47 +143,11 @@ def load_starting_porosity_cube(config:config_parser.Config):
     
     return porosity_data_h5, porosity_data_h5_f
 
-def main(config:config_parser.Config, num_features: int, parallel_settings, with_progress: bool):
-    # Data structure is composed by:
-    #   x,y,z(depth),
-    #   well => Well ID (-1 if it's not an original real point.)
-    #                   (Has the ID from the original real well)
-    #                   (from which it was expanded.           )
-    #   real => [3=expanded, to be propagated, 2=expanded canal,
-    #            1=propagated, 0=real well point]
-    #   phi  => Porosity value
-
-    # Assign a single process per node to update the local h5 file
-    should_update = should_update_local()
-    if should_update:
-        print(f'[main] Rank {rank} is updating h5 file')
-
-    # Progress printing only enabled for updating process
-    # if rank == manager_rank:
-    if should_update:
-        pp = lambda r: print_progress(with_progress, r)
-    else:
-        pp = lambda r: r
-
-    t1 = time.time()
-    
-    window = 3
-    
-    features_dict_h5, features_files_dict_h5 = load_features_data(config, num_features)
-    porosity_data_h5, porosity_data_h5_f = load_starting_porosity_cube(config)
-
-    # Features which do not need to be expanded on the window
-    other_features_names = []
-    all_features = generate_seismic_features_names(config, other_features_names, window)
-
-    t2 = time.time()
-    print(f'[main] Initial data loading time: {t2-t1}')
-
-    displacement_cube_shape = get_displacement_cube_shape(window)
-    window_sizes = get_window_sizes(window)
-
+def run_alg(config:config_parser.Config, porosity_data_h5, should_update:bool, pp, features_dict_h5, all_features, window:int, displacement_cube_shape):
     max_iteration = config.alg['starting_it'] + config.alg['num_its'] + 1
-    for it in range(config.alg['starting_it'] + 1, max_iteration):
+    starting_it = config.alg['starting_it'] + 1
+    window_sizes = get_window_sizes(window)
+    for it in range(starting_it, max_iteration):
         it_str = f'[it{it}]'
         it_str_manager = ""
         if rank == manager_rank:
@@ -256,6 +220,48 @@ def main(config:config_parser.Config, num_features: int, parallel_settings, with
         print(f'[main][times]{it_str} expansion {t2-t1}')
         print(f'[main][times]{it_str} feature_selection {t3-t2}')
         print(f'[main][times]{it_str} propagation {t4-t3}')
+    
+
+def main(config:config_parser.Config, num_features: int, parallel_settings, with_progress: bool):
+    # Data structure is composed by:
+    #   x,y,z(depth),
+    #   well => Well ID (-1 if it's not an original real point.)
+    #                   (Has the ID from the original real well)
+    #                   (from which it was expanded.           )
+    #   real => [3=expanded, to be propagated, 2=expanded canal,
+    #            1=propagated, 0=real well point]
+    #   phi  => Porosity value
+
+    # Assign a single process per node to update the local h5 file
+    should_update = should_update_local()
+    if should_update:
+        print(f'[main] Rank {rank} is updating h5 file')
+
+    # Progress printing only enabled for updating process
+    # if rank == manager_rank:
+    if should_update:
+        pp = lambda r: print_progress(with_progress, r)
+    else:
+        pp = lambda r: r
+
+    t1 = time.time()
+    
+    window = 3
+    
+    features_dict_h5, features_files_dict_h5 = load_features_data(config, num_features)
+    porosity_data_h5, porosity_data_h5_f = load_starting_porosity_cube(config)
+
+    # Features which do not need to be expanded on the window
+    other_features_names = []
+    all_features = generate_seismic_features_names(config, other_features_names, window)
+
+    t2 = time.time()
+    print(f'[main] Initial data loading time: {t2-t1}')
+
+    displacement_cube_shape = get_displacement_cube_shape(window)
+
+    run_alg(config, porosity_data_h5, should_update, pp,
+            features_dict_h5, all_features, window, displacement_cube_shape)
 
     # Close all hdf5 files
     seismic_features_names = config.features_files_names[:num_features]
