@@ -80,7 +80,7 @@ def get_window_sizes(window:int) -> tuple:
 def get_displacement_cube_shape(window:int) -> tuple:
     return (window * 2 + 1, window * 2 + 1, window * 2 + 1)
 
-def load_seismic_data(file_paths:pathlib.Path) -> dict:
+def load_features_data(file_paths:pathlib.Path) -> dict:
     print_manager("[main] Loading seismic data")
     features_files_dict_h5 = {}
     features_dict_h5 = {}
@@ -106,7 +106,7 @@ def generate_seismic_features_names(config:config_parser.Config, other_features_
 
     return all_features
 
-def load_data(config:config_parser.Config):
+def load_starting_porosity_cube(config:config_parser.Config):
 
     # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
     # with the same access/mode: existing file with write permission
@@ -174,8 +174,8 @@ def main(config:config_parser.Config, num_features: int, parallel_settings, with
     
     window = 3
     
-    features_dict_h5, features_files_dict_h5 = load_seismic_data(config.features_files_paths)
-    porosity_data_h5, hypercube_shape, porosity_data_h5_f = load_data(config)
+    features_dict_h5, features_files_dict_h5 = load_features_data(config.features_files_paths)
+    porosity_data_h5, hypercube_shape, porosity_data_h5_f = load_starting_porosity_cube(config)
     all_features = generate_seismic_features_names(config, other_features_names, window)
 
     t2 = time.time()
