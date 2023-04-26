@@ -94,8 +94,19 @@ def load_seismic_data(file_paths:pathlib.Path) -> dict:
     
     return features_dict_h5, features_files_dict_h5
 
-def load_data(config:config_parser.Config,
-              other_features_names:list, window:int):
+def generate_seismic_features_names(config:config_parser.Config, other_features_names:list,
+                                     window:int) -> list:
+    # Generate seismic features names
+    all_features = other_features_names
+    for f in config.features_files_names:
+        for i in range(-window, window + 1):
+            for j in range(-window, window + 1):
+                for k in range(-window, window + 1):
+                    all_features.append((f, i, j, k))
+
+    return all_features
+
+def load_data(config:config_parser.Config):
 
     # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
     # with the same access/mode: existing file with write permission
@@ -127,16 +138,8 @@ def load_data(config:config_parser.Config,
 
     print_manager(f'[main] canal points: {canal_points}/{all_points} '\
           f'({(canal_points/all_points):.2%})')
-
-    # Generate seismic features names
-    all_features = other_features_names
-    for f in config.features_files_names:
-        for i in range(-window, window + 1):
-            for j in range(-window, window + 1):
-                for k in range(-window, window + 1):
-                    all_features.append((f, i, j, k))
     
-    return porosity_data_h5, hypercube_shape, all_features, porosity_data_h5_f
+    return porosity_data_h5, hypercube_shape, porosity_data_h5_f
 
 def main(config:config_parser.Config, num_features: int, parallel_settings, with_progress: bool):
     # Data structure is composed by:
@@ -172,8 +175,8 @@ def main(config:config_parser.Config, num_features: int, parallel_settings, with
     window = 3
     
     features_dict_h5, features_files_dict_h5 = load_seismic_data(config.features_files_paths)
-    porosity_data_h5, hypercube_shape, all_features, porosity_data_h5_f = load_data(config,
-                                                                    other_features_names, window)
+    porosity_data_h5, hypercube_shape, porosity_data_h5_f = load_data(config)
+    all_features = generate_seismic_features_names(config, other_features_names, window)
 
     t2 = time.time()
     print(f'[main] Initial data loading time: {t2-t1}')
