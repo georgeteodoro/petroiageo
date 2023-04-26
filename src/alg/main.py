@@ -7,6 +7,7 @@ from math import prod
 import h5py
 from tqdm import tqdm
 import os
+import pathlib
 
 import common
 import hdf5_util
@@ -91,12 +92,12 @@ def load_seismic_data(file_paths:pathlib.Path) -> dict:
                                               comm=comm)
         features_dict_h5[f] = features_files_dict_h5[f]['f']
     
-    return features_dict_h5
+    return features_dict_h5, features_files_dict_h5
 
 def load_data(config:config_parser.Config,
               other_features_names:list, window:int):
     
-    features_dict_h5 = load_seismic_data(config.features_files_paths)
+    features_dict_h5, features_files_dict_h5 = load_seismic_data(config.features_files_paths)
 
     # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
     # with the same access/mode: existing file with write permission
@@ -137,7 +138,7 @@ def load_data(config:config_parser.Config,
                 for k in range(-window, window + 1):
                     all_features.append((f, i, j, k))
     
-    return porosity_data_h5, hypercube_shape, features_dict_h5, all_features, porosity_data_h5_f
+    return porosity_data_h5, hypercube_shape, features_dict_h5, features_files_dict_h5, all_features, porosity_data_h5_f
 
 def main(config:config_parser.Config, num_features: int, parallel_settings, with_progress: bool):
     # Data structure is composed by:
@@ -172,7 +173,7 @@ def main(config:config_parser.Config, num_features: int, parallel_settings, with
     
     window = 3
     
-    porosity_data_h5, hypercube_shape, features_dict_h5, all_features, porosity_data_h5_f = load_data(config,
+    porosity_data_h5, hypercube_shape, features_dict_h5, features_files_dict_h5, all_features, porosity_data_h5_f = load_data(config,
                                                                     other_features_names, window)
 
     t2 = time.time()
@@ -232,11 +233,11 @@ def main(config:config_parser.Config, num_features: int, parallel_settings, with
         if mpi_size == 1:
             best_features_set, best_error = petro5_hdf5.get_features_sets(
                 porosity_data_h5, features_dict_h5, all_features, window_sizes,
-                displacement_cube_shape, it_str, num_select_features, 1)
+                displacement_cube_shape, it_str, config.alg['max_num_features'], 0)
         else:
             best_features_set, best_error = petro_dist4_hdf5.get_features_sets(
                 porosity_data_h5, features_dict_h5, all_features, window_sizes,
-                displacement_cube_shape, it_str, num_select_features, 10)
+                displacement_cube_shape, it_str, config.alg['max_num_features'], 0)
 
         print_manager(f'[main]{it_str} Best features set:'\
               f' {best_features_set} with {best_error} error')
