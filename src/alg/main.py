@@ -234,12 +234,11 @@ def main(config:config_parser.Config, num_features: int, parallel_settings, with
 
     # Assign a single process per node to update the local h5 file
     should_update = should_update_local()
-    if should_update:
-        print(f'[main] Rank {rank} is updating h5 file')
 
     # Progress printing only enabled for updating process
     # if rank == manager_rank:
     if should_update:
+        print(f'[main] Rank {rank} is updating h5 file')
         pp = lambda r: print_progress(with_progress, r)
     else:
         pp = lambda r: r
