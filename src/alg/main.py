@@ -96,8 +96,6 @@ def load_seismic_data(file_paths:pathlib.Path) -> dict:
 
 def load_data(config:config_parser.Config,
               other_features_names:list, window:int):
-    
-    features_dict_h5, features_files_dict_h5 = load_seismic_data(config.features_files_paths)
 
     # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
     # with the same access/mode: existing file with write permission
@@ -138,7 +136,7 @@ def load_data(config:config_parser.Config,
                 for k in range(-window, window + 1):
                     all_features.append((f, i, j, k))
     
-    return porosity_data_h5, hypercube_shape, features_dict_h5, features_files_dict_h5, all_features, porosity_data_h5_f
+    return porosity_data_h5, hypercube_shape, all_features, porosity_data_h5_f
 
 def main(config:config_parser.Config, num_features: int, parallel_settings, with_progress: bool):
     # Data structure is composed by:
@@ -173,7 +171,8 @@ def main(config:config_parser.Config, num_features: int, parallel_settings, with
     
     window = 3
     
-    porosity_data_h5, hypercube_shape, features_dict_h5, features_files_dict_h5, all_features, porosity_data_h5_f = load_data(config,
+    features_dict_h5, features_files_dict_h5 = load_seismic_data(config.features_files_paths)
+    porosity_data_h5, hypercube_shape, all_features, porosity_data_h5_f = load_data(config,
                                                                     other_features_names, window)
 
     t2 = time.time()
