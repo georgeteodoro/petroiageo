@@ -79,18 +79,24 @@ def get_window_sizes(window:int) -> tuple:
 def get_displacement_cube_shape(window:int) -> tuple:
     return (window * 2 + 1, window * 2 + 1, window * 2 + 1)
 
-def load_data(config:config_parser.Config,
-              other_features_names:list, window:int):
+def load_seismic_data(file_paths:pathlib.Path) -> dict:
     print_manager("[main] Loading seismic data")
     features_files_dict_h5 = {}
     features_dict_h5 = {}
-    for f in config.features_files_paths:
+    for f in file_paths:
         print(f'[main] loading file {f}')
         features_files_dict_h5[f] = h5py.File(f,
                                               'r',
                                               driver='mpio',
                                               comm=comm)
         features_dict_h5[f] = features_files_dict_h5[f]['f']
+    
+    return features_dict_h5
+
+def load_data(config:config_parser.Config,
+              other_features_names:list, window:int):
+    
+    features_dict_h5 = load_seismic_data(config.features_files_paths)
 
     # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
     # with the same access/mode: existing file with write permission
