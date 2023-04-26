@@ -80,17 +80,19 @@ def get_window_sizes(window:int) -> tuple:
 def get_displacement_cube_shape(window:int) -> tuple:
     return (window * 2 + 1, window * 2 + 1, window * 2 + 1)
 
-def load_features_data(file_paths:pathlib.Path) -> dict:
+def load_features_data(config:config_parser.Config, num_features:int) -> dict:
     print_manager("[main] Loading seismic data")
+    seismic_features_names = config.features_files_names[:num_features]
+    seismic_features_file_paths = config.features_files_paths[:num_features]
     features_files_dict_h5 = {}
     features_dict_h5 = {}
-    for f in file_paths:
+    for file_path, feat_name in zip(seismic_features_file_paths, seismic_features_names):
         print(f'[main] loading file {f}')
-        features_files_dict_h5[f] = h5py.File(f,
+        features_files_dict_h5[feat_name] = h5py.File(file_path,
                                               'r',
                                               driver='mpio',
                                               comm=comm)
-        features_dict_h5[f] = features_files_dict_h5[f]['f']
+        features_dict_h5[feat_name] = features_files_dict_h5[feat_name]['f']
     
     return features_dict_h5, features_files_dict_h5
 
@@ -156,26 +158,22 @@ def main(config:config_parser.Config, num_features: int, parallel_settings, with
     if should_update:
         print(f'[main] Rank {rank} is updating h5 file')
 
-    # # Progress printing only enabled for updating process
+    # Progress printing only enabled for updating process
     # if rank == manager_rank:
     if should_update:
         pp = lambda r: print_progress(with_progress, r)
     else:
         pp = lambda r: r
 
-    # Read seismic data and add it to a dataframe
-    seismic_features_names = config.features_files_names
-    seismic_features_names = seismic_features_names[:num_features]
-
-    # # Features which do not need to be expanded on the window
-    other_features_names = []
-
     t1 = time.time()
     
     window = 3
     
-    features_dict_h5, features_files_dict_h5 = load_features_data(config.features_files_paths)
+    features_dict_h5, features_files_dict_h5 = load_features_data(config, num_features)
     porosity_data_h5, porosity_data_h5_f = load_starting_porosity_cube(config)
+
+    # Features which do not need to be expanded on the window
+    other_features_names = []
     all_features = generate_seismic_features_names(config, other_features_names, window)
 
     t2 = time.time()
@@ -260,6 +258,7 @@ def main(config:config_parser.Config, num_features: int, parallel_settings, with
         print(f'[main][times]{it_str} propagation {t4-t3}')
 
     # Close all hdf5 files
+    seismic_features_names = config.features_files_names[:num_features]
     porosity_data_h5_f.close()
     for f in seismic_features_names:
         features_files_dict_h5[f].close()
