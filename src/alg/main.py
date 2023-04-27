@@ -64,8 +64,11 @@ def should_update_local():
     assigned_nodes = []
     for r in range(mpi_size):
         # Get node name of rank r
-        cur_node = MPI.Get_processor_name()
-        comm.bcast(cur_node, root=r)
+        if r == rank:
+            cur_node = MPI.Get_processor_name()
+            comm.bcast(cur_node, root=r)
+        else:
+            cur_node = comm.bcast(None, root=r)
 
         # Update list of seen nodes
         if cur_node not in assigned_nodes:
