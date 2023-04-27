@@ -56,20 +56,27 @@ def mpi_perform_ordered(func):
             to_update_rank = comm.recv(source=to_update_rank)
 
 
+# Check whether the current process should update the local h5 files
+# Only one process per node should do this
+# Although multiple updates works on h5, it is inefficient
 def should_update_local():
-    """
-    Check whether the current process should update the local h5 files
-    Only one process per node should do this
-    Although multiple updates works on h5, it is inefficient
-    """
-    lock_file_str = '.h5rank.loc'
+    ret = False
+    assigned_nodes = []
+    for r in range(mpi_size):
+        # Get node name of rank r
+        cur_node = MPI.Get_processor_name()
+        comm.bcast(cur_node, root=r)
 
-    remove_old_lock_files(lock_file_str)
-    comm.Barrier()
+        # Update list of seen nodes
+        if cur_node not in assigned_nodes:
+            assigned_nodes.append(cur_node)
 
-    ret = create_lock_file_locally_if_there_isnt_one(lock_file_str)
+            # If this is the first unique rank of a node, it should update
+            if r == rank:
+                print(f'rank {r} should update on node {cur_node}')
+                ret = True
 
-    return ret == None
+    return ret
 
 def remove_old_lock_files(lock_file_str:str):
     mpi_perform_ordered(lambda: os.remove(lock_file_str)
