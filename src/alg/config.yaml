@@ -1,0 +1,69 @@
+wells: # This is wells related stuff
+  porosity_path: ./config.yaml # File that has porosity measures for every well
+  coords: # well coords in (x, y) style
+  - x: 1
+    y: 2
+  - x: 2
+    y: 3
+  - x: 3
+    y: 4
+  - x: 4
+    y: 5
+  - x: 5
+    y: 6
+  - [6, 7]
+# This could be like: [[1,2],[2,3],[3,4]...] as well
+
+features_folder: "./" # Folder where every file will be treated as a feature
+
+# Output path for the porosity cube produced (if any)
+porosity_cube_output_path: "./results/porosity.npy" 
+
+alg:
+  # Starting iteration. The iteration index will be used for other params.
+  # Default: 0
+  starting_it: 0 
+  num_its: 10 # Num of iterations to run. Default: 10
+  starting_porosity_cube_path: "./config.yaml" # The starting porosity cube file.
+  
+  # If you want to really generate the porosity cube in the end. Default is true
+  generate_porosity_cube: true
+  
+  # If you want to save the porosity cube for every n its. If negative, ex. -1, save only the last one.
+  # Default -1.
+  save_cube_every_n_its: -1
+
+  # Indicates the wells that should be used for validation only. Index starts at 0. Default is an empty list
+  validation_only_wells: [2, 3]
+  
+  # Indicates the wells that should be used for testing only. Index starts at 0. Default is an empty list
+  test_only_wells: [5]
+
+  sampling: # Sampling strategy stuff
+    # Num of iterations as window size. If negative, use max num of iterations possible. Default: -1
+    its_window_size: 4
+    # Max num of points for the sampling. If negative, use all data available. Default: -1
+    max_points: 10000
+    
+    # Function to penalize data from earlier iterations following the beta distribuition.
+    # Set alpha=1 and beta=1 for no penalty. Default: alpha=1 and beta=1
+    beta_dist:
+      alpha: 1
+      beta: 1
+  
+  # Feature selection type. Options: ['FORWARD', 'NONE']. Default: FORWARD
+  feature_selection_type: "FORWARD"
+  
+  # Max num of features to select in the feature_selection_step. Default: 1
+  max_num_features: 1
+  
+  # Max exec time in seconds. If negative there is no limit. Default: -1
+  max_exec_time: 1000
+  # If it should save metrics for every iteration or don't save any metrics. Default: true
+  metrics_by_it: true
+  
+  # When it should save the trained model. 
+  # Accepted: 'last' (saves only the last one), 'every_n' where 'n' should be replaced by an int, 
+  # a list [1,2,3,...] indicating the iterations.
+  # Default: 'last'
+  save_models_on: "last"

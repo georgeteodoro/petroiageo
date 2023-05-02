@@ -1,13 +1,15 @@
-import pandas as pd
-import numpy as np
-import time
-from mpi4py import MPI
 import argparse
-from math import prod
+from collections import namedtuple
 import h5py
-from tqdm import tqdm
+from mpi4py import MPI
+from math import prod
+import numpy as np
 import os
+import pandas as pd
 import pathlib
+import time
+from typing import Callable
+from tqdm import tqdm
 
 import common
 import hdf5_util
@@ -17,6 +19,8 @@ import petro_dist4_hdf5
 import apply5_hdf5
 
 import config_parser
+
+RunningProcess = namedtuple('RunningProcess', 'is_main_proc print_progress_func')
 
 # Constants
 # hypercube_shape = (434, 646, 251)
@@ -143,7 +147,7 @@ def load_starting_porosity_cube(config:config_parser.Config):
     
     return porosity_data_h5, porosity_data_h5_f
 
-def run_alg(config:config_parser.Config, porosity_data_h5, should_update:bool, pp, features_dict_h5, all_features, window:int, displacement_cube_shape):
+def run_alg(config:config_parser.Config, porosity_data_h5, my_process:RunningProcess, features_dict_h5, all_features, window:int, displacement_cube_shape):
     max_iteration = config.alg['starting_it'] + config.alg['num_its'] + 1
     starting_it = config.alg['starting_it'] + 1
     window_sizes = get_window_sizes(window)
@@ -161,10 +165,10 @@ def run_alg(config:config_parser.Config, porosity_data_h5, should_update:bool, p
         print(f'[main] empty points: {empty_points}')
 
         print(f"[main]{it_str} Expanding points")
-        if should_update:
+        if my_process.is_main_proc:
             hypercube_shape = porosity_data_h5.shape
-            expand4_hdf5.gen_expanded_points(porosity_data_h5, hypercube_shape,
-                                             real_wells, it, it_str, pp)
+            expand4_hdf5.gen_expanded_points(porosity_data_h5, hypercube_shape, real_wells, it,
+                                             it_str, my_process.print_progress_func)
         else:
             print(f'[main]{it_str}[R{rank}] waiting points expansion')
         comm.Barrier()
@@ -210,7 +214,7 @@ def run_alg(config:config_parser.Config, porosity_data_h5, should_update:bool, p
         t3 = time.time()
 
         print(f"[main]{it_str} Performing predictions on new expanded points")
-        if should_update:
+        if my_process.is_main_proc:
             apply5_hdf5.perf_predition(best_features_set, porosity_data_h5,
                                        features_dict_h5, window_sizes,
                                        displacement_cube_shape)
@@ -222,6 +226,22 @@ def run_alg(config:config_parser.Config, porosity_data_h5, should_update:bool, p
         print(f'[main][times]{it_str} propagation {t4-t3}')
     
 
+def get_print_progress_func(is_main_proc:bool) -> Callable:
+    # Progress printing only enabled for updating process
+    # if rank == manager_rank:
+    if is_main_proc:
+        print(f'[main] Rank {rank} is updating h5 file')
+        return lambda r: print_progress(with_progress, r)
+    
+    return lambda r: r
+
+def get_running_process() -> RunningProcess:
+    # Assign a single process per node to update the local h5 file
+    is_main_proc = should_update_local()
+    pp = get_print_progress_func(is_main_proc)
+
+    return RunningProcess(is_main_proc, pp)
+
 def main(config:config_parser.Config, num_features: int, parallel_settings, with_progress: bool):
     # Data structure is composed by:
     #   x,y,z(depth),
@@ -232,16 +252,7 @@ def main(config:config_parser.Config, num_features: int, parallel_settings, with
     #            1=propagated, 0=real well point]
     #   phi  => Porosity value
 
-    # Assign a single process per node to update the local h5 file
-    should_update = should_update_local()
-
-    # Progress printing only enabled for updating process
-    # if rank == manager_rank:
-    if should_update:
-        print(f'[main] Rank {rank} is updating h5 file')
-        pp = lambda r: print_progress(with_progress, r)
-    else:
-        pp = lambda r: r
+    my_process = get_running_process()
 
     t1 = time.time()
     
@@ -259,8 +270,7 @@ def main(config:config_parser.Config, num_features: int, parallel_settings, with
 
     displacement_cube_shape = get_displacement_cube_shape(window)
 
-    run_alg(config, porosity_data_h5, should_update, pp,
-            features_dict_h5, all_features, window, displacement_cube_shape)
+    run_alg(config, porosity_data_h5, my_process, features_dict_h5, all_features, window, displacement_cube_shape)
 
     # Close all hdf5 files
     seismic_features_names = config.features_files_names[:num_features]
