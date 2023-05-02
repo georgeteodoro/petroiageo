@@ -160,6 +160,18 @@ def print_feature_selection_points(porosity_data_h5):
                         (d['real'] == common.RealValues.real)]), 0)
     print(f'[main] Points for feature selection: {f_sel_points}')
 
+def expand_points(porosity_data_h5, wells_coords:list, it:int,
+                      it_str:int, my_process:RunningProcess):
+    print(f"[main]{it_str} Expanding points")
+    if my_process.is_main_proc:
+        hypercube_shape = porosity_data_h5.shape
+        expand4_hdf5.gen_expanded_points(porosity_data_h5, hypercube_shape, wells_coords,
+                                            it, it_str, my_process.print_progress_func)
+    print(f'{rank} waiting')
+    comm.Barrier()
+
+    print_expanded_points(porosity_data_h5)
+
 def feature_selection(porosity_data_h5, features_dict_h5:dict, all_features:list,
                       window_sizes:tuple, displacement_cube_shape:tuple, it_str:str,
                       max_num_features:int):
@@ -276,7 +288,9 @@ def main(config:config_parser.Config, num_features: int, with_progress: bool):
 
     displacement_cube_shape = get_displacement_cube_shape(window)
 
-    run_alg(config, porosity_data_h5, my_process, features_dict_h5, all_features, window, displacement_cube_shape)
+    run_alg(config, porosity_data_h5, my_process,
+            features_dict_h5, all_features, window,
+            displacement_cube_shape)
 
     # Close all hdf5 files
     seismic_features_names = config.features_files_names[:num_features]
