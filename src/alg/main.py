@@ -226,7 +226,7 @@ def run_alg(config:config_parser.Config, porosity_data_h5, my_process:RunningPro
         print(f'[main][times]{it_str} propagation {t4-t3}')
     
 
-def get_print_progress_func(is_main_proc:bool) -> Callable:
+def get_print_progress_func(is_main_proc:bool, with_progress:bool) -> Callable:
     # Progress printing only enabled for updating process
     # if rank == manager_rank:
     if is_main_proc:
@@ -235,10 +235,10 @@ def get_print_progress_func(is_main_proc:bool) -> Callable:
     
     return lambda r: r
 
-def get_running_process() -> RunningProcess:
+def get_running_process(with_progress:bool) -> RunningProcess:
     # Assign a single process per node to update the local h5 file
     is_main_proc = should_update_local()
-    pp = get_print_progress_func(is_main_proc)
+    pp = get_print_progress_func(is_main_proc, with_progress)
 
     return RunningProcess(is_main_proc, pp)
 
@@ -252,7 +252,7 @@ def main(config:config_parser.Config, num_features: int, parallel_settings, with
     #            1=propagated, 0=real well point]
     #   phi  => Porosity value
 
-    my_process = get_running_process()
+    my_process = get_running_process(with_progress)
 
     t1 = time.time()
     
