@@ -313,17 +313,6 @@ def config_arg_parser():
                         required=False,
                         help='Number of maximum features to be '\
                             'selected')
-    # parser.add_argument('--gpu',
-    #                     dest='n_gpus',
-    #                     action='store',
-    #                     default=0,
-    #                     help='Number of GPUs to be used (default: 0)')
-    # parser.add_argument('--gput',
-    #                     dest='gpu_thrds',
-    #                     action='store',
-    #                     default=0,
-    #                     help='Number of threads to be executed '\
-    #                          'per GPU (default: 0)')
     parser.add_argument('--cpu',
                         dest='n_cpus',
                         action='store',
