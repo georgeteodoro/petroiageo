@@ -147,6 +147,11 @@ def load_starting_porosity_cube(config:config_parser.Config):
     
     return porosity_data_h5, porosity_data_h5_f
 
+def print_empty_points(porosity_data_h5):
+    empty_points = hdf5_util.fold_h5_all_clusters(porosity_data_h5, 
+                                                  lambda d: len(d[d['real'] == common.RealValues.empty]), 0)
+    print(f'[main] empty points: {empty_points}')
+
 def run_alg(config:config_parser.Config, porosity_data_h5, my_process:RunningProcess, features_dict_h5, all_features, window:int, displacement_cube_shape):
     max_iteration = config.alg['starting_it'] + config.alg['num_its'] + 1
     starting_it = config.alg['starting_it'] + 1
@@ -159,10 +164,7 @@ def run_alg(config:config_parser.Config, porosity_data_h5, my_process:RunningPro
 
         t1 = time.time()
 
-        empty_points = hdf5_util.fold_h5_all_clusters(
-            porosity_data_h5,
-            lambda d: len(d[d['real'] == common.RealValues.empty]), 0)
-        print(f'[main] empty points: {empty_points}')
+        print_empty_points(porosity_data_h5)
 
         print(f"[main]{it_str} Expanding points")
         if my_process.is_main_proc:
