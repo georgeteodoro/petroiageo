@@ -84,7 +84,7 @@ def get_window_sizes(window:int) -> tuple:
 def get_displacement_cube_shape(window:int) -> tuple:
     return (window * 2 + 1, window * 2 + 1, window * 2 + 1)
 
-def load_features_data(config:config_parser.Config, num_features:int) -> dict:
+def load_features_data(config:config_parser.Config, num_features:int) -> (dict, dict):
     print_manager("[main] Loading seismic data")
     seismic_features_names = config.features_files_names[:num_features]
     seismic_features_file_paths = config.features_files_paths[:num_features]
@@ -159,10 +159,43 @@ def print_expanded_points(porosity_data_h5):
                         (d['real'] == common.RealValues.expanded)]), 0)
     print(f'[main][{rank}] Expanded points: {to_expand}')
 
-def run_alg(config:config_parser.Config, porosity_data_h5, my_process:RunningProcess, features_dict_h5, all_features, window:int, displacement_cube_shape):
+def print_feature_selection_points(porosity_data_h5):
+    # Only uses real, previously propagated and expanded canal points
+    # for feature selection
+    f_sel_points = hdf5_util.fold_h5_all_clusters(
+        porosity_data_h5,
+        lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
+                        (d['real'] == common.RealValues.propagated) |
+                        (d['real'] == common.RealValues.real)]), 0)
+    print(f'[main] Points for feature selection: {f_sel_points}')
+
+def feature_selection(porosity_data_h5, features_dict_h5:dict, all_features:list,
+                      window_sizes:tuple, displacement_cube_shape:tuple, it_str:str,
+                      max_num_features:int):
+    print(f"[main]{it_str} Performing feature selection")
+
+    print_feature_selection_points(porosity_data_h5)
+
+    if mpi_size == 1:
+        best_features_set, best_error = petro5_hdf5.get_features_sets(
+            porosity_data_h5, features_dict_h5, all_features, window_sizes,
+            displacement_cube_shape, it_str, max_num_features, 0)
+    else:
+        best_features_set, best_error = petro_dist4_hdf5.get_features_sets(
+            porosity_data_h5, features_dict_h5, all_features, window_sizes,
+            displacement_cube_shape, it_str, max_num_features, 0)
+
+    print_manager(f'[main]{it_str} Best features set:'\
+            f' {best_features_set} with {best_error} error')
+
+    return best_features_set, best_error
+
+def run_alg(config:config_parser.Config, porosity_data_h5, my_process:RunningProcess, features_dict_h5:dict,
+            all_features:list, window:int, displacement_cube_shape:tuple):
     max_iteration = config.alg['starting_it'] + config.alg['num_its'] + 1
     starting_it = config.alg['starting_it'] + 1
     window_sizes = get_window_sizes(window)
+
     for it in range(starting_it, max_iteration):
         it_str = f'[it{it}]'
         it_str_manager = ""
@@ -192,33 +225,9 @@ def run_alg(config:config_parser.Config, porosity_data_h5, my_process:RunningPro
 
         t2 = time.time()
 
-        print(f"[main]{it_str} Performing feature selection")
-
-        # Only uses real, previously propagated and expanded canal points
-        # for feature selection
-        f_sel_points = hdf5_util.fold_h5_all_clusters(
-            porosity_data_h5,
-            lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
-                            (d['real'] == common.RealValues.propagated) |
-                            (d['real'] == common.RealValues.real)]), 0)
-        print(f'[main] Points for feature selection: {f_sel_points}')
-
-        # tmp = porosity_data_h5
-        # print(tmp[(tmp['real'] == common.RealValues.canal_expanded) |
-        #            (tmp['real'] == common.RealValues.propagated) |
-        #            (tmp['real'] == common.RealValues.real)])
-
-        if mpi_size == 1:
-            best_features_set, best_error = petro5_hdf5.get_features_sets(
-                porosity_data_h5, features_dict_h5, all_features, window_sizes,
-                displacement_cube_shape, it_str, config.alg['max_num_features'], 0)
-        else:
-            best_features_set, best_error = petro_dist4_hdf5.get_features_sets(
-                porosity_data_h5, features_dict_h5, all_features, window_sizes,
-                displacement_cube_shape, it_str, config.alg['max_num_features'], 0)
-
-        print_manager(f'[main]{it_str} Best features set:'\
-              f' {best_features_set} with {best_error} error')
+        best_features_set, best_error = feature_selection(porosity_data_h5, features_dict_h5, all_features, 
+                                                          window_sizes, displacement_cube_shape, it_str, 
+                                                          config.alg['max_num_features'])
 
         t3 = time.time()
 
