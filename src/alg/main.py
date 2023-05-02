@@ -248,7 +248,7 @@ def get_running_process(with_progress:bool) -> RunningProcess:
 
     return RunningProcess(is_main_proc, pp)
 
-def main(config:config_parser.Config, num_features: int, parallel_settings, with_progress: bool):
+def main(config:config_parser.Config, num_features: int, with_progress: bool):
     # Data structure is composed by:
     #   x,y,z(depth),
     #   well => Well ID (-1 if it's not an original real point.)
@@ -367,21 +367,9 @@ if __name__ == '__main__':
 
     parser = config_arg_parser()
     args = parser.parse_args()
-    parallel_settings = {
-        'n_cpus': int(args.n_cpus),
-        'cpu_thrds': int(args.cpu_thrds),
-        # 'n_gpus': int(args.n_gpus),
-        # 'gpu_thrds': int(args.gpu_thrds),
-    }
-
-    # import cProfile
-    # cProfile.runctx('main(int(args.load_it), int(args.num_its), '\
-    #                 'int(args.num_features), int(args.num_select_features), '\
-    #                 'parallel_settings, args.with_progress)',
-    #                 globals(), locals())
     
     my_config = config_parser.YAMLConfig(args.config_file)
 
     my_config = update_config_file_params_with_args(my_config, args)
 
-    main(my_config, int(args.num_features), parallel_settings, args.with_progress)
+    main(my_config, int(args.num_features), args.with_progress)
