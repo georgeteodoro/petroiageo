@@ -148,7 +148,7 @@ def print_expanded_points(porosity_data_h5):
         porosity_data_h5,
         lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) | 
                         (d['real'] == common.RealValues.expanded)]), 0)
-    print(f'[main][{rank}] Expanded points: {to_expand}')
+    print(f'[main]{it_str}[R{rank}] Expanded points: {to_expand}')
 
 def print_feature_selection_points(porosity_data_h5):
     # Only uses real, previously propagated and expanded canal points
@@ -167,7 +167,9 @@ def expand_points(porosity_data_h5, wells_coords:list, it:int,
         hypercube_shape = porosity_data_h5.shape
         expand4_hdf5.gen_expanded_points(porosity_data_h5, hypercube_shape, wells_coords,
                                             it, it_str, my_process.print_progress_func)
-    print(f'{rank} waiting')
+    else:
+        print(f'[main]{it_str}[R{rank}] waiting points expansion')
+    
     comm.Barrier()
 
     print_expanded_points(porosity_data_h5)
@@ -206,20 +208,8 @@ def run_alg(config:config_parser.Config, porosity_data_h5, my_process:RunningPro
 
         print_empty_points(porosity_data_h5)
 
-        print(f"[main]{it_str} Expanding points")
-        if my_process.is_main_proc:
-            hypercube_shape = porosity_data_h5.shape
-            expand4_hdf5.gen_expanded_points(porosity_data_h5, hypercube_shape, config.wells_as_simple_list,
-                                             it, it_str, my_process.print_progress_func)
-        else:
-            print(f'[main]{it_str}[R{rank}] waiting points expansion')
-        comm.Barrier()
-
-        to_expand = hdf5_util.fold_h5_all_clusters(
-            porosity_data_h5,
-            lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
-                            (d['real'] == common.RealValues.expanded)]), 0)
-        print(f'[main]{it_str}[R{rank}] Expanded points: {to_expand}')
+        expand_points(porosity_data_h5, config.wells_as_simple_list, it,
+                      it_str, my_process)
 
         print(porosity_data_h5)
 
