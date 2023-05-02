@@ -189,9 +189,6 @@ def run_alg(config:config_parser.Config, porosity_data_h5, my_process:RunningPro
 
     for it in range(starting_it, max_iteration):
         it_str = f'[it{it}]'
-        it_str_manager = ""
-        if rank == manager_rank:
-            it_str_manager = it_str
 
         t1 = time.time()
 
