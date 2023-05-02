@@ -91,7 +91,7 @@ def load_features_data(config:config_parser.Config, num_features:int) -> dict:
     features_files_dict_h5 = {}
     features_dict_h5 = {}
     for file_path, feat_name in zip(seismic_features_file_paths, seismic_features_names):
-        print(f'[main] loading file {f}')
+        print(f'[main] loading file {file_path}')
         features_files_dict_h5[feat_name] = h5py.File(file_path,
                                               'r',
                                               driver='mpio',
