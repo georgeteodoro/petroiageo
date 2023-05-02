@@ -22,11 +22,6 @@ import config_parser
 
 RunningProcess = namedtuple('RunningProcess', 'is_main_proc print_progress_func')
 
-# Constants
-# hypercube_shape = (434, 646, 251)
-real_wells = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
-              (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
-
 # Initialization of mpi variables
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -209,8 +204,8 @@ def run_alg(config:config_parser.Config, porosity_data_h5, my_process:RunningPro
         print(f"[main]{it_str} Expanding points")
         if my_process.is_main_proc:
             hypercube_shape = porosity_data_h5.shape
-            expand4_hdf5.gen_expanded_points(porosity_data_h5, hypercube_shape, real_wells, it,
-                                             it_str, my_process.print_progress_func)
+            expand4_hdf5.gen_expanded_points(porosity_data_h5, hypercube_shape, config.wells_as_simple_list,
+                                             it, it_str, my_process.print_progress_func)
         else:
             print(f'[main]{it_str}[R{rank}] waiting points expansion')
         comm.Barrier()

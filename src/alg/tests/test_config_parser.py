@@ -156,6 +156,18 @@ class TestYAMLConfig(TestCase):
        with self.assertRaises(ValueError):
           my_config = config_parser.YAMLConfig(config_str=yaml_str)
     
+    def test_get_wells_as_simple_list(self):
+        yaml_str="""
+        wells:
+          coords:
+          - [1,1]
+          - [2,2]
+          - [3,3]
+        """
+        expected_list = [(1,1),(2,2),(3,3)]
+        my_config = config_parser.YAMLConfig(config_str=yaml_str)
+        self.assertListEqual(my_config.wells_as_simple_list, expected_list)
+    
     def test_raise_invalid_starting_it(self):
         yaml_str_1="""
         wells:

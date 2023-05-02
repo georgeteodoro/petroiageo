@@ -444,6 +444,14 @@ class Config():
     @wells.setter
     def wells(self, new_wells):
         raise AttributeError("wells config is read only!")
+    
+    @property
+    def wells_as_simple_list(self):
+        """
+        Returns a list of tuples with the wells coords:
+        [(1,2),(3,4),(5,6)...]
+        """
+        return [(well['x'], well['y']) for well in self.config['wells']['coords']]
 
     @property
     def alg(self):
