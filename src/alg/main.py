@@ -250,7 +250,7 @@ def get_running_process(with_progress:bool) -> RunningProcess:
 
     return RunningProcess(is_main_proc, pp)
 
-def main(config:config_parser.Config, num_features: int, with_progress: bool):
+def main(config:config_parser.Config):
     # Data structure is composed by:
     #   x,y,z(depth),
     #   well => Well ID (-1 if it's not an original real point.)
@@ -260,13 +260,13 @@ def main(config:config_parser.Config, num_features: int, with_progress: bool):
     #            1=propagated, 0=real well point]
     #   phi  => Porosity value
 
-    my_process = get_running_process(with_progress)
+    my_process = get_running_process(my_config.get_param('with_progress'))
 
     t1 = time.time()
     
     window = 3
     
-    features_dict_h5, features_files_dict_h5 = load_features_data(config, num_features)
+    features_dict_h5, features_files_dict_h5 = load_features_data(config, my_config.get_param('num_features'))
     porosity_data_h5, porosity_data_h5_f = load_starting_porosity_cube(config)
 
     # Features which do not need to be expanded on the window
@@ -283,7 +283,7 @@ def main(config:config_parser.Config, num_features: int, with_progress: bool):
             displacement_cube_shape)
 
     # Close all hdf5 files
-    seismic_features_names = config.features_files_names[:num_features]
+    seismic_features_names = config.features_files_names[:my_config.get_param('num_features')]
     porosity_data_h5_f.close()
     for f in seismic_features_names:
         features_files_dict_h5[f].close()
@@ -365,4 +365,7 @@ if __name__ == '__main__':
 
     my_config = update_config_file_params_with_args(my_config, args)
 
-    main(my_config, int(args.num_features), args.with_progress)
+    my_config.add_param('num_features', int(args.num_features))
+    my_config.add_param('with_progress', args.with_progress)
+
+    main(my_config)

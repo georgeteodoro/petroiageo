@@ -8,6 +8,9 @@ except ImportError:
 import pathlib
 import enum
 
+class InvalidNewParamError(Exception):
+    pass
+
 class FeatureSelection(enum.Enum):
     FORWARD = 0
     NONE = 1
@@ -318,7 +321,8 @@ class Config():
     If config_path and config_dict are both None, it will try to parse the config_str.
     If all parameters are None, then it will have the default configuration.
     """
-    
+    TOP_LEVEL_BASE_CONFIGS=['features_folder', 'porosity_cube_output_path', 'alg', 'wells']
+
     def __init__(self, config_path: str|pathlib.Path = None,
                  config_dict: dict = None, config_str: str = None):
 
@@ -437,6 +441,18 @@ class Config():
         base_config['coords'] = list()
         return base_config
 
+    def add_param(self, param_name:str, param_value):
+        """
+        This method's objective is to add params to the config object other than the base ones.
+        """
+        if param_name not in Config.TOP_LEVEL_BASE_CONFIGS:
+            self.config[param_name] = param_value
+        else:
+            raise InvalidNewParamError("This new param's name is equal to a base param!")
+    
+    def get_param(self,param_name:str):
+        return self.config[param_name]
+    
     @property
     def wells(self):
         return self.config['wells']

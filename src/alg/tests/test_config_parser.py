@@ -337,5 +337,28 @@ class TestYAMLConfig(TestCase):
       for alpha, beta in invalid_params:
          with self.assertRaises(ValueError):
             my_config = config_parser.YAMLConfig(config_str=yaml_str_fmt.format(alpha, beta))
+      
+    def test_can_add_new_attribute(self):
+       yaml_str="""
+       wells:
+         coords: [[1,1],[2,2]]
+       """
+       my_config = config_parser.YAMLConfig(config_str=yaml_str)
+       param_name = 'new_param'
+       param_value = 123
+       my_config.add_param(param_name, param_value)
+       self.assertEqual(my_config.get_param(param_name), param_value)
+    
+    def test_raises_if_add_new_param_with_name_equals_to_base_config(self):
+      yaml_str="""
+      wells:
+        coords: [[1,1],[2,2]]
+      """
+      my_config = config_parser.YAMLConfig(config_str=yaml_str)
+      for base_param in config_parser.Config.TOP_LEVEL_BASE_CONFIGS:
+        new_value = 'new_value'
+        with self.assertRaises(config_parser.InvalidNewParamError):
+          my_config.add_param(base_param, new_value)
+
 if __name__ == "__main__":
     main()
