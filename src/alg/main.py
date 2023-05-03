@@ -4,7 +4,7 @@ import h5py
 from mpi4py import MPI
 import os
 import time
-from typing import Callable
+from typing import Callable, Tuple
 from tqdm import tqdm
 
 import apply5_hdf5
@@ -75,7 +75,7 @@ def get_window_sizes(window:int) -> tuple:
 def get_displacement_cube_shape(window:int) -> tuple:
     return (window * 2 + 1, window * 2 + 1, window * 2 + 1)
 
-def load_features_data(config:config_parser.Config, num_features:int) -> (dict, dict):
+def load_features_data(config:config_parser.Config, num_features:int) -> Tuple[dict, dict]:
     print_manager("[main] Loading seismic data")
     seismic_features_names = config.features_files_names[:num_features]
     seismic_features_file_paths = config.features_files_paths[:num_features]
@@ -143,7 +143,7 @@ def print_empty_points(porosity_data_h5):
                                                   lambda d: len(d[d['real'] == common.RealValues.empty]), 0)
     print(f'[main] empty points: {empty_points}')
 
-def print_expanded_points(porosity_data_h5):
+def print_expanded_points(porosity_data_h5, it_str:str):
     to_expand = hdf5_util.fold_h5_all_clusters(
         porosity_data_h5,
         lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) | 
@@ -172,7 +172,7 @@ def expand_points(porosity_data_h5, wells_coords:list, it:int,
     
     comm.Barrier()
 
-    print_expanded_points(porosity_data_h5)
+    print_expanded_points(porosity_data_h5, it_str)
 
 def feature_selection(porosity_data_h5, features_dict_h5:dict, all_features:list,
                       window_sizes:tuple, displacement_cube_shape:tuple, it_str:str,
