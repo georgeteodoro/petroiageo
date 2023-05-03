@@ -75,10 +75,10 @@ def get_window_sizes(window:int) -> tuple:
 def get_displacement_cube_shape(window:int) -> tuple:
     return (window * 2 + 1, window * 2 + 1, window * 2 + 1)
 
-def load_features_data(config:config_parser.Config, num_features:int) -> Tuple[dict, dict]:
+def load_features_data(config:config_parser.Config) -> Tuple[dict, dict]:
     print_manager("[main] Loading seismic data")
-    seismic_features_names = config.features_files_names[:num_features]
-    seismic_features_file_paths = config.features_files_paths[:num_features]
+    seismic_features_names = config.features_files_names[:config.get_param('num_features')]
+    seismic_features_file_paths = config.features_files_paths[:config.get_param('num_features')]
     features_files_dict_h5 = {}
     features_dict_h5 = {}
     for file_path, feat_name in zip(seismic_features_file_paths, seismic_features_names):
@@ -266,7 +266,7 @@ def main(config:config_parser.Config):
     
     window = 3
     
-    features_dict_h5, features_files_dict_h5 = load_features_data(config, my_config.get_param('num_features'))
+    features_dict_h5, features_files_dict_h5 = load_features_data(config)
     porosity_data_h5, porosity_data_h5_f = load_starting_porosity_cube(config)
 
     # Features which do not need to be expanded on the window
