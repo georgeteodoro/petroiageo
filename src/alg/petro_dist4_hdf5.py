@@ -48,7 +48,7 @@ def get_features_sets(
     # f_width=0):
 
     if mpi_size < 2:
-        print("[petro5_hdf5] 2 minimum processes required")
+        print("[petro4_dist_hdf5] 2 minimum processes required")
         return None
 
     if rank == manager_rank:
@@ -61,7 +61,7 @@ def get_features_sets(
 
 
 def manager(all_features, exp_n_features, f_width, it_str):
-    # print("[petro5_hdf5][manager]")
+    # print("[petro4_dist_hdf5][manager]")
 
     # Current features set with the best error
     cur_f_set = ['x', 'y', 'z']
@@ -112,7 +112,7 @@ def manager(all_features, exp_n_features, f_width, it_str):
             # Read results from ran feature
             if status.Get_tag() != MPI_TAGS.WORKER_EMPTY_RESULT.value:
                 for (cur_feature, cur_error) in data:
-                    print(f'[petro5_hdf5][manager]{it_str} Tested feature '\
+                    print(f'[petro4_dist_hdf5][manager]{it_str} Tested feature '\
                           f'{cur_f_set + [cur_feature]} '\
                           f'with error {cur_error}')
 
@@ -143,7 +143,7 @@ def manager(all_features, exp_n_features, f_width, it_str):
         cur_f_set.append(new_best_feature)
 
         t1 = time.time()
-        print(f'[petro5_hdf5][manager]{it_str} fullIt time: {t1-t0}')
+        print(f'[petro4_dist_hdf5][manager]{it_str} fullIt time: {t1-t0}')
 
     # Broadcast a done message to all workers
     for worker_rank in range(mpi_size - 1):
@@ -166,7 +166,7 @@ def worker(porosity_data_h5,
            exp_n_features,
            it_str,
            parallel_settings=None):
-    # print(f"[petro5_hdf5][w{rank}]")
+    # print(f"[petro4_dist_hdf5][w{rank}]")
 
     # Points used for training: real, expanded and propagated
     is_training_point_f = lambda d: (
@@ -220,15 +220,15 @@ def worker(porosity_data_h5,
         cur_h5_train_list.add_new_col()
 
         # Run jobs until there are not any more features to test
-        print(f'[petro5_hdf5][w{rank}]{it_str} new iteration')
+        print(f'[petro4_dist_hdf5][w{rank}]{it_str} new iteration')
         while (manager_tag != MPI_TAGS.MANAGER_FEATURE_DONE.value):
-            print(f'[petro5_hdf5][w{rank}]{it_str} Received new_features: '\
+            print(f'[petro4_dist_hdf5][w{rank}]{it_str} Received new_features: '\
                   f'{new_features}')
 
             # Run all features received by the manager
             results = []
             for new_feature in new_features:
-                print(f'[petro5_hdf5][w{rank}]{it_str} Testing feature: '\
+                print(f'[petro4_dist_hdf5][w{rank}]{it_str} Testing feature: '\
                       f'{new_feature}')
                 t1 = time.time()
                 # Insert temporary feature
@@ -238,12 +238,17 @@ def worker(porosity_data_h5,
                                                     new_feature, window_sizes,
                                                     hypercube_shape,
                                                     displacement_cube_shape)
+                t12 = time.time()
 
                 rmse, mae = petro5_hdf5.eval_bootstrap(cur_h5_train_list,
                                                        list(range(10)))
 
                 results.append((new_feature, rmse))
                 t2 = time.time()
+                print(f'[petro4_dist_hdf5][w{rank}][profiling]{it_str} '\
+                      f'prep: {t12-t1}')
+                print(f'[petro4_dist_hdf5][w{rank}][profiling]{it_str} '\
+                      f'eval: {t2-t12}')
                 total_feature_exec_time = total_feature_exec_time + (t2 - t1)
 
             # Return results to manager
@@ -269,14 +274,14 @@ def worker(porosity_data_h5,
 
         t4 = time.time()
 
-        print(
-            f'[petro5_hdf5][w{rank}][profiling]{it_str} it_full_time: {t4-t0}')
-        print(f'[petro5_hdf5][w{rank}][profiling]{it_str} total_exec_time: '\
-              f'{total_feature_exec_time}')
-        print(f'[petro5_hdf5][w{rank}][profiling]{it_str} total_comm_time: '\
-              f'{total_feature_comm_time}')
-        print(f'[petro5_hdf5][w{rank}][profiling]{it_str} n_tasks: '\
-              f'{feature_exec_count}')
+        print(f'[petro4_dist_hdf5][w{rank}][profiling]{it_str} '\
+              f'it_full_time: {t4-t0}')
+        print(f'[petro4_dist_hdf5][w{rank}][profiling]{it_str} '\
+              f'total_exec_time: {total_feature_exec_time}')
+        print(f'[petro4_dist_hdf5][w{rank}][profiling]{it_str} '\
+              f'total_comm_time: {total_feature_comm_time}')
+        print(f'[petro4_dist_hdf5][w{rank}][profiling]{it_str} '\
+              f'n_tasks: {feature_exec_count}')
 
     # Get broadcasted resulting features and errors
     best_result = comm.bcast(None, root=manager_rank)

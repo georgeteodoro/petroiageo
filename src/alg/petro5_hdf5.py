@@ -52,15 +52,14 @@ def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
     # params['num_threads'] = num_threads
     params['num_threads'] = 1
 
-    profiling = False
+    profiling = True
 
     rmse_list = []
     mae_list = []
     well_id = 0
 
+    t0 = time()
     for w in wells_id:
-        t0 = time()
-
         # Extract the validation data
         # Since the same validation data is supposed to be used for
         # all incremental trainings and is small enough to fit in
@@ -72,7 +71,7 @@ def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
         setup_time = 0
         training_time = 0
         for c in range(cur_h5_train_list.n_chunks):
-            t0 = time()
+            t1 = time()
             # Generate a training dataset for all data on chunk c without
             # data from well w
             X_train_np, y_train_np = cur_h5_train_list.get_all_well_data(c, w)
@@ -83,7 +82,7 @@ def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
                                            y_val_np,
                                            reference=lgb_train_dataset)
 
-            t1 = time()
+            t2 = time()
 
             # Perform training
             regressor = lgb.train(params,
@@ -96,16 +95,16 @@ def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
                                       lgb.early_stopping(stopping_rounds=30,
                                                          verbose=False)
                                   ])
-            t2 = time()
+            t3 = time()
 
-            setup_time += t1 - t0
-            training_time += t2 - t1
+            setup_time += t2 - t1
+            training_time += t3 - t2
 
             if profiling:
                 print(f'[petro5_hdf5][eval_bootstrap][w{w}] Setup in '\
-                      f'{t1 - t0}')
-                print(f'[petro5_hdf5][eval_bootstrap][w{w}] Training in '\
                       f'{t2 - t1}')
+                print(f'[petro5_hdf5][eval_bootstrap][w{w}] Training in '\
+                      f'{t3 - t2}')
 
         if profiling:
             print(f'[petro5_hdf5][eval_bootstrap][w{w}] Final setup in '\
@@ -119,9 +118,10 @@ def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
         mae = mean_absolute_error(pred, y_val_np)
         rmse_list.append(rmse)
         mae_list.append(mae)
-        t3 = time()
+        t4 = time()
         if profiling:
-            print(f'[petro5_hdf5][eval_bootstrap][w{w}] Evaluating in {t3-t2}')
+            print(f'[petro5_hdf5][eval_bootstrap][w{w}] Evaluating in {t4-t3}')
+            print(f'[petro5_hdf5][eval_bootstrap][w{w}] Total time {t4-t0}')
 
     return np.mean(rmse_list), np.mean(mae_list)
 
@@ -236,7 +236,8 @@ def create_tmp_dset(porosity_data_h5,
     n_training_points = hdf5_util.fold_h5_all_clusters(
         porosity_data_h5, lambda d: len(d[is_training_point_f(d)]), 0)
     print('============== NEED TO AUTOMATE TMP_LIST CHUNK_SIZE')
-    cur_chunksize = (n_training_points / 10, )
+    # cur_chunksize = (n_training_points / 10, )
+    cur_chunksize = (n_training_points, )
     print(f'[get_features_sets] non-empty points: {n_training_points}')
     cur_h5_dset = cur_h5.create_dataset('c', (n_training_points, ),
                                         dtype=cur_data_type,

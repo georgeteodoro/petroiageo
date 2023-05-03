@@ -1,6 +1,7 @@
 """
-This script generates the main input seismic/porosity cube to be used by the algorithm.
-It requires the wells coordinates information along with the wells porosity file
+This script generates the main input seismic/porosity cube to be used by the 
+algorithm. It requires the wells coordinates information along with the 
+wells porosity file.
 """
 import argparse
 import h5py
@@ -10,13 +11,15 @@ import pathlib
 from tqdm import tqdm
 
 import sys
-sys.path.insert(0,'..')
+
+sys.path.insert(0, '..')
 
 from alg import common
 
-def porosity_points_py2hdf5(porosity_file, hdf5_file_path, hypercube_shape, chunk_shape,
-                            real_points):
-    
+
+def porosity_points_py2hdf5(porosity_file, hdf5_file_path, hypercube_shape,
+                            chunk_shape, real_points):
+
     print(f"Loading porosity file")
     porosity_file_path = pathlib.Path(porosity_file)
     # if porosity_file_path.suffix == ".txt":
@@ -65,20 +68,24 @@ def porosity_points_py2hdf5(porosity_file, hdf5_file_path, hypercube_shape, chun
 
     porosity_h5_f.close()
 
+
 def config_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description='POV')
 
-    parser.add_argument('--base-feat-file',
-                        dest='feat_file_path',
-                        action='store',
-                        required=True,
-                        help="The base npy feat file path to get the hypercube shape from")
-    parser.add_argument('--porosity-file-path',
-                        dest='porosity_file',
-                        action='store',
-                        required=True,
-                        help='The file path with the base porosity. As it may be a subset of the whole 3D cube,\
-                        it is not possible to get the cube shape from this.')
+    parser.add_argument(
+        '--base-feat-file',
+        dest='feat_file_path',
+        action='store',
+        required=True,
+        help="The base npy feat file path to get the hypercube shape from")
+    parser.add_argument(
+        '--porosity-file-path',
+        dest='porosity_file',
+        action='store',
+        required=True,
+        help='The file path with the base porosity. As it may be a subset '\
+             'of the whole 3D cube, it is not possible to get the cube shape '\
+             'from this.')
 
     parser.add_argument('--hdf5-file-path',
                         dest='hdf5_file',
@@ -87,10 +94,12 @@ def config_arg_parser() -> argparse.ArgumentParser:
                         help='The hdf5 file path to be generated.')
 
     return parser
+
+
 if __name__ == '__main__':
     wells_coords = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
-                  (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
-    
+                    (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
+
     parser = config_arg_parser()
     args = parser.parse_args()
     hypercube_shape = np.load(pathlib.Path(args.feat_file_path)).shape
@@ -98,5 +107,5 @@ if __name__ == '__main__':
     hdf5_file_path = args.hdf5_file
     chunk_shape = (100, 100, 251)
 
-    porosity_points_py2hdf5(porosity_file_path, hdf5_file_path, hypercube_shape,
-                            chunk_shape, wells_coords)
+    porosity_points_py2hdf5(porosity_file_path, hdf5_file_path,
+                            hypercube_shape, chunk_shape, wells_coords)
