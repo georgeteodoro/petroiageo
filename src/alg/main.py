@@ -260,7 +260,7 @@ def main(config:config_parser.Config):
     #            1=propagated, 0=real well point]
     #   phi  => Porosity value
 
-    my_process = get_running_process(my_config.get_param('with_progress'))
+    my_process = get_running_process(config.get_param('with_progress'))
 
     t1 = time.time()
     
@@ -283,7 +283,7 @@ def main(config:config_parser.Config):
             displacement_cube_shape)
 
     # Close all hdf5 files
-    seismic_features_names = config.features_files_names[:my_config.get_param('num_features')]
+    seismic_features_names = config.features_files_names[:config.get_param('num_features')]
     porosity_data_h5_f.close()
     for f in seismic_features_names:
         features_files_dict_h5[f].close()
