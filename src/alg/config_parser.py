@@ -450,6 +450,15 @@ class Config():
         else:
             raise InvalidNewParamError("This new param's name is equal to a base param!")
     
+    def remove_param(self, param_name:str):
+        """
+        This method's objective is to remove params from the config object other than the base ones.
+        """
+        if param_name not in Config.TOP_LEVEL_BASE_CONFIGS:
+            del self.config[param_name]
+        else:
+            raise InvalidNewParamError("This new param's name is equal to a base param!")
+    
     def get_param(self,param_name:str):
         return self.config[param_name]
     

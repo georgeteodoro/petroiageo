@@ -359,6 +359,29 @@ class TestYAMLConfig(TestCase):
         new_value = 'new_value'
         with self.assertRaises(config_parser.InvalidNewParamError):
           my_config.add_param(base_param, new_value)
+    
+    def test_can_remove_new_param(self):
+       yaml_str="""
+       wells:
+         coords: [[1,1],[2,2]]
+       """
+       my_config = config_parser.YAMLConfig(config_str=yaml_str)
+       param_name = 'new_param'
+       param_value = 123
+       my_config.add_param(param_name, param_value)
+       my_config.remove_param(param_name)
+       with self.assertRaises(KeyError):
+        self.assertEqual(my_config.get_param(param_name), param_value)
+    
+    def test_raises_if_trying_to_remove_base_param(self):
+      yaml_str="""
+      wells:
+        coords: [[1,1],[2,2]]
+      """
+      my_config = config_parser.YAMLConfig(config_str=yaml_str)
+      for base_param in config_parser.Config.TOP_LEVEL_BASE_CONFIGS:
+         with self.assertRaises(config_parser.InvalidNewParamError):
+            my_config.remove_param(base_param)
 
 if __name__ == "__main__":
     main()

@@ -91,10 +91,10 @@ def load_features_data(config:config_parser.Config) -> Tuple[dict, dict]:
     
     return features_dict_h5, features_files_dict_h5
 
-def generate_seismic_features_names(config:config_parser.Config, other_features_names:list,
-                                     window:int) -> list:
+def generate_seismic_features_names(config:config_parser.Config) -> list:
+    window = config.get_param('window')
     # Generate seismic features names
-    all_features = other_features_names
+    all_features = config.get_param('other_feat_names')
     for f in config.features_files_names:
         for i in range(-window, window + 1):
             for j in range(-window, window + 1):
@@ -264,22 +264,22 @@ def main(config:config_parser.Config):
 
     t1 = time.time()
     
-    window = 3
-    
     features_dict_h5, features_files_dict_h5 = load_features_data(config)
     porosity_data_h5, porosity_data_h5_f = load_starting_porosity_cube(config)
 
+    config.add_param('window', 3)
     # Features which do not need to be expanded on the window
-    other_features_names = []
-    all_features = generate_seismic_features_names(config, other_features_names, window)
+    config.add_param('other_feat_names', [])
+    all_features = generate_seismic_features_names(config)
+    config.remove_param('other_feat_names')
 
     t2 = time.time()
     print(f'[main] Initial data loading time: {t2-t1}')
 
-    displacement_cube_shape = get_displacement_cube_shape(window)
+    displacement_cube_shape = get_displacement_cube_shape(config.get_param('window'))
 
     run_alg(config, porosity_data_h5, my_process,
-            features_dict_h5, all_features, window,
+            features_dict_h5, all_features, config.get_param('window'),
             displacement_cube_shape)
 
     # Close all hdf5 files
