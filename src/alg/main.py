@@ -69,11 +69,209 @@ def should_update_local():
 
     return ret == None
 
-def get_window_sizes(window:int) -> tuple:
-    return (window, window, window)
+class Algorithm():
+    def __init__(self, config:config_parser.Config):
+        self.config = config
+    
+    def run(self):
+        t1 = time.time()
+        features_dict_h5, features_files_dict_h5 = self._load_features_data()
+        porosity_data_h5, porosity_data_h5_f = self._load_starting_porosity_cube()
 
-def get_displacement_cube_shape(window:int) -> tuple:
-    return (window * 2 + 1, window * 2 + 1, window * 2 + 1)
+        all_features = self._generate_seismic_features_names()
+
+        #Not used anymore
+        self.config.remove_param('other_feat_names')
+
+        t2 = time.time()
+        print(f'[main] Initial data loading time: {t2-t1}')
+
+        displacement_cube_shape = self._get_displacement_cube_shape()
+
+        self._run_alg(porosity_data_h5, features_dict_h5, all_features, displacement_cube_shape)
+
+        # Close all hdf5 files
+        seismic_features_names = self.config.features_files_names[:self.config.get_param('num_features')]
+        porosity_data_h5_f.close()
+        for f in seismic_features_names:
+            features_files_dict_h5[f].close()
+    
+    def _load_features_data(self) -> Tuple[dict, dict]:
+        print_manager("[main] Loading seismic data")
+        seismic_features_names = self.config.features_files_names[:self.config.get_param('num_features')]
+        seismic_features_file_paths = self.config.features_files_paths[:self.config.get_param('num_features')]
+        features_files_dict_h5 = {}
+        features_dict_h5 = {}
+        for file_path, feat_name in zip(seismic_features_file_paths, seismic_features_names):
+            print(f'[main] loading file {file_path}')
+            features_files_dict_h5[feat_name] = h5py.File(file_path,
+                                                'r',
+                                                driver='mpio',
+                                                comm=comm)
+            features_dict_h5[feat_name] = features_files_dict_h5[feat_name]['f']
+        
+        return features_dict_h5, features_files_dict_h5
+    
+    def _load_starting_porosity_cube(self) -> Tuple:
+
+        # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
+        # with the same access/mode: existing file with write permission
+        # However, only one process updates this porosity_data_h5 structure
+        write_str = 'r+'
+
+        # Real wells' data into a main dataframe
+        print_manager("[main] Loading wells values")
+        porosity_data_h5_f = h5py.File(self.config.alg['starting_porosity_cube_path'],
+                                    write_str,
+                                    driver='mpio',
+                                    comm=comm)
+        porosity_data_h5 = porosity_data_h5_f['p']
+        
+        all_points = porosity_data_h5.size
+        self._print_hypercube_stats(porosity_data_h5, all_points)
+        self._print_real_well_point_stats(porosity_data_h5, all_points)
+        self._print_canal_points_stats(porosity_data_h5, all_points)
+        
+        return porosity_data_h5, porosity_data_h5_f
+    
+    def _print_hypercube_stats(self, porosity_data_h5, all_points):
+        hypercube_shape = porosity_data_h5.shape
+        print_manager(f'[main] hypercube_shape: {hypercube_shape}')
+        print_manager(f'[main] hypercube size: {all_points}')
+    
+    def _print_real_well_point_stats(self, porosity_data_h5, all_points:int):
+        real_points = hdf5_util.fold_h5_all_clusters(
+            porosity_data_h5,
+            lambda d: len(d[d['real'] == common.RealValues.real]), 0)
+
+        print_manager(f'[main] real well points: {real_points}/{all_points} '\
+            f'({(real_points/all_points):%})')
+    
+    def _print_canal_points_stats(self, porosity_data_h5, all_points):
+        canal_points = hdf5_util.fold_h5_all_clusters(
+            porosity_data_h5,
+            lambda d: len(d[d['real'] == common.RealValues.canal]), 0)
+        
+        print_manager(f'[main] canal points: {canal_points}/{all_points} '\
+            f'({(canal_points/all_points):.2%})')
+
+    def _generate_seismic_features_names(self) -> list:
+        window = self.config.get_param('window')
+        # Generate seismic features names
+        all_features = list(self.config.get_param('other_feat_names'))
+        for f in self.config.features_files_names[:self.config.get_param("num_features")]:
+            for i in range(-window, window + 1):
+                for j in range(-window, window + 1):
+                    for k in range(-window, window + 1):
+                        all_features.append((f, i, j, k))
+
+        return all_features
+    
+    def _get_displacement_cube_shape(self) -> tuple:
+        window = self.config.get_param('window')
+        return (window * 2 + 1, window * 2 + 1, window * 2 + 1)
+    
+    def _run_alg(self, porosity_data_h5, features_dict_h5:dict,
+            all_features:list, displacement_cube_shape:tuple):
+        my_process = self.config.get_param('my_process')
+        max_iteration = self.config.alg['starting_it'] + self.config.alg['num_its'] + 1
+        starting_it = self.config.alg['starting_it'] + 1
+
+        window = self.config.get_param('window')
+        window_sizes = self._get_window_sizes(window)
+
+        for it in range(starting_it, max_iteration):
+            it_str = f'[it{it}]'
+
+            t1 = time.time()
+
+            self._print_empty_points(porosity_data_h5)
+
+            self._expand_points(porosity_data_h5, it, it_str)
+
+            print(porosity_data_h5)
+
+            t2 = time.time()
+
+            best_features_set = self._feature_selection(porosity_data_h5, features_dict_h5, all_features, 
+                                                            window_sizes, displacement_cube_shape, it_str)
+
+            t3 = time.time()
+
+            print(f"[main]{it_str} Performing predictions on new expanded points")
+            if my_process.is_main_proc:
+                apply5_hdf5.perf_predition(best_features_set, porosity_data_h5,
+                                        features_dict_h5, window_sizes,
+                                        displacement_cube_shape)
+
+            t4 = time.time()
+            print(f'[main][times]{it_str} total_it_time {t4-t1}')
+            print(f'[main][times]{it_str} expansion {t2-t1}')
+            print(f'[main][times]{it_str} feature_selection {t3-t2}')
+            print(f'[main][times]{it_str} propagation {t4-t3}')
+
+    def _get_window_sizes(self, window:int) -> tuple:
+        return (window, window, window)
+    
+    def _print_empty_points(self, porosity_data_h5):
+        empty_points = hdf5_util.fold_h5_all_clusters(porosity_data_h5, 
+                                                    lambda d: len(d[d['real'] == common.RealValues.empty]), 0)
+        print(f'[main] empty points: {empty_points}')
+    
+    def _expand_points(self, porosity_data_h5, it:int, it_str:int):
+        wells_coords = self.config.wells_as_simple_list()
+        my_process = self.config.get_param('my_process')
+        print(f"[main]{it_str} Expanding points")
+        if my_process.is_main_proc:
+            hypercube_shape = porosity_data_h5.shape
+            expand4_hdf5.gen_expanded_points(porosity_data_h5, hypercube_shape, wells_coords,
+                                                it, it_str, my_process.print_progress_func)
+        else:
+            print(f'[main]{it_str}[R{rank}] waiting points expansion')
+        
+        comm.Barrier()
+
+        self._print_expanded_points(porosity_data_h5, it_str)
+    
+    def _print_expanded_points(self, porosity_data_h5, it_str:str):
+        to_expand = hdf5_util.fold_h5_all_clusters(
+            porosity_data_h5,
+            lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) | 
+                            (d['real'] == common.RealValues.expanded)]), 0)
+        print(f'[main]{it_str}[R{rank}] Expanded points: {to_expand}')
+    
+    def _feature_selection(self, porosity_data_h5, features_dict_h5:dict, all_features:list,
+                      window_sizes:tuple, displacement_cube_shape:tuple, it_str:str):
+        
+        print(f"[main]{it_str} Performing feature selection")
+        max_num_features = self.config.alg['max_num_features']
+
+        self._print_feature_selection_points(porosity_data_h5)
+
+        if mpi_size == 1:
+            best_features_set, best_error = petro5_hdf5.get_features_sets(
+                porosity_data_h5, features_dict_h5, all_features, window_sizes,
+                displacement_cube_shape, it_str, max_num_features, 0)
+        else:
+            best_features_set, best_error = petro_dist4_hdf5.get_features_sets(
+                porosity_data_h5, features_dict_h5, all_features, window_sizes,
+                displacement_cube_shape, it_str, max_num_features, 5)
+
+        print_manager(f'[main]{it_str} Best features set:'\
+                f' {best_features_set} with {best_error} error')
+
+        return best_features_set
+    
+    def _print_feature_selection_points(self, porosity_data_h5):
+        # Only uses real, previously propagated and expanded canal points
+        # for feature selection
+        f_sel_points = hdf5_util.fold_h5_all_clusters(
+            porosity_data_h5,
+            lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
+                            (d['real'] == common.RealValues.propagated) |
+                            (d['real'] == common.RealValues.real)]), 0)
+        print(f'[main] Points for feature selection: {f_sel_points}')
+
 
 def load_features_data(config:config_parser.Config) -> Tuple[dict, dict]:
     print_manager("[main] Loading seismic data")
@@ -102,136 +300,6 @@ def generate_seismic_features_names(config:config_parser.Config) -> list:
                     all_features.append((f, i, j, k))
 
     return all_features
-
-def load_starting_porosity_cube(config:config_parser.Config):
-
-    # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
-    # with the same access/mode: existing file with write permission
-    # However, only one process updates this porosity_data_h5 structure
-    write_str = 'r+'
-
-    # Real wells' data into a main dataframe
-    print_manager("[main] Loading wells values")
-    porosity_data_h5_f = h5py.File(config.alg['starting_porosity_cube_path'],
-                                 write_str,
-                                 driver='mpio',
-                                 comm=comm)
-    porosity_data_h5 = porosity_data_h5_f['p']
-    all_points = porosity_data_h5.size
-
-    real_points = hdf5_util.fold_h5_all_clusters(
-        porosity_data_h5,
-        lambda d: len(d[d['real'] == common.RealValues.real]), 0)
-    canal_points = hdf5_util.fold_h5_all_clusters(
-        porosity_data_h5,
-        lambda d: len(d[d['real'] == common.RealValues.canal]), 0)
-
-    hypercube_shape = porosity_data_h5.shape
-    print_manager(f'[main] hypercube_shape: {hypercube_shape}')
-    print_manager(f'[main] hypercube size: {all_points}')
-
-    print_manager(f'[main] real well points: {real_points}/{all_points} '\
-          f'({(real_points/all_points):%})')
-
-    print_manager(f'[main] canal points: {canal_points}/{all_points} '\
-          f'({(canal_points/all_points):.2%})')
-    
-    return porosity_data_h5, porosity_data_h5_f
-
-def print_empty_points(porosity_data_h5):
-    empty_points = hdf5_util.fold_h5_all_clusters(porosity_data_h5, 
-                                                  lambda d: len(d[d['real'] == common.RealValues.empty]), 0)
-    print(f'[main] empty points: {empty_points}')
-
-def print_expanded_points(porosity_data_h5, it_str:str):
-    to_expand = hdf5_util.fold_h5_all_clusters(
-        porosity_data_h5,
-        lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) | 
-                        (d['real'] == common.RealValues.expanded)]), 0)
-    print(f'[main]{it_str}[R{rank}] Expanded points: {to_expand}')
-
-def print_feature_selection_points(porosity_data_h5):
-    # Only uses real, previously propagated and expanded canal points
-    # for feature selection
-    f_sel_points = hdf5_util.fold_h5_all_clusters(
-        porosity_data_h5,
-        lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
-                        (d['real'] == common.RealValues.propagated) |
-                        (d['real'] == common.RealValues.real)]), 0)
-    print(f'[main] Points for feature selection: {f_sel_points}')
-
-def expand_points(porosity_data_h5, wells_coords:list, it:int,
-                      it_str:int, my_process:RunningProcess):
-    print(f"[main]{it_str} Expanding points")
-    if my_process.is_main_proc:
-        hypercube_shape = porosity_data_h5.shape
-        expand4_hdf5.gen_expanded_points(porosity_data_h5, hypercube_shape, wells_coords,
-                                            it, it_str, my_process.print_progress_func)
-    else:
-        print(f'[main]{it_str}[R{rank}] waiting points expansion')
-    
-    comm.Barrier()
-
-    print_expanded_points(porosity_data_h5, it_str)
-
-def feature_selection(porosity_data_h5, features_dict_h5:dict, all_features:list,
-                      window_sizes:tuple, displacement_cube_shape:tuple, it_str:str,
-                      max_num_features:int):
-    print(f"[main]{it_str} Performing feature selection")
-
-    print_feature_selection_points(porosity_data_h5)
-
-    if mpi_size == 1:
-        best_features_set, best_error = petro5_hdf5.get_features_sets(
-            porosity_data_h5, features_dict_h5, all_features, window_sizes,
-            displacement_cube_shape, it_str, max_num_features, 0)
-    else:
-        best_features_set, best_error = petro_dist4_hdf5.get_features_sets(
-            porosity_data_h5, features_dict_h5, all_features, window_sizes,
-            displacement_cube_shape, it_str, max_num_features, 0)
-
-    print_manager(f'[main]{it_str} Best features set:'\
-            f' {best_features_set} with {best_error} error')
-
-    return best_features_set, best_error
-
-def run_alg(config:config_parser.Config, porosity_data_h5, my_process:RunningProcess, features_dict_h5:dict,
-            all_features:list, window:int, displacement_cube_shape:tuple):
-    max_iteration = config.alg['starting_it'] + config.alg['num_its'] + 1
-    starting_it = config.alg['starting_it'] + 1
-    window_sizes = get_window_sizes(window)
-
-    for it in range(starting_it, max_iteration):
-        it_str = f'[it{it}]'
-
-        t1 = time.time()
-
-        print_empty_points(porosity_data_h5)
-
-        expand_points(porosity_data_h5, config.wells_as_simple_list, it,
-                      it_str, my_process)
-
-        print(porosity_data_h5)
-
-        t2 = time.time()
-
-        best_features_set, best_error = feature_selection(porosity_data_h5, features_dict_h5, all_features, 
-                                                          window_sizes, displacement_cube_shape, it_str, 
-                                                          config.alg['max_num_features'])
-
-        t3 = time.time()
-
-        print(f"[main]{it_str} Performing predictions on new expanded points")
-        if my_process.is_main_proc:
-            apply5_hdf5.perf_predition(best_features_set, porosity_data_h5,
-                                       features_dict_h5, window_sizes,
-                                       displacement_cube_shape)
-
-        t4 = time.time()
-        print(f'[main][times]{it_str} total_it_time {t4-t1}')
-        print(f'[main][times]{it_str} expansion {t2-t1}')
-        print(f'[main][times]{it_str} feature_selection {t3-t2}')
-        print(f'[main][times]{it_str} propagation {t4-t3}')
     
 
 def get_print_progress_func(is_main_proc:bool, with_progress:bool) -> Callable:
@@ -261,32 +329,16 @@ def main(config:config_parser.Config):
     #   phi  => Porosity value
 
     my_process = get_running_process(config.get_param('with_progress'))
-
-    t1 = time.time()
-    
-    features_dict_h5, features_files_dict_h5 = load_features_data(config)
-    porosity_data_h5, porosity_data_h5_f = load_starting_porosity_cube(config)
+    config.add_param('my_process', my_process)
+    #Not used anymore
+    config.remove_param('with_progress')
 
     config.add_param('window', 3)
     # Features which do not need to be expanded on the window
     config.add_param('other_feat_names', [])
-    all_features = generate_seismic_features_names(config)
-    config.remove_param('other_feat_names')
 
-    t2 = time.time()
-    print(f'[main] Initial data loading time: {t2-t1}')
-
-    displacement_cube_shape = get_displacement_cube_shape(config.get_param('window'))
-
-    run_alg(config, porosity_data_h5, my_process,
-            features_dict_h5, all_features, config.get_param('window'),
-            displacement_cube_shape)
-
-    # Close all hdf5 files
-    seismic_features_names = config.features_files_names[:config.get_param('num_features')]
-    porosity_data_h5_f.close()
-    for f in seismic_features_names:
-        features_files_dict_h5[f].close()
+    my_alg = Algorithm(config)
+    my_alg.run()
 
 def config_arg_parser():
     parser = argparse.ArgumentParser(description='POV')
