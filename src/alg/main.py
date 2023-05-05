@@ -3,6 +3,7 @@ from collections import namedtuple
 import h5py
 from mpi4py import MPI
 import os
+import pathlib
 import time
 from typing import Callable, Tuple
 from tqdm import tqdm
@@ -91,6 +92,57 @@ class FeaturesDataLoaderH5():
         for file in self.features_files_dict_h5.keys():
             self.features_files_dict_h5[file].close()
 
+class PorosityCubeDataLoaderH5():
+    def __init__(self, cube_path:pathlib.Path):
+        self.cube_path = pathlib.Path(cube_path)
+        self.porosity_data = None
+        self.porosity_cube_file = None
+    
+    def __enter__(self):
+        # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
+        # with the same access/mode: existing file with write permission
+        # However, only one process updates this porosity_data_h5 structure
+        write_str = 'r+'
+
+        # Real wells' data into a main dataframe
+        print_manager("[main] Loading wells values")
+        self.porosity_cube_file = h5py.File(self.cube_path,
+                                    write_str,
+                                    driver='mpio',
+                                    comm=comm)
+        self.porosity_data = self.porosity_cube_file['p']
+        
+        all_points = self.porosity_data.size
+        self._print_hypercube_stats(all_points)
+        self._print_real_well_point_stats(all_points)
+        self._print_canal_points_stats(all_points)
+        
+        return self.porosity_data
+    
+    def _print_hypercube_stats(self, all_points):
+        hypercube_shape = self.porosity_data.shape
+        print_manager(f'[main] hypercube_shape: {hypercube_shape}')
+        print_manager(f'[main] hypercube size: {all_points}')
+    
+    def _print_real_well_point_stats(self, all_points:int):
+        real_points = hdf5_util.fold_h5_all_clusters(
+            self.porosity_data,
+            lambda d: len(d[d['real'] == common.RealValues.real]), 0)
+
+        print_manager(f'[main] real well points: {real_points}/{all_points} '\
+            f'({(real_points/all_points):%})')
+    
+    def _print_canal_points_stats(self, all_points):
+        canal_points = hdf5_util.fold_h5_all_clusters(
+            self.porosity_data,
+            lambda d: len(d[d['real'] == common.RealValues.canal]), 0)
+        
+        print_manager(f'[main] canal points: {canal_points}/{all_points} '\
+            f'({(canal_points/all_points):.2%})')
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.porosity_cube_file.close()
+
 class Algorithm():
     def __init__(self, config:config_parser.Config):
         self.config = config
@@ -99,65 +151,21 @@ class Algorithm():
         t1 = time.time()
         print_manager("[main] Loading seismic data")
         with FeaturesDataLoaderH5(self.config) as features_dict_h5:
-            porosity_data_h5, porosity_data_h5_f = self._load_starting_porosity_cube()
+            print_manager("[main] Loading wells values")
+            with PorosityCubeDataLoaderH5(self.config.alg['starting_porosity_cube_path']) as porosity_data_h5:
+                porosity_data_h5, porosity_data_h5_f = self._load_starting_porosity_cube()
 
-            all_features = self._generate_seismic_features_names()
+                all_features = self._generate_seismic_features_names()
 
-            #Not used anymore
-            self.config.remove_param('other_feat_names')
+                #Not used anymore
+                self.config.remove_param('other_feat_names')
 
-            t2 = time.time()
-            print(f'[main] Initial data loading time: {t2-t1}')
+                t2 = time.time()
+                print(f'[main] Initial data loading time: {t2-t1}')
 
-            displacement_cube_shape = self._get_displacement_cube_shape()
+                displacement_cube_shape = self._get_displacement_cube_shape()
 
-            self._run_alg(porosity_data_h5, features_dict_h5, all_features, displacement_cube_shape)
-
-            # Close all hdf5 files
-            porosity_data_h5_f.close()
-    
-    def _load_starting_porosity_cube(self) -> Tuple:
-
-        # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
-        # with the same access/mode: existing file with write permission
-        # However, only one process updates this porosity_data_h5 structure
-        write_str = 'r+'
-
-        # Real wells' data into a main dataframe
-        print_manager("[main] Loading wells values")
-        porosity_data_h5_f = h5py.File(self.config.alg['starting_porosity_cube_path'],
-                                    write_str,
-                                    driver='mpio',
-                                    comm=comm)
-        porosity_data_h5 = porosity_data_h5_f['p']
-        
-        all_points = porosity_data_h5.size
-        self._print_hypercube_stats(porosity_data_h5, all_points)
-        self._print_real_well_point_stats(porosity_data_h5, all_points)
-        self._print_canal_points_stats(porosity_data_h5, all_points)
-        
-        return porosity_data_h5, porosity_data_h5_f
-    
-    def _print_hypercube_stats(self, porosity_data_h5, all_points):
-        hypercube_shape = porosity_data_h5.shape
-        print_manager(f'[main] hypercube_shape: {hypercube_shape}')
-        print_manager(f'[main] hypercube size: {all_points}')
-    
-    def _print_real_well_point_stats(self, porosity_data_h5, all_points:int):
-        real_points = hdf5_util.fold_h5_all_clusters(
-            porosity_data_h5,
-            lambda d: len(d[d['real'] == common.RealValues.real]), 0)
-
-        print_manager(f'[main] real well points: {real_points}/{all_points} '\
-            f'({(real_points/all_points):%})')
-    
-    def _print_canal_points_stats(self, porosity_data_h5, all_points):
-        canal_points = hdf5_util.fold_h5_all_clusters(
-            porosity_data_h5,
-            lambda d: len(d[d['real'] == common.RealValues.canal]), 0)
-        
-        print_manager(f'[main] canal points: {canal_points}/{all_points} '\
-            f'({(canal_points/all_points):.2%})')
+                self._run_alg(porosity_data_h5, features_dict_h5, all_features, displacement_cube_shape)
 
     def _generate_seismic_features_names(self) -> list:
         window = self.config.get_param('window')
