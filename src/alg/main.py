@@ -5,7 +5,7 @@ from mpi4py import MPI
 import os
 import pathlib
 import time
-from typing import Callable, Tuple
+from typing import Callable
 from tqdm import tqdm
 
 import apply5_hdf5
@@ -31,13 +31,11 @@ def print_manager(string):
     if rank == manager_rank:
         print(string)
 
-
 def print_progress(with_progress, r):
     if with_progress:
         return tqdm(r)
     else:
         return r
-
 
 # Perform 'func' one rank at a time
 def mpi_perform_ordered(func):
@@ -69,6 +67,22 @@ def should_update_local():
                               if not os.path.exists(lock_file_str) else False)
 
     return ret == None
+
+def get_print_progress_func(is_main_proc:bool, with_progress:bool) -> Callable:
+    # Progress printing only enabled for updating process
+    # if rank == manager_rank:
+    if is_main_proc:
+        print(f'[main] Rank {rank} is updating h5 file')
+        return lambda r: print_progress(with_progress, r)
+    
+    return lambda r: r
+
+def get_running_process(with_progress:bool) -> RunningProcess:
+    # Assign a single process per node to update the local h5 file
+    is_main_proc = should_update_local()
+    pp = get_print_progress_func(is_main_proc, with_progress)
+
+    return RunningProcess(is_main_proc, pp)
 
 class FeaturesDataLoaderH5():
     def __init__(self, config:config_parser.Config):
@@ -283,22 +297,6 @@ class Algorithm():
                             (d['real'] == common.RealValues.propagated) |
                             (d['real'] == common.RealValues.real)]), 0)
         print(f'[main] Points for feature selection: {f_sel_points}')
-
-def get_print_progress_func(is_main_proc:bool, with_progress:bool) -> Callable:
-    # Progress printing only enabled for updating process
-    # if rank == manager_rank:
-    if is_main_proc:
-        print(f'[main] Rank {rank} is updating h5 file')
-        return lambda r: print_progress(with_progress, r)
-    
-    return lambda r: r
-
-def get_running_process(with_progress:bool) -> RunningProcess:
-    # Assign a single process per node to update the local h5 file
-    is_main_proc = should_update_local()
-    pp = get_print_progress_func(is_main_proc, with_progress)
-
-    return RunningProcess(is_main_proc, pp)
 
 def main(config:config_parser.Config):
     # Data structure is composed by:
