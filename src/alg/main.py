@@ -284,36 +284,6 @@ class Algorithm():
                             (d['real'] == common.RealValues.real)]), 0)
         print(f'[main] Points for feature selection: {f_sel_points}')
 
-
-def load_features_data(config:config_parser.Config) -> Tuple[dict, dict]:
-    print_manager("[main] Loading seismic data")
-    seismic_features_names = config.features_files_names[:config.get_param('num_features')]
-    seismic_features_file_paths = config.features_files_paths[:config.get_param('num_features')]
-    features_files_dict_h5 = {}
-    features_dict_h5 = {}
-    for file_path, feat_name in zip(seismic_features_file_paths, seismic_features_names):
-        print(f'[main] loading file {file_path}')
-        features_files_dict_h5[feat_name] = h5py.File(file_path,
-                                              'r',
-                                              driver='mpio',
-                                              comm=comm)
-        features_dict_h5[feat_name] = features_files_dict_h5[feat_name]['f']
-    
-    return features_dict_h5, features_files_dict_h5
-
-def generate_seismic_features_names(config:config_parser.Config) -> list:
-    window = config.get_param('window')
-    # Generate seismic features names
-    all_features = config.get_param('other_feat_names')
-    for f in config.features_files_names:
-        for i in range(-window, window + 1):
-            for j in range(-window, window + 1):
-                for k in range(-window, window + 1):
-                    all_features.append((f, i, j, k))
-
-    return all_features
-    
-
 def get_print_progress_func(is_main_proc:bool, with_progress:bool) -> Callable:
     # Progress printing only enabled for updating process
     # if rank == manager_rank:
