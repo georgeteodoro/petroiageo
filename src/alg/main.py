@@ -69,48 +69,52 @@ def should_update_local():
 
     return ret == None
 
+class FeaturesDataLoaderH5():
+    def __init__(self, config:config_parser.Config):
+        self.features_names = config.features_files_names[:config.get_param('num_features')]
+        self.features_file_paths = config.features_files_paths[:config.get_param('num_features')]
+        self.features_files_dict_h5 = {}
+        self.features_dict_h5 = {}
+    
+    def __enter__(self) -> dict:
+        for file_path, feat_name in zip(self.features_file_paths, self.features_names):
+            print(f'[main] loading file {file_path}')
+            self.features_files_dict_h5[feat_name] = h5py.File(file_path,
+                                                'r',
+                                                driver='mpio',
+                                                comm=comm)
+            self.features_dict_h5[feat_name] = self.features_files_dict_h5[feat_name]['f']
+        
+        return self.features_dict_h5
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for file in self.features_files_dict_h5.keys():
+            self.features_files_dict_h5[file].close()
+
 class Algorithm():
     def __init__(self, config:config_parser.Config):
         self.config = config
     
     def run(self):
         t1 = time.time()
-        features_dict_h5, features_files_dict_h5 = self._load_features_data()
-        porosity_data_h5, porosity_data_h5_f = self._load_starting_porosity_cube()
-
-        all_features = self._generate_seismic_features_names()
-
-        #Not used anymore
-        self.config.remove_param('other_feat_names')
-
-        t2 = time.time()
-        print(f'[main] Initial data loading time: {t2-t1}')
-
-        displacement_cube_shape = self._get_displacement_cube_shape()
-
-        self._run_alg(porosity_data_h5, features_dict_h5, all_features, displacement_cube_shape)
-
-        # Close all hdf5 files
-        seismic_features_names = self.config.features_files_names[:self.config.get_param('num_features')]
-        porosity_data_h5_f.close()
-        for f in seismic_features_names:
-            features_files_dict_h5[f].close()
-    
-    def _load_features_data(self) -> Tuple[dict, dict]:
         print_manager("[main] Loading seismic data")
-        seismic_features_names = self.config.features_files_names[:self.config.get_param('num_features')]
-        seismic_features_file_paths = self.config.features_files_paths[:self.config.get_param('num_features')]
-        features_files_dict_h5 = {}
-        features_dict_h5 = {}
-        for file_path, feat_name in zip(seismic_features_file_paths, seismic_features_names):
-            print(f'[main] loading file {file_path}')
-            features_files_dict_h5[feat_name] = h5py.File(file_path,
-                                                'r',
-                                                driver='mpio',
-                                                comm=comm)
-            features_dict_h5[feat_name] = features_files_dict_h5[feat_name]['f']
-        
-        return features_dict_h5, features_files_dict_h5
+        with FeaturesDataLoaderH5(self.config) as features_dict_h5:
+            porosity_data_h5, porosity_data_h5_f = self._load_starting_porosity_cube()
+
+            all_features = self._generate_seismic_features_names()
+
+            #Not used anymore
+            self.config.remove_param('other_feat_names')
+
+            t2 = time.time()
+            print(f'[main] Initial data loading time: {t2-t1}')
+
+            displacement_cube_shape = self._get_displacement_cube_shape()
+
+            self._run_alg(porosity_data_h5, features_dict_h5, all_features, displacement_cube_shape)
+
+            # Close all hdf5 files
+            porosity_data_h5_f.close()
     
     def _load_starting_porosity_cube(self) -> Tuple:
 
