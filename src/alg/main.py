@@ -178,9 +178,7 @@ class Algorithm():
                 t2 = time.time()
                 print(f'[main] Initial data loading time: {t2-t1}')
 
-                displacement_cube_shape = self._get_displacement_cube_shape()
-
-                self._run_alg(porosity_data_h5, features_dict_h5, all_features, displacement_cube_shape)
+                self._run_alg(porosity_data_h5, features_dict_h5, all_features)
 
     def _generate_seismic_features_names(self) -> list:
         window = self.config.get_param('window')
@@ -194,18 +192,14 @@ class Algorithm():
 
         return all_features
     
-    def _get_displacement_cube_shape(self) -> tuple:
-        window = self.config.get_param('window')
-        return (window * 2 + 1, window * 2 + 1, window * 2 + 1)
-    
-    def _run_alg(self, porosity_data_h5, features_dict_h5:dict,
-            all_features:list, displacement_cube_shape:tuple):
+    def _run_alg(self, porosity_data_h5, features_dict_h5:dict, all_features:list):
         my_process = self.config.get_param('my_process')
         max_iteration = self.config.alg['starting_it'] + self.config.alg['num_its'] + 1
         starting_it = self.config.alg['starting_it'] + 1
 
         window = self.config.get_param('window')
         window_sizes = self._get_window_sizes(window)
+        displacement_cube_shape = self._get_displacement_cube_shape()
 
         for it in range(starting_it, max_iteration):
             it_str = f'[it{it}]'
@@ -239,6 +233,10 @@ class Algorithm():
 
     def _get_window_sizes(self, window:int) -> tuple:
         return (window, window, window)
+    
+    def _get_displacement_cube_shape(self) -> tuple:
+        window = self.config.get_param('window')
+        return (window * 2 + 1, window * 2 + 1, window * 2 + 1)
     
     def _print_empty_points(self, porosity_data_h5):
         empty_points = hdf5_util.fold_h5_all_clusters(porosity_data_h5, 
