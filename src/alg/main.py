@@ -1,3 +1,4 @@
+from __future__ import annotations
 import argparse
 from collections import namedtuple
 import h5py
@@ -91,7 +92,7 @@ class FeaturesDataLoaderH5():
         self.features_files_dict_h5 = {}
         self.features_dict_h5 = {}
     
-    def __enter__(self) -> dict:
+    def __enter__(self) -> FeaturesDataLoaderH5:
         for file_path, feat_name in zip(self.features_file_paths, self.features_names):
             print(f'[main] loading file {file_path}')
             self.features_files_dict_h5[feat_name] = h5py.File(file_path,
@@ -100,7 +101,7 @@ class FeaturesDataLoaderH5():
                                                 comm=comm)
             self.features_dict_h5[feat_name] = self.features_files_dict_h5[feat_name]['f']
         
-        return self.features_dict_h5
+        return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
         for file in self.features_files_dict_h5.keys():
@@ -112,7 +113,7 @@ class PorosityCubeDataLoaderH5():
         self.porosity_data = None
         self.porosity_cube_file = None
     
-    def __enter__(self):
+    def __enter__(self) -> PorosityCubeDataLoaderH5:
         # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
         # with the same access/mode: existing file with write permission
         # However, only one process updates this porosity_data_h5 structure
@@ -131,7 +132,7 @@ class PorosityCubeDataLoaderH5():
         self._print_real_well_point_stats(all_points)
         self._print_canal_points_stats(all_points)
         
-        return self.porosity_data
+        return self
     
     def _print_hypercube_stats(self, all_points):
         hypercube_shape = self.porosity_data.shape
@@ -164,12 +165,12 @@ class Algorithm():
     def run(self):
         t1 = time.time()
         print_manager("[main] Loading seismic data")
-        with FeaturesDataLoaderH5(self.config) as features_dict_h5:
+        with FeaturesDataLoaderH5(self.config) as feat_dl:
             print_manager("[main] Loading wells values")
-            with PorosityCubeDataLoaderH5(self.config.alg['starting_porosity_cube_path']) as porosity_data_h5:
-                porosity_data_h5, porosity_data_h5_f = self._load_starting_porosity_cube()
-
+            with PorosityCubeDataLoaderH5(self.config.alg['starting_porosity_cube_path']) as porosity_dl:
                 all_features = self._generate_seismic_features_names()
+                features_dict_h5 = feat_dl.features_dict_h5
+                porosity_data_h5 = porosity_dl.porosity_data
 
                 #Not used anymore
                 self.config.remove_param('other_feat_names')
