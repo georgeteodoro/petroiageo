@@ -168,31 +168,15 @@ class Algorithm():
         with FeaturesDataLoaderH5(self.config) as feat_dl:
             print_manager("[main] Loading wells values")
             with PorosityCubeDataLoaderH5(self.config.alg['starting_porosity_cube_path']) as porosity_dl:
-                all_features = self._generate_seismic_features_names()
                 features_dict_h5 = feat_dl.features_dict_h5
                 porosity_data_h5 = porosity_dl.porosity_data
-
-                #Not used anymore
-                self.config.remove_param('other_feat_names')
 
                 t2 = time.time()
                 print(f'[main] Initial data loading time: {t2-t1}')
 
-                self._run_alg(porosity_data_h5, features_dict_h5, all_features)
-
-    def _generate_seismic_features_names(self) -> list:
-        window = self.config.get_param('window')
-        # Generate seismic features names
-        all_features = list(self.config.get_param('other_feat_names'))
-        for f in self.config.features_files_names[:self.config.get_param("num_features")]:
-            for i in range(-window, window + 1):
-                for j in range(-window, window + 1):
-                    for k in range(-window, window + 1):
-                        all_features.append((f, i, j, k))
-
-        return all_features
+                self._run_alg(porosity_data_h5, features_dict_h5)
     
-    def _run_alg(self, porosity_data_h5, features_dict_h5:dict, all_features:list):
+    def _run_alg(self, porosity_data_h5, features_dict_h5:dict):
         my_process = self.config.get_param('my_process')
         max_iteration = self.config.alg['starting_it'] + self.config.alg['num_its'] + 1
         starting_it = self.config.alg['starting_it'] + 1
@@ -200,6 +184,8 @@ class Algorithm():
         window = self.config.get_param('window')
         window_sizes = self._get_window_sizes(window)
         displacement_cube_shape = self._get_displacement_cube_shape()
+
+        all_features = self._generate_seismic_features_names()
 
         for it in range(starting_it, max_iteration):
             it_str = f'[it{it}]'
@@ -237,6 +223,18 @@ class Algorithm():
     def _get_displacement_cube_shape(self) -> tuple:
         window = self.config.get_param('window')
         return (window * 2 + 1, window * 2 + 1, window * 2 + 1)
+    
+    def _generate_seismic_features_names(self) -> list:
+        window = self.config.get_param('window')
+        # Generate seismic features names
+        all_features = list(self.config.get_param('other_feat_names'))
+        for f in self.config.features_files_names[:self.config.get_param("num_features")]:
+            for i in range(-window, window + 1):
+                for j in range(-window, window + 1):
+                    for k in range(-window, window + 1):
+                        all_features.append((f, i, j, k))
+
+        return all_features
     
     def _print_empty_points(self, porosity_data_h5):
         empty_points = hdf5_util.fold_h5_all_clusters(porosity_data_h5, 
