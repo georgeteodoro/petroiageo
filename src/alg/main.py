@@ -18,7 +18,7 @@ import petro_dist4_hdf5
 
 import config_parser
 
-RunningProcess = namedtuple('RunningProcess', 'is_main_proc print_progress_func')
+RunningProcess = namedtuple('RunningProcess', 'should_update print_progress_func')
 
 # Initialization of mpi variables
 comm = MPI.COMM_WORLD
@@ -69,10 +69,9 @@ def should_update_local():
 
     return ret == None
 
-def get_print_progress_func(is_main_proc:bool, with_progress:bool) -> Callable:
+def get_print_progress_func(should_update:bool, with_progress:bool) -> Callable:
     # Progress printing only enabled for updating process
-    # if rank == manager_rank:
-    if is_main_proc:
+    if should_update:
         print(f'[main] Rank {rank} is updating h5 file')
         return lambda r: print_progress(with_progress, r)
     
@@ -80,10 +79,10 @@ def get_print_progress_func(is_main_proc:bool, with_progress:bool) -> Callable:
 
 def get_running_process(with_progress:bool) -> RunningProcess:
     # Assign a single process per node to update the local h5 file
-    is_main_proc = should_update_local()
-    pp = get_print_progress_func(is_main_proc, with_progress)
+    should_update = should_update_local()
+    pp = get_print_progress_func(should_update, with_progress)
 
-    return RunningProcess(is_main_proc, pp)
+    return RunningProcess(should_update, pp)
 
 class FeaturesDataLoaderH5():
     def __init__(self, config:config_parser.Config):
@@ -206,7 +205,7 @@ class Algorithm():
             t3 = time.time()
 
             print(f"[main]{it_str} Performing predictions on new expanded points")
-            if my_process.is_main_proc:
+            if my_process.should_update:
                 apply5_hdf5.perf_predition(best_features_set, porosity_data_h5,
                                         features_dict_h5, window_sizes,
                                         displacement_cube_shape)
@@ -245,7 +244,7 @@ class Algorithm():
         wells_coords = self.config.wells_as_simple_list()
         my_process = self.config.get_param('my_process')
         print(f"[main]{it_str} Expanding points")
-        if my_process.is_main_proc:
+        if my_process.should_update:
             hypercube_shape = porosity_data_h5.shape
             expand4_hdf5.gen_expanded_points(porosity_data_h5, hypercube_shape, wells_coords,
                                                 it, it_str, my_process.print_progress_func)
