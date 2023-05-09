@@ -460,7 +460,7 @@ class Config():
             raise InvalidNewParamError("This new param's name is equal to a base param!")
     
     def get_param(self,param_name:str):
-        return self.config[param_name]
+        return self.config.get(param_name, None)
     
     @property
     def wells(self):
