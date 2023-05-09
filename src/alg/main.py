@@ -27,8 +27,10 @@ mpi_size = comm.Get_size()
 manager_rank = mpi_size - 1
 
 
-# Print function for only the manager process
 def print_manager(string):
+    """
+    Print function for only the manager process
+    """
     if rank == manager_rank:
         print(string)
 
@@ -38,8 +40,10 @@ def print_progress(with_progress, r):
     else:
         return r
 
-# Perform 'func' one rank at a time
 def mpi_perform_ordered(func):
+    """
+    Perform 'func' one rank at a time
+    """
     to_update_rank = 0
     while True:
         if rank == to_update_rank:
@@ -52,25 +56,35 @@ def mpi_perform_ordered(func):
             to_update_rank = comm.recv(source=to_update_rank)
 
 
-# Check whether the current process should update the local h5 files
-# Only one process per node should do this
-# Although multiple updates works on h5, it is inefficient
 def should_update_local():
+    """
+    Check whether the current process should update the local h5 files
+    Only one process per node should do this
+    Although multiple updates works on h5, it is inefficient
+    """
     lock_file_str = '.h5rank.loc'
-    # Remove old files
-    mpi_perform_ordered(lambda: os.remove(lock_file_str)
-                        if os.path.exists(lock_file_str) else None)
+
+    remove_old_lock_files(lock_file_str)
     comm.Barrier()
 
-    # Create lock file locally, if there aren't any
-    # mpi_perform_ordered(lambda: open(lock_file_str, 'w').close()
-    ret = mpi_perform_ordered(lambda: open(lock_file_str, 'w').close()
-                              if not os.path.exists(lock_file_str) else False)
+    ret = create_lock_file_locally_if_there_isnt_one(lock_file_str)
 
     return ret == None
 
+def remove_old_lock_files(lock_file_str:str):
+    mpi_perform_ordered(lambda: os.remove(lock_file_str)
+                        if os.path.exists(lock_file_str) else None)
+
+def create_lock_file_locally_if_there_isnt_one(lock_file_str:str):
+    ret = mpi_perform_ordered(lambda: open(lock_file_str, 'w').close()
+                              if not os.path.exists(lock_file_str) else False)
+                              
+    return ret
+
 def get_print_progress_func(should_update:bool, with_progress:bool) -> Callable:
-    # Progress printing only enabled for updating process
+    """
+    Progress printing only enabled for updating process
+    """
     if should_update:
         print(f'[main] Rank {rank} is updating h5 file')
         return lambda r: print_progress(with_progress, r)
@@ -78,7 +92,9 @@ def get_print_progress_func(should_update:bool, with_progress:bool) -> Callable:
     return lambda r: r
 
 def get_running_process(with_progress:bool) -> RunningProcess:
-    # Assign a single process per node to update the local h5 file
+    """
+    Assign a single process per node to update the local h5 file
+    """
     should_update = should_update_local()
     pp = get_print_progress_func(should_update, with_progress)
 
