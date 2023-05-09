@@ -1,3 +1,7 @@
+"""
+This script generates the main input seismic/porosity cube to be used by the algorithm.
+It requires the wells coordinates information
+"""
 import numpy as np
 from math import prod
 import h5py

@@ -1,3 +1,7 @@
+"""
+This script transforms .npy features data to hdf5 format so it can be used by the algorithm.
+"""
+
 import numpy as np
 import h5py
 from math import prod
