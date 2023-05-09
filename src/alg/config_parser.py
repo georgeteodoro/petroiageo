@@ -460,6 +460,9 @@ class Config():
             raise InvalidNewParamError("This new param's name is equal to a base param!")
     
     def get_param(self,param_name:str):
+        """
+        Returns None if the param is not found
+        """
         return self.config.get(param_name, None)
     
     @property
