@@ -1,22 +1,23 @@
 """
 This script generates the main input seismic/porosity cube to be used by the algorithm.
-It requires the wells coordinates information
+It requires the wells coordinates information along with the wells porosity file
 """
 import numpy as np
 from math import prod
 import h5py
 from tqdm import tqdm
 
-import common
+from ..alg import common
 
 
-def porosity_points_py2hdf5(filename, hypercube_shape, chunk_shape,
+def porosity_points_py2hdf5(porosity_file_path, hypercube_shape, chunk_shape,
                             real_points):
-    porosity_np = np.load(filename)
+    porosity_np = np.load(porosity_file_path)
     (x, y, z) = hypercube_shape
 
     print('[porosity_points_py2hdf5] Creating hdf5 file')
-    porosity_h5_f = h5py.File(f'./dados/porosity_data.h5', 'w')
+    new_h5_porosity_path = './dados/porosity_data.h5'
+    porosity_h5_f = h5py.File(new_h5_porosity_path, 'w')
     porosity_h5_dset = porosity_h5_f.create_dataset(
         'p',
         hypercube_shape,
@@ -55,9 +56,11 @@ def porosity_points_py2hdf5(filename, hypercube_shape, chunk_shape,
 
 
 if __name__ == '__main__':
-    real_wells = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
+    wells_coords = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
                   (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
     hypercube_shape = np.load(f'./dados/NEAR.npy').shape
+    porosity_file_path = './dados/porosity-canal.npy'
+    chunk_shape = (100, 100, 251)
 
-    porosity_points_py2hdf5('./dados/porosity-canal.npy', hypercube_shape,
-                            (100, 100, 251), real_wells)
+    porosity_points_py2hdf5(porosity_file_path, hypercube_shape,
+                            chunk_shape, wells_coords)
