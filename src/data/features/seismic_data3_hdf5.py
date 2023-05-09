@@ -11,11 +11,11 @@ def coord_3d_to_planar(x, y, z, shape):
     return x * shape[2] * shape[1] + y * shape[2] + z
 
 
-def seismic_feature_np2hdf5_planar(feature, chunk_shape, displacement_window):
+def seismic_feature_np2hdf5_planar(feature_name, chunk_shape, displacement_window):
 
     # Open feature
-    print(f'[seismic_feature_np2hdf5_planar] reading {feature}')
-    feature_np = np.load(f'./dados/{feature}.npy')
+    print(f'[seismic_feature_np2hdf5_planar] reading {feature_name}')
+    feature_np = np.load(f'./dados/{feature_name}.npy')
 
     # displacement_window = 2
     # feature_np = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
@@ -32,29 +32,21 @@ def seismic_feature_np2hdf5_planar(feature, chunk_shape, displacement_window):
     print(f'[seismic_feature_np2hdf5_planar] original shape: {data_shape} '\
           f'with length {prod(data_shape)}')
 
-    # Create new 3d np array with borders
-    large_data_shape = (np.array(data_shape) +
-                        (2 * displacement_window)).tolist()
+    large_data_shape = create_new_3d_np_array_with_borders(displacement_window, data_shape)
 
     print(f'[seismic_feature_np2hdf5_planar] new shape: {large_data_shape} '\
           f'with length {prod(large_data_shape)}')
 
     feature_full_np = np.empty(shape=large_data_shape, dtype=np.float64)
-    # feature_full_np = np.empty(shape=large_data_shape, dtype=int)
 
-    # Create slices for the internal region of feature_full_np
-    x_slice = slice(displacement_window,
-                    large_data_shape[0] - displacement_window)
-    y_slice = slice(displacement_window,
-                    large_data_shape[1] - displacement_window)
-    z_slice = slice(displacement_window,
-                    large_data_shape[2] - displacement_window)
+    x_slice, y_slice, z_slice = create_slices_for_internal_region_of_feature_full_np(displacement_window, 
+                                                                                     large_data_shape)
 
-    # Assign regular inside points
-    print(f'[seismic_feature_np2hdf5_planar] assigning center of {feature}')
-    feature_full_np[x_slice, y_slice, z_slice] = feature_np[:, :, :]
+    feature_full_np = assign_regular_inside_points(feature_name, feature_np, 
+                                                   feature_full_np, x_slice, 
+                                                   y_slice, z_slice)
 
-    print(f'[seismic_feature_np2hdf5_planar] assigning borders of {feature}')
+    print(f'[seismic_feature_np2hdf5_planar] assigning borders of {feature_name}')
     # Top/bottom regions
     for z in range(displacement_window):
         feature_full_np[x_slice, y_slice, z] = feature_np[:, :, 0]
@@ -205,18 +197,34 @@ def seismic_feature_np2hdf5_planar(feature, chunk_shape, displacement_window):
                             z] = feature_np[data_shape[0] - 1, :,
                                             data_shape[2] - 1]
 
-    # Create hdf5 file
-    print(
-        f'[seismic_feature_np2hdf5_planar] creating hdf5 of feature {feature}')
-    with h5py.File(f'./dados/{feature}.h5', 'w') as h5_f:
-        # h5_dset = h5_f.create_dataset('f', (prod(large_data_shape), ),
-        #                               dtype=np.float64,
-        #                               chunks=(prod(chunk_shape), ),
-        #                               data=feature_full_np.flat)
-        h5_dset = h5_f.create_dataset('f', large_data_shape,
+    create_feature_hdf5_file(feature_name, chunk_shape, large_data_shape, feature_full_np)
+
+def assign_regular_inside_points(feature_name, feature_np, feature_full_np, x_slice, y_slice, z_slice):
+    print(f'[seismic_feature_np2hdf5_planar] assigning center of {feature_name}')
+    feature_full_np[x_slice, y_slice, z_slice] = feature_np[:, :, :]
+    return feature_full_np
+
+def create_slices_for_internal_region_of_feature_full_np(displacement_window, large_data_shape):
+    x_slice = slice(displacement_window,
+                    large_data_shape[0] - displacement_window)
+    y_slice = slice(displacement_window,
+                    large_data_shape[1] - displacement_window)
+    z_slice = slice(displacement_window,
+                    large_data_shape[2] - displacement_window)
+                    
+    return x_slice,y_slice,z_slice
+
+def create_feature_hdf5_file(feature_name, chunk_shape, large_data_shape, feature_full_np):
+    print(f'[seismic_feature_np2hdf5_planar] creating hdf5 of feature {feature_name}')
+    with h5py.File(f'./dados/{feature_name}.h5', 'w') as h5_f:
+        _ = h5_f.create_dataset('f', large_data_shape,
                                       dtype=np.float64,
                                       chunks=chunk_shape,
                                       data=feature_full_np.flat)
+
+def create_new_3d_np_array_with_borders(displacement_window, data_shape):
+    return (np.array(data_shape) +
+                        (2 * displacement_window)).tolist()
 
 
 # NOD DONE YET (may be unused)
@@ -249,7 +257,7 @@ def seismic_feature_np2hdf5_3d(feature, chunk_shape, max_displacement):
 if __name__ == '__main__':
 
     # features = ['NEAR', 'MID', 'FAR', 'UFAR', 'GERSZ', 'GST']
-    features = ['FAR']
+    target_features_files_names_without_extension = ['FAR']
     # features = [
     #     "FAR", "MID", "NEAR_azimuth_", "NEAR_contour-curvature_",
     #     "NEAR_curvedness_", "NEAR_dip-angle_", "NEAR_dip-curvature_",
@@ -266,8 +274,9 @@ if __name__ == '__main__':
     # ]
 
     disp_window = 3
+    chunk_shape = (100, 100, 251 + disp_window + disp_window)
     [
         seismic_feature_np2hdf5_planar(
-            f, (100, 100, 251 + disp_window + disp_window), disp_window)
-        for f in features
+            f, chunk_shape, disp_window)
+        for f in target_features_files_names_without_extension
     ]
