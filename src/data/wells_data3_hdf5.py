@@ -9,7 +9,10 @@ import numpy as np
 import pathlib
 from tqdm import tqdm
 
-import alg.common
+import sys
+sys.path.insert(0,'../alg/')
+
+from alg import common
 
 def porosity_points_py2hdf5(porosity_file_path, hdf5_file_path, hypercube_shape, chunk_shape,
                             real_points):
