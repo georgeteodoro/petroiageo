@@ -78,6 +78,8 @@ def config_arg_parser() -> argparse.ArgumentParser:
                         action='store',
                         required=True,
                         help='The hdf5 file path to be generated.')
+
+    return parser
 if __name__ == '__main__':
     wells_coords = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
                   (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
@@ -89,5 +91,5 @@ if __name__ == '__main__':
     hdf5_file_path = args.hdf5_file
     chunk_shape = (100, 100, 251)
 
-    # porosity_points_py2hdf5(porosity_file_path, hdf5_file_path, hypercube_shape,
-    #                         chunk_shape, wells_coords)
+    porosity_points_py2hdf5(porosity_file_path, hdf5_file_path, hypercube_shape,
+                            chunk_shape, wells_coords)
