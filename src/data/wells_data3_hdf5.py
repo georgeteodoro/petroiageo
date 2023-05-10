@@ -2,9 +2,10 @@
 This script generates the main input seismic/porosity cube to be used by the algorithm.
 It requires the wells coordinates information along with the wells porosity file
 """
-import numpy as np
-from math import prod
+import argparse
 import h5py
+from math import prod
+import numpy as np
 from tqdm import tqdm
 
 from ..alg import common
@@ -54,12 +55,29 @@ def porosity_points_py2hdf5(porosity_file_path, hypercube_shape, chunk_shape,
 
     porosity_h5_f.close()
 
+def config_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description='POV')
+
+    parser.add_argument('--base-feat-file',
+                        dest='feat_file_path',
+                        action='store',
+                        required=True,
+                        help="The base npy feat file path to get the hypercube shape from")
+    parser.add_argument('--porosity-file-path',
+                        dest='porosity_file',
+                        action='store',
+                        required=True,
+                        help='The file path with the base porosity. As it may be a subset of the whole 3D cube,\
+                        it is not possible to get the cube shape from this.')
 
 if __name__ == '__main__':
     wells_coords = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
                   (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
-    hypercube_shape = np.load(f'./dados/NEAR.npy').shape
-    porosity_file_path = './dados/porosity-canal.npy'
+    
+    parser = config_arg_parser()
+    args = parser.parse_args()
+    hypercube_shape = np.load(args.base_feat_file).shape
+    porosity_file_path = args.porosity_file
     chunk_shape = (100, 100, 251)
 
     porosity_points_py2hdf5(porosity_file_path, hypercube_shape,
