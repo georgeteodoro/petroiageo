@@ -19,10 +19,10 @@ def porosity_points_py2hdf5(porosity_file, hdf5_file_path, hypercube_shape, chun
     
     print(f"Loading porosity file")
     porosity_file_path = pathlib.Path(porosity_file)
-    if porosity_file_path.suffix == ".txt":
-        porosity_np = np.loadtxt(porosity_file_path, delimiter=" ")
-    elif porosity_file_path.suffix == ".npy":
-        porosity_np = np.load(porosity_file_path)
+    # if porosity_file_path.suffix == ".txt":
+    #     porosity_np = np.loadtxt(porosity_file_path, delimiter=" ")
+    # elif porosity_file_path.suffix == ".npy":
+    porosity_np = np.load(porosity_file_path)
 
     (x, y, z) = hypercube_shape
 
