@@ -10,7 +10,7 @@ import pathlib
 from tqdm import tqdm
 
 import sys
-sys.path.insert(0,'../alg/')
+sys.path.insert(0,'..')
 
 from alg import common
 
@@ -89,5 +89,5 @@ if __name__ == '__main__':
     hdf5_file_path = args.hdf5_file
     chunk_shape = (100, 100, 251)
 
-    porosity_points_py2hdf5(porosity_file_path, hdf5_file_path, hypercube_shape,
-                            chunk_shape, wells_coords)
+    # porosity_points_py2hdf5(porosity_file_path, hdf5_file_path, hypercube_shape,
+    #                         chunk_shape, wells_coords)
