@@ -86,7 +86,7 @@ if __name__ == '__main__':
     
     parser = config_arg_parser()
     args = parser.parse_args()
-    hypercube_shape = np.load(pathlib.Path(args.base_feat_file)).shape
+    hypercube_shape = np.load(pathlib.Path(args.feat_file_path)).shape
     porosity_file_path = args.porosity_file
     hdf5_file_path = args.hdf5_file
     chunk_shape = (100, 100, 251)
