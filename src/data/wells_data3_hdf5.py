@@ -6,18 +6,19 @@ import argparse
 import h5py
 from math import prod
 import numpy as np
+import pathlib
 from tqdm import tqdm
 
 from ..alg import common
 
 
-def porosity_points_py2hdf5(porosity_file_path, hypercube_shape, chunk_shape,
+def porosity_points_py2hdf5(porosity_file_path, hdf5_file_path, hypercube_shape, chunk_shape,
                             real_points):
-    porosity_np = np.load(porosity_file_path)
+    porosity_np = np.load(pathlib.Path(porosity_file_path))
     (x, y, z) = hypercube_shape
 
     print('[porosity_points_py2hdf5] Creating hdf5 file')
-    new_h5_porosity_path = './dados/porosity_data.h5'
+    new_h5_porosity_path = pathlib.Path(hdf5_file_path)
     porosity_h5_f = h5py.File(new_h5_porosity_path, 'w')
     porosity_h5_dset = porosity_h5_f.create_dataset(
         'p',
@@ -70,15 +71,21 @@ def config_arg_parser() -> argparse.ArgumentParser:
                         help='The file path with the base porosity. As it may be a subset of the whole 3D cube,\
                         it is not possible to get the cube shape from this.')
 
+    parser.add_argument('--hdf5-file-path',
+                        dest='hdf5_file',
+                        action='store',
+                        required=True,
+                        help='The hdf5 file path to be generated.')
 if __name__ == '__main__':
     wells_coords = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
                   (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
     
     parser = config_arg_parser()
     args = parser.parse_args()
-    hypercube_shape = np.load(args.base_feat_file).shape
+    hypercube_shape = np.load(pathlib.Path(args.base_feat_file)).shape
     porosity_file_path = args.porosity_file
+    hdf5_file_path = args.hdf5_file
     chunk_shape = (100, 100, 251)
 
-    porosity_points_py2hdf5(porosity_file_path, hypercube_shape,
+    porosity_points_py2hdf5(porosity_file_path, hdf5_file_path, hypercube_shape,
                             chunk_shape, wells_coords)
