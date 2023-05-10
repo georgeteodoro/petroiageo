@@ -1,6 +1,6 @@
 from mpi4py import MPI
 from enum import Enum, auto
-import time
+from time import time
 import concurrent.futures
 import ctypes
 import multiprocessing as mp
@@ -9,6 +9,7 @@ import sys
 import petro5_hdf5
 import hdf5_util
 import common
+import profiling
 
 # Initialization of mpi variables
 comm = MPI.COMM_WORLD
@@ -27,52 +28,41 @@ class MPI_TAGS(Enum):
 # f_width: number of features to be compared
 #   default=0 means all features.
 #   Used for debugging and reducing computing cost
-def get_features_sets(
-        porosity_data_h5,
-        features_dict_h5,
-        all_features,
-        window_sizes,
-        displacement_cube_shape,
-        # parallel_settings,
-        it_str,
-        exp_n_features,
-        f_width=0):
-
-    # main_ddf,
-    # features_ddf,
-    # all_features,
-    # hypercube_shape,
-    # dask_chunksize,
-    # parallel_settings,
-    # exp_n_features,
-    # f_width=0):
+def get_features_sets(porosity_data_h5, features_dict_h5, all_features,
+                      window_sizes, displacement_cube_shape, it,
+                      exp_n_features, f_width, config):
 
     if mpi_size < 2:
         print("[petro4_dist_hdf5] 2 minimum processes required")
         return None
 
     if rank == manager_rank:
-        return manager(all_features, exp_n_features, f_width, it_str)
+        return manager(all_features, exp_n_features, f_width, it, config)
     elif rank != manager_rank:
-        # return worker(main_ddf, features_ddf, hypercube_shape, dask_chunksize,
-        #               parallel_settings)
         return worker(porosity_data_h5, features_dict_h5, window_sizes,
-                      displacement_cube_shape, exp_n_features, it_str)
+                      displacement_cube_shape, exp_n_features, it, config)
 
 
-def manager(all_features, exp_n_features, f_width, it_str):
-    # print("[petro4_dist_hdf5][manager]")
-
+def manager(all_features, exp_n_features, f_width, it, config):
     # Current features set with the best error
     cur_f_set = ['x', 'y', 'z']
 
     # List of features sets and their error metric
     results = []
 
-    # Find a feature set by testing exp_n_features features
-    for _ in range(exp_n_features):
+    # Profiling time counters
+    total_req_time = 0
+    total_sync_time = 0
 
-        t0 = time.time()
+    t0 = time()
+
+    # Find a feature set by testing exp_n_features features
+    for f_it in range(exp_n_features):
+
+        # Profiling time counter
+        f_it_req_time = 0
+
+        t1 = time()
 
         # Reset workers done and wait for next feature set
         workers_done = 0
@@ -86,21 +76,17 @@ def manager(all_features, exp_n_features, f_width, it_str):
             item for item in all_features if item not in cur_f_set
         ]
 
-        # print(f'======================= [manager] got '\
-        #       f'remaining_features[:10]: {remaining_features[:10]}')
-
         # Limit the number of features analyzed
         if f_width > 0:
             remaining_features = remaining_features[:f_width]
-        # print(f'==========1=============')
+
+        f_it_req_time += time() - t1
 
         # Iterate through all features to be tested
         while workers_done < mpi_size - 1:
-            # print(f'==========2=============')
             status = MPI.Status()
-            # print(f'==========3=============')
             data = comm.recv(status=status)
-            # print(f'======================= [manager] got worker msg {data}')
+            t2 = time()
             worker_rank = status.Get_source()
 
             # Number of features to be sent to the worker.
@@ -112,8 +98,8 @@ def manager(all_features, exp_n_features, f_width, it_str):
             # Read results from ran feature
             if status.Get_tag() != MPI_TAGS.WORKER_EMPTY_RESULT.value:
                 for (cur_feature, cur_error) in data:
-                    print(f'[petro4_dist_hdf5][manager]{it_str} Tested feature '\
-                          f'{cur_f_set + [cur_feature]} '\
+                    print(f'[petro4_dist_hdf5][manager][it{it}] Tested '\
+                          f'feature {cur_f_set + [cur_feature]} '\
                           f'with error {cur_error}')
 
                     results.append((cur_f_set + [cur_feature], cur_error))
@@ -128,8 +114,6 @@ def manager(all_features, exp_n_features, f_width, it_str):
                 # Send new tasks
                 new_features = remaining_features[:n_features]
                 remaining_features = remaining_features[n_features:]
-                # print(f'======================= [manager] '\
-                #       f'new_features: {new_features}')
                 comm.send(new_features, dest=worker_rank)
             else:
                 # Send finish message
@@ -138,12 +122,18 @@ def manager(all_features, exp_n_features, f_width, it_str):
                           tag=MPI_TAGS.MANAGER_FEATURE_DONE.value)
                 workers_done = workers_done + 1
 
+            t3 = time()
+            f_it_req_time += t3 - t2
+
         # Broadcast new best feature and updates current best features_set
         comm.bcast(new_best_feature, root=manager_rank)
         cur_f_set.append(new_best_feature)
 
-        t1 = time.time()
-        print(f'[petro4_dist_hdf5][manager]{it_str} fullIt time: {t1-t0}')
+        t4 = time()
+        total_sync_time += t4 - t3
+        total_req_time += f_it_req_time
+        profiling.prof_fsel_manager_sync_time(it, f_it, t4 - t3, config)
+        profiling.prof_fsel_manager_req_time(it, f_it, f_it_req_time, config)
 
     # Broadcast a done message to all workers
     for worker_rank in range(mpi_size - 1):
@@ -156,17 +146,18 @@ def manager(all_features, exp_n_features, f_width, it_str):
     best_result = petro5_hdf5.get_best_features_set(results)
     comm.bcast(best_result, root=manager_rank)
 
+    t5 = time()
+    profiling.prof_fsel_manager_sync_times(it, t5 - t4, config)
+    profiling.prof_fsel_manager_time(it, total_req_time + t5 - t4, t5 - t0,
+                                     config)
+
     return best_result
 
 
-def worker(porosity_data_h5,
-           features_dict_h5,
-           window_sizes,
-           displacement_cube_shape,
-           exp_n_features,
-           it_str,
-           parallel_settings=None):
-    # print(f"[petro4_dist_hdf5][w{rank}]")
+def worker(porosity_data_h5, features_dict_h5, window_sizes,
+           displacement_cube_shape, exp_n_features, it, config):
+
+    t0 = time()
 
     # Points used for training: real, expanded and propagated
     is_training_point_f = lambda d: (
@@ -185,32 +176,30 @@ def worker(porosity_data_h5,
     # Create training temporary object
     cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
 
+    t1 = time()
+    profiling.prof_fsel_worker_create_time(it, rank, t1 - t0, config)
+
     cur_f_set = ['x', 'y', 'z']
 
     # Run jobs until manager finishes
     while True:
-        t0 = time.time()
+        # For profiling
+        f_it = len(cur_h5_train_list.all_features) + 1
+
+        t2 = time()
 
         # Request a job from manager
         comm.send(None,
                   dest=manager_rank,
                   tag=MPI_TAGS.WORKER_EMPTY_RESULT.value)
 
-        # print(f'======================= [worker] sent mpi WORKER_EMPTY_RESULT')
-
-        # Profiling info
-        total_feature_exec_time = 0
-        total_feature_comm_time = 0
-        feature_exec_count = 0
-
         # Get first message from Manager
         status = MPI.Status()
-        # print('======================= [worker] waiting recv from manager')
         new_features = comm.recv(source=manager_rank, status=status)
         manager_tag = status.Get_tag()
 
-        # print(
-        #     f'======================= [worker] got mpi job msg {new_features}')
+        t3 = time()
+        profiling.prof_fsel_worker_comm_time(it, rank, t3 - t2, config)
 
         # Exit if there are no more tasks (all expected features sets were tested)
         if manager_tag == MPI_TAGS.MANAGER_FINISH.value:
@@ -220,17 +209,17 @@ def worker(porosity_data_h5,
         cur_h5_train_list.add_new_col()
 
         # Run jobs until there are not any more features to test
-        print(f'[petro4_dist_hdf5][w{rank}]{it_str} new iteration')
+        # print(f'[petro4_dist_hdf5][w{rank}][it{it}] new iteration')
         while (manager_tag != MPI_TAGS.MANAGER_FEATURE_DONE.value):
-            print(f'[petro4_dist_hdf5][w{rank}]{it_str} Received new_features: '\
-                  f'{new_features}')
+            # print(f'[petro4_dist_hdf5][w{rank}][it{it}] '\
+            #       f'Received new_features: {new_features}')
 
             # Run all features received by the manager
             results = []
             for new_feature in new_features:
-                print(f'[petro4_dist_hdf5][w{rank}]{it_str} Testing feature: '\
-                      f'{new_feature}')
-                t1 = time.time()
+                # print(f'[petro4_dist_hdf5][w{rank}][it{it}] '\
+                #       f'Testing feature: {new_feature}')
+                t4 = time()
                 # Insert temporary feature
                 petro5_hdf5.insert_filtered_feature(cur_h5_dset,
                                                     cur_h5_train_list,
@@ -238,18 +227,17 @@ def worker(porosity_data_h5,
                                                     new_feature, window_sizes,
                                                     hypercube_shape,
                                                     displacement_cube_shape)
-                t12 = time.time()
+                t5 = time()
+                profiling.prof_fsel_worker_insert_time(it, rank, f_it, t5 - t4,
+                                                       config)
 
                 rmse, mae = petro5_hdf5.eval_bootstrap(cur_h5_train_list,
                                                        list(range(10)))
 
                 results.append((new_feature, rmse))
-                t2 = time.time()
-                print(f'[petro4_dist_hdf5][w{rank}][profiling]{it_str} '\
-                      f'prep: {t12-t1}')
-                print(f'[petro4_dist_hdf5][w{rank}][profiling]{it_str} '\
-                      f'eval: {t2-t12}')
-                total_feature_exec_time = total_feature_exec_time + (t2 - t1)
+                t6 = time()
+                profiling.prof_fsel_worker_eval_times(it, rank, f_it, t6 - t5,
+                                                      config)
 
             # Return results to manager
             comm.send(results, dest=manager_rank)
@@ -258,10 +246,11 @@ def worker(porosity_data_h5,
             new_features = comm.recv(source=manager_rank, status=status)
             manager_tag = status.Get_tag()
 
-            t3 = time.time()
-            total_feature_comm_time = total_feature_comm_time + (t3 - t2)
-            feature_exec_count = feature_exec_count + 1
+            t7 = time()
+            profiling.prof_fsel_worker_comm_time(it, rank, t7 - t6, config)
 
+        t7 = time()
+        
         # Get best feature from iteration from manager
         new_best_feature = comm.bcast(None, root=manager_rank)
         cur_f_set.append(new_best_feature)
@@ -272,16 +261,8 @@ def worker(porosity_data_h5,
                                             window_sizes, hypercube_shape,
                                             displacement_cube_shape)
 
-        t4 = time.time()
-
-        print(f'[petro4_dist_hdf5][w{rank}][profiling]{it_str} '\
-              f'it_full_time: {t4-t0}')
-        print(f'[petro4_dist_hdf5][w{rank}][profiling]{it_str} '\
-              f'total_exec_time: {total_feature_exec_time}')
-        print(f'[petro4_dist_hdf5][w{rank}][profiling]{it_str} '\
-              f'total_comm_time: {total_feature_comm_time}')
-        print(f'[petro4_dist_hdf5][w{rank}][profiling]{it_str} '\
-              f'n_tasks: {feature_exec_count}')
+        t8 = time()
+        profiling.prof_fsel_worker_sync_time(it, rank, f_it, t8 - t7, config)
 
     # Get broadcasted resulting features and errors
     best_result = comm.bcast(None, root=manager_rank)

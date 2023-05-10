@@ -52,7 +52,7 @@ def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
     # params['num_threads'] = num_threads
     params['num_threads'] = 1
 
-    profiling = True
+    profiling = False
 
     rmse_list = []
     mae_list = []
@@ -148,7 +148,6 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
 
         # Get the shape of the hypercube with a border of minimum and maximum
         # displaced points
-        # displaced_hypercube_shape = [x + 1 for x in displacement_cube_shape]
         displaced_hypercube_shape = np.array(hypercube_shape) + (
             np.array(displacement_cube_shape) - 1)
 
@@ -208,7 +207,7 @@ def create_tmp_dset(porosity_data_h5,
                     list_chunk_size=1000,
                     features_only=False):
 
-    profiling = True
+    profiling = False
 
     filename = f'cur{suf_str}.h5'
 
@@ -238,7 +237,6 @@ def create_tmp_dset(porosity_data_h5,
     print('============== NEED TO AUTOMATE TMP_LIST CHUNK_SIZE')
     # cur_chunksize = (n_training_points / 10, )
     cur_chunksize = (n_training_points, )
-    print(f'[get_features_sets] non-empty points: {n_training_points}')
     cur_h5_dset = cur_h5.create_dataset('c', (n_training_points, ),
                                         dtype=cur_data_type,
                                         chunks=cur_chunksize)

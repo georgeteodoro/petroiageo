@@ -28,6 +28,35 @@ mpi_size = comm.Get_size()
 manager_rank = mpi_size - 1
 
 
+# Return a split communicator for processes within the same node.
+# For instance, running 4 nodes and 8 processes would yield 4 different
+# communicators with 2 processes.
+# This is required for using distributed hdf5. The MPI_File_open routine
+# needs the same file for the input MPI communicator, and for running locally
+# the files although having the same name and path, are different.
+def get_local_node_comm():
+    # Get all node names
+    local_host_name = MPI.Get_processor_name()
+    node_names = comm.allgather(local_host_name)
+
+    # Get unique sorted
+    node_names = list(set(node_names))
+    node_names.sort()
+
+    # Perform split
+    local_color = node_names.index(local_host_name)
+    local_comm = comm.Split(local_color)
+
+    # print(f'[main][get_local_node_comm] r{rank}color{local_color}')
+
+    return local_comm
+
+# TODO:
+# Refactor to remove this global variable
+# Currently, main.py is too complicated and overcrowded to make a simple
+# straightforward solution
+local_comm = get_local_node_comm()
+
 def print_manager(string):
     """
     Print function for only the manager process
@@ -41,7 +70,6 @@ def print_progress(with_progress, r):
         return tqdm(r)
     else:
         return r
-
 
 def mpi_perform_ordered(func):
     """
@@ -119,33 +147,9 @@ def get_running_process(with_progress: bool) -> RunningProcess:
     return RunningProcess(should_update, pp, rank, comm)
 
 
-# Return a split communicator for processes within the same node.
-# For instance, running 4 nodes and 8 processes would yield 4 different
-# communicators with 2 processes.
-# This is required for using distributed hdf5. The MPI_File_open routine
-# needs the same file for the input MPI communicator, and for running locally
-# the files although having the same name and path, are different.
-def get_local_node_comm():
-    # Get all node names
-    local_host_name = MPI.Get_processor_name()
-    node_names = comm.allgather(local_host_name)
-
-    # Get unique sorted
-    node_names = list(set(node_names))
-    node_names.sort()
-
-    # Perform split
-    local_color = node_names.index(local_host_name)
-    local_comm = comm.Split(local_color)
-
-    print(f'[main][get_local_node_comm] r{rank}color{local_color}')
-
-    return local_comm
-
-
 class FeaturesDataLoaderH5():
 
-    def __init__(self, local_comm, config: config_parser.Config):
+    def __init__(self, config: config_parser.Config):
         num_features = config.get_param('num_features')
         #This is ok because num_features is either an int or None. The latter works as [:]
         self.features_names = config.features_files_names[:num_features]
@@ -153,14 +157,13 @@ class FeaturesDataLoaderH5():
 
         self.features_files_dict_h5 = {}
         self.features_dict_h5 = {}
-        self.local_comm = local_comm
 
     def __enter__(self) -> FeaturesDataLoaderH5:
         for file_path, feat_name in zip(self.features_file_paths,
                                         self.features_names):
             print(f'[main] loading file {file_path}')
             self.features_files_dict_h5[feat_name] = h5py.File(
-                file_path, 'r', driver='mpio', comm=self.local_comm)
+                file_path, 'r', driver='mpio', comm=local_comm)
             self.features_dict_h5[feat_name] = self.features_files_dict_h5[
                 feat_name]['f']
 
@@ -173,11 +176,10 @@ class FeaturesDataLoaderH5():
 
 class PorosityCubeDataLoaderH5():
 
-    def __init__(self, cube_path: pathlib.Path, local_comm):
+    def __init__(self, cube_path: pathlib.Path):
         self.cube_path = pathlib.Path(cube_path)
         self.porosity_data = None
         self.porosity_cube_file = None
-        self.local_comm = local_comm
 
     def __enter__(self) -> PorosityCubeDataLoaderH5:
         # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
@@ -186,7 +188,7 @@ class PorosityCubeDataLoaderH5():
         write_str = 'r+'
 
         # Real wells' data into a main dataframe
-        print_manager("[main] Loading wells values")
+        print("[main] Loading wells values")
         self.porosity_cube_file = h5py.File(self.cube_path,
                                             write_str,
                                             driver='mpio',
@@ -202,15 +204,15 @@ class PorosityCubeDataLoaderH5():
 
     def _print_hypercube_stats(self, all_points):
         hypercube_shape = self.porosity_data.shape
-        print_manager(f'[main] hypercube_shape: {hypercube_shape}')
-        print_manager(f'[main] hypercube size: {all_points}')
+        print(f'[main] hypercube_shape: {hypercube_shape}')
+        print(f'[main] hypercube size: {all_points}')
 
     def _print_real_well_point_stats(self, all_points: int):
         real_points = hdf5_util.fold_h5_all_clusters(
             self.porosity_data,
             lambda d: len(d[d['real'] == common.RealValues.real]), 0)
 
-        print_manager(f'[main] real well points: {real_points}/{all_points} '\
+        print(f'[main] real well points: {real_points}/{all_points} '\
             f'({(real_points/all_points):%})')
 
     def _print_canal_points_stats(self, all_points):
@@ -218,7 +220,7 @@ class PorosityCubeDataLoaderH5():
             self.porosity_data,
             lambda d: len(d[d['real'] == common.RealValues.canal]), 0)
 
-        print_manager(f'[main] canal points: {canal_points}/{all_points} '\
+        print(f'[main] canal points: {canal_points}/{all_points} '\
             f'({(canal_points/all_points):.2%})')
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -233,12 +235,9 @@ class Algorithm():
     def run(self):
         t1 = time.time()
 
-        # Get mpi communicator for local processes (same node)
-        local_comm = get_local_node_comm()
-
-        print_manager("[main] Loading seismic data")
+        print("[main] Loading seismic data")
         with FeaturesDataLoaderH5(local_comm, self.config) as feat_dl:
-            print_manager("[main] Loading wells values")
+            print("[main] Loading wells values")
             with PorosityCubeDataLoaderH5(
                     self.config.alg['starting_porosity_cube_path'],
                     local_comm) as porosity_dl:
@@ -290,10 +289,6 @@ class Algorithm():
                                            displacement_cube_shape)
 
             t4 = time.time()
-            print(f'[main][times]{it_str} total_it_time {t4-t1}')
-            print(f'[main][times]{it_str} expansion {t2-t1}')
-            print(f'[main][times]{it_str} feature_selection {t3-t2}')
-            print(f'[main][times]{it_str} propagation {t4-t3}')
 
     def _get_window_sizes(self, window: int) -> tuple:
         return (window, window, window)

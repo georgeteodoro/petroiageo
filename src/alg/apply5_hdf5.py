@@ -8,6 +8,7 @@ from math import prod
 import common
 import petro5_hdf5
 import hdf5_util
+import profiling
 
 # Parameters
 RANDOM_STATE = 1
@@ -29,10 +30,8 @@ params = {
 
 
 def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
-                   window_sizes, displacement_cube_shape):
-    profiling = 0
-
-    t1 = time()
+                   window_sizes, displacement_cube_shape, it, config):
+    t0 = time()
 
     # Remove coordinates from features set
     best_features_set.remove('x')
@@ -53,6 +52,9 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
 
     hypercube_shape = porosity_data_h5.shape
 
+    t1 = time()
+    profiling.prof_predict_create_time(it, t1 - t0, config)
+
     # Add each feature to the DataFrame
     for feature in best_features_set:
         cur_h5_train_list.add_new_col()
@@ -62,8 +64,8 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
                                             displacement_cube_shape)
 
     t2 = time()
-    if profiling > 0:
-        print(f'[apply5_hdf5] prep-tmp-data: {t2-t1}')
+    profiling.prof_predict_insert_time(it, len(best_features_set), t2 - t1,
+                                       config)
 
     regressor = None
     for c in range(cur_h5_train_list.n_chunks):
@@ -80,9 +82,9 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
                               keep_training_booster=True)
 
     cur_h5.close()
+
     t3 = time()
-    if profiling > 0:
-        print(f'[apply5_hdf5] trained: {t3-t2}')
+    profiling.prof_predict_train_times(it, t3 - t2, config)
 
     total_to_propagate = hdf5_util.fold_h5_all_clusters(
         porosity_data_h5,
@@ -91,8 +93,10 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
 
     # Perform prediction of expanded points
     p_sum = 0
+    chunk_n = -1
     for cur_slice in porosity_data_h5.iter_chunks():
-        t31 = time()
+        t4 = time()
+        chunk_n += 1
 
         cur_chunk_np = porosity_data_h5[cur_slice]
 
@@ -113,8 +117,6 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
 
         to_propagate_count = len(expanded_points_np)
         p_sum = p_sum + to_propagate_count
-        # print(f'to_propagate: {to_propagate_count}')
-        # print(f'propagating {p_sum}/{total_to_propagate} points')
 
         # Get coordinates of points to predict
         coords_3d_np = expanded_points_np[['x', 'y', 'z']]
@@ -148,19 +150,18 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
             to_predict_np[f'f{i}'] = np.fromiter(feature_values, np.float64)
 
             i = i + 1
-        t32 = time()
-        if profiling > 1:
-            print(f'[apply5_hdf5] fill-features {t32-t31}')
 
         # Convert to_predict_np from a ndarray to a regular 2d array
         to_predict_np = np.array(to_predict_np.tolist())
 
+        t5 = time()
+        profiling.prof_predict_pred_insert_time(it, chunk_n, t5 - t4, config)
+
         # Perform prediction of expanded points
         new_phi_np = regressor.predict(to_predict_np)
 
-        t33 = time()
-        if profiling > 1:
-            print(f'[apply5_hdf5] predicted {t33-t32}')
+        t6 = time()
+        profiling.prof_predict_pred_run_time(it, chunk_n, t6 - t5, config)
 
         # Update porosity values on cur_chunk_np. This serves 2 purposes:
         # (i) converts the new_phi_np from a list to a 3d array (cur_chunk_np)
@@ -176,11 +177,9 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
         porosity_data_h5['real', cur_slice[0], cur_slice[1],
                          cur_slice[2]] = cur_chunk_np['real']
 
-        t34 = time()
-        if profiling > 1:
-            print(f'[apply5_hdf5] update-phi {t34-t33}')
-            print(f'[apply5_hdf5] done-in {t34-t31}')
+        t7 = time()
+        profiling.prof_predict_pred_update_time(it, chunk_n, t7 - t6, config)
+        profiling.prof_predict_pred_time(it, chunk_n, t7 - t4, config)
 
-    t4 = time()
-    if profiling > 0:
-        print(f'[apply5_hdf5] updated-values: {t4-t3}')
+    t8 = time()
+    profiling.prof_predict_pred_times(it, t8 - t3, config)
