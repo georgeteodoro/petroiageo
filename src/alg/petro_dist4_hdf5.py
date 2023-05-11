@@ -181,6 +181,10 @@ def worker(porosity_data_h5, features_dict_h5, window_sizes,
 
     cur_f_set = ['x', 'y', 'z']
 
+    # Profiling info
+    total_jobs = 0
+    total_exec_time = 0
+
     # Run jobs until manager finishes
     while True:
         # For profiling
@@ -239,6 +243,11 @@ def worker(porosity_data_h5, features_dict_h5, window_sizes,
                 profiling.prof_fsel_worker_eval_times(it, rank, f_it, t6 - t5,
                                                       config)
 
+                total_jobs += 1
+                total_exec_time += t6 - t4
+
+            t6 = time()
+            
             # Return results to manager
             comm.send(results, dest=manager_rank)
 
@@ -250,7 +259,7 @@ def worker(porosity_data_h5, features_dict_h5, window_sizes,
             profiling.prof_fsel_worker_comm_time(it, rank, t7 - t6, config)
 
         t7 = time()
-        
+
         # Get best feature from iteration from manager
         new_best_feature = comm.bcast(None, root=manager_rank)
         cur_f_set.append(new_best_feature)
@@ -263,6 +272,8 @@ def worker(porosity_data_h5, features_dict_h5, window_sizes,
 
         t8 = time()
         profiling.prof_fsel_worker_sync_time(it, rank, f_it, t8 - t7, config)
+
+    prof_fsel_worker_times(it, rank, total_exec_time, total_jobs, config)
 
     # Get broadcasted resulting features and errors
     best_result = comm.bcast(None, root=manager_rank)
