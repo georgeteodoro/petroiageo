@@ -247,7 +247,7 @@ def worker(porosity_data_h5, features_dict_h5, window_sizes,
                 total_exec_time += t6 - t4
 
             t6 = time()
-            
+
             # Return results to manager
             comm.send(results, dest=manager_rank)
 
@@ -273,7 +273,8 @@ def worker(porosity_data_h5, features_dict_h5, window_sizes,
         t8 = time()
         profiling.prof_fsel_worker_sync_time(it, rank, f_it, t8 - t7, config)
 
-    prof_fsel_worker_times(it, rank, total_exec_time, total_jobs, config)
+    prof_fsel_worker_times(it, rank, total_jobs, total_exec_time, t8 - t0,
+                           config)
 
     # Get broadcasted resulting features and errors
     best_result = comm.bcast(None, root=manager_rank)

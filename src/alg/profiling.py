@@ -86,9 +86,9 @@ def prof_fsel_manager_sync_time(it, f_it, time, config):
 
 
 # === Feature Selection - Worker ==============================================
-def prof_fsel_worker_times(it, worker, time, total_jobs, config):
+def prof_fsel_worker_times(it, worker, run_time, makespan, total_jobs, config):
     print(f'{base_str}{fsel_str}{it_str(it)}[w{worker}]'\
-          f'[total-worker-time] {total_jobs} {time}')
+          f'[total-worker-time] {total_jobs} {run_time} {makespan}')
 
 
 # def prof_fsel_worker_time(it, worker, f_it, time, total_jobs, config):
