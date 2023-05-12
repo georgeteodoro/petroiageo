@@ -273,7 +273,7 @@ def worker(porosity_data_h5, features_dict_h5, window_sizes,
         t8 = time()
         profiling.prof_fsel_worker_sync_time(it, rank, f_it, t8 - t7, config)
 
-    prof_fsel_worker_times(it, rank, total_jobs, total_exec_time, t8 - t0,
+    profiling.prof_fsel_worker_times(it, rank, total_exec_time, t8 - t0, total_jobs,
                            config)
 
     # Get broadcasted resulting features and errors
