@@ -288,7 +288,7 @@ if __name__ == '__main__':
     base_features_folder = pathlib.Path(args.feat_folder)
     
     target_features_files_names_with_extension = [
-		'FAR.npy', 'NEAR_envelope_.npy',' NEAR_gersztenkorn_5-5-9.npy', 'NEAR_instantaneous-frequency_.npy',
+		'FAR.npy', 'NEAR_envelope_.npy','NEAR_gersztenkorn_5-5-9.npy', 'NEAR_instantaneous-frequency_.npy',
 		'NEAR_rms-5_.npy', 'MID.npy', 'NEAR_gaussian-curvature_.npy', 'NEAR_gst_3-3-11.npy', 
 		'NEAR_max-curvature_.npy', 'NEAR_shape-index_.npy', 'NEAR_azimuth_.npy', 'NEAR_gersztenkorn_3-3-11.npy', 'NEAR_gst_3-3-7.npy',
 		'NEAR_mean-curvature_.npy', 'NEAR_sobel_5-5-11.npy', 'NEAR_contour-curvature_.npy', 'NEAR_gersztenkorn_3-3-7.npy',
