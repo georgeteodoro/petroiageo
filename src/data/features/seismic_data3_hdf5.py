@@ -288,8 +288,14 @@ if __name__ == '__main__':
     base_features_folder = pathlib.Path(args.feat_folder)
     
     target_features_files_names_with_extension = [
-        'NEAR.npy', "FAR.npy", "MID.npy", "NEAR_azimuth_.npy",
-          "NEAR_contour-curvature_.npy",
+		'FAR.npy', 'NEAR_envelope_.npy',' NEAR_gersztenkorn_5-5-9.npy', 'NEAR_instantaneous-frequency_.npy',
+		'NEAR_rms-5_.npy', 'MID.npy', 'NEAR_gaussian-curvature_.npy', 'NEAR_gst_3-3-11.npy', 
+		'NEAR_max-curvature_.npy', 'NEAR_shape-index_.npy', 'NEAR_azimuth_.npy', 'NEAR_gersztenkorn_3-3-11.npy', 'NEAR_gst_3-3-7.npy',
+		'NEAR_mean-curvature_.npy', 'NEAR_sobel_5-5-11.npy', 'NEAR_contour-curvature_.npy', 'NEAR_gersztenkorn_3-3-7.npy',
+		'NEAR_gst_3-3-9.npy', 'NEAR_min-curvature_.npy', 'UFAR.npy', 'NEAR_curvedness_.npy', 'NEAR_gersztenkorn_3-3-9.npy',
+		'NEAR_gst_5-5-11.npy', 'NEAR_most-negative-curvature_.npy', 'NEAR_dip-angle_.npy', 'NEAR_gersztenkorn_5-5-11.npy', 
+		'NEAR_gst_5-5-7.npy', 'NEAR_most-positive-curvature_.npy', 'NEAR_dip-curvature_.npy', 'NEAR_gersztenkorn_5-5-7.npy', 
+		'NEAR_gst_5-5-9.npy', 'NEAR.npy'
         ]
     
     complete_files_path = [
@@ -305,21 +311,6 @@ if __name__ == '__main__':
 
         if not file.suffix == ".npy":
             raise ValueError(f"{file} is not a .npy file!")
-    
-    # features = [
-    #     "FAR", "MID", "NEAR_azimuth_", "NEAR_contour-curvature_",
-    #     "NEAR_curvedness_", "NEAR_dip-angle_", "NEAR_dip-curvature_",
-    #     "NEAR_envelope_", "NEAR_gaussian-curvature_",
-    #     "NEAR_gersztenkorn_3-3-11", "NEAR_gersztenkorn_3-3-7",
-    #     "NEAR_gersztenkorn_3-3-9", "NEAR_gersztenkorn_5-5-11",
-    #     "NEAR_gersztenkorn_5-5-7", "NEAR_gersztenkorn_5-5-9",
-    #     "NEAR_gst_3-3-11", "NEAR_gst_3-3-7", "NEAR_gst_3-3-9",
-    #     "NEAR_gst_5-5-11", "NEAR_gst_5-5-7", "NEAR_gst_5-5-9",
-    #     "NEAR_instantaneous-frequency_", "NEAR_max-curvature_",
-    #     "NEAR_mean-curvature_", "NEAR_min-curvature_",
-    #     "NEAR_most-negative-curvature_", "NEAR_most-positive-curvature_",
-    #     "NEAR", "NEAR_rms-5_", "NEAR_shape-index_", "NEAR_sobel_5-5-11", "UFAR"
-    # ]
 
     disp_window = 3
     chunk_shape = (100, 100, 251 + disp_window + disp_window)
