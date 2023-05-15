@@ -437,7 +437,6 @@ class Config():
 
     def _base_wells_config(self) -> dict:
         base_config = dict()
-        base_config['porosity_path'] = ''
         base_config['coords'] = list()
         return base_config
 

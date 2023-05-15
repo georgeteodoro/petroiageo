@@ -1,5 +1,4 @@
 wells: # This is wells related stuff
-  porosity_path: ./config.yaml # File that has porosity measures for every well
   coords: # well coords in (x, y) style
   - x: 1
     y: 2
