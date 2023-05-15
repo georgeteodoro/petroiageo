@@ -9,8 +9,8 @@
 #module load python/3.9.6
 
 source ../../../meu_python/bin/activate
-FEAT_FILE=../../data/POV/features/NEAR.npy
-POR_FILE=../../data/POV/raw/porosity-canal.txt
-TARGET_HDF5_FILE=../../data/POV/processed/porosity_data.h5
+FEAT_FILE='../../data/POV/features/NEAR.npy'
+POR_FILE='../../data/POV/raw/porosity-canal.txt'
+TARGET_HDF5_FILE='../../data/POV/processed/porosity_data.h5'
 
 python3 wells_data3_hdf5.py --base-feat-file  $FEAT_FILE --porosity-file-path  $POR_FILE --hdf5-file-path $TARGET_HDF5_FILE
