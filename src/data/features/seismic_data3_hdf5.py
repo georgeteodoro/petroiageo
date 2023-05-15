@@ -2,20 +2,24 @@
 This script transforms .npy features data to hdf5 format so it can be used by the algorithm.
 """
 
+import argparse
 import numpy as np
 import h5py
 from math import prod
-
+import pathlib
 
 def coord_3d_to_planar(x, y, z, shape):
     return x * shape[2] * shape[1] + y * shape[2] + z
 
 
-def seismic_feature_np2hdf5_planar(feature_name, chunk_shape, displacement_window):
+def seismic_feature_np2hdf5_planar(feature_path:pathlib.Path, chunk_shape, 
+                                   displacement_window, target_folder:pathlib.Path):
+
+    feature_name = feature_path.stem
 
     # Open feature
     print(f'[seismic_feature_np2hdf5_planar] reading {feature_name}')
-    feature_np = np.load(f'./dados/{feature_name}.npy')
+    feature_np = np.load(feature_path)
 
     # displacement_window = 2
     # feature_np = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
@@ -197,7 +201,7 @@ def seismic_feature_np2hdf5_planar(feature_name, chunk_shape, displacement_windo
                             z] = feature_np[data_shape[0] - 1, :,
                                             data_shape[2] - 1]
 
-    create_feature_hdf5_file(feature_name, chunk_shape, large_data_shape, feature_full_np)
+    create_feature_hdf5_file(feature_name, target_folder, chunk_shape, large_data_shape, feature_full_np)
 
 def assign_regular_inside_points(feature_name, feature_np, feature_full_np, x_slice, y_slice, z_slice):
     print(f'[seismic_feature_np2hdf5_planar] assigning center of {feature_name}')
@@ -214,9 +218,10 @@ def create_slices_for_internal_region_of_feature_full_np(displacement_window, la
                     
     return x_slice,y_slice,z_slice
 
-def create_feature_hdf5_file(feature_name, chunk_shape, large_data_shape, feature_full_np):
+def create_feature_hdf5_file(feature_name:str, target_folder:pathlib.Path, 
+                             chunk_shape, large_data_shape, feature_full_np):
     print(f'[seismic_feature_np2hdf5_planar] creating hdf5 of feature {feature_name}')
-    with h5py.File(f'./dados/{feature_name}.h5', 'w') as h5_f:
+    with h5py.File(target_folder / f'{feature_name}.h5', 'w') as h5_f:
         _ = h5_f.create_dataset('f', large_data_shape,
                                       dtype=np.float64,
                                       chunks=chunk_shape,
@@ -253,11 +258,54 @@ def seismic_feature_np2hdf5_3d(feature, chunk_shape, max_displacement):
 
     # Fill the data in the center of the structure
 
+def config_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description='POV')
+
+    parser.add_argument('--base-feat-folder',
+                        dest='feat_folder',
+                        type=pathlib.Path,
+                        required=True,
+                        help="The base features folder to read files from.")
+    
+    parser.add_argument('--target-h5-folder',
+                        dest='target_folder',
+                        type=pathlib.Path,
+                        required=False,
+                        help="The folder in which to save the newly created h5 files. If not\
+                            defined, it will be the same as --base-feat-folder.")
+    return parser
 
 if __name__ == '__main__':
 
-    # features = ['NEAR', 'MID', 'FAR', 'UFAR', 'GERSZ', 'GST']
-    target_features_files_names_without_extension = ['FAR']
+    parser = config_arg_parser()
+    args = parser.parse_args()
+
+    if args.target_folder is None:
+        args.target_folder = args.feat_folder
+
+    print(args.target_folder, type(args.target_folder))
+
+    base_features_folder = pathlib.Path(args.feat_folder)
+    
+    target_features_files_names_with_extension = [
+        'NEAR.npy', "FAR.npy", "MID.npy", "NEAR_azimuth_.npy",
+          "NEAR_contour-curvature_.npy",
+        ]
+    
+    complete_files_path = [
+        base_features_folder / file for file in target_features_files_names_with_extension
+        ]
+    
+    for file in complete_files_path:
+        if not file.exists():
+            raise FileExistsError(f"File {file} doesn't exists!")
+
+        if  not file.is_file():
+            raise ValueError(f"{file} is not a file!")
+
+        if not file.suffix == ".npy":
+            raise ValueError(f"{file} is not a .npy file!")
+    
     # features = [
     #     "FAR", "MID", "NEAR_azimuth_", "NEAR_contour-curvature_",
     #     "NEAR_curvedness_", "NEAR_dip-angle_", "NEAR_dip-curvature_",
@@ -277,6 +325,6 @@ if __name__ == '__main__':
     chunk_shape = (100, 100, 251 + disp_window + disp_window)
     [
         seismic_feature_np2hdf5_planar(
-            f, chunk_shape, disp_window)
-        for f in target_features_files_names_without_extension
+            f, chunk_shape, disp_window, args.target_folder)
+        for f in complete_files_path
     ]
