@@ -373,20 +373,6 @@ def config_arg_parser():
                         required=False,
                         help='Number of maximum features to be '\
                             'selected')
-    parser.add_argument('--cpu',
-                        dest='n_cpus',
-                        action='store',
-                        default=1,
-                        help='Number of LGB execution threads to be '\
-                            'executed by node. Parallel multithreading per '\
-                            'LGB thread can be enabled (default: 1)')
-    parser.add_argument('--cput',
-                        dest='cpu_thrds',
-                        action='store',
-                        default=1,
-                        help='Number of CPU threads to be used '\
-                            'per LGB execution (default: 1)')
-
     parser.add_argument('--wp',
                         dest='with_progress',
                         action='store_true',
@@ -398,6 +384,10 @@ def config_arg_parser():
                         action='store_false',
                         help='Disables showing progress of iterations.')
 
+    parser.add_argument('--local',
+                        dest='local_files',
+                        action='store_true',
+                        help='Read files from main.py root folder.')
     return parser
     
 def update_config_file_params_with_args(config:config_parser.Config, args) -> config_parser.Config:
@@ -417,6 +407,10 @@ def update_config_file_params_with_args(config:config_parser.Config, args) -> co
     
     if args.with_progress is not None:
         my_config.add_param('with_progress', args.with_progress)
+    
+    if args.local_files is not None:
+        config.alg['starting_porosity_cube_path'] = f"./{pathlib.Path(config.alg['starting_porosity_cube_path']).name}"
+        config.features_folder = "./features/"
     
     return config
 

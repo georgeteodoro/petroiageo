@@ -493,8 +493,8 @@ class Config():
         return self.config['features_folder']
 
     @features_folder.setter
-    def features_folder(self, new_feat_folder):
-        raise AttributeError("features_folder config is read only!")
+    def features_folder(self, new_feat_folder:str):
+        self.config['features_folder'] = new_feat_folder
     
     @property
     def por_cube_output_path(self):
