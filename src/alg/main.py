@@ -21,6 +21,7 @@ import mpi_module
 from inverted_learning_interface import BaseInvertedLearning
 from h5_porosity_data_loader import H5PorosityDataLoader
 from h5_seismic_data_loader import H5SeismicDataLoader
+from h5_expand_alg import H5ExpandAlg
 
 RunningProcess = namedtuple('RunningProcess',
                             'should_update print_progress_func rank comm')
@@ -487,6 +488,8 @@ def update_config_file_params_with_args(config: config_parser.Config,
         config[
             'starting_porosity_cube_path'] = f"./{pathlib.Path(config['starting_porosity_cube_path']).name}"
         config.features_folder = "./features/"
+    
+    config.add_param('full_depth_chunks', True)
 
     return config
 
@@ -507,7 +510,8 @@ def main():
 
     # Run base algorithm
     alg = BaseInvertedLearning(H5SeismicDataLoader(config),
-                               H5PorosityDataLoader(config), None, None, None)
+                               H5PorosityDataLoader(config),
+                               H5ExpandAlg(config), None, None, config)
     alg.run()
 
 
