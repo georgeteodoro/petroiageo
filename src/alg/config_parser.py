@@ -503,7 +503,8 @@ class Config():
 
     def add_param(self, param_name: str, param_value):
         """
-        This method's objective is to add params to the config object other than the base ones.
+        This method's goal is to add params to the config object other than 
+        the base ones.
         """
         if param_name not in Config.TOP_LEVEL_BASE_CONFIGS:
             self.config[param_name] = param_value
@@ -513,7 +514,8 @@ class Config():
 
     def remove_param(self, param_name: str):
         """
-        This method's objective is to remove params from the config object other than the base ones.
+        This method's goal is to remove params from the config object other 
+        than the base ones.
         """
         if param_name not in Config.TOP_LEVEL_BASE_CONFIGS:
             del self.config[param_name]

@@ -15,8 +15,12 @@ import expand4_hdf5
 import hdf5_util
 import petro5_hdf5
 import petro_dist4_hdf5
-
 import config_parser
+
+import mpi_module
+from inverted_learning_interface import BaseInvertedLearning
+from h5_porosity_data_loader import H5PorosityDataLoader
+from h5_seismic_data_loader import H5SeismicDataLoader
 
 RunningProcess = namedtuple('RunningProcess',
                             'should_update print_progress_func rank comm')
@@ -389,7 +393,7 @@ class Algorithm():
         print(f'[main] Points for feature selection: {f_sel_points}')
 
 
-def main(config: config_parser.Config):
+def _main_old(config: config_parser.Config):
     # Data structure is composed by:
     #   x,y,z(depth),
     #   well => Well ID (-1 if it's not an original real point.)
@@ -472,10 +476,12 @@ def update_config_file_params_with_args(config: config_parser.Config,
 
     if args.num_features is not None:
         #int() of None raise an error so we must check before.
-        my_config.add_param('num_features', int(args.num_features))
+        config.add_param('num_features', int(args.num_features))
+    else:
+        config.add_param('num_features', 0)
 
     if args.with_progress is not None:
-        my_config.add_param('with_progress', args.with_progress)
+        config.add_param('with_progress', args.with_progress)
 
     if (args.local_files is not None) and args.local_files:
         config[
@@ -485,13 +491,25 @@ def update_config_file_params_with_args(config: config_parser.Config,
     return config
 
 
+def main():
+    # Retrieve CLI arguments
+    args = config_arg_parser().parse_args()
+
+    # Retrieve config file parameters
+    config = config_parser.YAMLConfig(args.config_file)
+
+    # Overwrite config file parameters with CLI args when necessary
+    update_config_file_params_with_args(config, args)
+
+    # Initialize the MPI environment, if it's being used.
+    # Initialized values and other objects are inserted into config
+    mpi_module.initialize(config)
+
+    # Run base algorithm
+    alg = BaseInvertedLearning(H5SeismicDataLoader(config),
+                               H5PorosityDataLoader(config), None, None, None)
+    alg.run()
+
+
 if __name__ == '__main__':
-
-    parser = config_arg_parser()
-    args = parser.parse_args()
-
-    my_config = config_parser.YAMLConfig(args.config_file)
-
-    my_config = update_config_file_params_with_args(my_config, args)
-
-    main(my_config)
+    main()

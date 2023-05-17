@@ -1,0 +1,88 @@
+from abc import ABC, abstractmethod
+
+
+class CompatibilityCheckable(ABC):
+
+    def __init__(self):
+        pass
+
+    @abstractmethod
+    def compatible(self, to_compare):
+        pass
+
+
+class AbstractSeismicDataLoader(CompatibilityCheckable, ABC):
+
+    @abstractmethod
+    def load(self):
+        pass
+
+
+class AbstractPorosityDataLoader(CompatibilityCheckable, ABC):
+
+    @abstractmethod
+    def load(self):
+        pass
+
+
+class AbstractExpandAlg(CompatibilityCheckable, ABC):
+
+    @abstractmethod
+    def expand_points(self):
+        pass
+
+
+class AbstractFeatureSelectionAlg(CompatibilityCheckable, ABC):
+
+    @abstractmethod
+    def feature_selection(self):
+        pass
+
+
+class AbstractApplyAlg(CompatibilityCheckable, ABC):
+
+    @abstractmethod
+    def perform_prediction(self):
+        pass
+
+
+class BaseInvertedLearning:
+
+    def __init__(self, seismic_data_loader: AbstractSeismicDataLoader,
+                 porosity_data_loader: AbstractPorosityDataLoader,
+                 expand_alg: AbstractExpandAlg,
+                 feature_selection_alg: AbstractFeatureSelectionAlg,
+                 apply_alg: AbstractApplyAlg):
+        # self.config = config
+
+        # Set strategy objects up
+        self._seismic_data_loader = seismic_data_loader
+        self._porosity_data_loader = porosity_data_loader
+        self._expand_alg = expand_alg
+        self._feature_selection_alg = feature_selection_alg
+        self._apply_alg = apply_alg
+
+        # Assert strategies compatibility
+        assert self._seismic_data_loader.compatible(self._porosity_data_loader)
+
+    def run(self):
+
+        # Load seismic data
+        print('loading seismic')
+        features_dict = self._seismic_data_loader.load()
+
+        # Load porosity data
+        print('loading porosity')
+        porosity_data = self._porosity_data_loader.load()
+
+        return
+
+        # Perform the required iterations
+        for it in range(starting_it, max_iteration):
+            self._expand_alg.expand_points(porosity_data)
+
+            best_features_set = self._feature_selection_alg.feature_selection(
+                features_dict, porosity_data)
+
+            self._apply_alg.perform_prediction(best_features_set,
+                                               features_dict, porosity_data)
