@@ -22,6 +22,7 @@ class H5ExpandAlg(AbstractExpandAlg):
         # Retrieve config parameters
         wells_coords = self._config.wells_as_simple_list
         comm = self._config.get_param('mpi_global_comm')
+        rank = self._config.get_param('mpi_rank')
         should_update = self._config.get_param('mpi_should_update_local')
         full_depth_chunks = self._config.get_param('full_depth_chunks')
 
@@ -132,8 +133,8 @@ class H5ExpandAlg(AbstractExpandAlg):
                                              self._config)
 
         else:
-            my_rank = self.self._config.get_param('my_process').rank
-            print(f'[main]{it_str}[R{my_rank}] waiting points expansion')
+            my_rank = rank
+            print(f'[main][{it}][R{my_rank}] waiting points expansion')
 
         comm.Barrier()
 

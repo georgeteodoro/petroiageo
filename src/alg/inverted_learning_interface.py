@@ -40,7 +40,7 @@ class AbstractExpandAlg(CompatibilityCheckable, ABC):
 class AbstractFeatureSelectionAlg(CompatibilityCheckable, ABC):
 
     @abstractmethod
-    def feature_selection(self):
+    def feature_selection(self, features_dict, porosity_data, it):
         pass
 
 
@@ -87,10 +87,10 @@ class BaseInvertedLearning:
         for it in range(starting_it, max_iteration):
             self._expand_alg.expand_points(porosity_data, it)
 
-            return
-
             best_features_set = self._feature_selection_alg.feature_selection(
-                features_dict, porosity_data)
+                features_dict, porosity_data, it)
+
+            return
 
             self._apply_alg.perform_prediction(best_features_set,
                                                features_dict, porosity_data)
