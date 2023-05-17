@@ -51,11 +51,13 @@ def get_local_node_comm():
 
     return local_comm
 
+
 # TODO:
 # Refactor to remove this global variable
 # Currently, main.py is too complicated and overcrowded to make a simple
 # straightforward solution
 local_comm = get_local_node_comm()
+
 
 def print_manager(string):
     """
@@ -70,6 +72,7 @@ def print_progress(with_progress, r):
         return tqdm(r)
     else:
         return r
+
 
 def mpi_perform_ordered(func):
     """
@@ -162,8 +165,10 @@ class FeaturesDataLoaderH5():
         for file_path, feat_name in zip(self.features_file_paths,
                                         self.features_names):
             print(f'[main] loading file {file_path}')
-            self.features_files_dict_h5[feat_name] = h5py.File(
-                file_path, 'r', driver='mpio', comm=local_comm)
+            self.features_files_dict_h5[feat_name] = h5py.File(file_path,
+                                                               'r',
+                                                               driver='mpio',
+                                                               comm=local_comm)
             self.features_dict_h5[feat_name] = self.features_files_dict_h5[
                 feat_name]['f']
 
@@ -176,8 +181,11 @@ class FeaturesDataLoaderH5():
 
 class PorosityCubeDataLoaderH5():
 
-    def __init__(self, cube_path: pathlib.Path):
+    def __init__(self, cube_path):
+        print(f'================{cube_path}')
+        print(f'================{pathlib.Path}')
         self.cube_path = pathlib.Path(cube_path)
+        print(f'================{self.cube_path}')
         self.porosity_data = None
         self.porosity_cube_file = None
 
@@ -236,11 +244,10 @@ class Algorithm():
         t1 = time.time()
 
         print("[main] Loading seismic data")
-        with FeaturesDataLoaderH5(local_comm, self.config) as feat_dl:
-            print("[main] Loading wells values")
+        with FeaturesDataLoaderH5(self.config) as feat_dl:
+            print("[main] Loading wells values 1")
             with PorosityCubeDataLoaderH5(
-                    self.config.alg['starting_porosity_cube_path'],
-                    local_comm) as porosity_dl:
+                    self.config.starting_porosity_cube_path) as porosity_dl:
                 features_dict_h5 = feat_dl.features_dict_h5
                 porosity_data_h5 = porosity_dl.porosity_data
 
@@ -286,7 +293,8 @@ class Algorithm():
             if my_process.should_update:
                 apply5_hdf5.perf_predition(best_features_set, porosity_data_h5,
                                            features_dict_h5, window_sizes,
-                                           displacement_cube_shape)
+                                           displacement_cube_shape, it,
+                                           self.config)
 
             t4 = time.time()
 
@@ -320,14 +328,15 @@ class Algorithm():
         print(f'[main] empty points: {empty_points}')
 
     def _expand_points(self, porosity_data_h5, it: int, it_str: int):
-        wells_coords = self.config.wells_as_simple_list()
+        wells_coords = self.config.wells_as_simple_list
         my_process = self.config.get_param('my_process')
         print(f"[main]{it_str} Expanding points")
         if my_process.should_update:
             hypercube_shape = porosity_data_h5.shape
             expand4_hdf5.gen_expanded_points(porosity_data_h5, hypercube_shape,
                                              wells_coords, it, it_str,
-                                             my_process.print_progress_func)
+                                             my_process.print_progress_func,
+                                             self.config)
         else:
             my_rank = self.config.get_param('my_process').rank
             print(f'[main]{it_str}[R{my_rank}] waiting points expansion')
@@ -356,11 +365,13 @@ class Algorithm():
         if mpi_size == 1:
             best_features_set, best_error = petro5_hdf5.get_features_sets(
                 porosity_data_h5, features_dict_h5, all_features, window_sizes,
-                displacement_cube_shape, it_str, max_num_features, 0)
+                displacement_cube_shape, it_str, max_num_features, 0,
+                self.config)
         else:
             best_features_set, best_error = petro_dist4_hdf5.get_features_sets(
                 porosity_data_h5, features_dict_h5, all_features, window_sizes,
-                displacement_cube_shape, it_str, max_num_features, 5)
+                displacement_cube_shape, it_str, max_num_features, 5,
+                self.config)
 
         print_manager(f'[main]{it_str} Best features set:'\
                 f' {best_features_set} with {best_error} error')
@@ -466,9 +477,9 @@ def update_config_file_params_with_args(config: config_parser.Config,
     if args.with_progress is not None:
         my_config.add_param('with_progress', args.with_progress)
 
-    if args.local_files is not None:
-        config.alg[
-            'starting_porosity_cube_path'] = f"./{pathlib.Path(config.alg['starting_porosity_cube_path']).name}"
+    if (args.local_files is not None) and args.local_files:
+        config[
+            'starting_porosity_cube_path'] = f"./{pathlib.Path(config['starting_porosity_cube_path']).name}"
         config.features_folder = "./features/"
 
     return config

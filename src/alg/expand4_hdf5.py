@@ -5,7 +5,6 @@ import common
 import hdf5_util
 import profiling
 
-
 # pp: is for showing the iteration progress, which can be enabled or disabled.
 # full_depth_chunks: whether the chunks for d_h5 includes the full depth, i.e.,
 # there are no 2 chunks which are stacked upon each other. This allows faster
@@ -18,13 +17,15 @@ def gen_expanded_points(d_h5,
                         pp,
                         config,
                         full_depth_chunks=True):
+    
+    print('========================================')
+
     depth_len = hypercube_shape[2]
     ring = it
 
     t1 = time()
 
-    if len(it_str) > 0:
-        print(f'[gen_expanded_points]{it_str} Expanding points on ring {ring}')
+    print(f'[gen_expanded_points][it{it}] Expanding points on ring {ring}')
     # Generate a list of points to be expanded
     well_id = 0
     total_chunk_update_time = 0
