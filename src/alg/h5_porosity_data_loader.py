@@ -25,6 +25,10 @@ class H5PorosityDataLoader(AbstractPorosityDataLoader):
         self._config = config
         self._porosity_cube_file = None
 
+        # Compatibility flags:
+        super().__init__()
+        self._using_h5 = True
+
     def load(self):
         # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
         # with the same access/mode: existing file with write permission
@@ -41,9 +45,11 @@ class H5PorosityDataLoader(AbstractPorosityDataLoader):
 
         return porosity_cube_dset
 
-    # TODO: implement this....
-    def compatible(self, to_compare):
-        return True
+    def _single_compatible(self, to_compare):
+        # Check if to_compare have h5 support
+        compatible = to_compare._using_h5
+
+        return compatible
 
     def __del__(self):
         self._porosity_cube_file.close()

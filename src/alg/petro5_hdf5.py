@@ -33,7 +33,7 @@ params = {
 # The tmp dataset is a list based on the sparse data of the
 # porosity dataset. It can either be incremental or need to be
 # reassembled each iteration. If incremental, indices will be
-# mismatched between features and tmp list. If reassembling, 
+# mismatched between features and tmp list. If reassembling,
 # it will be inefficient.
 
 
@@ -281,19 +281,12 @@ def create_tmp_dset(porosity_data_h5,
 
 
 # exp_n_features: number of features to be selected
-# f_width: number of features to be compared
+# max_tested_features: number of features to be compared
 #   default=0 means all features.
 #   Used for debugging and reducing computing cost
-def get_features_sets(
-        porosity_data_h5,
-        features_dict_h5,
-        all_features,
-        window_sizes,
-        displacement_cube_shape,
-        # num_threads,
-        it_str,
-        exp_n_features,
-        f_width=0):
+def get_features_sets(porosity_data_h5, features_dict_h5, all_features,
+                      window_sizes, displacement_cube_shape, it,
+                      exp_n_features, max_tested_features, config):
 
     t0 = time()
 
@@ -337,7 +330,7 @@ def get_features_sets(
                 continue
 
             # Early termination for debugging
-            if f_width != 0 and ii == f_width:
+            if max_tested_features != 0 and ii == max_tested_features:
                 break
             ii = ii + 1
 
@@ -365,7 +358,7 @@ def get_features_sets(
                 best_error = rmse
                 best_feature = cur_feature
 
-            print(f'[get_features_sets][it{it}]{it_str} Tested features '\
+            print(f'[get_features_sets][it{it}] Tested features '\
                   f'{cur_f_set+ [cur_feature]} with error {rmse}')
 
         # Remove the best feature from the features list

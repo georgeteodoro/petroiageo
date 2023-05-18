@@ -24,6 +24,10 @@ class H5SeismicDataLoader(AbstractSeismicDataLoader):
         self._config = config
         self._features_files_dict_h5 = {}
 
+        # Compatibility flags:
+        super().__init__()
+        self._using_h5 = True
+
     def load(self):
         """
         Only '_config.num_features' features are opened and returned.
@@ -56,9 +60,11 @@ class H5SeismicDataLoader(AbstractSeismicDataLoader):
 
         return features_dset_dict_h5
 
-    # TODO: implement this....
-    def compatible(self, to_compare):
-        return True
+    def _single_compatible(self, to_compare):
+        # Check if to_compare have h5 support
+        compatible = to_compare._using_h5
+
+        return compatible
 
     def __del__(self):
         for file in self._features_files_dict_h5.keys():

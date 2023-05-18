@@ -18,6 +18,10 @@ class H5ExpandAlg(AbstractExpandAlg):
     def __init__(self, config: config_parser.Config):
         self._config = config
 
+        # Compatibility flags:
+        super().__init__()
+        self._using_h5 = True
+
     def expand_points(self, porosity_data_h5, it):
         # Retrieve config parameters
         wells_coords = self._config.wells_as_simple_list
@@ -69,8 +73,8 @@ class H5ExpandAlg(AbstractExpandAlg):
                     total_chunks += 1
                     t2 = time()
 
-                    # Given the two rectangular regions: chunk and well, 
-                    # chunk have points to be updated whenever chunk 
+                    # Given the two rectangular regions: chunk and well,
+                    # chunk have points to be updated whenever chunk
                     # and well overlaps.
 
                     chunk_x_left = chunk_slice[0].start
@@ -84,9 +88,9 @@ class H5ExpandAlg(AbstractExpandAlg):
                     no_ovlp_y = (chunk_y_bot < well_y_top) | (chunk_y_top >
                                                               well_y_bot)
 
-                    # full_depth_chunks: whether the chunks for 
+                    # full_depth_chunks: whether the chunks for
                     # porosity_data_h5 includes the full depth, i.e.,
-                    # there are no 2 chunks which are stacked upon each other. 
+                    # there are no 2 chunks which are stacked upon each other.
                     # This allows faster checking for well/chunk overlaps
                     if full_depth_chunks:
                         # Ignore the current chunk if no overlapping is found
@@ -99,11 +103,11 @@ class H5ExpandAlg(AbstractExpandAlg):
 
                     ran_chunks += 1  # Used only for profiling
 
-                    # Calculate whether the current chunk has any points to 
-                    # update/expand 
+                    # Calculate whether the current chunk has any points to
+                    # update/expand
                     # print(chunk_slice)
 
-                    # Update 'empty' values to 'expanded' if point is 
+                    # Update 'empty' values to 'expanded' if point is
                     # on any ring border
                     hdf5_util.conditional_map_h5_chunk(
                         porosity_data_h5, lambda d:
@@ -138,6 +142,9 @@ class H5ExpandAlg(AbstractExpandAlg):
 
         comm.Barrier()
 
-    # TODO: implement this....
-    def compatible(self, to_compare):
-        return True
+    def _single_compatible(self, to_compare):
+        # Check if to_compare have h5 support
+        compatible = to_compare._using_h5
+
+        return compatible
+

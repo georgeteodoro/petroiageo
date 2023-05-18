@@ -3,6 +3,7 @@ from time import time
 
 from inverted_learning_interface import AbstractFeatureSelectionAlg
 import petro_dist4_hdf5
+import petro5_hdf5
 import config_parser
 
 
@@ -14,6 +15,10 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
 
     def __init__(self, config: config_parser.Config):
         self._config = config
+
+        # Compatibility flags:
+        super().__init__()
+        self._using_h5 = True
 
     @staticmethod
     def _generate_seismic_features_names(window, base_features) -> list:
@@ -60,6 +65,8 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
 
         return best_features_set
 
-    # TODO: implement this....
-    def compatible(self, to_compare):
-        return True
+    def _single_compatible(self, to_compare):
+        # Check if to_compare have h5 support
+        compatible = to_compare._using_h5
+
+        return compatible
