@@ -40,7 +40,11 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
         # Retrieve config parameters
         max_num_features = self._config.alg['max_num_features']
         num_features = self._config.get_param('num_features')
-        base_features = self._config.features_files_names[:num_features]
+        base_features = self._config.features_files_names
+        # TODO: Centralize this behavior of removing other files
+        base_features = [f for f in base_features if f !='.gitkeep']
+        if num_features != 0:
+            base_features = base_features[:num_features]
         window_size = self._config.get_param('window')
         max_tested_features = self._config.get_param('max_tested_features')
         mpi_size = self._config.get_param('mpi_size')

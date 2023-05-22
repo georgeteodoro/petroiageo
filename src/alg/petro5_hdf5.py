@@ -317,7 +317,7 @@ def get_features_sets(porosity_data_h5, features_dict_h5, all_features,
         t3 = time()
         # Reset best feature and its error
         best_error = 10000
-        best_feature = ()
+        best_feature = None
 
         # Setup the new column to be tested
         cur_h5_train_list.add_new_col()
@@ -375,7 +375,7 @@ def get_features_sets(porosity_data_h5, features_dict_h5, all_features,
         cur_f_set.append(best_feature)
 
         t8 = time()
-        print(f'[get_features_sets][{cur_feature}] '\
+        print(f'[get_features_sets][{best_feature}] '\
               f'commit_feature_time: {t8-t7}')
 
     t9 = time()

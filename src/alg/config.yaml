@@ -25,11 +25,11 @@ wells: # This is wells related stuff
 # real_wells = [[134, 227], [146, 500], [167, 186], [174, 365], [200, 102],
 #               [236, 113], [250, 315], [287, 242], [230, 194], [344, 276]]
 
-features_folder: "../../dados/features" # Folder where every file will be treated as a feature
+features_folder: "../../data/POV/features/h5_features" # Folder where every file will be treated as a feature
 
 # Output path for the porosity cube produced (if any)
 porosity_cube_output_path: "./results/porosity.npy" 
-starting_porosity_cube_path: "../../dados/porosity/porosity_data.h5" # The starting porosity cube file.
+starting_porosity_cube_path: "../../data/POV/porosity_data.h5" # The starting porosity cube file.
 
 alg:
   # Starting iteration. The iteration index will be used for other params.
