@@ -1,11 +1,14 @@
 import h5py
+import lightgbm as lgb
 from time import time
+import numpy as np
 
 from inverted_learning_interface import AbstractApplyAlg
 import config_parser
 import common
 import profiling
 import hdf5_util
+import petro5_hdf5
 
 # TODO: send these values to self._config
 params = {
@@ -43,6 +46,7 @@ class H5ApplyAlg(AbstractApplyAlg):
                            porosity_data_h5, it):
         # Retrieve self._config parameters
         window_size = self._config.get_param('window')
+        rank = self._config.get_param('mpi_rank')
 
         # Calculate remaining variables
         window_shape = (window_size, window_size, window_size)
@@ -63,8 +67,11 @@ class H5ApplyAlg(AbstractApplyAlg):
 
         # Creates a temporary h5 structure to perform the training
         cur_h5, cur_h5_dset = petro5_hdf5.create_tmp_dset(
-            porosity_data_h5, is_training_point_f, len(best_features_set),
-            True)
+            porosity_data_h5,
+            is_training_point_f,
+            len(best_features_set),
+            f'-r{rank}',
+            features_only=True)
         cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
 
         hypercube_shape = porosity_data_h5.shape

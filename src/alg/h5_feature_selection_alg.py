@@ -1,5 +1,4 @@
 import h5py
-from time import time
 
 from inverted_learning_interface import AbstractFeatureSelectionAlg
 import petro_dist4_hdf5

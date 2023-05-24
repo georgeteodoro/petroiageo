@@ -38,9 +38,18 @@ def it_str(it):
     return f'[it{it}]'
 
 
-def timestamp(base_str):
-    print(f'[TIMESTAMP][{base_str}] '\
+def timestamp(stamp_str, config):
+    print(f'[TIMESTAMP][{stamp_str}] '\
           f'{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
+
+
+# === I/O =====================================================================
+def prof_seismic_load_time(time, config):
+    print(f'{base_str}{expand_str}[seismic-load-time] {time}')
+
+
+def prof_porosity_load_time(time, config):
+    print(f'{base_str}{expand_str}[porosity-load-time] {time}')
 
 
 # === Expand ==================================================================

@@ -50,6 +50,12 @@ def config_arg_parser():
                         required=False,
                         help='Number of maximum features to be '\
                             'selected')
+    parser.add_argument('--ntf',
+                        dest='num_tested_features',
+                        action='store',
+                        default=0,
+                        help='Number of features to be tested before choosing '\
+                            'a selected feature.')
     parser.add_argument('--wp',
                         dest='with_progress',
                         action='store_true',
@@ -80,7 +86,6 @@ def update_config_file_params_with_args(config: config_parser.Config,
         config.alg['num_its'] = int(args.num_its)
 
     if args.num_features is not None:
-        #int() of None raise an error so we must check before.
         config.add_param('num_features', int(args.num_features))
     else:
         config.add_param('num_features', 0)
@@ -95,7 +100,9 @@ def update_config_file_params_with_args(config: config_parser.Config,
 
     config.add_param('full_depth_chunks', True)
     config.add_param('window', 3)
-    config.add_param('max_tested_features', 1)
+
+
+    config.add_param('max_tested_features', int(args.num_tested_features))
 
     return config
 
