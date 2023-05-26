@@ -31,26 +31,26 @@ alg:
   save_cube_every_n_its: -1
 
   # Indicates the wells that should be used for validation only. Index starts at 0. Default is an empty list
-  # validation_only_wells: [2, 3]
+  validation_only_wells: [2, 3]
   
   # Indicates the wells that should be used for testing only. Index starts at 0. Default is an empty list
-  # test_only_wells: [5]
+  test_only_wells: [5]
 
   sampling: # Sampling strategy stuff
     # Num of iterations as window size. If negative, use max num of iterations possible. Default: -1
-    # its_window_size: 4
+    its_window_size: 4
 
     # Max num of points for the sampling. If negative, use all data available. Default: -1
-    # max_points: 10000
+    max_points: 10000
     
     # Function to penalize data from earlier iterations following the beta distribuition.
     # Set alpha=1 and beta=1 for no penalty. Default: alpha=1 and beta=1
-    # beta_dist:
-    #   alpha: 1
-    #   beta: 1
+    beta_dist:
+      alpha: 1
+      beta: 1
   
   # Feature selection type. Options: ['FORWARD', 'NONE']. Default: FORWARD
-  # feature_selection_type: "FORWARD"
+  feature_selection_type: "FORWARD"
   
   # Max num of features to select in the feature_selection_step. Default: 1
   max_num_features: 10
@@ -58,10 +58,10 @@ alg:
   # Max exec time in seconds. If negative there is no limit. Default: -1
   max_exec_time: 1000
   # If it should save metrics for every iteration or don't save any metrics. Default: true
-  # metrics_by_it: true
+  metrics_by_it: true
   
   # When it should save the trained model. 
   # Accepted: 'last' (saves only the last one), 'every_n' where 'n' should be replaced by an int, 
   # a list [1,2,3,...] indicating the iterations.
   # Default: 'last'
-  # save_models_on: "last"
+  save_models_on: "last"

@@ -32,7 +32,7 @@ if [ $ON_LOCAL -eq 1 ]
         cp ../../../data/POV/features/h5_features/*.h5 \
         /tmp/test/data/h5_features
     srun -N${SLURM_JOB_NUM_NODES} \
-        cp ../../../data/POV/porosity_data_bckup-434x323x251.h5 \
+        cp ../../../data/POV/porosity_data-bckup.h5 \
         /tmp/test/data/porosity_data.h5
     srun -N${SLURM_JOB_NUM_NODES} cd /tmp/test
 else
