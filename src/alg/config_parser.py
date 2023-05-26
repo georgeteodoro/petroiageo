@@ -38,7 +38,7 @@ class SaveModelTypes():
         return all([element > 0 for element in my_list])
 
     @staticmethod
-    def raise_if_not_valid(save_model_type: str | list):
+    def raise_if_not_valid(save_model_type):
         if isinstance(save_model_type, list):
             if not SaveModelTypes._has_positives_only(save_model_type):
                 raise ValueError("alg.save_models_on: The list should have "\
@@ -197,7 +197,7 @@ class ConfigTypeCaster():
         return treated_coords_configs
 
     @classmethod
-    def _treats_every_coord(cls, coords: list | dict):
+    def _treats_every_coord(cls, coords):
         """
         Assumes the coordnates are x and y integers
         """
@@ -366,7 +366,7 @@ class Config():
     ]
 
     def __init__(self,
-                 config_path: str | pathlib.Path = None,
+                 config_path,
                  config_dict: dict = None,
                  config_str: str = None):
 
@@ -409,7 +409,7 @@ class Config():
                 'porosity_cube_output_path']
 
     def _get_input_config(self,
-                          config_path: str | pathlib.Path = None,
+                          config_path,
                           config_dict: dict = None,
                           config_str: str = None):
         """
@@ -613,7 +613,7 @@ class Config():
 class YAMLConfig(Config):
 
     def __init__(self,
-                 config_path: str | pathlib.Path = None,
+                 config_path,
                  config_dict: dict = None,
                  config_str: str = None):
         super().__init__(config_path, config_dict, config_str)
@@ -630,3 +630,4 @@ class YAMLConfig(Config):
     @classmethod
     def _get_config_type_caster(cls) -> ConfigTypeCaster:
         return YAMLConfigTypeCaster
+
