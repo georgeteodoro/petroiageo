@@ -48,10 +48,13 @@ ls
 vmstat 5 -S M -t -w > ${ORIG}/${EXEC_NAME}.mem.log &
 
 # Actual execution
-/usr/bin/time -v mpirun -np $N_PROCS --map-by node \
-    --tag-output --bind-to core --oversubscribe python3 -u main.py \
-    --no-wp --nits 1 --nf $N_FEATURES_FILES --nsf $N_SELECTED_FEATURES \
-    --config config.yaml | tee $EXEC_NAME.log
+/usr/bin/time -v mpirun -np $N_PROCS --map-by node --tag-output --bind-to core \
+    --oversubscribe --output-filename ${ORIG}/${EXEC_NAME} \
+    --merge-stderr-to-stdout perf stat python3 -u main.py --no-wp --nits 1 \
+    --nf $N_FEATURES_FILES --nsf $N_SELECTED_FEATURES --config config.yaml \
+    | tee $EXEC_NAME.log
+
+# /bin/time -v mpirun -np 3 --bind-to core --output-filename logg --merge-stderr-to-stdout perf stat python3 main.py --config config.yaml --nf 1 --nsf 10 --ntf 10 --nits 1
 
 if [ $ON_LOCAL -eq 1 ]; then
     cp $FILENAME.log $ORIG
