@@ -38,7 +38,7 @@ class SaveModelTypes():
         return all([element > 0 for element in my_list])
 
     @staticmethod
-    def raise_if_not_valid(save_model_type: str | list):
+    def raise_if_not_valid(save_model_type):
         if isinstance(save_model_type, list):
             if not SaveModelTypes._has_positives_only(save_model_type):
                 raise ValueError("alg.save_models_on: The list should have "\
@@ -65,7 +65,6 @@ def list_func_applier_decorator(func):
     element of a iterable. This exists to pass the 'underlying function' 
     as a parameter to other functions.
     """
-
     def apply_func_to_every_element(my_iterable):
         """
             Applies a func to every element in my_iterable
@@ -82,7 +81,6 @@ class ConfigTypeCaster():
     provided. This is mostly file format independent, but could have 
     differences between the formats accepted.
     """
-
     @classmethod
     def treat_input_config(cls, config_dict: dict) -> dict:
         treated_dict = dict()
@@ -197,7 +195,7 @@ class ConfigTypeCaster():
         return treated_coords_configs
 
     @classmethod
-    def _treats_every_coord(cls, coords: list | dict):
+    def _treats_every_coord(cls, coords):
         """
         Assumes the coordnates are x and y integers
         """
@@ -221,7 +219,7 @@ class ConfigTypeCaster():
 
     @classmethod
     def _apply_key_func_mapping_to_dict_and_modify_target_dict(
-            cls, key_func_map: dict, base_dict: dict, dict_to_modify: dict):
+        cls, key_func_map: dict, base_dict: dict, dict_to_modify: dict):
         """
         Apply the func associated with the key in base_dict but its result is 
         saved in dict_to_modify
@@ -241,7 +239,6 @@ class ConfigTypeCaster():
 
 
 class YAMLConfigTypeCaster(ConfigTypeCaster):
-
     @staticmethod
     def _which_python_bool_value(input_bool: str) -> bool:
         if input_bool.lower() in ['y', 'yes', 'on', 'true']:
@@ -259,7 +256,6 @@ class ConfigValidator():
     the config passes the type validation, some values may not be valid for 
     a given config. This is file format independent.
     """
-
     @classmethod
     def raise_if_not_valid_config(cls, config_dict: dict):
         cls._raise_if_alg_config_not_valid(config_dict)
@@ -366,7 +362,7 @@ class Config():
     ]
 
     def __init__(self,
-                 config_path: str | pathlib.Path = None,
+                 config_path,
                  config_dict: dict = None,
                  config_str: str = None):
 
@@ -409,7 +405,7 @@ class Config():
                 'porosity_cube_output_path']
 
     def _get_input_config(self,
-                          config_path: str | pathlib.Path = None,
+                          config_path,
                           config_dict: dict = None,
                           config_str: str = None):
         """
@@ -582,7 +578,7 @@ class Config():
         raise AttributeError("por_cube_output_path is read only!")
 
     @property
-    def features_files_paths(self) -> list[pathlib.Path]:
+    def features_files_paths(self):
         """
         Returns a list with the complete path to every feature in the feature folder
         """
@@ -595,7 +591,7 @@ class Config():
         return complete_paths
 
     @property
-    def features_files_names(self) -> list[str]:
+    def features_files_names(self):
         """
         Returns a list with the name of every feature in the feature folder.
         A feature name is equal to the name of its file without the suffix.
@@ -611,9 +607,8 @@ class Config():
 
 
 class YAMLConfig(Config):
-
     def __init__(self,
-                 config_path: str | pathlib.Path = None,
+                 config_path,
                  config_dict: dict = None,
                  config_str: str = None):
         super().__init__(config_path, config_dict, config_str)

@@ -25,7 +25,7 @@ def porosity_points_py2hdf5(porosity_file, hdf5_file_path, hypercube_shape,
     # if porosity_file_path.suffix == ".txt":
     #     porosity_np = np.loadtxt(porosity_file_path, delimiter=" ")
     # elif porosity_file_path.suffix == ".npy":
-    porosity_np = np.load(porosity_file_path)
+    porosity_np = np.load(porosity_file_path, allow_pickle=True)
 
     (x, y, z) = hypercube_shape
 
@@ -73,13 +73,13 @@ def config_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description='POV')
 
     parser.add_argument(
-        '--base-feat-file',
+        '-ff',
         dest='feat_file_path',
         action='store',
         required=True,
-        help="The base npy feat file path to get the hypercube shape from")
+        help="The base npy feature file path to get the hypercube shape from.")
     parser.add_argument(
-        '--porosity-file-path',
+        '-pf',
         dest='porosity_file',
         action='store',
         required=True,
@@ -87,11 +87,11 @@ def config_arg_parser() -> argparse.ArgumentParser:
              'of the whole 3D cube, it is not possible to get the cube shape '\
              'from this.')
 
-    parser.add_argument('--hdf5-file-path',
+    parser.add_argument('-o',
                         dest='hdf5_file',
                         action='store',
-                        required=True,
-                        help='The hdf5 file path to be generated.')
+                        required=False,
+                        help='Output file path.')
 
     return parser
 
@@ -102,7 +102,8 @@ if __name__ == '__main__':
 
     parser = config_arg_parser()
     args = parser.parse_args()
-    hypercube_shape = np.load(pathlib.Path(args.feat_file_path)).shape
+    hypercube_shape = np.load(pathlib.Path(args.feat_file_path),
+                              allow_pickle=True).shape
     porosity_file_path = args.porosity_file
     hdf5_file_path = args.hdf5_file
     chunk_shape = (100, 100, 251)

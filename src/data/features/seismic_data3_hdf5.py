@@ -24,16 +24,6 @@ def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path, chunk_shape,
     print(f'[seismic_feature_np2hdf5_planar] reading {feature_name}')
     feature_np = np.load(feature_path)
 
-    # displacement_window = 2
-    # feature_np = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
-    # feature_np[0, 0, 0] = 1
-    # feature_np[1, 0, 0] = 2
-    # feature_np[0, 1, 0] = 3
-    # feature_np[1, 1, 0] = 4
-    # feature_np[0, 0, 1] = 5
-    # feature_np[0, 1, 1] = 6
-    # feature_np[1, 0, 1] = 7
-    # feature_np[1, 1, 1] = 8
     data_shape = feature_np.shape
 
     print(f'[seismic_feature_np2hdf5_planar] original shape: {data_shape} '\
@@ -50,13 +40,11 @@ def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path, chunk_shape,
     x_slice, y_slice, z_slice = create_slices_for_internal_region_of_feature_full_np(
         displacement_window, large_data_shape)
 
-    feature_full_np = assign_regular_inside_points(feature_name, feature_np,
-                                                   feature_full_np, x_slice,
-                                                   y_slice, z_slice)
+    feature_full_np = assign_regular_inside_points(
+        feature_name, feature_np, feature_full_np, x_slice, y_slice, z_slice)
 
     print(
-        f'[seismic_feature_np2hdf5_planar] assigning borders of {feature_name}'
-    )
+        f'[seismic_feature_np2hdf5_planar] assigning borders of {feature_name}')
     # Top/bottom regions
     for z in range(displacement_window):
         feature_full_np[x_slice, y_slice, z] = feature_np[:, :, 0]
@@ -222,7 +210,7 @@ def assign_regular_inside_points(feature_name, feature_np, feature_full_np,
 
 
 def create_slices_for_internal_region_of_feature_full_np(
-        displacement_window, large_data_shape):
+    displacement_window, large_data_shape):
     x_slice = slice(displacement_window,
                     large_data_shape[0] - displacement_window)
     y_slice = slice(displacement_window,
@@ -239,24 +227,11 @@ def create_feature_hdf5_file(feature_name: str, target_folder: pathlib.Path,
         f'[seismic_feature_np2hdf5_planar] creating hdf5 of feature {feature_name}'
     )
     with h5py.File(target_folder / f'{feature_name}.h5', 'w') as h5_f:
-        _ = h5_f.create_dataset(
-            'f',
-            large_data_shape,
-            # =======
-            #     # Create hdf5 file
-            #     print(
-            #         f'[seismic_feature_np2hdf5_planar] creating hdf5 of feature {feature}')
-            #     with h5py.File(f'./dados/{feature}.h5', 'w') as h5_f:
-            #         # h5_dset = h5_f.create_dataset('f', (prod(large_data_shape), ),
-            #         #                               dtype=np.float64,
-            #         #                               chunks=(prod(chunk_shape), ),
-            #         #                               data=feature_full_np.flat)
-            #         h5_dset = h5_f.create_dataset('f',
-            #                                       large_data_shape,
-            # >>>>>>> 11208d0 (Using larger chunks and better logging for distributed execution.):seismic_data3_hdf5.py
-            dtype=np.float64,
-            chunks=chunk_shape,
-            data=feature_full_np.flat)
+        _ = h5_f.create_dataset('f',
+                                large_data_shape,
+                                dtype=np.float64,
+                                chunks=chunk_shape,
+                                data=feature_full_np.flat)
 
 
 def create_new_3d_np_array_with_borders(displacement_window, data_shape):
@@ -293,26 +268,23 @@ def seismic_feature_np2hdf5_3d(feature, chunk_shape, max_displacement):
 def config_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description='POV')
 
-    parser.add_argument('--base-feat-folder',
+    parser.add_argument('--f-dir',
                         dest='feat_folder',
                         type=pathlib.Path,
                         required=True,
-                        help="The base features folder to read files from.")
+                        help="Input dir with .npy base features.")
 
     parser.add_argument(
-        '--target-h5-folder',
+        '-o',
         dest='target_folder',
         type=pathlib.Path,
         required=False,
-        help="The folder in which to save the newly created h5 files. If not\
-                            defined, it will be the same as --base-feat-folder."
-    )
+        help="Output dir. Default is the same as the input dir.")
     return parser
 
 
 if __name__ == '__main__':
 
-    # <<<<<<< HEAD:src/data/features/seismic_data3_hdf5.py
     parser = config_arg_parser()
     args = parser.parse_args()
 
@@ -324,7 +296,7 @@ if __name__ == '__main__':
     base_features_folder = pathlib.Path(args.feat_folder)
 
     target_features_files_names_with_extension = [
-        # 'FAR.npy', 'NEAR_envelope_.npy', 'NEAR_gersztenkorn_5-5-9.npy',
+        # 'NEAR.npy', 'NEAR_envelope_.npy', 'NEAR_gersztenkorn_5-5-9.npy',
         # 'NEAR_instantaneous-frequency_.npy', 'NEAR_rms-5_.npy', 'MID.npy',
         # 'NEAR_gaussian-curvature_.npy', 'NEAR_gst_3-3-11.npy',
         # 'NEAR_max-curvature_.npy', 'NEAR_shape-index_.npy',
@@ -338,7 +310,7 @@ if __name__ == '__main__':
         # 'NEAR_gersztenkorn_5-5-11.npy', 'NEAR_gst_5-5-7.npy',
         # 'NEAR_most-positive-curvature_.npy', 'NEAR_dip-curvature_.npy',
         # 'NEAR_gersztenkorn_5-5-7.npy', 'NEAR_gst_5-5-9.npy',
-        'NEAR.npy'
+        'FAR.npy'
     ]
 
     complete_files_path = [
@@ -362,40 +334,4 @@ if __name__ == '__main__':
         seismic_feature_np2hdf5_planar(f, chunk_shape, disp_window,
                                        args.target_folder)
         for f in complete_files_path
-        # =======
-        # features = ['NEAR', 'MID', 'FAR', 'UFAR', 'GERSZ', 'GST']
-        # # features = ['FAR']
-        # # features = [
-        # #     "FAR", "MID", "NEAR_azimuth_", "NEAR_contour-curvature_",
-        # #     "NEAR_curvedness_", "NEAR_dip-angle_", "NEAR_dip-curvature_",
-        # #     "NEAR_envelope_", "NEAR_gaussian-curvature_",
-        # #     "NEAR_gersztenkorn_3-3-11", "NEAR_gersztenkorn_3-3-7",
-        # #     "NEAR_gersztenkorn_3-3-9", "NEAR_gersztenkorn_5-5-11",
-        # #     "NEAR_gersztenkorn_5-5-7", "NEAR_gersztenkorn_5-5-9",
-        # #     "NEAR_gst_3-3-11", "NEAR_gst_3-3-7", "NEAR_gst_3-3-9",
-        # #     "NEAR_gst_5-5-11", "NEAR_gst_5-5-7", "NEAR_gst_5-5-9",
-        # #     "NEAR_instantaneous-frequency_", "NEAR_max-curvature_",
-        # #     "NEAR_mean-curvature_", "NEAR_min-curvature_",
-        # #     "NEAR_most-negative-curvature_", "NEAR_most-positive-curvature_",
-        # #     "NEAR", "NEAR_rms-5_", "NEAR_shape-index_", "NEAR_sobel_5-5-11", "UFAR"
-        # # ]
-
-        # disp_window = 3
-
-        # # Full size is (434, 646, 251)
-        # # This size cannot be used due to a limitation in the way data is accounted
-        # # by hdf5. Smaller sizes (less that 2GB per chunk) are required
-
-        # # chunk_size_x = 100
-        # # chunk_size_y = 100
-        # # chunk_size_z = 251
-        # chunk_size_x = 434
-        # chunk_size_y = 323
-        # chunk_size_z = 251
-        # [
-        #     seismic_feature_np2hdf5_planar(
-        #         f, (chunk_size_x, chunk_size_y,
-        #             chunk_size_z + disp_window + disp_window), disp_window)
-        #     for f in features
-        # >>>>>>> 11208d0 (Using larger chunks and better logging for distributed execution.):seismic_data3_hdf5.py
     ]
