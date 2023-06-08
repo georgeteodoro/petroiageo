@@ -29,13 +29,6 @@ params = {
     # "tree_learner": "data",
 }
 
-# This version only works for the first iteration.
-# The tmp dataset is a list based on the sparse data of the
-# porosity dataset. It can either be incremental or need to be
-# reassembled each iteration. If incremental, indices will be
-# mismatched between features and tmp list. If reassembling,
-# it will be inefficient.
-
 
 def get_best_features_set(features_sets):
     # Sort by second column (id 1)
@@ -63,7 +56,7 @@ def eval_bootstrap(cur_h5_train_list, wells_id, num_threads=24):
         # Extract the validation data
         # Since the same validation data is supposed to be used for
         # all incremental trainings and is small enough to fit in
-        # memory
+        # memory no out-of-core is used for it
         X_val_np, y_val_np = cur_h5_train_list.get_well_out_data(w)
 
         # Incremental training on all cur_h5_train_list chunks
@@ -168,7 +161,6 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
         # data into a ndarray variable, to later copy it to the cur_h5_seq
         # object.
         def _feature_generator(feature_dset, coord_3d_np, chunk_start):
-
             def _gen_list_features(feature_dset, coord_3d_np):
                 for coord in coord_3d_np:
                     yield feature_dset[tuple(coord)]
@@ -201,8 +193,10 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
 
 
 def create_tmp_dset(porosity_data_h5,
-                    is_training_point_f,
+                    is_training_point_base_f,
                     n_features,
+                    config,
+                    it,
                     suf_str='',
                     list_chunk_size=1000,
                     features_only=False):
@@ -232,8 +226,29 @@ def create_tmp_dset(porosity_data_h5,
                                      for f in range(n_features)]
     cur_data_type = np.dtype(cur_data_type)
 
+    is_training_point_f = is_training_point_base_f
+
+    # Add sapling window for training, if required
+    sampling_window = config.alg['sampling']['its_window_size']
+    if sampling_window > 0:
+        min_ring = max(0, it - sampling_window)
+        is_training_point_f = lambda d: is_training_point_base_f(d) & (d[
+            'ring'] >= min_ring)
+
+    # Calculate the maximum number of training points
     n_training_points = hdf5_util.fold_h5_all_clusters(
         porosity_data_h5, lambda d: len(d[is_training_point_f(d)]), 0)
+
+    # Add sampling of points by max length limit, if required
+    sampling_max_points = config.alg['sampling']['max_points']
+    if sampling_max_points > 0:
+        n_training_points = min(n_training_points, sampling_max_points)
+
+        sampling_dist = config.alg['sampling']['beta_dist']
+        if sampling_dist is not None:
+            print('============================='\
+                  'Sampling_dist not implemented.')
+
     print('============== NEED TO AUTOMATE TMP_LIST CHUNK_SIZE')
     # cur_chunksize = (n_training_points / 10, )
     cur_chunksize = (n_training_points, )
@@ -252,12 +267,21 @@ def create_tmp_dset(porosity_data_h5,
     # This ndarray can be too large to fit in memory.
     prev_end = 0
     hypercube_shape = porosity_data_h5.shape
+    sampling_inserted = 0
     for chunk_slice in porosity_data_h5.iter_chunks():
         # Get current chunk
         chunk_np = porosity_data_h5[chunk_slice]
 
-        # Append these porosity values to the current dataset
+        # Retrieve all training points from the current chunk
         training_points = chunk_np[is_training_point_f(chunk_np)]
+
+        # Check for basic sampling
+        if sampling_max_points > 0:
+            n_points_to_insert = min(len(training_points),
+                                     n_training_points - sampling_inserted)
+            training_points = training_points[:n_points_to_insert]
+
+        # Append these porosity values to the current dataset
         if features_only:
             cur_h5_dset['x', 'y', 'z', 'phi',
                         prev_end:(prev_end +
@@ -297,8 +321,8 @@ def get_features_sets(porosity_data_h5, features_dict_h5, all_features,
         (d['real'] == common.RealValues.expanded) |
         (d['real'] == common.RealValues.propagated))
 
-    cur_h5, cur_h5_dset = create_tmp_dset(porosity_data_h5,
-                                          is_training_point_f, exp_n_features)
+    cur_h5, cur_h5_dset = create_tmp_dset(
+        porosity_data_h5, is_training_point_f, exp_n_features, config, it)
 
     # Create training temporary object
     cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
@@ -335,10 +359,9 @@ def get_features_sets(porosity_data_h5, features_dict_h5, all_features,
             ii = ii + 1
 
             # Insert a temporary feature
-            insert_filtered_feature(cur_h5_dset, cur_h5_train_list,
-                                    features_dict_h5, cur_feature,
-                                    window_sizes, hypercube_shape,
-                                    displacement_cube_shape)
+            insert_filtered_feature(
+                cur_h5_dset, cur_h5_train_list, features_dict_h5, cur_feature,
+                window_sizes, hypercube_shape, displacement_cube_shape)
             t5 = time()
             print(f'[get_features_sets][{cur_feature}] '\
                   f'insert_feature_time: {t5-t4}')

@@ -83,7 +83,6 @@ def conditional_map_h5_chunk(d_h5, cond_f, column_val_list, chunk_slice):
 # Both train and validation data are inside
 # Able to add new features columns on the fly as well as change a given column
 class HDFMultiColList:
-
     def __init__(self, cur_h5_dset):
         # cur_h5_dset must be 1D
         # This cur_h5_dset holds the hdf5 data
@@ -96,6 +95,13 @@ class HDFMultiColList:
 
         self.chunk_size = self.cur_h5_dset.chunks[0]
         self.n_chunks = int(np.ceil(cur_h5_dset.size / self.chunk_size))
+
+        # if sampling_config is not None:
+        #     self.sampling_window = sampling_config['its_window_size']
+        #     self.sampling_max_points = sampling_config['max_points']
+        # else:
+        #     self.sampling_window = None
+        #     self.sampling_max_points = None
 
     # Updates the last column with new values from a generator
     # Overwrites the previous values on this column

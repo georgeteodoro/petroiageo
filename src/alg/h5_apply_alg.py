@@ -34,7 +34,6 @@ class H5ApplyAlg(AbstractApplyAlg):
 
     Update of porosity values is done in-place.
     """
-
     def __init__(self, config: config_parser.Config):
         self._config = config
 
@@ -70,6 +69,8 @@ class H5ApplyAlg(AbstractApplyAlg):
             porosity_data_h5,
             is_training_point_f,
             len(best_features_set),
+            self._config,
+            it,
             f'-r{rank}',
             features_only=True)
         cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
@@ -82,10 +83,9 @@ class H5ApplyAlg(AbstractApplyAlg):
         # Add each feature to the TestData list (TD)
         for feature in best_features_set:
             cur_h5_train_list.add_new_col()
-            petro5_hdf5.insert_filtered_feature(cur_h5_dset, cur_h5_train_list,
-                                                features_dict_h5, feature,
-                                                window_shape, hypercube_shape,
-                                                displacement_cube_shape)
+            petro5_hdf5.insert_filtered_feature(
+                cur_h5_dset, cur_h5_train_list, features_dict_h5, feature,
+                window_shape, hypercube_shape, displacement_cube_shape)
 
         t2 = time()
         profiling.prof_predict_insert_time(it, len(best_features_set), t2 - t1,
@@ -198,12 +198,15 @@ class H5ApplyAlg(AbstractApplyAlg):
             updated_coords = np.where(is_to_pred_point_f(cur_chunk_np))
             cur_chunk_np['phi'][updated_coords] = new_phi_np
             cur_chunk_np['real'][updated_coords] = common.RealValues.propagated
+            cur_chunk_np['ring'][updated_coords] = it
 
             # Only update 'phi' and 'real' values of expanded points
             porosity_data_h5['phi', cur_slice[0], cur_slice[1],
                              cur_slice[2]] = cur_chunk_np['phi']
             porosity_data_h5['real', cur_slice[0], cur_slice[1],
                              cur_slice[2]] = cur_chunk_np['real']
+            porosity_data_h5['ring', cur_slice[0], cur_slice[1],
+                             cur_slice[2]] = cur_chunk_np['ring']
 
             t7 = time()
             profiling.prof_predict_pred_update_time(it, chunk_n, t7 - t6,
