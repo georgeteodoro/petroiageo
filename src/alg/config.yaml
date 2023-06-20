@@ -10,26 +10,17 @@ wells: # This is wells related stuff
     - [287, 242]
     - [230, 194]
     - [344, 276]
-  # - x: 1
-  #   y: 2
-  # - x: 2
-  #   y: 3
-  # - x: 3
-  #   y: 4
-  # - x: 4
-  #   y: 5
-  # - x: 5
-  #   y: 6
-  # - [6, 7]
-# This could be like: [[1,2],[2,3],[3,4]...] as well
+
 # real_wells = [[134, 227], [146, 500], [167, 186], [174, 365], [200, 102],
 #               [236, 113], [250, 315], [287, 242], [230, 194], [344, 276]]
 
-features_folder: "../../data/POV/features/h5_features" # Folder where every file will be treated as a feature
+# Directory where every file will be treated as a feature
+features_folder: "../../data/POV/features/h5_features" 
 
 # Output path for the porosity cube produced (if any)
 porosity_cube_output_path: "./results/porosity.npy" 
-starting_porosity_cube_path: "../../data/POV/porosity_data.h5" # The starting porosity cube file.
+# The starting porosity cube file.
+starting_porosity_cube_path: "../../data/POV/porosity_data.h5" 
 
 alg:
   # Starting iteration. The iteration index will be used for other params.
@@ -40,23 +31,29 @@ alg:
   # If you want to really generate the porosity cube in the end. Default is true
   generate_porosity_cube: true
   
-  # If you want to save the porosity cube for every n its. If negative, ex. -1, save only the last one.
+  # If you want to save the porosity cube for every n its. 
+  # If negative, ex. -1, save only the last one.
   # Default -1.
   save_cube_every_n_its: -1
 
-  # Indicates the wells that should be used for validation only. Index starts at 0. Default is an empty list
+  # Indicates the wells that should be used for validation only. 
+  # Index starts at 0. Default is an empty list
   validation_only_wells: [2, 3]
   
-  # Indicates the wells that should be used for testing only. Index starts at 0. Default is an empty list
-  test_only_wells: [5]
+  # Indicates the wells that should be used for testing only. 
+  # Index starts at 0. Default is an empty list
+  test_only_wells: [0, 1]
 
   sampling: # Sampling strategy stuff
-    # Num of iterations as window size. If negative, use max num of iterations possible. Default: -1
+    # Num of iterations as window size. If negative, use max num of 
+    # iterations possible. Default: -1
     its_window_size: 4
-    # Max num of points for the sampling. If negative, use all data available. Default: -1
+    # Max num of points for the sampling. If negative, use all data available. 
+    # Default: -1
     max_points: 10000
     
-    # Function to penalize data from earlier iterations following the beta distribuition.
+    # Function to penalize data from earlier iterations 
+    # following the beta distribution.
     # Set alpha=1 and beta=1 for no penalty. Default: alpha=1 and beta=1
     beta_dist:
       alpha: 1
@@ -70,11 +67,13 @@ alg:
   
   # Max exec time in seconds. If negative there is no limit. Default: -1
   max_exec_time: 1000
-  # If it should save metrics for every iteration or don't save any metrics. Default: true
+  # If it should save metrics for every iteration or don't 
+  # save any metrics. Default: true
   metrics_by_it: true
   
   # When it should save the trained model. 
-  # Accepted: 'last' (saves only the last one), 'every_n' where 'n' should be replaced by an int, 
+  # Accepted: 'last' (saves only the last one), 
+  # 'every_n' where 'n' should be replaced by an int, 
   # a list [1,2,3,...] indicating the iterations.
   # Default: 'last'
   save_models_on: "last"

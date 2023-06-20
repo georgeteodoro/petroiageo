@@ -71,6 +71,13 @@ def config_arg_parser():
                         dest='local_files',
                         action='store_true',
                         help='Read files from main.py root folder.')
+
+    parser.add_argument('--sp',
+                        dest='is_sampling',
+                        action='store_true',
+                        help='Whether sampling should be used '\
+                             'for feature selection (default=False).')
+
     return parser
 
 
@@ -101,8 +108,9 @@ def update_config_file_params_with_args(config: config_parser.Config,
     config.add_param('full_depth_chunks', True)
     config.add_param('window', 3)
 
-
     config.add_param('max_tested_features', int(args.num_tested_features))
+    
+    config.add_param('is_sampling', bool(args.is_sampling))
 
     return config
 

@@ -163,18 +163,26 @@ def worker(porosity_data_h5, features_dict_h5, window_sizes,
     is_training_point_f = lambda d: (
         (d['real'] == common.RealValues.real) |
         (d['real'] == common.RealValues.canal_expanded) |
-        (d['real'] == common.RealValues.expanded) |
         (d['real'] == common.RealValues.propagated))
 
-    cur_h5, cur_h5_dset = petro5_hdf5.create_tmp_dset(porosity_data_h5,
-                                                      is_training_point_f,
-                                                      exp_n_features,
-                                                      f'-r{rank}')
+    test_only_wells = config.alg['test_only_wells']
+    wells_coords = config.wells['coords']
+    training_coords = list(range(len(wells_coords)))
+    training_coords = [x for x in training_coords if x not in test_only_wells]
+
+    cur_h5, cur_h5_dset, test_h5, test_h5_dset = petro5_hdf5.create_tmp_dset(
+        porosity_data_h5,
+        is_training_point_f,
+        exp_n_features,
+        f'-r{rank}',
+        test_only_wells=test_only_wells)
 
     hypercube_shape = porosity_data_h5.shape
 
     # Create training temporary object
     cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
+    if len(test_only_wells) > 0:
+        cur_h5_test_list = hdf5_util.HDFMultiColList(test_h5_dset)
 
     t1 = time()
     profiling.prof_fsel_worker_create_time(it, rank, t1 - t0, config)
@@ -211,6 +219,8 @@ def worker(porosity_data_h5, features_dict_h5, window_sizes,
 
         # Setup the new column to be tested
         cur_h5_train_list.add_new_col()
+        if len(test_only_wells) > 0:
+            cur_h5_test_list.add_new_col()
 
         # Run jobs until there are not any more features to test
         # print(f'[petro4_dist_hdf5][w{rank}][it{it}] new iteration')
@@ -231,12 +241,21 @@ def worker(porosity_data_h5, features_dict_h5, window_sizes,
                                                     new_feature, window_sizes,
                                                     hypercube_shape,
                                                     displacement_cube_shape)
+
+                # Also inserts the feature on the test dataset, if necessary
+                if len(test_only_wells) > 0:
+                    petro5_hdf5.insert_filtered_feature(
+                        test_h5_dset, cur_h5_test_list, features_dict_h5,
+                        new_feature, window_sizes, hypercube_shape,
+                        displacement_cube_shape)
+
                 t5 = time()
                 profiling.prof_fsel_worker_insert_time(it, rank, f_it, t5 - t4,
                                                        config)
 
                 rmse, mae = petro5_hdf5.eval_bootstrap(cur_h5_train_list,
-                                                       list(range(10)))
+                                                       cur_h5_test_list,
+                                                       training_coords)
 
                 results.append((new_feature, rmse))
                 t6 = time()
@@ -270,11 +289,19 @@ def worker(porosity_data_h5, features_dict_h5, window_sizes,
                                             window_sizes, hypercube_shape,
                                             displacement_cube_shape)
 
+        # Also inserts the feature on the test dataset, if necessary
+        if len(test_only_wells) > 0:
+            petro5_hdf5.insert_filtered_feature(test_h5_dset, cur_h5_test_list,
+                                                features_dict_h5,
+                                                new_best_feature, window_sizes,
+                                                hypercube_shape,
+                                                displacement_cube_shape)
+
         t8 = time()
         profiling.prof_fsel_worker_sync_time(it, rank, f_it, t8 - t7, config)
 
-    profiling.prof_fsel_worker_times(it, rank, total_exec_time, t8 - t0, total_jobs,
-                           config)
+    profiling.prof_fsel_worker_times(it, rank, total_exec_time, t8 - t0,
+                                     total_jobs, config)
 
     # Get broadcasted resulting features and errors
     best_result = comm.bcast(None, root=manager_rank)

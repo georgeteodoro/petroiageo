@@ -35,7 +35,7 @@ class SaveModelTypes():
 
     @staticmethod
     def _has_positives_only(my_list: list) -> bool:
-        return all([element > 0 for element in my_list])
+        return all([element >= 0 for element in my_list])
 
     @staticmethod
     def raise_if_not_valid(save_model_type):
@@ -345,7 +345,7 @@ class ConfigValidator():
 
     @staticmethod
     def _has_positives_only(my_list: list) -> bool:
-        return all([element > 0 for element in my_list])
+        return all([element >= 0 for element in my_list])
 
     @staticmethod
     def _under_max_value_only(my_list: list, max_value: float) -> bool:

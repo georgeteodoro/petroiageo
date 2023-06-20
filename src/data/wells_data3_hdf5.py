@@ -73,13 +73,13 @@ def config_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description='POV')
 
     parser.add_argument(
-        '--base-feat-file',
+        '-f',
         dest='feat_file_path',
         action='store',
         required=True,
         help="The base npy feat file path to get the hypercube shape from")
     parser.add_argument(
-        '--porosity-file-path',
+        '-p',
         dest='porosity_file',
         action='store',
         required=True,
@@ -87,7 +87,7 @@ def config_arg_parser() -> argparse.ArgumentParser:
              'of the whole 3D cube, it is not possible to get the cube shape '\
              'from this.')
 
-    parser.add_argument('--hdf5-file-path',
+    parser.add_argument('-o',
                         dest='hdf5_file',
                         action='store',
                         required=True,
