@@ -98,8 +98,7 @@ class H5ApplyAlg(AbstractApplyAlg):
 
             regressor = None
             for c in range(cur_h5_train_list.n_chunks):
-                # Generate a training dataset for all data on chunk c without
-                # data from well w
+                # Generate a training dataset for all data on chunk c
                 X_train_np, y_train_np = cur_h5_train_list.get_all_well_data(c)
                 lgb_train_dataset = lgb.Dataset(X_train_np, y_train_np)
 
@@ -114,11 +113,6 @@ class H5ApplyAlg(AbstractApplyAlg):
 
             t3 = time()
             profiling.prof_predict_train_times(it, t3 - t2, self._config)
-
-            total_to_propagate = hdf5_util.fold_h5_all_clusters(
-                porosity_data_h5, lambda d: len(d[
-                    (d['real'] == common.RealValues.canal_expanded) |
-                    (d['real'] == common.RealValues.expanded)]), 0)
 
             # Perform prediction of expanded points
             p_sum = 0
@@ -139,12 +133,12 @@ class H5ApplyAlg(AbstractApplyAlg):
                 # Extract check for overlapping rectangles in
                 # expand.gen_expanded_points, parameterize by
                 # (it, window_size, slice) and use it here
-                if not is_to_pred_point_f(cur_chunk_np).any():
+                is_chunk_pred_points_list = is_to_pred_point_f(cur_chunk_np)
+                if not is_chunk_pred_points_list.any():
                     continue
 
                 # Filter points to predict
-                expanded_points_np = cur_chunk_np[is_to_pred_point_f(
-                    cur_chunk_np)]
+                expanded_points_np = cur_chunk_np[is_chunk_pred_points_list]
 
                 to_propagate_count = len(expanded_points_np)
                 p_sum = p_sum + to_propagate_count
@@ -198,11 +192,11 @@ class H5ApplyAlg(AbstractApplyAlg):
                 profiling.prof_predict_pred_run_time(it, chunk_n, t6 - t5,
                                                      self._config)
 
-                # Update porosity values on cur_chunk_np. This serves 2 purposes:
-                # (i) converts the new_phi_np from a list to a 3d array (cur_chunk_np)
-                # on the proper coordinates and, (ii) allows batched write of data
-                # onto porosity_data_h5
-                updated_coords = np.where(is_to_pred_point_f(cur_chunk_np))
+                # Update porosity values on cur_chunk_np. This serves 2 
+                # purposes: (i) converts the new_phi_np from a list to a 
+                # 3d array (cur_chunk_np) on the proper coordinates and, 
+                # (ii) allows batched write of data onto porosity_data_h5
+                updated_coords = np.where(is_chunk_pred_points_list)
                 cur_chunk_np['phi'][updated_coords] = new_phi_np
                 cur_chunk_np['real'][
                     updated_coords] = common.RealValues.propagated
