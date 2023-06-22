@@ -51,17 +51,18 @@ def get_best_features_set(features_sets):
 def eval_bootstrap(cur_h5_train_list,
                    cur_h5_test_list,
                    wells_id,
-                   num_threads=24):
-    params['num_threads'] = 1
+                   num_threads=1):
+    params['num_threads'] = num_threads
 
     profiling = False
 
     rmse_list = []
     mae_list = []
-    well_id = 0
 
-    # Test data is the same for all wells, so it's only setup once
-    X_test_np, y_test_np = cur_h5_test_list.get_all_well_data()
+    # Test data is the same for all wells if test_only_wells are 
+    # active, so it's only setup once
+    if cur_h5_test_list is not None:
+        X_test_np, y_test_np = cur_h5_test_list.get_all_well_data()
 
     t0 = time()
     for w in wells_id:
@@ -118,6 +119,9 @@ def eval_bootstrap(cur_h5_train_list,
                   f'{training_time}')
 
         # Calculate error metrics
+        if cur_h5_test_list == None:
+            X_test_np = X_val_np
+            y_test_np = y_val_np
         pred = regressor.predict(X_test_np)
         rmse = np.sqrt(np.mean((pred - y_test_np)**2))
         mae = mean_absolute_error(pred, y_test_np)
@@ -131,11 +135,8 @@ def eval_bootstrap(cur_h5_train_list,
     return np.mean(rmse_list), np.mean(mae_list)
 
 
-# window_sizes: relates to the size of the window on which a displacement can
-# occur: e.g., [-3:3] have a window size of 3. window_sizes is a tuple with
-# a value for each dimension.
 def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
-                            cur_feature, window_sizes, hypercube_shape,
+                            cur_feature, hypercube_shape,
                             displacement_cube_shape):
 
     profile_time = False
@@ -150,11 +151,6 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
 
         # Get the coordinates list
         coord_3d_np = chunk_np[['x', 'y', 'z']]
-
-        # Get the shape of the hypercube with a border of minimum and maximum
-        # displaced points
-        displaced_hypercube_shape = np.array(hypercube_shape) + (
-            np.array(displacement_cube_shape) - 1)
 
         t2 = time()
         if profile_time:
@@ -345,8 +341,8 @@ def create_tmp_dset(porosity_data_h5,
 #   default=0 means all features.
 #   Used for debugging and reducing computing cost
 def get_features_sets(porosity_data_h5, features_dict_h5, all_features,
-                      window_sizes, displacement_cube_shape, it,
-                      exp_n_features, max_tested_features, config):
+                      displacement_cube_shape, it, exp_n_features,
+                      max_tested_features, config):
 
     t0 = time()
 
@@ -358,8 +354,8 @@ def get_features_sets(porosity_data_h5, features_dict_h5, all_features,
 
     test_only_wells = config.alg['test_only_wells']
     wells_coords = config.wells['coords']
-    training_coords = list(range(len(wells_coords)))
-    training_coords = [x for x in training_coords if x not in test_only_wells]
+    training_wells = list(range(len(wells_coords)))
+    training_wells = [x for x in training_wells if x not in test_only_wells]
 
     cur_h5, cur_h5_dset, test_h5, test_h5_dset = create_tmp_dset(
         porosity_data_h5,
@@ -369,6 +365,7 @@ def get_features_sets(porosity_data_h5, features_dict_h5, all_features,
 
     # Create training temporary object
     cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
+    cur_h5_test_list = None
     if len(test_only_wells) > 0:
         cur_h5_test_list = hdf5_util.HDFMultiColList(test_h5_dset)
 
@@ -385,7 +382,7 @@ def get_features_sets(porosity_data_h5, features_dict_h5, all_features,
 
         t3 = time()
         # Reset best feature and its error
-        best_error = 10000
+        best_error = float('inf')
         best_feature = None
 
         # Setup the new column to be tested
@@ -408,14 +405,13 @@ def get_features_sets(porosity_data_h5, features_dict_h5, all_features,
             # Insert a temporary feature
             insert_filtered_feature(cur_h5_dset, cur_h5_train_list,
                                     features_dict_h5, cur_feature,
-                                    window_sizes, hypercube_shape,
-                                    displacement_cube_shape)
+                                    hypercube_shape, displacement_cube_shape)
 
             # Also inserts the feature on the test dataset, if necessary
             if len(test_only_wells) > 0:
                 insert_filtered_feature(test_h5_dset, cur_h5_test_list,
                                         features_dict_h5, cur_feature,
-                                        window_sizes, hypercube_shape,
+                                        hypercube_shape,
                                         displacement_cube_shape)
 
             t5 = time()
@@ -424,7 +420,7 @@ def get_features_sets(porosity_data_h5, features_dict_h5, all_features,
 
             # Test the model with cur_feature
             rmse, mae = eval_bootstrap(cur_h5_train_list, cur_h5_test_list,
-                                       training_coords)
+                                       training_wells)
             t6 = time()
             print(f'[get_features_sets][{cur_feature}] '\
                   f'train_time: {t6-t5}')
@@ -450,15 +446,14 @@ def get_features_sets(porosity_data_h5, features_dict_h5, all_features,
 
         # Update the last column of the sequence object to the best feature
         insert_filtered_feature(cur_h5_dset, cur_h5_train_list,
-                                features_dict_h5, best_feature, window_sizes,
+                                features_dict_h5, best_feature,
                                 hypercube_shape, displacement_cube_shape)
 
         # Also inserts the feature on the test dataset, if necessary
         if len(test_only_wells) > 0:
             insert_filtered_feature(test_h5_dset, cur_h5_test_list,
                                     features_dict_h5, best_feature,
-                                    window_sizes, hypercube_shape,
-                                    displacement_cube_shape)
+                                    hypercube_shape, displacement_cube_shape)
 
         cur_f_set.append(best_feature)
 

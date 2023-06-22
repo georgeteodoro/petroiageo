@@ -53,8 +53,8 @@ class H5ApplyAlg(AbstractApplyAlg):
         # Only one process per node is required to update
         if should_update:
             # Calculate remaining variables
-            window_shape = (window_size, window_size, window_size)
-            displacement_cube_shape = (window_size * 2 + 1, window_size * 2 + 1,
+            displacement_cube_shape = (window_size * 2 + 1,
+                                       window_size * 2 + 1,
                                        window_size * 2 + 1)
 
             t0 = time()
@@ -86,14 +86,15 @@ class H5ApplyAlg(AbstractApplyAlg):
             # Add each feature to the TestData list (TD)
             for feature in best_features_set:
                 cur_h5_train_list.add_new_col()
-                petro5_hdf5.insert_filtered_feature(cur_h5_dset, cur_h5_train_list,
+                petro5_hdf5.insert_filtered_feature(cur_h5_dset,
+                                                    cur_h5_train_list,
                                                     features_dict_h5, feature,
-                                                    window_shape, hypercube_shape,
+                                                    hypercube_shape,
                                                     displacement_cube_shape)
 
             t2 = time()
-            profiling.prof_predict_insert_time(it, len(best_features_set), t2 - t1,
-                                               self._config)
+            profiling.prof_predict_insert_time(it, len(best_features_set),
+                                               t2 - t1, self._config)
 
             regressor = None
             for c in range(cur_h5_train_list.n_chunks):
@@ -115,9 +116,9 @@ class H5ApplyAlg(AbstractApplyAlg):
             profiling.prof_predict_train_times(it, t3 - t2, self._config)
 
             total_to_propagate = hdf5_util.fold_h5_all_clusters(
-                porosity_data_h5,
-                lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
-                                (d['real'] == common.RealValues.expanded)]), 0)
+                porosity_data_h5, lambda d: len(d[
+                    (d['real'] == common.RealValues.canal_expanded) |
+                    (d['real'] == common.RealValues.expanded)]), 0)
 
             # Perform prediction of expanded points
             p_sum = 0
@@ -142,7 +143,8 @@ class H5ApplyAlg(AbstractApplyAlg):
                     continue
 
                 # Filter points to predict
-                expanded_points_np = cur_chunk_np[is_to_pred_point_f(cur_chunk_np)]
+                expanded_points_np = cur_chunk_np[is_to_pred_point_f(
+                    cur_chunk_np)]
 
                 to_propagate_count = len(expanded_points_np)
                 p_sum = p_sum + to_propagate_count
@@ -153,7 +155,8 @@ class H5ApplyAlg(AbstractApplyAlg):
                 # Create new ndarray for keeping all features values
                 # of the current chunk
                 predict_features_type = [(f'f{f}', np.float64)
-                                         for f in range(len(best_features_set))]
+                                         for f in range(len(best_features_set))
+                                         ]
                 to_predict_np = np.empty(to_propagate_count,
                                          dtype=predict_features_type)
 
@@ -176,8 +179,8 @@ class H5ApplyAlg(AbstractApplyAlg):
                     feature_values = _gen_list_features(
                         features_dict_h5[feature[0]], cur_coords_3d_np.flat)
 
-                    to_predict_np[f'f{i}'] = np.fromiter(feature_values,
-                                                         np.float64)
+                    to_predict_np[f'f{i}'] = np.fromiter(
+                        feature_values, np.float64)
 
                     i = i + 1
 
@@ -185,8 +188,8 @@ class H5ApplyAlg(AbstractApplyAlg):
                 to_predict_np = np.array(to_predict_np.tolist())
 
                 t5 = time()
-                profiling.prof_predict_pred_insert_time(it, chunk_n, t5 - t4,
-                                                        self._config)
+                profiling.prof_predict_pred_insert_time(
+                    it, chunk_n, t5 - t4, self._config)
 
                 # Perform prediction of expanded points
                 new_phi_np = regressor.predict(to_predict_np)
@@ -201,7 +204,8 @@ class H5ApplyAlg(AbstractApplyAlg):
                 # onto porosity_data_h5
                 updated_coords = np.where(is_to_pred_point_f(cur_chunk_np))
                 cur_chunk_np['phi'][updated_coords] = new_phi_np
-                cur_chunk_np['real'][updated_coords] = common.RealValues.propagated
+                cur_chunk_np['real'][
+                    updated_coords] = common.RealValues.propagated
 
                 # Only update 'phi' and 'real' values of expanded points
                 porosity_data_h5['phi', cur_slice[0], cur_slice[1],
@@ -210,8 +214,8 @@ class H5ApplyAlg(AbstractApplyAlg):
                                  cur_slice[2]] = cur_chunk_np['real']
 
                 t7 = time()
-                profiling.prof_predict_pred_update_time(it, chunk_n, t7 - t6,
-                                                        self._config)
+                profiling.prof_predict_pred_update_time(
+                    it, chunk_n, t7 - t6, self._config)
                 profiling.prof_predict_pred_time(it, chunk_n, t7 - t4,
                                                  self._config)
 

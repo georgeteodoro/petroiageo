@@ -41,7 +41,7 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
         num_features = self._config.get_param('num_features')
         base_features = self._config.features_files_names
         # TODO: Centralize this behavior of removing other files
-        base_features = [f for f in base_features if f !='.gitkeep']
+        base_features = [f for f in base_features if f != '.gitkeep']
         if num_features != 0:
             base_features = base_features[:num_features]
         window_size = self._config.get_param('window')
@@ -51,18 +51,17 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
         # Calculate remaining variables
         all_features = self._generate_seismic_features_names(
             window_size, base_features)
-        window_shape = (window_size, window_size, window_size)
         displacement_cube_shape = (window_size * 2 + 1, window_size * 2 + 1,
                                    window_size * 2 + 1)
 
         if mpi_size == 1:
             best_features_set, best_error = petro5_hdf5.get_features_sets(
-                porosity_data_h5, features_dict_h5, all_features, window_shape,
+                porosity_data_h5, features_dict_h5, all_features,
                 displacement_cube_shape, it, max_num_features,
                 max_tested_features, self._config)
         else:
             best_features_set, best_error = petro_dist4_hdf5.get_features_sets(
-                porosity_data_h5, features_dict_h5, all_features, window_shape,
+                porosity_data_h5, features_dict_h5, all_features,
                 displacement_cube_shape, it, max_num_features,
                 max_tested_features, self._config)
 

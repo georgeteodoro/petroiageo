@@ -29,8 +29,8 @@ class MPI_TAGS(Enum):
 #   default=0 means all features.
 #   Used for debugging and reducing computing cost
 def get_features_sets(porosity_data_h5, features_dict_h5, all_features,
-                      window_sizes, displacement_cube_shape, it,
-                      exp_n_features, f_width, config):
+                      displacement_cube_shape, it, exp_n_features, f_width,
+                      config):
 
     if mpi_size < 2:
         print("[petro4_dist_hdf5] 2 minimum processes required")
@@ -39,7 +39,7 @@ def get_features_sets(porosity_data_h5, features_dict_h5, all_features,
     if rank == manager_rank:
         return manager(all_features, exp_n_features, f_width, it, config)
     elif rank != manager_rank:
-        return worker(porosity_data_h5, features_dict_h5, window_sizes,
+        return worker(porosity_data_h5, features_dict_h5,
                       displacement_cube_shape, exp_n_features, it, config)
 
 
@@ -154,8 +154,8 @@ def manager(all_features, exp_n_features, f_width, it, config):
     return best_result
 
 
-def worker(porosity_data_h5, features_dict_h5, window_sizes,
-           displacement_cube_shape, exp_n_features, it, config):
+def worker(porosity_data_h5, features_dict_h5, displacement_cube_shape,
+           exp_n_features, it, config):
 
     t0 = time()
 
@@ -181,6 +181,7 @@ def worker(porosity_data_h5, features_dict_h5, window_sizes,
 
     # Create training temporary object
     cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
+    cur_h5_test_list = None
     if len(test_only_wells) > 0:
         cur_h5_test_list = hdf5_util.HDFMultiColList(test_h5_dset)
 
@@ -235,19 +236,15 @@ def worker(porosity_data_h5, features_dict_h5, window_sizes,
                 #       f'Testing feature: {new_feature}')
                 t4 = time()
                 # Insert temporary feature
-                petro5_hdf5.insert_filtered_feature(cur_h5_dset,
-                                                    cur_h5_train_list,
-                                                    features_dict_h5,
-                                                    new_feature, window_sizes,
-                                                    hypercube_shape,
-                                                    displacement_cube_shape)
+                petro5_hdf5.insert_filtered_feature(
+                    cur_h5_dset, cur_h5_train_list, features_dict_h5,
+                    new_feature, hypercube_shape, displacement_cube_shape)
 
                 # Also inserts the feature on the test dataset, if necessary
                 if len(test_only_wells) > 0:
                     petro5_hdf5.insert_filtered_feature(
                         test_h5_dset, cur_h5_test_list, features_dict_h5,
-                        new_feature, window_sizes, hypercube_shape,
-                        displacement_cube_shape)
+                        new_feature, hypercube_shape, displacement_cube_shape)
 
                 t5 = time()
                 profiling.prof_fsel_worker_insert_time(it, rank, f_it, t5 - t4,
@@ -286,14 +283,14 @@ def worker(porosity_data_h5, features_dict_h5, window_sizes,
         # Insert best selected feature
         petro5_hdf5.insert_filtered_feature(cur_h5_dset, cur_h5_train_list,
                                             features_dict_h5, new_best_feature,
-                                            window_sizes, hypercube_shape,
+                                            hypercube_shape,
                                             displacement_cube_shape)
 
         # Also inserts the feature on the test dataset, if necessary
         if len(test_only_wells) > 0:
             petro5_hdf5.insert_filtered_feature(test_h5_dset, cur_h5_test_list,
                                                 features_dict_h5,
-                                                new_best_feature, window_sizes,
+                                                new_best_feature,
                                                 hypercube_shape,
                                                 displacement_cube_shape)
 
