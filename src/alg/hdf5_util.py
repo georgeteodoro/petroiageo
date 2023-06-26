@@ -1,7 +1,6 @@
 from math import ceil
 import numpy as np
-from lightgbm import Sequence
-import numbers
+import h5py
 
 
 # Perform a fold on a clustered h5 object, using the least amount
@@ -84,7 +83,7 @@ def conditional_map_h5_chunk(d_h5, cond_f, column_val_list, chunk_slice):
 # Able to add new features columns on the fly as well as change a given column
 class HDFMultiColList:
 
-    def __init__(self, cur_h5_dset):
+    def __init__(self, cur_h5_dset:h5py.Dataset):
         # cur_h5_dset must be 1D
         # This cur_h5_dset holds the hdf5 data
         self.cur_h5_dset = cur_h5_dset
