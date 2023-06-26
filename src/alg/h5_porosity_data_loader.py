@@ -29,7 +29,7 @@ class H5PorosityDataLoader(AbstractPorosityDataLoader):
         super().__init__()
         self._using_h5 = True
 
-    def load(self):
+    def load(self) -> h5py.Dataset:
         # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
         # with the same access/mode: existing file with write permission
         # However, only one process should update this porosity_data_h5
