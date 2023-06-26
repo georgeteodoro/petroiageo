@@ -1,4 +1,5 @@
 import h5py
+from typing import Dict
 
 from inverted_learning_interface import AbstractFeatureSelectionAlg
 import petro_dist4_hdf5
@@ -35,7 +36,8 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
 
         return all_features
 
-    def feature_selection(self, features_dict_h5, porosity_data_h5, it):
+    def feature_selection(self, features_dict_h5:Dict[str, h5py.Dataset], 
+                            porosity_data_h5:h5py.Dataset, it:int):
         # Retrieve config parameters
         max_num_features = self._config.alg['max_num_features']
         num_features = self._config.get_param('num_features')
