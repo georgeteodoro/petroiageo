@@ -22,7 +22,7 @@ class H5ExpandAlg(AbstractExpandAlg):
         super().__init__()
         self._using_h5 = True
 
-    def expand_points(self, porosity_data_h5, it):
+    def expand_points(self, porosity_data_h5:h5py.Dataset, it:int):
         # Retrieve config parameters
         wells_coords = self._config.wells_as_simple_list
         comm = self._config.get_param('mpi_global_comm')
@@ -32,9 +32,6 @@ class H5ExpandAlg(AbstractExpandAlg):
 
         # Only one process per node is required to update
         if should_update:
-            hypercube_shape = porosity_data_h5.shape
-
-            depth_len = hypercube_shape[2]
             ring = it
 
             t1 = time()
@@ -105,7 +102,6 @@ class H5ExpandAlg(AbstractExpandAlg):
 
                     # Calculate whether the current chunk has any points to
                     # update/expand
-                    # print(chunk_slice)
 
                     # Update 'empty' values to 'expanded' if point is
                     # on any ring border
