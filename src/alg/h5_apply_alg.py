@@ -1,4 +1,5 @@
 import h5py
+from typing import Dict
 import lightgbm as lgb
 from time import time
 import numpy as np
@@ -42,8 +43,10 @@ class H5ApplyAlg(AbstractApplyAlg):
         super().__init__()
         self._using_h5 = True
 
-    def perform_prediction(self, best_features_set, features_dict_h5,
-                           porosity_data_h5, it):
+    def perform_prediction(self, best_features_set:set, 
+                           features_dict_h5:Dict[str, h5py.Dataset],
+                           porosity_data_h5:h5py.Dataset, 
+                           it:int):
         # Retrieve self._config parameters
         window_size = self._config.get_param('window')
         rank = self._config.get_param('mpi_rank')
