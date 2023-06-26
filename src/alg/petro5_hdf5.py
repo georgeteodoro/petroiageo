@@ -140,6 +140,7 @@ def insert_filtered_feature(cur_h5_dset:h5py.Dataset,
                             cur_h5_seq:hdf5_util.HDFMultiColList,
                             features_dict_h5:Dict[str, h5py.Dataset],
                             cur_feature:tuple,
+                            hypercube_shape,
                             displacement_cube_shape:tuple):
 
     profile_time = False
