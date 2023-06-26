@@ -1,15 +1,16 @@
 import numpy as np
 from time import time
+from typing import Tuple, Dict
 import h5py
 from math import prod
 import os
 
 from sklearn.metrics import mean_squared_error, mean_absolute_error
-from sklearn.model_selection import LeaveOneGroupOut
 import lightgbm as lgb
 
 import hdf5_util
 import common
+from config_parser import Config
 
 RANDOM_STATE = 1
 
@@ -135,9 +136,11 @@ def eval_bootstrap(cur_h5_train_list,
     return np.mean(rmse_list), np.mean(mae_list)
 
 
-def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
-                            cur_feature, hypercube_shape,
-                            displacement_cube_shape):
+def insert_filtered_feature(cur_h5_dset:h5py.Dataset, 
+                            cur_h5_seq:hdf5_util.HDFMultiColList,
+                            features_dict_h5:Dict[str, h5py.Dataset],
+                            cur_feature:tuple,
+                            displacement_cube_shape:tuple):
 
     profile_time = False
 
@@ -201,13 +204,17 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
         print(f'[insert_filtered_feature] full_time: {t6-t0}')
 
 
-def create_tmp_dset(porosity_data_h5,
+def create_tmp_dset(porosity_data_h5:h5py.Dataset,
                     is_training_point_f,
                     n_features,
                     suf_str='',
                     list_chunk_size=1000,
                     features_only=False,
-                    test_only_wells=[]):
+                    test_only_wells=[]) -> Tuple[h5py.File,
+                                                h5py.Dataset, 
+                                                h5py.File,
+                                                h5py.Dataset
+                                                ]:
 
     profiling = False
 
@@ -340,9 +347,13 @@ def create_tmp_dset(porosity_data_h5,
 # max_tested_features: number of features to be compared
 #   default=0 means all features.
 #   Used for debugging and reducing computing cost
-def get_features_sets(porosity_data_h5, features_dict_h5, all_features,
-                      displacement_cube_shape, it, exp_n_features,
-                      max_tested_features, config):
+def get_features_sets(porosity_data_h5:h5py.Dataset,
+                      features_dict_h5:Dict[str, h5py.Dataset], 
+                      all_features:list,
+                      displacement_cube_shape:tuple, 
+                      it:int, exp_n_features:int,
+                      max_tested_features:int,
+                      config:Config):
 
     t0 = time()
 
