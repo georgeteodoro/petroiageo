@@ -1,4 +1,5 @@
 import h5py
+from typing import Dict
 
 from inverted_learning_interface import AbstractSeismicDataLoader
 import config_parser
@@ -28,7 +29,7 @@ class H5SeismicDataLoader(AbstractSeismicDataLoader):
         super().__init__()
         self._using_h5 = True
 
-    def load(self):
+    def load(self) -> Dict[str, h5py.Dataset]:
         """
         Only '_config.num_features' features are opened and returned.
         """
