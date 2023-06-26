@@ -147,6 +147,7 @@ class HDFMultiColList:
             cur_chunk = self.cur_h5_dset[:]
         else:    
             # Seeks the chunk to be read
+            # TODO: Improve way of finding the correct chunk.
             cur_slice_it = self.cur_h5_dset.iter_chunks()
             cur_slice = cur_slice_it.__next__()
             for _ in range(chunk):
