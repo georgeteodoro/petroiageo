@@ -31,7 +31,7 @@ def get_features_sets(porosity_data_h5:h5py.Dataset,
                         features_dict_h5:Dict[str, h5py.Dataset], 
                         all_features:list,
                         displacement_cube_shape:tuple, 
-                        it:int, exp_n_features:int, 
+                        it:int, max_feats_to_select:int, 
                         max_feats_to_test:int,
                         config:Config):
 
@@ -40,19 +40,19 @@ def get_features_sets(porosity_data_h5:h5py.Dataset,
         return None
 
     if rank == manager_rank:
-        return manager(all_features, exp_n_features, max_feats_to_test, it, config)
+        return manager(all_features, max_feats_to_select, max_feats_to_test, it, config)
     elif rank != manager_rank:
         return worker(porosity_data_h5, features_dict_h5,
-                      displacement_cube_shape, exp_n_features, it, config)
+                      displacement_cube_shape, max_feats_to_select, it, config)
 
 
-def manager(all_features:list, exp_n_features:int, 
+def manager(all_features:list, max_feats_to_select:int, 
             max_feats_to_test:int, it:int, config:Config):
 
     t0 = time()
 
     total_req_time, feats_sets_and_its_errors, t4 = _find_feats_set(all_features,
-                                                                    exp_n_features,
+                                                                    max_feats_to_select,
                                                                     max_feats_to_test, 
                                                                     it, config)
 
@@ -67,7 +67,7 @@ def manager(all_features:list, exp_n_features:int,
 
     return best_result
 
-def _find_feats_set(all_features:list, exp_n_features:int, max_feats_to_test:int, 
+def _find_feats_set(all_features:list, max_feats_to_select:int, max_feats_to_test:int, 
                     it:int, config:Config) -> Tuple[float, list[tuple], float]:
      # Profiling time counters
     total_req_time = 0
@@ -76,7 +76,7 @@ def _find_feats_set(all_features:list, exp_n_features:int, max_feats_to_test:int
     # Find a feature set by testing exp_n_features features
     curr_f_set_best_err:list[str] = ['x', 'y', 'z']
     feats_sets_and_its_errors:list[tuple] = []
-    for f_it in range(exp_n_features):
+    for f_it in range(max_feats_to_select):
         # Profiling time counter
         f_it_req_time = 0
 
