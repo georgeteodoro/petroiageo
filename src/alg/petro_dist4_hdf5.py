@@ -89,10 +89,7 @@ def _find_feats_set(all_features:list, max_feats_to_select:int, max_feats_to_tes
         new_best_feature = None
         best_error = float("inf")
 
-        # Create current features list as (all_features - cur_f_set)
-        remaining_features = [
-            item for item in all_features if item not in curr_f_set_best_err
-        ]
+        remaining_features = _remaining_feats_to_test(all_features, curr_f_set_best_err)
 
         # Limit the number of features analyzed
         if max_feats_to_test > 0:
@@ -162,6 +159,11 @@ def _find_feats_set(all_features:list, max_feats_to_select:int, max_feats_to_tes
         # Actually send finish signal
         comm.send(None, dest=worker_rank, tag=MPI_TAGS.MANAGER_FINISH.value)
     return total_req_time,feats_sets_and_its_errors,t4
+
+def _remaining_feats_to_test(all_features, curr_f_set_best_err) -> list:
+    return [
+            item for item in all_features if item not in curr_f_set_best_err
+        ]
 
 
 def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Dataset], 
