@@ -49,7 +49,7 @@ def get_features_sets(porosity_data_h5:h5py.Dataset,
 def manager(all_features:list, exp_n_features:int, 
             f_width:int, it:int, config:Config):
     # Current features set with the best error
-    cur_f_set = ['x', 'y', 'z']
+    curr_f_set_best_err = ['x', 'y', 'z']
 
     # List of features sets and their error metric
     results = []
@@ -77,7 +77,7 @@ def manager(all_features:list, exp_n_features:int,
 
         # Create current features list as (all_features - cur_f_set)
         remaining_features = [
-            item for item in all_features if item not in cur_f_set
+            item for item in all_features if item not in curr_f_set_best_err
         ]
 
         # Limit the number of features analyzed
@@ -103,10 +103,10 @@ def manager(all_features:list, exp_n_features:int,
             if status.Get_tag() != MPI_TAGS.WORKER_EMPTY_RESULT.value:
                 for (cur_feature, cur_error) in data:
                     print(f'[petro4_dist_hdf5][manager][it{it}] Tested '\
-                          f'feature {cur_f_set + [cur_feature]} '\
+                          f'feature {curr_f_set_best_err + [cur_feature]} '\
                           f'with error {cur_error}')
 
-                    results.append((cur_f_set + [cur_feature], cur_error))
+                    results.append((curr_f_set_best_err + [cur_feature], cur_error))
 
                     # Update new best, if necessary
                     if best_error > cur_error:
@@ -131,7 +131,7 @@ def manager(all_features:list, exp_n_features:int,
 
         # Broadcast new best feature and updates current best features_set
         comm.bcast(new_best_feature, root=manager_rank)
-        cur_f_set.append(new_best_feature)
+        curr_f_set_best_err.append(new_best_feature)
 
         t4 = time()
         total_sync_time += t4 - t3
