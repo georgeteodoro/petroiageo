@@ -7,7 +7,7 @@ import hdf5_util
 import common
 import profiling
 import h5py
-from typing import Dict
+from typing import Dict, Tuple
 from config_parser import Config
 
 # Initialization of mpi variables
@@ -49,19 +49,34 @@ def get_features_sets(porosity_data_h5:h5py.Dataset,
 def manager(all_features:list, exp_n_features:int, 
             f_width:int, it:int, config:Config):
 
-    curr_f_set_best_err:list[str] = ['x', 'y', 'z']
-
-    feats_sets_and_its_errors:list[tuple] = []
-
-    # Profiling time counters
-    total_req_time = 0
-    total_sync_time = 0
-
     t0 = time()
 
-    # Find a feature set by testing exp_n_features features
-    for f_it in range(exp_n_features):
+    total_req_time, feats_sets_and_its_errors, t4 = _find_feats_set(all_features,
+                                                                    exp_n_features,
+                                                                    f_width, it, 
+                                                                    config)
 
+    # Broadcast resulting features and errors
+    best_result = petro5_hdf5.get_best_features_set(feats_sets_and_its_errors)
+    comm.bcast(best_result, root=manager_rank)
+
+    t5 = time()
+    profiling.prof_fsel_manager_sync_times(it, t5 - t4, config)
+    profiling.prof_fsel_manager_time(it, total_req_time + t5 - t4, t5 - t0,
+                                     config)
+
+    return best_result
+
+def _find_feats_set(all_features:list, exp_n_features:int, f_width:int, it:int, 
+                    config:Config) -> Tuple[float, list[tuple], float]:
+     # Profiling time counters
+    total_req_time = 0
+    total_sync_time = 0
+    
+    # Find a feature set by testing exp_n_features features
+    curr_f_set_best_err:list[str] = ['x', 'y', 'z']
+    feats_sets_and_its_errors:list[tuple] = []
+    for f_it in range(exp_n_features):
         # Profiling time counter
         f_it_req_time = 0
 
@@ -146,17 +161,7 @@ def manager(all_features:list, exp_n_features:int,
         comm.recv()
         # Actually send finish signal
         comm.send(None, dest=worker_rank, tag=MPI_TAGS.MANAGER_FINISH.value)
-
-    # Broadcast resulting features and errors
-    best_result = petro5_hdf5.get_best_features_set(feats_sets_and_its_errors)
-    comm.bcast(best_result, root=manager_rank)
-
-    t5 = time()
-    profiling.prof_fsel_manager_sync_times(it, t5 - t4, config)
-    profiling.prof_fsel_manager_time(it, total_req_time + t5 - t4, t5 - t0,
-                                     config)
-
-    return best_result
+    return total_req_time,feats_sets_and_its_errors,t4
 
 
 def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Dataset], 
