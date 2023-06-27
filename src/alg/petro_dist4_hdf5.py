@@ -6,6 +6,9 @@ import petro5_hdf5
 import hdf5_util
 import common
 import profiling
+import h5py
+from typing import Dict
+from config_parser import Config
 
 # Initialization of mpi variables
 comm = MPI.COMM_WORLD
@@ -24,9 +27,13 @@ class MPI_TAGS(Enum):
 # f_width: number of features to be compared
 #   default=0 means all features.
 #   Used for debugging and reducing computing cost
-def get_features_sets(porosity_data_h5, features_dict_h5, all_features,
-                      displacement_cube_shape, it, exp_n_features, f_width,
-                      config):
+def get_features_sets(porosity_data_h5:h5py.Dataset,
+                        features_dict_h5:Dict[str, h5py.Dataset], 
+                        all_features:list,
+                        displacement_cube_shape:tuple, 
+                        it:int, exp_n_features:int, 
+                        f_width:int,
+                        config:Config):
 
     if mpi_size < 2:
         print("[petro4_dist_hdf5] 2 minimum processes required")
@@ -39,7 +46,8 @@ def get_features_sets(porosity_data_h5, features_dict_h5, all_features,
                       displacement_cube_shape, exp_n_features, it, config)
 
 
-def manager(all_features, exp_n_features, f_width, it, config):
+def manager(all_features:list, exp_n_features:int, 
+            f_width:int, it:int, config:Config):
     # Current features set with the best error
     cur_f_set = ['x', 'y', 'z']
 
@@ -150,8 +158,9 @@ def manager(all_features, exp_n_features, f_width, it, config):
     return best_result
 
 
-def worker(porosity_data_h5, features_dict_h5, displacement_cube_shape,
-           exp_n_features, it, config):
+def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Dataset], 
+           displacement_cube_shape:tuple, exp_n_features:int, it:int,
+             config:Config):
 
     t0 = time()
 
