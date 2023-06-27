@@ -38,7 +38,7 @@ params = {
 # it will be inefficient.
 
 
-def get_best_features_set(features_sets):
+def get_best_features_set(features_sets:list[tuple[list, float]]) -> Tuple[list, float]:
     # Sort by second column (id 1)
     features_sets.sort(key=lambda tup: tup[1])
     best_features_set = features_sets[0][0]

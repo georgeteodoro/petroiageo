@@ -75,7 +75,7 @@ def _find_feats_set(all_features:list, max_feats_to_select:int, max_feats_to_tes
     
     # Find a feature set by testing exp_n_features features
     curr_f_set_best_err:list[str] = ['x', 'y', 'z']
-    feats_sets_and_its_errors:list[tuple] = []
+    feats_sets_and_its_errors:list[tuple[list, float]] = []
     for f_it in range(max_feats_to_select):
         # Profiling time counter
         f_it_req_time = 0
@@ -114,9 +114,9 @@ def _bcast_done_msg_to_workers():
         comm.send(None, dest=worker_rank, tag=MPI_TAGS.MANAGER_FINISH.value)
 
 def _find_curr_best_feature(it:int , curr_f_set_best_err:list[str], 
-                            feats_sets_and_its_errors:list[tuple], 
+                            feats_sets_and_its_errors:list[tuple[list, float]], 
                             f_it_req_time:float, 
-                            remaining_features:list) -> Tuple[str, float, float, list[tuple]]:
+                            remaining_features:list) -> Tuple[str, float, float, list[tuple[list, float]]]:
     new_best_feature = None
     best_error = float("inf")
     # Reset workers done and wait for next feature set
