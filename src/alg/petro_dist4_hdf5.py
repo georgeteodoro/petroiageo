@@ -102,13 +102,16 @@ def _find_feats_set(all_features:list, max_feats_to_select:int, max_feats_to_tes
         profiling.prof_fsel_manager_sync_time(it, f_it, t4 - t3, config)
         profiling.prof_fsel_manager_req_time(it, f_it, f_it_req_time, config)
 
-    # Broadcast a done message to all workers
+    _bcast_done_msg_to_workers()
+
+    return total_req_time,feats_sets_and_its_errors,t4
+
+def _bcast_done_msg_to_workers():
     for worker_rank in range(mpi_size - 1):
         # Receive EMPTY_RESULT msg to clear the queue before the next iteration
         comm.recv()
         # Actually send finish signal
         comm.send(None, dest=worker_rank, tag=MPI_TAGS.MANAGER_FINISH.value)
-    return total_req_time,feats_sets_and_its_errors,t4
 
 def _find_curr_best_feature(it:int , curr_f_set_best_err:list[str], 
                             feats_sets_and_its_errors:list[tuple], 
@@ -125,13 +128,13 @@ def _find_curr_best_feature(it:int , curr_f_set_best_err:list[str],
         t2 = time()
         worker_rank = status.Get_source()
 
-            # Number of features to be sent to the worker.
-            # Currently only a single feature is sent.
-            # In the future a batch of features regarding data locality
-            # will be sent.
+        # Number of features to be sent to the worker.
+        # Currently only a single feature is sent.
+        # In the future a batch of features regarding data locality
+        # will be sent.
         n_features = 1
 
-            # Read results from ran feature
+        # Read results from ran feature
         if status.Get_tag() != MPI_TAGS.WORKER_EMPTY_RESULT.value:
             for (cur_feature, cur_error) in data:
                 print(f'[petro4_dist_hdf5][manager][it{it}] Tested '\
@@ -142,19 +145,19 @@ def _find_curr_best_feature(it:int , curr_f_set_best_err:list[str],
                         (curr_f_set_best_err + [cur_feature], cur_error)
                         )
 
-                    # Update new best, if necessary
+                # Update new best, if necessary
                 if best_error > cur_error:
                     best_error = cur_error
                     new_best_feature = cur_feature
 
-            # Check if there is work to be distributed
+        # Check if there is work to be distributed
         if len(remaining_features) > 0:
-                # Send new tasks
+            # Send new tasks
             new_features = remaining_features[:n_features]
             remaining_features = remaining_features[n_features:]
             comm.send(new_features, dest=worker_rank)
         else:
-                # Send finish message
+            # Send finish message
             comm.send(None,
                           dest=worker_rank,
                           tag=MPI_TAGS.MANAGER_FEATURE_DONE.value)
