@@ -48,11 +48,10 @@ def get_features_sets(porosity_data_h5:h5py.Dataset,
 
 def manager(all_features:list, exp_n_features:int, 
             f_width:int, it:int, config:Config):
-    # Current features set with the best error
-    curr_f_set_best_err = ['x', 'y', 'z']
 
-    # List of features sets and their error metric
-    results = []
+    curr_f_set_best_err:list[str] = ['x', 'y', 'z']
+
+    feats_sets_and_its_errors:list[tuple] = []
 
     # Profiling time counters
     total_req_time = 0
@@ -106,7 +105,9 @@ def manager(all_features:list, exp_n_features:int,
                           f'feature {curr_f_set_best_err + [cur_feature]} '\
                           f'with error {cur_error}')
 
-                    results.append((curr_f_set_best_err + [cur_feature], cur_error))
+                    feats_sets_and_its_errors.append(
+                        (curr_f_set_best_err + [cur_feature], cur_error)
+                        )
 
                     # Update new best, if necessary
                     if best_error > cur_error:
@@ -147,7 +148,7 @@ def manager(all_features:list, exp_n_features:int,
         comm.send(None, dest=worker_rank, tag=MPI_TAGS.MANAGER_FINISH.value)
 
     # Broadcast resulting features and errors
-    best_result = petro5_hdf5.get_best_features_set(results)
+    best_result = petro5_hdf5.get_best_features_set(feats_sets_and_its_errors)
     comm.bcast(best_result, root=manager_rank)
 
     t5 = time()
