@@ -32,7 +32,7 @@ def get_features_sets(porosity_data_h5:h5py.Dataset,
                         all_features:list,
                         displacement_cube_shape:tuple, 
                         it:int, exp_n_features:int, 
-                        f_width:int,
+                        max_feats_to_test:int,
                         config:Config):
 
     if mpi_size < 2:
@@ -40,21 +40,21 @@ def get_features_sets(porosity_data_h5:h5py.Dataset,
         return None
 
     if rank == manager_rank:
-        return manager(all_features, exp_n_features, f_width, it, config)
+        return manager(all_features, exp_n_features, max_feats_to_test, it, config)
     elif rank != manager_rank:
         return worker(porosity_data_h5, features_dict_h5,
                       displacement_cube_shape, exp_n_features, it, config)
 
 
 def manager(all_features:list, exp_n_features:int, 
-            f_width:int, it:int, config:Config):
+            max_feats_to_test:int, it:int, config:Config):
 
     t0 = time()
 
     total_req_time, feats_sets_and_its_errors, t4 = _find_feats_set(all_features,
                                                                     exp_n_features,
-                                                                    f_width, it, 
-                                                                    config)
+                                                                    max_feats_to_test, 
+                                                                    it, config)
 
     # Broadcast resulting features and errors
     best_result = petro5_hdf5.get_best_features_set(feats_sets_and_its_errors)
@@ -67,8 +67,8 @@ def manager(all_features:list, exp_n_features:int,
 
     return best_result
 
-def _find_feats_set(all_features:list, exp_n_features:int, f_width:int, it:int, 
-                    config:Config) -> Tuple[float, list[tuple], float]:
+def _find_feats_set(all_features:list, exp_n_features:int, max_feats_to_test:int, 
+                    it:int, config:Config) -> Tuple[float, list[tuple], float]:
      # Profiling time counters
     total_req_time = 0
     total_sync_time = 0
@@ -95,8 +95,8 @@ def _find_feats_set(all_features:list, exp_n_features:int, f_width:int, it:int,
         ]
 
         # Limit the number of features analyzed
-        if f_width > 0:
-            remaining_features = remaining_features[:f_width]
+        if max_feats_to_test > 0:
+            remaining_features = remaining_features[:max_feats_to_test]
 
         f_it_req_time += time() - t1
 
