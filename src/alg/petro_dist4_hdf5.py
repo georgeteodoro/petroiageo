@@ -87,7 +87,7 @@ def _find_feats_set(all_features:list, max_feats_to_select:int, max_feats_to_tes
 
         f_it_req_time += time() - t1
 
-        new_best_feature, t3, f_it_req_time = _find_curr_best_feature(it, 
+        new_best_feature, t3, f_it_req_time, feats_sets_and_its_errors = _find_curr_best_feature(it, 
                                                                       curr_f_set_best_err, 
                                                                       feats_sets_and_its_errors, 
                                                                       f_it_req_time, 
@@ -116,7 +116,7 @@ def _bcast_done_msg_to_workers():
 def _find_curr_best_feature(it:int , curr_f_set_best_err:list[str], 
                             feats_sets_and_its_errors:list[tuple], 
                             f_it_req_time:float, 
-                            remaining_features:list) -> Tuple[str, float, float]:
+                            remaining_features:list) -> Tuple[str, float, float, list[tuple]]:
     new_best_feature = None
     best_error = float("inf")
     # Reset workers done and wait for next feature set
@@ -165,7 +165,7 @@ def _find_curr_best_feature(it:int , curr_f_set_best_err:list[str],
 
         t3 = time()
         f_it_req_time += t3 - t2
-    return new_best_feature,t3, f_it_req_time
+    return new_best_feature,t3, f_it_req_time, feats_sets_and_its_errors
 
 def _not_all_workers_done(workers_done):
     return workers_done < mpi_size - 1
