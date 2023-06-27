@@ -206,11 +206,12 @@ def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Datase
         test_only_wells=test_only_wells)
 
     hypercube_shape = porosity_data_h5.shape
+    n_testing_wells = len(test_only_wells)
 
     # Create training temporary object
     cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
     cur_h5_test_list = None
-    if len(test_only_wells) > 0:
+    if n_testing_wells > 0:
         cur_h5_test_list = hdf5_util.HDFMultiColList(test_h5_dset)
 
     t1 = time()
@@ -248,7 +249,7 @@ def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Datase
 
         # Setup the new column to be tested
         cur_h5_train_list.add_new_col()
-        if len(test_only_wells) > 0:
+        if n_testing_wells > 0:
             cur_h5_test_list.add_new_col()
 
         # Run jobs until there are not any more features to test
@@ -269,7 +270,7 @@ def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Datase
                     new_feature, hypercube_shape, displacement_cube_shape)
 
                 # Also inserts the feature on the test dataset, if necessary
-                if len(test_only_wells) > 0:
+                if n_testing_wells > 0:
                     petro5_hdf5.insert_filtered_feature(
                         test_h5_dset, cur_h5_test_list, features_dict_h5,
                         new_feature, hypercube_shape, displacement_cube_shape)
@@ -315,7 +316,7 @@ def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Datase
                                             displacement_cube_shape)
 
         # Also inserts the feature on the test dataset, if necessary
-        if len(test_only_wells) > 0:
+        if n_testing_wells > 0:
             petro5_hdf5.insert_filtered_feature(test_h5_dset, cur_h5_test_list,
                                                 features_dict_h5,
                                                 new_best_feature,
