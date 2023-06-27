@@ -90,10 +90,7 @@ def _find_feats_set(all_features:list, max_feats_to_select:int, max_feats_to_tes
         best_error = float("inf")
 
         remaining_features = _remaining_feats_to_test(all_features, curr_f_set_best_err)
-
-        # Limit the number of features analyzed
-        if max_feats_to_test > 0:
-            remaining_features = remaining_features[:max_feats_to_test]
+        remaining_features = _limit_feats_to_test(max_feats_to_test, remaining_features)
 
         f_it_req_time += time() - t1
 
@@ -159,6 +156,11 @@ def _find_feats_set(all_features:list, max_feats_to_select:int, max_feats_to_tes
         # Actually send finish signal
         comm.send(None, dest=worker_rank, tag=MPI_TAGS.MANAGER_FINISH.value)
     return total_req_time,feats_sets_and_its_errors,t4
+
+def _limit_feats_to_test(max_feats_to_test, remaining_features):
+    if max_feats_to_test > 0:
+        remaining_features = remaining_features[:max_feats_to_test]
+    return remaining_features
 
 def _remaining_feats_to_test(all_features, curr_f_set_best_err) -> list:
     return [
