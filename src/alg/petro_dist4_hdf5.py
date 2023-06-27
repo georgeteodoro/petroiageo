@@ -1,10 +1,6 @@
 from mpi4py import MPI
 from enum import Enum, auto
 from time import time
-import concurrent.futures
-import ctypes
-import multiprocessing as mp
-import sys
 
 import petro5_hdf5
 import hdf5_util
