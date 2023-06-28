@@ -83,7 +83,9 @@ def conditional_map_h5_chunk(d_h5, cond_f, column_val_list, chunk_slice):
 # Able to add new features columns on the fly as well as change a given column
 class HDFMultiColList:
     def __init__(self, cur_h5_dset: h5py.Dataset):
-        # cur_h5_dset must be 1D
+        """
+        cur_h5_dset must be 1D
+        """
         # This cur_h5_dset holds the hdf5 data
         self.cur_h5_dset = cur_h5_dset
 
@@ -95,24 +97,30 @@ class HDFMultiColList:
         self.chunk_size = self.cur_h5_dset.chunks[0]
         self.n_chunks = int(np.ceil(cur_h5_dset.size / self.chunk_size))
 
-    # Updates the last column with new values from a generator
-    # Overwrites the previous values on this column
     def update_last_col_chunk(self, feature_gen):
+        """
+        Updates the last column with new values from a generator
+        Overwrites the previous values on this column
+        """
         f_str = f"f{self.last_col}"
 
         for f_slice, f_vals in feature_gen:
             self.cur_h5_dset[f_str, f_slice] = np.fromiter(f_vals, np.float64)
 
-    # Setup a new empty last column, thus committing the current
-    # last column
     def add_new_col(self):
+        """
+        Setup a new empty last column, thus committing the current
+        last column
+        """
         self.last_col = self.last_col + 1
         f_str = f"f{self.last_col}"
         # self.all_features_and_coords.append(f_str)
         self.all_features.append(f_str)
 
-    # Returns all data, input (X) and output (y), from a given well
     def get_well_out_data(self, well_id):
+        """
+        Returns all data, input (X) and output (y), from a given well
+        """
         X_val_list = []
         y_val_list = []
 
@@ -137,9 +145,11 @@ class HDFMultiColList:
 
         return X_val_np, y_val_np
 
-    # Return a single chunk of data which is not related to well_id
-    # No guarantees are made about the size of the output
     def get_data_not_in_well(self, chunk=-1, well_id=-1):
+        """
+        Return a single chunk of data which is not related to well_id
+        No guarantees are made about the size of the output
+        """
         # If the chunk is not passed, returns the whole data
         if chunk < 0:
             cur_chunk = self.cur_h5_dset[:]
@@ -154,11 +164,7 @@ class HDFMultiColList:
             # Load the hypercube chunk
             cur_chunk = self.cur_h5_dset[cur_slice]
 
-        # Filter all data which is not related to the input well_id
-        if well_id != -1:
-            well_data = cur_chunk[cur_chunk["well_id"] != well_id]
-        else:
-            well_data = cur_chunk
+        well_data = self._filter_data(well_id, cur_chunk)
         X_filtered_np: np.ndarray = well_data[self.all_features]
         y_filtered_np: np.ndarray = well_data["phi"]
 
@@ -168,3 +174,14 @@ class HDFMultiColList:
         y_filtered_np = np.array(y_filtered_np.tolist())
 
         return X_filtered_np, y_filtered_np
+
+    def _filter_data(self, well_id: int, cur_chunk):
+        """
+        Return all data not associated with well_id.
+        If well_id == -1, all of the data are returned.
+        """
+        if well_id != -1:
+            well_data = cur_chunk[cur_chunk["well_id"] != well_id]
+        else:
+            well_data = cur_chunk
+        return well_data
