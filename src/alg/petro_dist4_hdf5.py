@@ -205,7 +205,7 @@ def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Datase
         f'-r{rank}',
         test_only_wells=test_only_wells)
 
-    hypercube_shape = porosity_data_h5.shape
+    hypercube_shape:tuple = porosity_data_h5.shape
     n_testing_wells = len(test_only_wells)
 
     # Create training temporary object
@@ -217,13 +217,39 @@ def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Datase
     t1 = time()
     profiling.prof_fsel_worker_create_time(it, rank, t1 - t0, config)
 
+    t8, total_jobs, total_exec_time = _eval_feats_requested_by_manager(features_dict_h5, 
+                                          displacement_cube_shape, 
+                                          it, config, 
+                                          training_wells, 
+                                          cur_h5_dset, 
+                                          test_h5_dset, 
+                                          hypercube_shape, 
+                                          n_testing_wells, 
+                                          cur_h5_train_list, 
+                                          cur_h5_test_list)
+
+    profiling.prof_fsel_worker_times(it, rank, total_exec_time, t8 - t0,
+                                     total_jobs, config)
+
+    # Get broadcasted resulting features and errors
+    best_result = comm.bcast(None, root=manager_rank)
+    return best_result
+
+def _eval_feats_requested_by_manager(features_dict_h5:Dict[str, h5py.Dataset], 
+                                    displacement_cube_shape:tuple, 
+                                    it:int, config:Config, 
+                                    training_wells:list[int], 
+                                    cur_h5_dset:h5py.Dataset, 
+                                    test_h5_dset:h5py.Dataset, 
+                                    hypercube_shape:tuple, 
+                                    n_testing_wells:int, 
+                                    cur_h5_train_list:hdf5_util.HDFMultiColList, 
+                                    cur_h5_test_list:hdf5_util.HDFMultiColList):
     cur_f_set = ['x', 'y', 'z']
 
     # Profiling info
     total_jobs = 0
     total_exec_time = 0
-
-    # Run jobs until manager finishes
     while True:
         # For profiling
         f_it = len(cur_h5_train_list.all_features) + 1
@@ -253,7 +279,6 @@ def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Datase
         # Run jobs until there are not any more features to test
         # print(f'[petro4_dist_hdf5][w{rank}][it{it}] new iteration')
         while (_there_are_feats_to_test(manager_tag)):
-
             # Run all features received by the manager
             results:list[Tuple[str, float]] = []
             for new_feature in new_features:
@@ -317,13 +342,8 @@ def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Datase
 
         t8 = time()
         profiling.prof_fsel_worker_sync_time(it, rank, f_it, t8 - t7, config)
-
-    profiling.prof_fsel_worker_times(it, rank, total_exec_time, t8 - t0,
-                                     total_jobs, config)
-
-    # Get broadcasted resulting features and errors
-    best_result = comm.bcast(None, root=manager_rank)
-    return best_result
+    
+    return t8, total_jobs, total_exec_time
 
 def _there_are_feats_to_test(manager_tag):
     return manager_tag != MPI_TAGS.MANAGER_FEATURE_DONE.value
