@@ -133,8 +133,7 @@ def _find_curr_best_feature(it:int , curr_f_set_best_err:list[str],
         # will be sent.
         n_features = 1
 
-        # Read results from ran feature
-        if status.Get_tag() != MPI_TAGS.WORKER_EMPTY_RESULT.value:
+        if _worker_sent_feat_eval(status):
             for (cur_feature, cur_error) in data:
                 print(f'[petro4_dist_hdf5][manager][it{it}] Tested '\
                           f'feature {curr_f_set_best_err + [cur_feature]} '\
@@ -165,6 +164,9 @@ def _find_curr_best_feature(it:int , curr_f_set_best_err:list[str],
         t3 = time()
         f_it_req_time += t3 - t2
     return new_best_feature, t3, f_it_req_time, feats_sets_and_its_errors
+
+def _worker_sent_feat_eval(status:MPI.Status) -> bool:
+    return status.Get_tag() != MPI_TAGS.WORKER_EMPTY_RESULT.value
 
 def _not_all_workers_done(workers_done):
     return workers_done < mpi_size - 1
