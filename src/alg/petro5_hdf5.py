@@ -61,93 +61,109 @@ def eval_bootstrap(
 
     profiling = False
 
-    rmse_list: list[float] = []
-    mae_list: list[float] = []
-
     # Test data is the same for all wells if test_only_wells are
     # active, so it's only setup once
     if cur_h5_test_list is not None:
-        X_test_np, y_test_np = cur_h5_test_list.get_data_not_in_well()
+        X_test, y_test = cur_h5_test_list.get_data_not_in_well()
 
     t0 = time()
-    for w in wells_id:
-        # Extract the validation data
-        # Since the same validation data is supposed to be used for
-        # all incremental trainings and is small enough to fit in
-        # memory
-        X_val_np, y_val_np = cur_h5_train_list.get_data_from_well(w)
+    rmse_list: list[float] = []
+    mae_list: list[float] = []
 
-        # Incremental training on all cur_h5_train_list chunks
-        regressor = None
-        setup_time = 0
-        training_time = 0
-        for c in range(cur_h5_train_list.n_chunks):
-            t1 = time()
-            # Generate a training dataset for all data on chunk c without
-            # data from well w
-            X_train_np, y_train_np = cur_h5_train_list.get_data_not_in_well(
-                c, w
-            )
-            lgb_train_dataset = lgb.Dataset(X_train_np, y_train_np)
-
-            lgb_eval_dataset = lgb.Dataset(
-                X_val_np, y_val_np, reference=lgb_train_dataset
-            )
-
-            t2 = time()
-
-            # Perform training
-            regressor = lgb.train(
-                params,
-                lgb_train_dataset,
-                init_model=regressor,
-                num_boost_round=100,
-                valid_sets=lgb_eval_dataset,
-                keep_training_booster=True,
-                callbacks=[
-                    lgb.early_stopping(stopping_rounds=30, verbose=False)
-                ],
-            )
-            t3 = time()
-
-            setup_time += t2 - t1
-            training_time += t3 - t2
-
-            if profiling:
-                print(
-                    f"[petro5_hdf5][eval_bootstrap][w{w}] Setup in "
-                    f"{t2 - t1}"
-                )
-                print(
-                    f"[petro5_hdf5][eval_bootstrap][w{w}] Training in "
-                    f"{t3 - t2}"
-                )
-
-        if profiling:
-            print(
-                f"[petro5_hdf5][eval_bootstrap][w{w}] Final setup in "
-                f"{setup_time}"
-            )
-            print(
-                f"[petro5_hdf5][eval_bootstrap][w{w}] Final training in "
-                f"{training_time}"
-            )
+    # Leave-One-Well-Out
+    for curr_well_id in wells_id:
+        X_val, y_val, regressor = _incremental_learning(
+            cur_h5_train_list, profiling, curr_well_id
+        )
+        t3 = time()
 
         # Calculate error metrics
         if cur_h5_test_list == None:
-            X_test_np = X_val_np
-            y_test_np = y_val_np
-        pred = regressor.predict(X_test_np)
-        rmse = np.sqrt(np.mean((pred - y_test_np) ** 2))
-        mae = mean_absolute_error(pred, y_test_np)
+            X_test = X_val
+            y_test = y_val
+
+        pred = regressor.predict(X_test)
+        rmse = np.sqrt(np.mean((pred - y_test) ** 2))
+        mae = mean_absolute_error(pred, y_test)
         rmse_list.append(rmse)
         mae_list.append(mae)
-        t4 = time()
+
         if profiling:
-            print(f"[petro5_hdf5][eval_bootstrap][w{w}] Evaluating in {t4-t3}")
-            print(f"[petro5_hdf5][eval_bootstrap][w{w}] Total time {t4-t0}")
+            t4 = time()
+            print(
+                f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Evaluating in {t4-t3}"
+            )
+            print(
+                f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Total time {t4-t0}"
+            )
 
     return np.mean(rmse_list), np.mean(mae_list)
+
+
+def _incremental_learning(
+    cur_h5_train_list: hdf5_util.HDFMultiColList,
+    profiling: bool,
+    curr_well_id: int,
+) -> Tuple[np.ndarray, np.ndarray, lgb.Booster]:
+    # Extract the validation data
+    # Since the same validation data is supposed to be used for
+    # all incremental trainings and is small enough to fit in
+    # memory
+    X_val, y_val = cur_h5_train_list.get_data_from_well(curr_well_id)
+
+    # Incremental training on all cur_h5_train_list chunks
+    regressor = None
+    setup_time = 0
+    training_time = 0
+    for chunk_idx in range(cur_h5_train_list.n_chunks):
+        t1 = time()
+
+        X_train, y_train = cur_h5_train_list.get_data_not_in_well(
+            chunk_idx, curr_well_id
+        )
+        lgb_train_dataset = lgb.Dataset(X_train, y_train)
+
+        lgb_eval_dataset = lgb.Dataset(
+            X_val, y_val, reference=lgb_train_dataset
+        )
+
+        t2 = time()
+
+        regressor = lgb.train(
+            params,
+            lgb_train_dataset,
+            init_model=regressor,
+            num_boost_round=100,
+            valid_sets=lgb_eval_dataset,
+            keep_training_booster=True,
+            callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)],
+        )
+        t3 = time()
+
+        setup_time += t2 - t1
+        training_time += t3 - t2
+
+        if profiling:
+            print(
+                f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Setup in "
+                f"{t2 - t1}"
+            )
+            print(
+                f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Training in "
+                f"{t3 - t2}"
+            )
+
+    if profiling:
+        print(
+            f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Final setup in "
+            f"{setup_time}"
+        )
+        print(
+            f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Final training in "
+            f"{training_time}"
+        )
+
+    return X_val, y_val, regressor
 
 
 def insert_filtered_feature(
