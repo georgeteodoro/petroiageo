@@ -242,8 +242,7 @@ def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Datase
         t3 = time()
         profiling.prof_fsel_worker_comm_time(it, rank, t3 - t2, config)
 
-        # Exit if there are no more tasks (all expected features sets were tested)
-        if manager_tag == MPI_TAGS.MANAGER_FINISH.value:
+        if _all_expected_feats_sets_tested(manager_tag):
             break
 
         # Setup the new column to be tested
@@ -329,6 +328,9 @@ def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Datase
     # Get broadcasted resulting features and errors
     best_result = comm.bcast(None, root=manager_rank)
     return best_result
+
+def _all_expected_feats_sets_tested(manager_tag:int) -> bool:
+    return manager_tag == MPI_TAGS.MANAGER_FINISH.value
 
 def _get_new_feats_from_manager(status:MPI.Status) -> Tuple[list[str], int]:
     new_features:list[str] = comm.recv(source=manager_rank, status=status)
