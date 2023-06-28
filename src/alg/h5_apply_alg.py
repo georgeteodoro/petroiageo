@@ -130,8 +130,7 @@ class H5ApplyAlg(AbstractApplyAlg):
                         yield feature_dset[tuple(coord)]
 
                 # Fill features values
-                i = 0
-                for feature in best_features_set:
+                for f_idx, feature in enumerate(best_features_set):
                     # Apply the displacement
                     cur_coords_3d_np = coords_3d_np.copy()
                     for coord_s, d_id in [("x", 0), ("y", 1), ("z", 2)]:
@@ -146,11 +145,9 @@ class H5ApplyAlg(AbstractApplyAlg):
                         features_dict_h5[feature[0]], cur_coords_3d_np.flat
                     )
 
-                    to_predict_np[f"f{i}"] = np.fromiter(
+                    to_predict_np[f"f{f_idx}"] = np.fromiter(
                         feature_values, np.float64
                     )
-
-                    i = i + 1
 
                 # Convert to_predict_np from a ndarray to a regular 2d array
                 to_predict_np = np.array(to_predict_np.tolist())
@@ -251,6 +248,7 @@ class H5ApplyAlg(AbstractApplyAlg):
         )
 
         regressor = None
+        #incremental learning
         # TODO: Change this loop to go over the chunks themselves
         for c in range(cur_h5_train_list.n_chunks):
             # Generate a training dataset for all data on chunk c
