@@ -13,3 +13,4 @@ h5py
 tqdm
 pyyaml
 coverage
+black
