@@ -195,8 +195,8 @@ def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Datase
 
     test_only_wells = config.alg['test_only_wells']
     wells_coords = config.wells['coords']
-    training_coords = list(range(len(wells_coords)))
-    training_coords = [x for x in training_coords if x not in test_only_wells]
+    training_wells = list(range(len(wells_coords)))
+    training_wells = [x for x in training_wells if x not in test_only_wells]
 
     cur_h5, cur_h5_dset, test_h5, test_h5_dset = petro5_hdf5.create_tmp_dset(
         porosity_data_h5,
@@ -281,7 +281,7 @@ def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Datase
 
                 rmse, mae = petro5_hdf5.eval_bootstrap(cur_h5_train_list,
                                                        cur_h5_test_list,
-                                                       training_coords)
+                                                       training_wells)
 
                 results.append((new_feature, rmse))
                 t6 = time()
