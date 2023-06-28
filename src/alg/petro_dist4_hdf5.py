@@ -276,39 +276,21 @@ def _eval_feats_requested_by_manager(features_dict_h5:Dict[str, h5py.Dataset],
         if n_testing_wells > 0:
             cur_h5_test_list.add_new_col()
 
-        # Run jobs until there are not any more features to test
-        # print(f'[petro4_dist_hdf5][w{rank}][it{it}] new iteration')
         while (_there_are_feats_to_test(manager_tag)):
-            # Run all features received by the manager
-            results:list[Tuple[str, float]] = []
-            for new_feature in new_features:
-                t4 = time()
-                # Insert temporary feature
-                petro5_hdf5.insert_filtered_feature(
-                    cur_h5_dset, cur_h5_train_list, features_dict_h5,
-                    new_feature, hypercube_shape, displacement_cube_shape)
-
-                # Also inserts the feature on the test dataset, if necessary
-                if n_testing_wells > 0:
-                    petro5_hdf5.insert_filtered_feature(
-                        test_h5_dset, cur_h5_test_list, features_dict_h5,
-                        new_feature, hypercube_shape, displacement_cube_shape)
-
-                t5 = time()
-                profiling.prof_fsel_worker_insert_time(it, rank, f_it, t5 - t4,
-                                                       config)
-
-                rmse, mae = petro5_hdf5.eval_bootstrap(cur_h5_train_list,
-                                                       cur_h5_test_list,
-                                                       training_wells)
-
-                results.append((new_feature, rmse))
-                t6 = time()
-                profiling.prof_fsel_worker_eval_times(it, rank, f_it, t6 - t5,
-                                                      config)
-
-                total_jobs += 1
-                total_exec_time += t6 - t4
+            results = _eval_curr_feats(features_dict_h5, 
+                             displacement_cube_shape, 
+                             it, config, 
+                             training_wells, 
+                             cur_h5_dset, 
+                             test_h5_dset, 
+                             hypercube_shape, 
+                             n_testing_wells, 
+                             cur_h5_train_list, 
+                             cur_h5_test_list, 
+                             total_jobs, 
+                             total_exec_time, 
+                             f_it, 
+                             new_features)
 
             t6 = time()
 
@@ -345,7 +327,53 @@ def _eval_feats_requested_by_manager(features_dict_h5:Dict[str, h5py.Dataset],
     
     return t8, total_jobs, total_exec_time
 
-def _there_are_feats_to_test(manager_tag):
+def _eval_curr_feats(features_dict_h5:Dict[str, h5py.Dataset], 
+                     displacement_cube_shape:tuple, 
+                     it:int, config:Config, 
+                     training_wells:list[int], 
+                     cur_h5_dset:h5py.Dataset,
+                     test_h5_dset:h5py.Dataset,
+                     hypercube_shape:tuple,
+                     n_testing_wells:int,
+                     cur_h5_train_list:hdf5_util.HDFMultiColList,
+                     cur_h5_test_list:hdf5_util.HDFMultiColList,
+                     total_jobs:int,
+                     total_exec_time:float,
+                     f_it:int,
+                     new_features:list[str]):
+    results:list[Tuple[str, float]] = []
+    for new_feature in new_features:
+        t4 = time()
+        # Insert temporary feature
+        petro5_hdf5.insert_filtered_feature(
+                    cur_h5_dset, cur_h5_train_list, features_dict_h5,
+                    new_feature, hypercube_shape, displacement_cube_shape)
+
+        # Also inserts the feature on the test dataset, if necessary
+        if n_testing_wells > 0:
+            petro5_hdf5.insert_filtered_feature(
+                        test_h5_dset, cur_h5_test_list, features_dict_h5,
+                        new_feature, hypercube_shape, displacement_cube_shape)
+
+        t5 = time()
+        profiling.prof_fsel_worker_insert_time(it, rank, f_it, t5 - t4,
+                                                       config)
+
+        rmse, mae = petro5_hdf5.eval_bootstrap(cur_h5_train_list,
+                                                       cur_h5_test_list,
+                                                       training_wells)
+
+        results.append((new_feature, rmse))
+        t6 = time()
+        profiling.prof_fsel_worker_eval_times(it, rank, f_it, t6 - t5,
+                                                      config)
+
+        total_jobs += 1
+        total_exec_time += t6 - t4
+    
+    return results
+
+def _there_are_feats_to_test(manager_tag) -> bool:
     return manager_tag != MPI_TAGS.MANAGER_FEATURE_DONE.value
 
 def _all_expected_feats_sets_tested(manager_tag:int) -> bool:
