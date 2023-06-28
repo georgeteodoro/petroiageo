@@ -13,11 +13,11 @@ class H5SeismicDataLoader(AbstractSeismicDataLoader):
     within the same node. Local files between distributed nodes are (obviously)
     different, and will break the file opening with a synchronization error.
 
-    No compute intensive tasks are done outside 'load()', allowing better 
+    No compute intensive tasks are done outside 'load()', allowing better
     performance profiling.
 
     Only the File objects are stored internally, for later closure.
-    All File objects are closed on '__del__', thus encapsulating anything 
+    All File objects are closed on '__del__', thus encapsulating anything
     h5-related to this class.
     """
 
@@ -35,7 +35,7 @@ class H5SeismicDataLoader(AbstractSeismicDataLoader):
         """
 
         # Select features to open
-        num_features = self._config.get_param('num_features')
+        num_features = self._config.get_param("num_features")
         features_filenames = self._config.features_files_paths
         features_names = self._config.features_files_names
         if num_features != 0:
@@ -43,10 +43,10 @@ class H5SeismicDataLoader(AbstractSeismicDataLoader):
             features_names = features_names[:num_features]
 
         # Setup HDF5 driver configuration
-        if self._config.get_param('mpi_size') > 1:
+        if self._config.get_param("mpi_size") > 1:
             mpi_kwargs = {
-                'driver': 'mpio',
-                'comm': self._config.get_param('mpi_local_comm')
+                "driver": "mpio",
+                "comm": self._config.get_param("mpi_local_comm"),
             }
         else:
             mpi_kwargs = {}
@@ -55,12 +55,14 @@ class H5SeismicDataLoader(AbstractSeismicDataLoader):
         features_dset_dict_h5 = {}
         last_dim = None
         for feature_path, feature in zip(features_filenames, features_names):
-            if '.h5' not in str(feature_path):
+            if ".h5" not in str(feature_path):
                 continue
             self._features_files_dict_h5[feature] = h5py.File(
-                feature_path, 'r', **mpi_kwargs)
+                feature_path, "r", **mpi_kwargs
+            )
             features_dset_dict_h5[feature] = self._features_files_dict_h5[
-                feature]['f']
+                feature
+            ]["f"]
 
             # TODO: fix this assertion
             # # Assert whether the dimensions are compatible

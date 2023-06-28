@@ -13,11 +13,11 @@ class H5PorosityDataLoader(AbstractPorosityDataLoader):
     within the same node. Local files between distributed nodes are (obviously)
     different, and will break the file opening with a synchronization error.
 
-    No compute intensive tasks are done outside 'load()', allowing better 
+    No compute intensive tasks are done outside 'load()', allowing better
     performance profiling.
 
     Only the File object is stored internally, for later closure.
-    The File object is closed on '__del__', thus encapsulating anything 
+    The File object is closed on '__del__', thus encapsulating anything
     h5-related to this class.
     """
 
@@ -34,14 +34,15 @@ class H5PorosityDataLoader(AbstractPorosityDataLoader):
         # with the same access/mode: existing file with write permission
         # However, only one process should update this porosity_data_h5
         # structure.
-        write_str = 'r+'
+        write_str = "r+"
 
         self._porosity_cube_file = h5py.File(
             self._config.starting_porosity_cube_path,
             write_str,
-            driver='mpio',
-            comm=self._config.get_param('mpi_local_comm'))
-        porosity_cube_dset = self._porosity_cube_file['p']
+            driver="mpio",
+            comm=self._config.get_param("mpi_local_comm"),
+        )
+        porosity_cube_dset = self._porosity_cube_file["p"]
 
         return porosity_cube_dset
 

@@ -21,8 +21,8 @@ import lightgbm as lgb
 from scipy.sparse import csc_matrix
 
 # Parameters
-LABEL_COLUMN_NAME = 'phi'
-UNWANTED_COLUMNS = ['well_id', 'real', 'phi_weights']
+LABEL_COLUMN_NAME = "phi"
+UNWANTED_COLUMNS = ["well_id", "real", "phi_weights"]
 
 RANDOM_STATE = 1
 
@@ -57,21 +57,21 @@ def get_best_features_set(features_sets):
 
 
 def eval_bootstrap(ddf, num_threads=24):
-    params['num_threads'] = num_threads
-    print('=====================================')
+    params["num_threads"] = num_threads
+    print("=====================================")
 
     X = ddf.drop(columns=UNWANTED_COLUMNS)
     y = ddf[LABEL_COLUMN_NAME]
 
     # Create groups for one-well-out training
     logo = LeaveOneGroupOut()
-    groups = ddf['well_id'].compute()
+    groups = ddf["well_id"].compute()
 
     rmse_list = []
     mae_list = []
 
     train_shape = (len(X), len(X.columns))
-    for (train, val) in logo.split(csc_matrix(train_shape), groups=groups):
+    for train, val in logo.split(csc_matrix(train_shape), groups=groups):
         X_train = X.loc[train]
         y_train = y.loc[train]
 
@@ -99,7 +99,8 @@ def eval_bootstrap(ddf, num_threads=24):
             X_train,
             y_train,
             eval_set=zip(X_val, y_val),
-            callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)])
+            callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)],
+        )
 
         # Perform predictions and evaluate the error
         pred = regressor.predict(X_val)
@@ -116,20 +117,21 @@ def eval_bootstrap(ddf, num_threads=24):
     # groups = df['well']
     # logo.get_n_splits(X, y, groups)
     # logo.get_n_splits(groups=groups)
-    for (train, val) in logo.split(X, y, groups):
-
+    for train, val in logo.split(X, y, groups):
         # Create training dataset
         train_df = df.iloc[train]
-        X_train = train_df.drop([LABEL_COLUMN_NAME] + UNWANTED_COLUMNS,
-                                axis=1).values
+        X_train = train_df.drop(
+            [LABEL_COLUMN_NAME] + UNWANTED_COLUMNS, axis=1
+        ).values
         y_train = train_df[LABEL_COLUMN_NAME].values
         lgb_train = lgb.Dataset(X_train, y_train)
 
         # Create validation dataset
         val_df = df.iloc[val]
-        val_df = val_df[val_df['real'] == 0]  # Select real values only
-        X_val = val_df.drop([LABEL_COLUMN_NAME] + UNWANTED_COLUMNS,
-                            axis=1).values
+        val_df = val_df[val_df["real"] == 0]  # Select real values only
+        X_val = val_df.drop(
+            [LABEL_COLUMN_NAME] + UNWANTED_COLUMNS, axis=1
+        ).values
         y_val = val_df[LABEL_COLUMN_NAME].values
         lgb_eval = lgb.Dataset(X_val, y_val, reference=lgb_train)
 
@@ -139,11 +141,12 @@ def eval_bootstrap(ddf, num_threads=24):
             lgb_train,
             num_boost_round=100,
             valid_sets=lgb_eval,
-            callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)])
+            callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)],
+        )
 
         # Calculate error metrics
         pred = regressor.predict(X_val)
-        rmse = np.sqrt(np.mean((pred - y_val)**2))
+        rmse = np.sqrt(np.mean((pred - y_val) ** 2))
         mae = mean_absolute_error(pred, y_val)
         rmse_list.append(rmse)
         mae_list.append(mae)
@@ -155,7 +158,7 @@ def eval_bootstrap(ddf, num_threads=24):
 # string (e.g., 'NEAR/-3,1,2')
 def f2str(f_tuple):
     if type(f_tuple) is tuple:
-        return f'{f_tuple[0]}/{f_tuple[1]},{f_tuple[2]},{f_tuple[3]}'
+        return f"{f_tuple[0]}/{f_tuple[1]},{f_tuple[2]},{f_tuple[3]}"
     else:
         return f_tuple
 
@@ -166,12 +169,15 @@ def parallel_read(array_np, indexes, f_x, f_y, f_z):
 
     ii = 0
     for i in indexes:
-        x = max(0, min(SEISMIC_MAX_X, i['x'] + f_x))
-        y = max(0, min(SEISMIC_MAX_Y, i['y'] + f_y))
-        z = max(0, min(SEISMIC_MAX_Z, i['z'] + f_z))
+        x = max(0, min(SEISMIC_MAX_X, i["x"] + f_x))
+        y = max(0, min(SEISMIC_MAX_Y, i["y"] + f_y))
+        z = max(0, min(SEISMIC_MAX_Z, i["z"] + f_z))
         # array_np is 1D with 3D indexed data
-        coord = x * (SEISMIC_MAX_Y + 1) * (SEISMIC_MAX_Z +
-                                           1) + y * (SEISMIC_MAX_Z + 1) + z
+        coord = (
+            x * (SEISMIC_MAX_Y + 1) * (SEISMIC_MAX_Z + 1)
+            + y * (SEISMIC_MAX_Z + 1)
+            + z
+        )
         ret[ii] = array_np[coord]
         ii = ii + 1
 
@@ -184,13 +190,14 @@ def get_feature_col2(indexes, feature, features_df):
         sub_features_np = features_df[feature[0]].values
 
         # Numba only accepts ndarrays of concrete types (not object)
-        indexes_ndarray = np.array(indexes.values,
-                                   dtype=[('x', '<u4'), ('y', '<u4'),
-                                          ('z', '<u4')])
-        return parallel_read(sub_features_np, indexes_ndarray, feature[1],
-                             feature[2], feature[3])
+        indexes_ndarray = np.array(
+            indexes.values, dtype=[("x", "<u4"), ("y", "<u4"), ("z", "<u4")]
+        )
+        return parallel_read(
+            sub_features_np, indexes_ndarray, feature[1], feature[2], feature[3]
+        )
     else:
-        print(f'[petro2][WARNING] non-seismic column created: {feature}')
+        print(f"[petro2][WARNING] non-seismic column created: {feature}")
         return features_df[features_df.index.isin(indexes)][feature].values
 
 
@@ -269,8 +276,9 @@ def get_loc(part_np, feature, shape, chunksize):
 # Returns the numpy array with the displaced rows from a given partition.
 # If the row is not present on this current partition, returns the old value.
 @jit(nopython=True, parallel=True)
-def get_part_col_given_part(part_id_np, part_valid_f_np, feature_part_np,
-                            min_f_id, max_f_id, chunksize):
+def get_part_col_given_part(
+    part_id_np, part_valid_f_np, feature_part_np, min_f_id, max_f_id, chunksize
+):
     out_np = np.empty((len(part_id_np)), dtype=np.float64)
 
     for i in prange(len(part_id_np)):
@@ -290,15 +298,16 @@ def trim_memory() -> int:
 
 # Returns a numpy array of rows for a displaced feature for a single dask
 # partition (i.e., pandas DF).
-def get_part_col(part, features_w, features_min, features_max, shape, feature,
-                 chunksize):
+def get_part_col(
+    part, features_w, features_min, features_max, shape, feature, chunksize
+):
     trim_memory()
 
     # Early retur for empty partitions
     if len(part) == 0:
         return []
 
-    print(part['well_id'].head())
+    print(part["well_id"].head())
     loc_np, part_loc_np = get_loc(part.to_numpy(), feature, shape, chunksize)
 
     # print('loc_np')
@@ -311,29 +320,39 @@ def get_part_col(part, features_w, features_min, features_max, shape, feature,
     trim_memory()
 
     out_np = np.empty((len(part)), dtype=np.float64)
-    print(f'len(part): {len(part)}')
+    print(f"len(part): {len(part)}")
     # out_np = np.zeros((len(part)), dtype=np.float64)
 
-    print(f'part_to_fill: {part_to_fill}')
+    print(f"part_to_fill: {part_to_fill}")
 
     for p in part_to_fill:
         feature_part = features_w.ddf.get_partition(p)[feature[0]]
         feature_part_np = feature_part.compute().to_numpy()
-        out_np = get_part_col_given_part(loc_np, out_np, feature_part_np,
-                                         features_min[int(p)],
-                                         features_max[int(p)], chunksize)
+        out_np = get_part_col_given_part(
+            loc_np,
+            out_np,
+            feature_part_np,
+            features_min[int(p)],
+            features_max[int(p)],
+            chunksize,
+        )
 
-    print(f'out_np (size: {len(out_np)})')
-    print('')
+    print(f"out_np (size: {len(out_np)})")
+    print("")
     # print(out_np)
     return out_np
 
 
-def single_feature_run(cur_ddf, features_ddf, cur_feature, hypercube_shape,
-                       dask_chunksize, num_threads):
-
+def single_feature_run(
+    cur_ddf,
+    features_ddf,
+    cur_feature,
+    hypercube_shape,
+    dask_chunksize,
+    num_threads,
+):
     t1 = time.time()
-    print(f'[single_feature_run] begin {t1}')
+    print(f"[single_feature_run] begin {t1}")
     cur_feature_s = f2str(cur_feature)
 
     # Add feature column to current DataFrame
@@ -343,7 +362,7 @@ def single_feature_run(cur_ddf, features_ddf, cur_feature, hypercube_shape,
     # features are tested
     test_ddf = cur_ddf.copy()
     t2 = time.time()
-    print(f'getting col {cur_feature}')
+    print(f"getting col {cur_feature}")
 
     # print(f'test_ddf (size: {len(test_ddf)}):')
     # print(test_ddf)
@@ -357,43 +376,46 @@ def single_feature_run(cur_ddf, features_ddf, cur_feature, hypercube_shape,
     #                                            hypercube_shape)
 
     # Find the min/max indices of each partition a ahead of time only once
-    features_min_index_np = features_ddf.index.map_partitions(
-        min).compute().to_numpy()
-    features_max_index_np = features_ddf.index.map_partitions(
-        max).compute().to_numpy()
+    features_min_index_np = (
+        features_ddf.index.map_partitions(min).compute().to_numpy()
+    )
+    features_max_index_np = (
+        features_ddf.index.map_partitions(max).compute().to_numpy()
+    )
 
     # Wrapper of a dask df to avoid it being transformed into a pandas df
     # This allows ddfs passed to map_partitions to retain partition information
     class Wrapper(object):
-
         def __init__(self, ddf):
             self.ddf = ddf
 
     # Run column filter on every dask df partition
-    test_ddf[cur_feature_s] = test_ddf.map_partitions(get_part_col,
-                                                      Wrapper(features_ddf),
-                                                      features_min_index_np,
-                                                      features_max_index_np,
-                                                      hypercube_shape,
-                                                      cur_feature,
-                                                      dask_chunksize,
-                                                      align_dataframes=False,
-                                                      meta=(None, int))
+    test_ddf[cur_feature_s] = test_ddf.map_partitions(
+        get_part_col,
+        Wrapper(features_ddf),
+        features_min_index_np,
+        features_max_index_np,
+        hypercube_shape,
+        cur_feature,
+        dask_chunksize,
+        align_dataframes=False,
+        meta=(None, int),
+    )
 
     t3 = time.time()
     test_ddf = test_ddf.persist()
     print(test_ddf.head(npartitions=-1))
-    print(f'got col in {t3-t1} secs')
+    print(f"got col in {t3-t1} secs")
 
     # Test current feature set
     rmse, mae = eval_bootstrap(test_ddf, num_threads)
     t4 = time.time()
 
-    print(f'[petro2][single_feature_run] copy_time {t2-t1}')
-    print(f'[petro2][single_feature_run] add_col_time {t3-t2}')
-    print(f'[petro2][single_feature_run] eval_bootstrap {t4-t3}')
+    print(f"[petro2][single_feature_run] copy_time {t2-t1}")
+    print(f"[petro2][single_feature_run] add_col_time {t3-t2}")
+    print(f"[petro2][single_feature_run] eval_bootstrap {t4-t3}")
 
-    print(f'[single_feature_run] end {t4}')
+    print(f"[single_feature_run] end {t4}")
 
     return rmse, mae
 
@@ -402,25 +424,21 @@ def single_feature_run(cur_ddf, features_ddf, cur_feature, hypercube_shape,
 # f_width: number of features to be compared
 #   default=0 means all features.
 #   Used for debugging and reducing computing cost
-def get_features_sets(main_df,
-                      features_df,
-                      all_features,
-                      num_threads,
-                      exp_n_features,
-                      f_width=0):
+def get_features_sets(
+    main_df, features_df, all_features, num_threads, exp_n_features, f_width=0
+):
     # Create a shallow copy of main_df for adding new columns
     # Data from is main_df is only referenced, not copied
     cur_df = main_df.copy(deep=False)
 
     # Current features set with the best error
-    cur_f_set = ['x', 'y', 'z']
+    cur_f_set = ["x", "y", "z"]
 
     # List of features sets and their error metric
     results = []
 
     # Find a feature set with exp_n_features features
     for _ in range(exp_n_features):
-
         t0 = time.time()
 
         # Reset best feature and its error
@@ -438,8 +456,9 @@ def get_features_sets(main_df,
                 break
             ii = ii + 1
 
-            rmse, mae = single_feature_run(cur_df, features_df, cur_feature,
-                                           num_threads)
+            rmse, mae = single_feature_run(
+                cur_df, features_df, cur_feature, num_threads
+            )
 
             results.append((cur_f_set + [cur_feature], rmse, mae))
 
@@ -449,17 +468,20 @@ def get_features_sets(main_df,
                 best_feature = cur_feature
 
             t4 = time.time()
-            print(f'[petro2] Tested feature'\
-                  f'{cur_f_set+ [cur_feature]} with error {rmse}')
+            print(
+                f"[petro2] Tested feature"
+                f"{cur_f_set+ [cur_feature]} with error {rmse}"
+            )
 
         # Update current DataFrame to add best feature of current iteration
         cur_f_set.append(best_feature)
         cur_df.loc[:, f2str(best_feature)] = get_feature_col2(
-            cur_df.index, best_feature, features_df)
+            cur_df.index, best_feature, features_df
+        )
 
         t5 = time.time()
 
         # Print iteration statistics
-        print(f'[petro2] fullIt time: {t5-t0}')
+        print(f"[petro2] fullIt time: {t5-t0}")
 
     return get_best_features_set(results)

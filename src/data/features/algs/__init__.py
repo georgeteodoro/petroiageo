@@ -4,4 +4,8 @@ from algs.curvature import *
 from algs.gst import gst_coherence
 from algs.sobel import *
 from algs.rms import rms
-from algs.complexTraceAttrib import analiticOf, envelopeOf, instantaneousFrequencyOf
+from algs.complexTraceAttrib import (
+    analiticOf,
+    envelopeOf,
+    instantaneousFrequencyOf,
+)

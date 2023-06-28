@@ -10,7 +10,7 @@ def _get_local_node_comm(comm):
     communicators with 2 processes.
 
     This is required for using distributed hdf5. The MPI_File_open routine
-    needs the same file for the input MPI communicator, and for running 
+    needs the same file for the input MPI communicator, and for running
     locally the files although having the same name and path, are different.
     """
 
@@ -31,7 +31,7 @@ def _get_local_node_comm(comm):
 
 def _should_update_local(mpi_size, rank, comm):
     """
-    Check whether the current process should update the local 
+    Check whether the current process should update the local
     h5 porosity file.
     Only one process per node should do this.
     Although multiple updates works on h5, it is inefficient.
@@ -60,8 +60,7 @@ def _should_update_local(mpi_size, rank, comm):
 
 
 def initialize(config: config_parser.Config):
-    """
-    """
+    """ """
 
     # Get base MPI variables
     global_comm = MPI.COMM_WORLD
@@ -73,9 +72,9 @@ def initialize(config: config_parser.Config):
     should_update_local = _should_update_local(mpi_size, rank, global_comm)
 
     # TODO: later add a 'mpi' TOP_LEVEL_BASE_CONFIG to config
-    config.add_param('mpi_global_comm', global_comm)
-    config.add_param('mpi_rank', rank)
-    config.add_param('mpi_size', mpi_size)
-    config.add_param('mpi_manager_rank', manager_rank)
-    config.add_param('mpi_local_comm', local_comm)
-    config.add_param('mpi_should_update_local', should_update_local)
+    config.add_param("mpi_global_comm", global_comm)
+    config.add_param("mpi_rank", rank)
+    config.add_param("mpi_size", mpi_size)
+    config.add_param("mpi_manager_rank", manager_rank)
+    config.add_param("mpi_local_comm", local_comm)
+    config.add_param("mpi_should_update_local", should_update_local)

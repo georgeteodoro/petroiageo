@@ -10,7 +10,7 @@ import dask.config
 import logging
 import gc
 
-from concurrent.futures import ProcessPoolExecutor 
+from concurrent.futures import ProcessPoolExecutor
 
 import os, psutil, cProfile
 
@@ -39,13 +39,13 @@ def main():
     update_funcs.initialize_dask(w=1, t=2, mem=1, disk=40)
 
     # ddf1, features_ddf, shape, chunksize = update_funcs.load_ddfs('small')
-    ddf1, features_ddf, shape, chunksize = update_funcs.load_ddfs('100M')
+    ddf1, features_ddf, shape, chunksize = update_funcs.load_ddfs("100M")
 
     t0 = time()
-    base_feature_name = 'feature1'
-    feature_name1 = 'feature10'
+    base_feature_name = "feature1"
+    feature_name1 = "feature10"
     feature1 = (-1, 0, 1)
-    feature_name2 = 'feature20'
+    feature_name2 = "feature20"
     feature2 = (2, 3, -2)
 
     ddf1[feature_name1] = ddf1.map_partitions(
@@ -56,20 +56,21 @@ def main():
         base_feature_name,
         chunksize,
         align_dataframes=False,
-        meta=(None, int))
+        meta=(None, int),
+    )
 
     # ddf1.visualize(filename='outside_part_graph.svg')
-    with ProgressBar(), dask.config.set(num_workers=16, scheduler='processes'):
+    with ProgressBar(), dask.config.set(num_workers=16, scheduler="processes"):
         ddf1 = ddf1.persist()
     t2 = time()
-    print(f'=============prepared partitions update {t2-t0}')
+    print(f"=============prepared partitions update {t2-t0}")
 
     # progress(ddf1)
-    print('')
+    print("")
     # ddf1.to_parquet('out_ddf.parquet')
 
     t3 = time()
-    print(f'=============done {t3-t2}')
+    print(f"=============done {t3-t2}")
     # print(ddf1.compute())
 
     # ddf1[feature_name2] = ddf1.map_partitions(update_funcs.update_part,
@@ -84,16 +85,18 @@ def main():
     features_min = features_ddf.index.map_partitions(min).compute().to_numpy()
     features_max = features_ddf.index.map_partitions(max).compute().to_numpy()
 
-    ddf1[feature_name2] = ddf1.map_partitions(update_funcs.update_part_no_minmax,
-                                              update_funcs.Wrapper(features_ddf),
-                                              features_min,
-                                              features_max,
-                                              shape,
-                                              feature2,
-                                              base_feature_name,
-                                              chunksize,
-                                              align_dataframes=False,
-                                              meta=(None, int))
+    ddf1[feature_name2] = ddf1.map_partitions(
+        update_funcs.update_part_no_minmax,
+        update_funcs.Wrapper(features_ddf),
+        features_min,
+        features_max,
+        shape,
+        feature2,
+        base_feature_name,
+        chunksize,
+        align_dataframes=False,
+        meta=(None, int),
+    )
 
     with ProgressBar():
         ddf1 = ddf1.persist()
@@ -102,5 +105,5 @@ def main():
     print(ddf1.compute())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -28,15 +28,15 @@ class MPI_TAGS(Enum):
 #   default=0 means all features.
 #   Used for debugging and reducing computing cost
 def get_features_sets(
-        porosity_data_h5,
-        features_dict_h5,
-        all_features,
-        displacement_cube_shape,
-        # parallel_settings,
-        it_str,
-        exp_n_features,
-        f_width=0):
-
+    porosity_data_h5,
+    features_dict_h5,
+    all_features,
+    displacement_cube_shape,
+    # parallel_settings,
+    it_str,
+    exp_n_features,
+    f_width=0,
+):
     # main_ddf,
     # features_ddf,
     # all_features,
@@ -55,22 +55,26 @@ def get_features_sets(
     elif rank != manager_rank:
         # return worker(main_ddf, features_ddf, hypercube_shape, dask_chunksize,
         #               parallel_settings)
-        return worker(porosity_data_h5, features_dict_h5,
-                      displacement_cube_shape, exp_n_features, it_str)
+        return worker(
+            porosity_data_h5,
+            features_dict_h5,
+            displacement_cube_shape,
+            exp_n_features,
+            it_str,
+        )
 
 
 def manager(all_features, exp_n_features, f_width, it_str):
     # print("[petro-dist][manager]")
 
     # Current features set with the best error
-    cur_f_set = ['x', 'y', 'z']
+    cur_f_set = ["x", "y", "z"]
 
     # List of features sets and their error metric
     results = []
 
     # Find a feature set by testing exp_n_features features
     for _ in range(exp_n_features):
-
         t0 = time.time()
 
         # Reset workers done and wait for next feature set
@@ -109,10 +113,12 @@ def manager(all_features, exp_n_features, f_width, it_str):
             if status.Get_tag() != MPI_TAGS.WORKER_EMPTY_RESULT.value:
                 # Unpack data
                 (data, n_features) = data
-                for (cur_feature, cur_error) in data:
-                    print(f'[petro-dist][manager]{it_str} Tested feature '\
-                          f'{cur_f_set + [cur_feature]} '\
-                          f'with error {cur_error}')
+                for cur_feature, cur_error in data:
+                    print(
+                        f"[petro-dist][manager]{it_str} Tested feature "
+                        f"{cur_f_set + [cur_feature]} "
+                        f"with error {cur_error}"
+                    )
 
                     results.append((cur_f_set + [cur_feature], cur_error))
 
@@ -134,9 +140,11 @@ def manager(all_features, exp_n_features, f_width, it_str):
                 comm.send(new_features, dest=worker_rank)
             else:
                 # Send finish message
-                comm.send(None,
-                          dest=worker_rank,
-                          tag=MPI_TAGS.MANAGER_FEATURE_DONE.value)
+                comm.send(
+                    None,
+                    dest=worker_rank,
+                    tag=MPI_TAGS.MANAGER_FEATURE_DONE.value,
+                )
                 workers_done = workers_done + 1
 
         # Broadcast new best feature and updates current best features_set
@@ -144,7 +152,7 @@ def manager(all_features, exp_n_features, f_width, it_str):
         cur_f_set.append(new_best_feature)
 
         t1 = time.time()
-        print(f'[petro3]{it_str} fullIt time: {t1-t0}')
+        print(f"[petro3]{it_str} fullIt time: {t1-t0}")
 
     # Broadcast a done message to all workers
     for worker_rank in range(mpi_size - 1):
@@ -167,17 +175,19 @@ def manager(all_features, exp_n_features, f_width, it_str):
 #                                      n_cpu)
 
 
-def worker(porosity_data_h5,
-           features_dict_h5,
-           displacement_cube_shape,
-           exp_n_features,
-           it_str,
-           parallel_settings=None):
+def worker(
+    porosity_data_h5,
+    features_dict_h5,
+    displacement_cube_shape,
+    exp_n_features,
+    it_str,
+    parallel_settings=None,
+):
     # print(f"[petro-dist][w{rank}]")
 
     if not parallel_settings is None:
-        n_cpus = parallel_settings['n_cpus']
-        cpu_thrds = parallel_settings['cpu_thrds']
+        n_cpus = parallel_settings["n_cpus"]
+        cpu_thrds = parallel_settings["cpu_thrds"]
     else:
         n_cpus = 1
         cpu_thrds = 1
@@ -189,31 +199,31 @@ def worker(porosity_data_h5,
 
     # Points used for training: real, expanded and propagated
     is_training_point_f = lambda d: (
-        (d['real'] == common.RealValues.real) |
-        (d['real'] == common.RealValues.canal_expanded) |
-        (d['real'] == common.RealValues.expanded) |
-        (d['real'] == common.RealValues.propagated))
+        (d["real"] == common.RealValues.real)
+        | (d["real"] == common.RealValues.canal_expanded)
+        | (d["real"] == common.RealValues.expanded)
+        | (d["real"] == common.RealValues.propagated)
+    )
 
-    cur_h5, cur_h5_dset = petro5_hdf5.create_tmp_dset(porosity_data_h5,
-                                                      is_training_point_f,
-                                                      exp_n_features,
-                                                      f'-r{rank}')
+    cur_h5, cur_h5_dset = petro5_hdf5.create_tmp_dset(
+        porosity_data_h5, is_training_point_f, exp_n_features, f"-r{rank}"
+    )
 
     hypercube_shape = porosity_data_h5.shape
 
     # Create sequence object
-    cur_h5_seq = hdf5_util.HDFMultiColSequence(cur_h5_dset, ['x', 'y', 'z'])
+    cur_h5_seq = hdf5_util.HDFMultiColSequence(cur_h5_dset, ["x", "y", "z"])
 
-    cur_f_set = ['x', 'y', 'z']
+    cur_f_set = ["x", "y", "z"]
 
     # Run jobs until manager finishes
     while True:
         t0 = time.time()
 
         # Request a job from manager
-        comm.send(n_cpus,
-                  dest=manager_rank,
-                  tag=MPI_TAGS.WORKER_EMPTY_RESULT.value)
+        comm.send(
+            n_cpus, dest=manager_rank, tag=MPI_TAGS.WORKER_EMPTY_RESULT.value
+        )
 
         # print(f'======================= [worker] sent mpi WORKER_EMPTY_RESULT')
 
@@ -239,18 +249,22 @@ def worker(porosity_data_h5,
 
         # Run jobs until there are not any more features to test
         print(f"[petro-dist][w{rank}]{it_str} new iteration")
-        while (manager_tag != MPI_TAGS.MANAGER_FEATURE_DONE.value):
+        while manager_tag != MPI_TAGS.MANAGER_FEATURE_DONE.value:
             if n_cpus == 1:
                 t1 = time.time()
                 # Insert temporary feature
-                petro5_hdf5.insert_filtered_feature(cur_h5_dset, cur_h5_seq,
-                                                    features_dict_h5,
-                                                    new_features[0],
-                                                    hypercube_shape,
-                                                    displacement_cube_shape)
+                petro5_hdf5.insert_filtered_feature(
+                    cur_h5_dset,
+                    cur_h5_seq,
+                    features_dict_h5,
+                    new_features[0],
+                    hypercube_shape,
+                    displacement_cube_shape,
+                )
 
-                rmse, mae = petro5_hdf5.eval_bootstrap(cur_h5_seq,
-                                                       list(range(10)))
+                rmse, mae = petro5_hdf5.eval_bootstrap(
+                    cur_h5_seq, list(range(10))
+                )
 
                 # (rmse, mae) = single_feature_run(
                 #     cur_ddf, features_ddf, new_features[0], hypercube_shape,
@@ -263,18 +277,26 @@ def worker(porosity_data_h5,
                 t2 = time.time()
 
                 # Return results to manager
-                comm.send(([(new_features[0], rmse)], n_cpus),
-                          dest=manager_rank)
+                comm.send(
+                    ([(new_features[0], rmse)], n_cpus), dest=manager_rank
+                )
             else:
-                raise Exception('not implemented...')
+                raise Exception("not implemented...")
                 t1 = time.time()
-                print(f'[petro-dist][w{rank}]{it_str} executing '\
-                      f'{len(new_features)} features in parallel')
+                print(
+                    f"[petro-dist][w{rank}]{it_str} executing "
+                    f"{len(new_features)} features in parallel"
+                )
                 with concurrent.futures.ThreadPoolExecutor(n_cpus) as executor:
                     future = [
-                        executor.submit(single_feature_run_proxy, f,
-                                        hypercube_shape, dask_chunksize,
-                                        cpu_thrds) for f in new_features
+                        executor.submit(
+                            single_feature_run_proxy,
+                            f,
+                            hypercube_shape,
+                            dask_chunksize,
+                            cpu_thrds,
+                        )
+                        for f in new_features
                     ]
 
                 # Get future results
@@ -282,12 +304,16 @@ def worker(porosity_data_h5,
                 results = [rmse for (rmse, mae) in results]
 
                 t2 = time.time()
-                print(f'[petro-dist][w{rank}]{it_str} ran {len(new_features)} '\
-                      f'features in parallel in {t2-t1} secs')
+                print(
+                    f"[petro-dist][w{rank}]{it_str} ran {len(new_features)} "
+                    f"features in parallel in {t2-t1} secs"
+                )
 
                 # Return results to manager
-                comm.send((list(zip(new_features, results)), n_cpus),
-                          dest=manager_rank)
+                comm.send(
+                    (list(zip(new_features, results)), n_cpus),
+                    dest=manager_rank,
+                )
 
             # Wait for new job
             new_feature = comm.recv(source=manager_rank, status=status)
@@ -303,10 +329,14 @@ def worker(porosity_data_h5,
         cur_f_set.append(new_best_feature)
 
         # Insert best selected feature
-        petro5_hdf5.insert_filtered_feature(cur_h5_dset, cur_h5_seq,
-                                            features_dict_h5, new_features[0],
-                                            hypercube_shape,
-                                            displacement_cube_shape)
+        petro5_hdf5.insert_filtered_feature(
+            cur_h5_dset,
+            cur_h5_seq,
+            features_dict_h5,
+            new_features[0],
+            hypercube_shape,
+            displacement_cube_shape,
+        )
 
         # cur_ddf[petro3.f2str(new_best_feature)] = petro3.get_feature_col2(
         #     cur_ddf.index, new_best_feature, features_ddf)
@@ -314,20 +344,25 @@ def worker(porosity_data_h5,
 
         t4 = time.time()
 
+        print(f"[petro-dist][w{rank}][profiling]{it_str} it_full_time: {t4-t0}")
         print(
-            f'[petro-dist][w{rank}][profiling]{it_str} it_full_time: {t4-t0}')
-        print(f'[petro-dist][w{rank}][profiling]{it_str} total_exec_time: '\
-              f'{total_feature_exec_time}')
-        print(f'[petro-dist][w{rank}][profiling]{it_str} total_comm_time: '\
-              f'{total_feature_comm_time}')
-        print(f'[petro-dist][w{rank}][profiling]{it_str} n_tasks: '\
-              f'{feature_exec_count}')
+            f"[petro-dist][w{rank}][profiling]{it_str} total_exec_time: "
+            f"{total_feature_exec_time}"
+        )
+        print(
+            f"[petro-dist][w{rank}][profiling]{it_str} total_comm_time: "
+            f"{total_feature_comm_time}"
+        )
+        print(
+            f"[petro-dist][w{rank}][profiling]{it_str} n_tasks: "
+            f"{feature_exec_count}"
+        )
 
     # Get broadcasted resulting features and errors
     best_result = comm.bcast(None, root=manager_rank)
     return best_result
 
 
-if __name__ == '__main__':
-    with open("tmp_data/nwells-0.csv", mode='r') as f:
+if __name__ == "__main__":
+    with open("tmp_data/nwells-0.csv", mode="r") as f:
         get_features_sets(f.read())

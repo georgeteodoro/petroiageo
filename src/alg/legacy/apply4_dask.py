@@ -12,7 +12,7 @@ import warnings
 import petro2
 
 # Parameters
-LABEL_COLUMN_NAME = 'phi'
+LABEL_COLUMN_NAME = "phi"
 RANDOM_STATE = 1
 
 params = {
@@ -27,7 +27,7 @@ params = {
     "min_data": 10,
     "boost_from_average": True,
     "bagging_freq": 1,
-    "random_state": 0
+    "random_state": 0,
 }
 
 SEISMIC_MAX_X = 433
@@ -36,18 +36,18 @@ SEISMIC_MAX_Z = 250
 
 
 def eval_model(orig_df, main_df, features):
-
     # Get points marked for prediction
-    X_to_predict = main_df[(main_df['real'] == 2) | (main_df['real'] == 3)]
+    X_to_predict = main_df[(main_df["real"] == 2) | (main_df["real"] == 3)]
     X_to_predict = X_to_predict[[petro2.f2str(f) for f in features]]
 
     # Only train on points with phi value
-    X_with_phi = main_df[(main_df['real'] == 0) | (main_df['real'] == 1)]
+    X_with_phi = main_df[(main_df["real"] == 0) | (main_df["real"] == 1)]
     X_with_phi = X_with_phi[[petro2.f2str(f) for f in features]]
 
     # Results (phi) only for predicted or original points
-    y_df = main_df[(main_df['real'] == 0) |
-                   (main_df['real'] == 1)][LABEL_COLUMN_NAME]
+    y_df = main_df[(main_df["real"] == 0) | (main_df["real"] == 1)][
+        LABEL_COLUMN_NAME
+    ]
 
     # Train
     lgb_train = lgb.Dataset(X_with_phi.values, y_df.values)
@@ -62,20 +62,20 @@ def eval_model(orig_df, main_df, features):
 
     # Get the two disjoint set of points, real + previously expanded
     # and expanded on this iteration
-    remaining_df = orig_df[(orig_df['real'] != 2) & (orig_df['real'] != 3)]
-    predicted_df = orig_df[(orig_df['real'] == 2) | (orig_df['real'] == 3)]
+    remaining_df = orig_df[(orig_df["real"] != 2) & (orig_df["real"] != 3)]
+    predicted_df = orig_df[(orig_df["real"] == 2) | (orig_df["real"] == 3)]
 
     # SettingWithCopyWarning is false positive on the two .loc lines below
     pd.options.mode.chained_assignment = None
 
     # Update real value from 3 (to predict) and 2 (to expand) to 1 (propagated)
-    predicted_df.loc[:, 'real'] = 1
+    predicted_df.loc[:, "real"] = 1
 
     # Assign predicted values
-    predicted_df.loc[:, 'phi'] = pred
+    predicted_df.loc[:, "phi"] = pred
 
     # Re-enable SettingWithCopyWarning
-    pd.options.mode.chained_assignment = 'warn'
+    pd.options.mode.chained_assignment = "warn"
 
     return pd.concat([remaining_df, predicted_df])
 
@@ -86,11 +86,14 @@ def parallel_read(array_np, indexes, f_x, f_y, f_z):
 
     ii = 0
     for i in indexes:
-        x = max(0, min(SEISMIC_MAX_X, i['x'] + f_x))
-        y = max(0, min(SEISMIC_MAX_Y, i['y'] + f_y))
-        z = max(0, min(SEISMIC_MAX_Z, i['z'] + f_z))
-        coord = x * (SEISMIC_MAX_Y + 1) * (SEISMIC_MAX_Z +
-                                           1) + y * (SEISMIC_MAX_Z + 1) + z
+        x = max(0, min(SEISMIC_MAX_X, i["x"] + f_x))
+        y = max(0, min(SEISMIC_MAX_Y, i["y"] + f_y))
+        z = max(0, min(SEISMIC_MAX_Z, i["z"] + f_z))
+        coord = (
+            x * (SEISMIC_MAX_Y + 1) * (SEISMIC_MAX_Z + 1)
+            + y * (SEISMIC_MAX_Z + 1)
+            + z
+        )
         ret[ii] = array_np[coord]
         ii = ii + 1
 
@@ -103,11 +106,12 @@ def get_feature_col2(indexes, feature, features_df):
         sub_features_np = features_df[feature[0]].values
 
         # Numba only accepts ndarrays of concrete types (not object)
-        indexes_ndarray = np.array(indexes.values,
-                                   dtype=[('x', '<u2'), ('y', '<u2'),
-                                          ('z', '<u2')])
-        return parallel_read(sub_features_np, indexes_ndarray, feature[1],
-                             feature[2], feature[3])
+        indexes_ndarray = np.array(
+            indexes.values, dtype=[("x", "<u2"), ("y", "<u2"), ("z", "<u2")]
+        )
+        return parallel_read(
+            sub_features_np, indexes_ndarray, feature[1], feature[2], feature[3]
+        )
     else:
         return features_df[features_df.index.isin(indexes)][feature].values
 
@@ -116,9 +120,9 @@ def perf_predition(best_features_set, main_df, features_df):
     t1 = time.time()
 
     # Remove coordinates from features set
-    best_features_set.remove('x')
-    best_features_set.remove('y')
-    best_features_set.remove('z')
+    best_features_set.remove("x")
+    best_features_set.remove("y")
+    best_features_set.remove("z")
 
     # Create a DataFrame for the features to be used for prediction
     cur_features_df = main_df.copy(deep=False)
@@ -127,7 +131,8 @@ def perf_predition(best_features_set, main_df, features_df):
     for feature in best_features_set:
         feature_s = petro2.f2str(feature)
         cur_features_df.loc[:, feature_s] = get_feature_col2(
-            main_df.index, feature, features_df)
+            main_df.index, feature, features_df
+        )
 
     t2 = time.time()
 
@@ -135,6 +140,6 @@ def perf_predition(best_features_set, main_df, features_df):
     ret = eval_model(main_df, cur_features_df, best_features_set)
     t3 = time.time()
 
-    print(f'[apply4] prep time: {t2-t1}, eval time: {t3-t2}')
+    print(f"[apply4] prep time: {t2-t1}, eval time: {t3-t2}")
 
     return ret

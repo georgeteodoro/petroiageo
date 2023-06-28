@@ -41,8 +41,11 @@ def well_str(p, w, real, xx, shape):
     for k in range(251):  # for all depths
         # Calculate 1D coordinate of current point
         origPcoord = (p[0], p[1], k)
-        pCoord = origPcoord[0] * LABELS_SHAPE[1] * LABELS_SHAPE[
-            2] + origPcoord[1] * LABELS_SHAPE[2] + origPcoord[2]
+        pCoord = (
+            origPcoord[0] * LABELS_SHAPE[1] * LABELS_SHAPE[2]
+            + origPcoord[1] * LABELS_SHAPE[2]
+            + origPcoord[2]
+        )
 
         # # Checks for existing coordinate
         # locks[pCoord].acquire()
@@ -95,21 +98,22 @@ def well_str(p, w, real, xx, shape):
         s.write("0.0,")
         s.write("0.0,")
         s.write("0.0")
-        s.write('\n')
+        s.write("\n")
     return s
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     # Labels b, c and d are useless (all zero)
     # Replaced all references to them (B[x]) to 0
     def fill_labels(iteration, f_name, a):
-        with open(f_name, 'r') as f:
+        with open(f_name, "r") as f:
             for line in f.readlines():
-                fields = line.split(' ')
-                coord = int(
-                    fields[0]) * LABELS_SHAPE[1] * LABELS_SHAPE[2] + int(
-                        fields[1]) * LABELS_SHAPE[2] + int(fields[2])
+                fields = line.split(" ")
+                coord = (
+                    int(fields[0]) * LABELS_SHAPE[1] * LABELS_SHAPE[2]
+                    + int(fields[1]) * LABELS_SHAPE[2]
+                    + int(fields[2])
+                )
                 a[coord] = float(fields[3])
 
     t1 = time.time()
@@ -121,12 +125,12 @@ if __name__ == '__main__':
     w = 3
 
     # Loads xx and pp non-initial values
-    nxx = np.load('dados/xx.npy', allow_pickle=True)
-    npp = np.load('dados/pp.npy', allow_pickle=True)
+    nxx = np.load("dados/xx.npy", allow_pickle=True)
+    npp = np.load("dados/pp.npy", allow_pickle=True)
 
     # 0 is a placeholder for no-value on a sparse matrix
     def allButZero(arr):
-        return arr[0:arr.index(0)]
+        return arr[0 : arr.index(0)]
 
     xx = allButZero(nxx[iteration].tolist())
     pp = allButZero(npp[iteration].tolist())
@@ -141,16 +145,26 @@ if __name__ == '__main__':
 
     # Convert to list for better access time
     # numpy array is lazy with access
-    near, nearshape = load_to_mem('dados/NEAR.npy')
-    mid, midshape = load_to_mem('dados/MID.npy')
-    far, farshape = load_to_mem('dados/FAR.npy')
-    ufar, ufarshape = load_to_mem('dados/UFAR.npy')
-    gersz, gerszshape = load_to_mem('dados/GERSZ.npy')
-    gst, gstshape = load_to_mem('dados/GST.npy')
+    near, nearshape = load_to_mem("dados/NEAR.npy")
+    mid, midshape = load_to_mem("dados/MID.npy")
+    far, farshape = load_to_mem("dados/FAR.npy")
+    ufar, ufarshape = load_to_mem("dados/UFAR.npy")
+    gersz, gerszshape = load_to_mem("dados/GERSZ.npy")
+    gst, gstshape = load_to_mem("dados/GST.npy")
 
     # esses sao pocos reais
-    real = [[146, 500], [287, 242], [200, 102], [344, 276], [134, 227],
-            [250, 315], [174, 365], [236, 113], [167, 186], [230, 194]]
+    real = [
+        [146, 500],
+        [287, 242],
+        [200, 102],
+        [344, 276],
+        [134, 227],
+        [250, 315],
+        [174, 365],
+        [236, 113],
+        [167, 186],
+        [230, 194],
+    ]
 
     # TODO: Add visited coords logic later (which suits parallel execution)
     # # coordenadas ja visitadas
@@ -170,13 +184,13 @@ if __name__ == '__main__':
 
     # Allocate shared memory arrays
     # These are not thread-safe since read-only
-    snear = mp.Array('d', len(near), lock=False)
-    smid = mp.Array('d', len(mid), lock=False)
-    sfar = mp.Array('d', len(far), lock=False)
-    sufar = mp.Array('d', len(ufar), lock=False)
-    sgersz = mp.Array('d', len(gersz), lock=False)
-    sgst = mp.Array('d', len(gst), lock=False)
-    sA = mp.Array('d', labelslen, lock=False)
+    snear = mp.Array("d", len(near), lock=False)
+    smid = mp.Array("d", len(mid), lock=False)
+    sfar = mp.Array("d", len(far), lock=False)
+    sufar = mp.Array("d", len(ufar), lock=False)
+    sgersz = mp.Array("d", len(gersz), lock=False)
+    sgst = mp.Array("d", len(gst), lock=False)
+    sA = mp.Array("d", labelslen, lock=False)
     # sVisited = mp.Array('d', labelslen, lock=False)
     # sLocks = mp.RawArray(type(mp.Lock()), labelslen)
 
@@ -200,9 +214,17 @@ if __name__ == '__main__':
     # Name of files passed so they can be opened inside move_to_shrd, which
     # is the only way to "pass" the opened np.arrays to a parallel worker.
     with mp.Pool(6) as pool:
-        pool.map(move_to_shrd, [[0, "dados/NEAR.npy"], [1, "dados/MID.npy"],
-                                [2, "dados/FAR.npy"], [3, "dados/UFAR.npy"],
-                                [4, "dados/GERSZ.npy"], [5, "dados/GST.npy"]])
+        pool.map(
+            move_to_shrd,
+            [
+                [0, "dados/NEAR.npy"],
+                [1, "dados/MID.npy"],
+                [2, "dados/FAR.npy"],
+                [3, "dados/UFAR.npy"],
+                [4, "dados/GERSZ.npy"],
+                [5, "dados/GST.npy"],
+            ],
+        )
     t24 = time.time()
     # print("cpy done " + str(t24 - t23))
 
@@ -229,11 +251,11 @@ if __name__ == '__main__':
     #     for r in results:
     #         print(r.getvalue(), file=f)
     for r in results:
-        print(r.getvalue(), end='')
+        print(r.getvalue(), end="")
 
     t5 = time.time()
 
-    with open('tt-times.log', mode='a') as f:
+    with open("tt-times.log", mode="a") as f:
         print("iteration %s" % iteration, file=f)
         print("prep " + str(t2 - t1), file=f)
         print("shm-prep " + str(t3 - t2), file=f)

@@ -12,17 +12,17 @@ import gc
 
 import util
 
-base_feature_name = 'feature1'
-feature_name1 = 'feature10'
+base_feature_name = "feature1"
+feature_name1 = "feature10"
 feature1 = (-1, 0, 1)
-feature_name2 = 'feature20'
+feature_name2 = "feature20"
 feature2 = (2, 3, -2)
 
 # (sufix: (shape, partitions))
 ddfs_desc = {
-    'small': ((2, 1, 5), 3),
-    '100M': ((200, 1000, 500), 1000),
-    '500M': ((500, 2000, 500), 1000)
+    "small": ((2, 1, 5), 3),
+    "100M": ((200, 1000, 500), 1000),
+    "500M": ((500, 2000, 500), 1000),
 }
 
 # set_num_threads(4)
@@ -40,12 +40,14 @@ def initialize_dask(w, t, mem, disk):
     virtual_mem = (mem + disk) / w
     spill = (mem / w) / virtual_mem
 
-    dask.config.set({
-        'distributed.worker.memory.target': None,
-        'distributed.worker.memory.spill': spill,
-        'distributed.worker.memory.pause': spill + 0.1,
-        # 'distributed.worker.memory.terminate': False
-    })
+    dask.config.set(
+        {
+            "distributed.worker.memory.target": None,
+            "distributed.worker.memory.spill": spill,
+            "distributed.worker.memory.pause": spill + 0.1,
+            # 'distributed.worker.memory.terminate': False
+        }
+    )
     # cluster = LocalCluster(
     #     n_workers=w,
     #     threads_per_worker=t,
@@ -65,8 +67,8 @@ def load_ddfs(name):
     size = int(prod(shape))
     chunksize = int(size / npartitions)
 
-    ddf = dd.read_parquet('data/ddf1-' + name + '.parquet')
-    features_ddf = dd.read_parquet('data/features_ddf-' + name + '.parquet')
+    ddf = dd.read_parquet("data/ddf1-" + name + ".parquet")
+    features_ddf = dd.read_parquet("data/features_ddf-" + name + ".parquet")
 
     return ddf, features_ddf, shape, chunksize
 
@@ -106,8 +108,9 @@ def get_loc2(part_np, feature, shape, chunksize):
 
 
 @jit(nopython=True, parallel=True)
-def update_given_part_np(part_id_np, part_valid_f_np, feature_part_np,
-                         min_f_id, max_f_id, chunksize):
+def update_given_part_np(
+    part_id_np, part_valid_f_np, feature_part_np, min_f_id, max_f_id, chunksize
+):
     out_np = np.empty((len(part_id_np)), dtype=np.int64)
 
     for i in prange(len(part_id_np)):
@@ -139,10 +142,14 @@ def update_part(part, features_w, shape, feature, feature_name, chunksize):
     for p in part_to_fill:
         feature_part = features_w.ddf.get_partition(p)
         feature_part_np = feature_part[feature_name].compute().to_numpy()
-        out_np = update_given_part_np(loc_np, out_np, feature_part_np,
-                                      feature_part.index.min().compute(),
-                                      feature_part.index.max().compute(),
-                                      chunksize)
+        out_np = update_given_part_np(
+            loc_np,
+            out_np,
+            feature_part_np,
+            feature_part.index.min().compute(),
+            feature_part.index.max().compute(),
+            chunksize,
+        )
 
     return out_np
 
@@ -152,8 +159,16 @@ def update_part(part, features_w, shape, feature, feature_name, chunksize):
 
 # Improved performance on larger pipelines (more tasks)
 # Improvement felt from 1000 partitions onward
-def update_part_no_minmax(part, features_w, features_min, features_max, shape,
-                          feature, feature_name, chunksize):
+def update_part_no_minmax(
+    part,
+    features_w,
+    features_min,
+    features_max,
+    shape,
+    feature,
+    feature_name,
+    chunksize,
+):
     trim_memory()
 
     loc_np, part_loc_np = get_loc2(part.to_numpy(), feature, shape, chunksize)
@@ -169,9 +184,14 @@ def update_part_no_minmax(part, features_w, features_min, features_max, shape,
     for p in part_to_fill:
         feature_part = features_w.ddf.get_partition(p)[feature_name]
         feature_part_np = feature_part.compute().to_numpy()
-        out_np = update_given_part_np(loc_np, out_np, feature_part_np,
-                                      features_min[int(p)],
-                                      features_max[int(p)], chunksize)
+        out_np = update_given_part_np(
+            loc_np,
+            out_np,
+            feature_part_np,
+            features_min[int(p)],
+            features_max[int(p)],
+            chunksize,
+        )
 
     return out_np
 
@@ -179,6 +199,5 @@ def update_part_no_minmax(part, features_w, features_min, features_max, shape,
 # Wrapper of a dask df to avoid it being transformed into a pandas df
 # This allows to retain partition information
 class Wrapper(object):
-
     def __init__(self, ddf):
         self.ddf = ddf

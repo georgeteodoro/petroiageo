@@ -39,8 +39,11 @@ def well_str(p, w, real, xx, shape):
     for k in range(251):  # for all depths
         # Calculate 1D coordinate of current point
         origPcoord = (p[0], p[1], k)
-        pCoord = origPcoord[0] * LABELS_SHAPE[1] * LABELS_SHAPE[
-            2] + origPcoord[1] * LABELS_SHAPE[2] + origPcoord[2]
+        pCoord = (
+            origPcoord[0] * LABELS_SHAPE[1] * LABELS_SHAPE[2]
+            + origPcoord[1] * LABELS_SHAPE[2]
+            + origPcoord[2]
+        )
 
         # # Checks for existing coordinate
         # locks[pCoord].acquire()
@@ -93,7 +96,7 @@ def well_str(p, w, real, xx, shape):
         s.write("0.0,")
         s.write("0.0,")
         s.write("0.0")
-        s.write('\n')
+        s.write("\n")
     return s
 
 
@@ -103,12 +106,12 @@ def data_aug(iteration, window):
     iteration = int(iteration)
 
     # Loads xx and pp non-initial values
-    nxx = np.load('dados/xx.npy', allow_pickle=True)
-    npp = np.load('dados/pp.npy', allow_pickle=True)
+    nxx = np.load("dados/xx.npy", allow_pickle=True)
+    npp = np.load("dados/pp.npy", allow_pickle=True)
 
     # 0 is a placeholder for no-value on a sparse matrix
     def allButZero(arr):
-        return arr[0:arr.index(0)]
+        return arr[0 : arr.index(0)]
 
     xx = allButZero(nxx[iteration].tolist())
     pp = allButZero(npp[iteration].tolist())
@@ -118,8 +121,18 @@ def data_aug(iteration, window):
     npp = None
 
     # esses sao pocos reais
-    real = [[146, 500], [287, 242], [200, 102], [344, 276], [134, 227],
-            [250, 315], [174, 365], [236, 113], [167, 186], [230, 194]]
+    real = [
+        [146, 500],
+        [287, 242],
+        [200, 102],
+        [344, 276],
+        [134, 227],
+        [250, 315],
+        [174, 365],
+        [236, 113],
+        [167, 186],
+        [230, 194],
+    ]
 
     # TODO: Add visited coords logic later (which suits parallel execution)
     # # coordenadas ja visitadas
@@ -148,7 +161,7 @@ def data_aug(iteration, window):
 
     t4 = time.time()
 
-    with open('tt-times.log', mode='a') as f:
+    with open("tt-times.log", mode="a") as f:
         print("iteration %s" % iteration, file=f)
         print("prep " + str(t2 - t1), file=f)
         print("exec " + str(t3 - t2), file=f)
@@ -159,5 +172,5 @@ def data_aug(iteration, window):
     return s_results
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     data_aug(sys.argv[1], 3)

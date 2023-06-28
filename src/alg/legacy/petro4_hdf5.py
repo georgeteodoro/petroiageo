@@ -42,7 +42,7 @@ def get_best_features_set(features_sets):
 # def eval_bootstrap(df, num_threads=24):
 def eval_bootstrap(cur_h5_seq, wells_id, num_threads=24):
     # params['num_threads'] = num_threads
-    params['num_threads'] = 1
+    params["num_threads"] = 1
 
     profiling = True
 
@@ -73,12 +73,12 @@ def eval_bootstrap(cur_h5_seq, wells_id, num_threads=24):
         y_train_np = X_train_seq.get_y_np()
         y_val_np = X_val_seq.get_y_np()
         lgb_train_dataset = lgb.Dataset(X_train_seq, y_train_np)
-        lgb_eval_dataset = lgb.Dataset(X_val_seq,
-                                       y_val_np,
-                                       reference=lgb_train_dataset)
+        lgb_eval_dataset = lgb.Dataset(
+            X_val_seq, y_val_np, reference=lgb_train_dataset
+        )
         t1 = time()
         if profiling:
-            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Setup in {t1-t0}')
+            print(f"[petro4_hdf5][eval_bootstrap][w{w}] Setup in {t1-t0}")
 
         # Perform training
         regressor = lgb.train(
@@ -86,28 +86,33 @@ def eval_bootstrap(cur_h5_seq, wells_id, num_threads=24):
             lgb_train_dataset,
             num_boost_round=100,
             valid_sets=lgb_eval_dataset,
-            callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)])
+            callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)],
+        )
         t2 = time()
         if profiling:
-            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Training in {t2-t1}')
+            print(f"[petro4_hdf5][eval_bootstrap][w{w}] Training in {t2-t1}")
 
         # Calculate error metrics
         pred = regressor.predict(X_val_seq.get_X_np())
-        rmse = np.sqrt(np.mean((pred - y_val_np)**2))
+        rmse = np.sqrt(np.mean((pred - y_val_np) ** 2))
         mae = mean_absolute_error(pred, y_val_np)
         rmse_list.append(rmse)
         mae_list.append(mae)
         t3 = time()
         if profiling:
-            print(f'[petro4_hdf5][eval_bootstrap][w{w}] Evaluating in {t3-t2}')
+            print(f"[petro4_hdf5][eval_bootstrap][w{w}] Evaluating in {t3-t2}")
 
     return np.mean(rmse_list), np.mean(mae_list)
 
 
-def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
-                            cur_feature, hypercube_shape,
-                            displacement_cube_shape):
-
+def insert_filtered_feature(
+    cur_h5_dset,
+    cur_h5_seq,
+    features_dict_h5,
+    cur_feature,
+    hypercube_shape,
+    displacement_cube_shape,
+):
     profile_time = False
 
     t0 = time()
@@ -118,40 +123,47 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
         # print(f'[insert_filtered_feature] chunk size: {len(chunk_np)}')
 
         # Get the coordinates list
-        coord_3d_np = chunk_np[['x', 'y', 'z']]
+        coord_3d_np = chunk_np[["x", "y", "z"]]
 
         # Get the shape of the hypercube with a border of minimum and maximum
         # displaced points
         # displaced_hypercube_shape = [x + 1 for x in displacement_cube_shape]
         displaced_hypercube_shape = np.array(hypercube_shape) + (
-            np.array(displacement_cube_shape) - 1)
+            np.array(displacement_cube_shape) - 1
+        )
 
         t2 = time()
         if profile_time:
-            print(f'[insert_filtered_feature] get_slice_time: {t2-t1}')
+            print(f"[insert_filtered_feature] get_slice_time: {t2-t1}")
 
         # Apply the displacement
         coord_planar_np = coord_3d_np.copy()
 
-        for (coord_s, d_id) in [('x', 0), ('y', 1), ('z', 2)]:
-            coord_planar_np[coord_s] = coord_planar_np[coord_s] + cur_feature[
-                d_id + 1] + ((displacement_cube_shape[d_id] - 1) / 2)
+        for coord_s, d_id in [("x", 0), ("y", 1), ("z", 2)]:
+            coord_planar_np[coord_s] = (
+                coord_planar_np[coord_s]
+                + cur_feature[d_id + 1]
+                + ((displacement_cube_shape[d_id] - 1) / 2)
+            )
 
         t3 = time()
         if profile_time:
-            print(f'[insert_filtered_feature] appply_disp_time: {t3-t2}')
+            print(f"[insert_filtered_feature] appply_disp_time: {t3-t2}")
 
         # Convert 3d coordinates to planar
-        coord_planar_np = coord_planar_np[
-            'z'].flat + coord_planar_np['y'].flat * displaced_hypercube_shape[
-                2] + coord_planar_np['x'].flat * displaced_hypercube_shape[
-                    2] * displaced_hypercube_shape[1]
+        coord_planar_np = (
+            coord_planar_np["z"].flat
+            + coord_planar_np["y"].flat * displaced_hypercube_shape[2]
+            + coord_planar_np["x"].flat
+            * displaced_hypercube_shape[2]
+            * displaced_hypercube_shape[1]
+        )
 
         coord_planar_np.sort()
 
         t4 = time()
         if profile_time:
-            print(f'[insert_filtered_feature] 3d_2_planar_time: {t4-t3}')
+            print(f"[insert_filtered_feature] 3d_2_planar_time: {t4-t3}")
 
         # We use a generator in order to avoid copying the displaced feature
         # data into a ndarray variable, to later copy it to the cur_h5_seq
@@ -162,19 +174,22 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
             if len(coord_planar_np) / chunk_size > chunk_size:
                 chunk_len = int(len(coord_planar_np) / chunk_size)
 
-                for beg in range(0,
-                                 len(coord_planar_np) - chunk_len, chunk_len):
+                for beg in range(
+                    0, len(coord_planar_np) - chunk_len, chunk_len
+                ):
                     chunk_slice = slice(beg, beg + chunk_len)
                     yield chunk_slice, features_dict_h5[f][
-                        coord_planar_np[chunk_slice]]
+                        coord_planar_np[chunk_slice]
+                    ]
             else:
                 yield slice(0, chunk_len), features_dict_h5[f][coord_planar_np]
 
-        feature_gen = _feature_generator(features_dict_h5, coord_planar_np,
-                                         cur_feature[0])
+        feature_gen = _feature_generator(
+            features_dict_h5, coord_planar_np, cur_feature[0]
+        )
         t5 = time()
         if profile_time:
-            print(f'[insert_filtered_feature] generator_time: {t5-t4}')
+            print(f"[insert_filtered_feature] generator_time: {t5-t4}")
 
         # Insert the generator displaced feature data into cur_h5_seq
         cur_h5_seq.update_last_col_chunk(feature_gen, coord_planar_np)
@@ -182,47 +197,60 @@ def insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
         t6 = time()
         if profile_time:
             print(
-                f'[insert_filtered_feature] insert_disp_feature_time: {t6-t5}')
+                f"[insert_filtered_feature] insert_disp_feature_time: {t6-t5}"
+            )
 
     t7 = time()
     # if profile_time:
-    print(f'[insert_filtered_feature] full_time: {t7-t0}')
+    print(f"[insert_filtered_feature] full_time: {t7-t0}")
 
 
-def create_tmp_dset(porosity_data_h5,
-                    is_training_point_f,
-                    n_features,
-                    suf_str='',
-                    features_only=False):
-
+def create_tmp_dset(
+    porosity_data_h5,
+    is_training_point_f,
+    n_features,
+    suf_str="",
+    features_only=False,
+):
     profiling = True
 
     t0 = time()
     # Creates a temporary h5 structure to maintain the porosity
     # and features data
-    cur_h5 = h5py.File(f'cur{suf_str}.h5', 'w')
+    cur_h5 = h5py.File(f"cur{suf_str}.h5", "w")
     # cur_chunksize = (100, 100, 100)  # AUTOMATE LATER
     if features_only:
-        cur_data_type = [('x', np.int64), ('y', np.int64), ('z', np.int64),
-                         ('phi', np.float64)]
+        cur_data_type = [
+            ("x", np.int64),
+            ("y", np.int64),
+            ("z", np.int64),
+            ("phi", np.float64),
+        ]
     else:
-        cur_data_type = [('x', np.int64), ('y', np.int64), ('z', np.int64),
-                         ('phi', np.float64), ('well_id', np.int64)]
+        cur_data_type = [
+            ("x", np.int64),
+            ("y", np.int64),
+            ("z", np.int64),
+            ("phi", np.float64),
+            ("well_id", np.int64),
+        ]
 
-    cur_data_type = cur_data_type + [(f'f{f}', np.float64)
-                                     for f in range(n_features)]
+    cur_data_type = cur_data_type + [
+        (f"f{f}", np.float64) for f in range(n_features)
+    ]
     cur_data_type = np.dtype(cur_data_type)
 
     n_training_points = hdf5_util.fold_h5_all_clusters(
-        porosity_data_h5, lambda d: len(d[is_training_point_f(d)]), 0)
-    cur_chunksize = (n_training_points / 10, )
-    print(f'[get_features_sets] non-empty points: {n_training_points}')
-    cur_h5_dset = cur_h5.create_dataset('c', (n_training_points, ),
-                                        dtype=cur_data_type,
-                                        chunks=cur_chunksize)
+        porosity_data_h5, lambda d: len(d[is_training_point_f(d)]), 0
+    )
+    cur_chunksize = (n_training_points / 10,)
+    print(f"[get_features_sets] non-empty points: {n_training_points}")
+    cur_h5_dset = cur_h5.create_dataset(
+        "c", (n_training_points,), dtype=cur_data_type, chunks=cur_chunksize
+    )
     t1 = time()
     if profiling:
-        print(f'[get_features_sets] cur_create_time: {t1-t0}')
+        print(f"[get_features_sets] cur_create_time: {t1-t0}")
 
     # Copy porosity data to cur structure
     # Only copy points which will be used for training, i.e., not empty.
@@ -239,23 +267,28 @@ def create_tmp_dset(porosity_data_h5,
         # Append these porosity values to the current dataset
         training_points = chunk_np[is_training_point_f(chunk_np)]
         if features_only:
-            cur_h5_dset['x', 'y', 'z', 'phi',
-                        prev_end:(prev_end +
-                                  len(training_points))] = training_points[[
-                                      'x', 'y', 'z', 'phi'
-                                  ]]
+            cur_h5_dset[
+                "x",
+                "y",
+                "z",
+                "phi",
+                prev_end : (prev_end + len(training_points)),
+            ] = training_points[["x", "y", "z", "phi"]]
         else:
-            cur_h5_dset['x', 'y', 'z', 'phi', 'well_id',
-                        prev_end:(prev_end +
-                                  len(training_points))] = training_points[[
-                                      'x', 'y', 'z', 'phi', 'well_id'
-                                  ]]
+            cur_h5_dset[
+                "x",
+                "y",
+                "z",
+                "phi",
+                "well_id",
+                prev_end : (prev_end + len(training_points)),
+            ] = training_points[["x", "y", "z", "phi", "well_id"]]
         prev_end = prev_end + len(training_points)
 
     t2 = time()
     if profiling:
-        print(f'[get_features_sets] cur_copy_porosity_time: {t2-t1}')
-        print(f'[get_features_sets] final_lenght: {cur_h5_dset.shape}')
+        print(f"[get_features_sets] cur_copy_porosity_time: {t2-t1}")
+        print(f"[get_features_sets] final_lenght: {cur_h5_dset.shape}")
 
     return cur_h5, cur_h5_dset
 
@@ -265,32 +298,34 @@ def create_tmp_dset(porosity_data_h5,
 #   default=0 means all features.
 #   Used for debugging and reducing computing cost
 def get_features_sets(
-        porosity_data_h5,
-        features_dict_h5,
-        all_features,
-        displacement_cube_shape,
-        # num_threads,
-        it_str,
-        exp_n_features,
-        f_width=0):
-
+    porosity_data_h5,
+    features_dict_h5,
+    all_features,
+    displacement_cube_shape,
+    # num_threads,
+    it_str,
+    exp_n_features,
+    f_width=0,
+):
     t0 = time()
 
     # Points used for training: real, expanded and propagated
     is_training_point_f = lambda d: (
-        (d['real'] == common.RealValues.real) |
-        (d['real'] == common.RealValues.canal_expanded) |
-        (d['real'] == common.RealValues.expanded) |
-        (d['real'] == common.RealValues.propagated))
+        (d["real"] == common.RealValues.real)
+        | (d["real"] == common.RealValues.canal_expanded)
+        | (d["real"] == common.RealValues.expanded)
+        | (d["real"] == common.RealValues.propagated)
+    )
 
-    cur_h5, cur_h5_dset = create_tmp_dset(porosity_data_h5,
-                                          is_training_point_f, exp_n_features)
+    cur_h5, cur_h5_dset = create_tmp_dset(
+        porosity_data_h5, is_training_point_f, exp_n_features
+    )
 
     # Create sequence object
-    cur_h5_seq = hdf5_util.HDFMultiColSequence(cur_h5_dset, ['x', 'y', 'z'])
+    cur_h5_seq = hdf5_util.HDFMultiColSequence(cur_h5_dset, ["x", "y", "z"])
 
     # Current features set with the best error
-    cur_f_set = ['x', 'y', 'z']
+    cur_f_set = ["x", "y", "z"]
 
     # List of features sets and their error metric
     results = []
@@ -299,7 +334,6 @@ def get_features_sets(
 
     # Find a feature set with exp_n_features features
     for it in range(exp_n_features):
-
         t3 = time()
         # Reset best feature and its error
         best_error = 10000
@@ -321,21 +355,26 @@ def get_features_sets(
             ii = ii + 1
 
             # Insert a temporary feature
-            insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
-                                    cur_feature, hypercube_shape,
-                                    displacement_cube_shape)
+            insert_filtered_feature(
+                cur_h5_dset,
+                cur_h5_seq,
+                features_dict_h5,
+                cur_feature,
+                hypercube_shape,
+                displacement_cube_shape,
+            )
             t5 = time()
-            print(f'[get_features_sets][{cur_feature}] '\
-                  f'insert_feature_time: {t5-t4}')
+            print(
+                f"[get_features_sets][{cur_feature}] "
+                f"insert_feature_time: {t5-t4}"
+            )
 
             # Test the model with cur_feature
             # rmse, mae = eval_bootstrap(cur_h5_seq, list(range(1,11)))
             rmse, mae = eval_bootstrap(cur_h5_seq, list(range(10)))
             t6 = time()
-            print(f'[get_features_sets][{cur_feature}] '\
-                  f'train_time: {t6-t5}')
-            print(f'[get_features_sets][{cur_feature}] '\
-                  f'error: {rmse}')
+            print(f"[get_features_sets][{cur_feature}] " f"train_time: {t6-t5}")
+            print(f"[get_features_sets][{cur_feature}] " f"error: {rmse}")
 
             results.append((cur_f_set + [cur_feature], rmse, mae))
 
@@ -344,28 +383,36 @@ def get_features_sets(
                 best_error = rmse
                 best_feature = cur_feature
 
-            print(f'[get_features_sets][it{it}]{it_str} Tested features '\
-                  f'{cur_f_set+ [cur_feature]} with error {rmse}')
+            print(
+                f"[get_features_sets][it{it}]{it_str} Tested features "
+                f"{cur_f_set+ [cur_feature]} with error {rmse}"
+            )
 
         # Remove the best feature from the features list
         all_features.remove(best_feature)
 
         t7 = time()
-        print(f'[get_features_sets][it{it}] '\
-              f'full_it_time: {t7-t3}')
+        print(f"[get_features_sets][it{it}] " f"full_it_time: {t7-t3}")
 
         # Update the last column of the sequence object to the best feature
-        insert_filtered_feature(cur_h5_dset, cur_h5_seq, features_dict_h5,
-                                best_feature, hypercube_shape,
-                                displacement_cube_shape)
+        insert_filtered_feature(
+            cur_h5_dset,
+            cur_h5_seq,
+            features_dict_h5,
+            best_feature,
+            hypercube_shape,
+            displacement_cube_shape,
+        )
         cur_f_set.append(best_feature)
 
         t8 = time()
-        print(f'[get_features_sets][{cur_feature}] '\
-              f'commit_feature_time: {t8-t7}')
+        print(
+            f"[get_features_sets][{cur_feature}] "
+            f"commit_feature_time: {t8-t7}"
+        )
 
     t9 = time()
-    print(f'[get_features_sets] full_time: {t9-t0}')
+    print(f"[get_features_sets] full_time: {t9-t0}")
 
     cur_h5.close()
 

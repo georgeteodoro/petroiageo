@@ -4,6 +4,7 @@ from numba import jit
 
 import sys
 
+
 # Prod of tuple (numba does not allows math.prod)
 @jit(nopython=True)
 def prod(shape):
@@ -11,6 +12,7 @@ def prod(shape):
     for s in shape:
         p = p * s
     return p
+
 
 @jit(nopython=True)
 def get_single(arr, shape, with_coords=False):
@@ -34,7 +36,6 @@ def get_single(arr, shape, with_coords=False):
                 i = i + 1
 
     return coords_output, seismic_output
-
 
 
 # Merge all seismic data
@@ -65,11 +66,11 @@ def get_all(arrs, shape):
 
     return coords_output, seismic_output
 
+
 # Get all seismic data on the order the input filenames are passed
 def get_all_seismic_data(seismic_columns):
-
     # Generate filenames
-    filenames = [f'./dados/{col}.npy' for col in seismic_columns]
+    filenames = [f"./dados/{col}.npy" for col in seismic_columns]
 
     # Load each numpy array
     arr = np.load(filenames[0])
@@ -77,7 +78,7 @@ def get_all_seismic_data(seismic_columns):
 
     # Get first file and prepare DataFrame
     coords_np, seismic_np = get_single(arr, arr_shape, True)
-    coords_df = pd.DataFrame(coords_np, columns=['x', 'y', 'z'])
+    coords_df = pd.DataFrame(coords_np, columns=["x", "y", "z"])
     seismic_df = pd.DataFrame(seismic_np, columns=[seismic_columns[0]])
     fetures_df = pd.concat([coords_df, seismic_df], axis=1)
 
@@ -86,7 +87,7 @@ def get_all_seismic_data(seismic_columns):
     del seismic_df
     del coords_df
 
-    i = 1 # Column ID for getting the right col name
+    i = 1  # Column ID for getting the right col name
     for f in filenames[1:]:
         seismic_np = []
         arr = np.load(f)
@@ -105,7 +106,8 @@ def get_all_seismic_data(seismic_columns):
 
     # Set coordinates as the index
     index = pd.MultiIndex.from_arrays(
-        [fetures_df['x'], fetures_df['y'], fetures_df['z']])
+        [fetures_df["x"], fetures_df["y"], fetures_df["z"]]
+    )
     fetures_df.set_index(index, inplace=True)
     del index
     fetures_df.sort_index(inplace=True)
@@ -113,5 +115,5 @@ def get_all_seismic_data(seismic_columns):
     return fetures_df
 
 
-if __name__ == '__main__':
-    get_all_seismic_data(['NEAR', 'MID', 'FAR', 'UFAR', 'GERSZ', 'GST'])
+if __name__ == "__main__":
+    get_all_seismic_data(["NEAR", "MID", "FAR", "UFAR", "GERSZ", "GST"])

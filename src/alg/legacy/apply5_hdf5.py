@@ -25,29 +25,36 @@ params = {
     "min_data": 10,
     "boost_from_average": True,
     "bagging_freq": 1,
-    "random_state": 0
+    "random_state": 0,
 }
 
 
-def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
-                   window_sizes, displacement_cube_shape, it, config):
+def perf_predition(
+    best_features_set,
+    porosity_data_h5,
+    features_dict_h5,
+    window_sizes,
+    displacement_cube_shape,
+    it,
+    config,
+):
     t0 = time()
 
     # Remove coordinates from features set
-    best_features_set.remove('x')
-    best_features_set.remove('y')
-    best_features_set.remove('z')
+    best_features_set.remove("x")
+    best_features_set.remove("y")
+    best_features_set.remove("z")
 
     # Points used for training: real and propagated
     is_training_point_f = lambda d: (
-        (d['real'] == common.RealValues.real) |
-        (d['real'] == common.RealValues.propagated))
+        (d["real"] == common.RealValues.real)
+        | (d["real"] == common.RealValues.propagated)
+    )
 
     # Creates a temporary h5 structure to perform the training
-    cur_h5, cur_h5_dset = petro5_hdf5.create_tmp_dset(porosity_data_h5,
-                                                      is_training_point_f,
-                                                      len(best_features_set),
-                                                      True)
+    cur_h5, cur_h5_dset = petro5_hdf5.create_tmp_dset(
+        porosity_data_h5, is_training_point_f, len(best_features_set), True
+    )
     cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
 
     hypercube_shape = porosity_data_h5.shape
@@ -58,14 +65,20 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
     # Add each feature to the DataFrame
     for feature in best_features_set:
         cur_h5_train_list.add_new_col()
-        petro5_hdf5.insert_filtered_feature(cur_h5_dset, cur_h5_train_list,
-                                            features_dict_h5, feature,
-                                            window_sizes, hypercube_shape,
-                                            displacement_cube_shape)
+        petro5_hdf5.insert_filtered_feature(
+            cur_h5_dset,
+            cur_h5_train_list,
+            features_dict_h5,
+            feature,
+            window_sizes,
+            hypercube_shape,
+            displacement_cube_shape,
+        )
 
     t2 = time()
-    profiling.prof_predict_insert_time(it, len(best_features_set), t2 - t1,
-                                       config)
+    profiling.prof_predict_insert_time(
+        it, len(best_features_set), t2 - t1, config
+    )
 
     regressor = None
     for c in range(cur_h5_train_list.n_chunks):
@@ -75,11 +88,13 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
         lgb_train_dataset = lgb.Dataset(X_train_np, y_train_np)
 
         # Perform training
-        regressor = lgb.train(params,
-                              lgb_train_dataset,
-                              init_model=regressor,
-                              num_boost_round=100,
-                              keep_training_booster=True)
+        regressor = lgb.train(
+            params,
+            lgb_train_dataset,
+            init_model=regressor,
+            num_boost_round=100,
+            keep_training_booster=True,
+        )
 
     cur_h5.close()
 
@@ -88,8 +103,14 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
 
     total_to_propagate = hdf5_util.fold_h5_all_clusters(
         porosity_data_h5,
-        lambda d: len(d[(d['real'] == common.RealValues.canal_expanded) |
-                        (d['real'] == common.RealValues.expanded)]), 0)
+        lambda d: len(
+            d[
+                (d["real"] == common.RealValues.canal_expanded)
+                | (d["real"] == common.RealValues.expanded)
+            ]
+        ),
+        0,
+    )
 
     # Perform prediction of expanded points
     p_sum = 0
@@ -102,8 +123,9 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
 
         # Define a function to filter only the expanded points
         is_to_pred_point_f = lambda d: (
-            (d['real'] == common.RealValues.canal_expanded) |
-            (d['real'] == common.RealValues.expanded))
+            (d["real"] == common.RealValues.canal_expanded)
+            | (d["real"] == common.RealValues.expanded)
+        )
 
         # Check if there is any point on the current chunk to be updated
         # TODO:
@@ -119,14 +141,16 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
         p_sum = p_sum + to_propagate_count
 
         # Get coordinates of points to predict
-        coords_3d_np = expanded_points_np[['x', 'y', 'z']]
+        coords_3d_np = expanded_points_np[["x", "y", "z"]]
 
         # Create new ndarray for keeping all features values
         # of the current chunk
-        predict_features_type = [(f'f{f}', np.float64)
-                                 for f in range(len(best_features_set))]
-        to_predict_np = np.empty(to_propagate_count,
-                                 dtype=predict_features_type)
+        predict_features_type = [
+            (f"f{f}", np.float64) for f in range(len(best_features_set))
+        ]
+        to_predict_np = np.empty(
+            to_propagate_count, dtype=predict_features_type
+        )
 
         # Function to filter features with a given coords list
         def _gen_list_features(feature_dset, coords_3d_np):
@@ -138,16 +162,19 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
         for feature in best_features_set:
             # Apply the displacement
             cur_coords_3d_np = coords_3d_np.copy()
-            for (coord_s, d_id) in [('x', 0), ('y', 1), ('z', 2)]:
-                cur_coords_3d_np[coord_s] = cur_coords_3d_np[
-                    coord_s] + feature[d_id + 1] + (
-                        (displacement_cube_shape[d_id] - 1) / 2)
+            for coord_s, d_id in [("x", 0), ("y", 1), ("z", 2)]:
+                cur_coords_3d_np[coord_s] = (
+                    cur_coords_3d_np[coord_s]
+                    + feature[d_id + 1]
+                    + ((displacement_cube_shape[d_id] - 1) / 2)
+                )
 
             # Filter features' values for current chunk coords
-            feature_values = _gen_list_features(features_dict_h5[feature[0]],
-                                                cur_coords_3d_np.flat)
+            feature_values = _gen_list_features(
+                features_dict_h5[feature[0]], cur_coords_3d_np.flat
+            )
 
-            to_predict_np[f'f{i}'] = np.fromiter(feature_values, np.float64)
+            to_predict_np[f"f{i}"] = np.fromiter(feature_values, np.float64)
 
             i = i + 1
 
@@ -168,14 +195,16 @@ def perf_predition(best_features_set, porosity_data_h5, features_dict_h5,
         # on the proper coordinates and, (ii) allows batched write of data
         # onto porosity_data_h5
         updated_coords = np.where(is_to_pred_point_f(cur_chunk_np))
-        cur_chunk_np['phi'][updated_coords] = new_phi_np
-        cur_chunk_np['real'][updated_coords] = common.RealValues.propagated
+        cur_chunk_np["phi"][updated_coords] = new_phi_np
+        cur_chunk_np["real"][updated_coords] = common.RealValues.propagated
 
         # Only update 'phi' and 'real' values of expanded points
-        porosity_data_h5['phi', cur_slice[0], cur_slice[1],
-                         cur_slice[2]] = cur_chunk_np['phi']
-        porosity_data_h5['real', cur_slice[0], cur_slice[1],
-                         cur_slice[2]] = cur_chunk_np['real']
+        porosity_data_h5[
+            "phi", cur_slice[0], cur_slice[1], cur_slice[2]
+        ] = cur_chunk_np["phi"]
+        porosity_data_h5[
+            "real", cur_slice[0], cur_slice[1], cur_slice[2]
+        ] = cur_chunk_np["real"]
 
         t7 = time()
         profiling.prof_predict_pred_update_time(it, chunk_n, t7 - t6, config)

@@ -36,7 +36,7 @@ random.seed(RANDOM_STATE)
 ids = random.sample(range(MAX_ID), N_FEATURES)
 
 # Get number of lines
-num_lines = sum(1 for line in open(wells_file, 'r')) - 1  # last line is empty
+num_lines = sum(1 for line in open(wells_file, "r")) - 1  # last line is empty
 # output = []
 
 t2 = time.time()
@@ -46,12 +46,12 @@ def filter_line(line, max_features, ids):
     s = StringIO()
 
     # Move selected features features
-    fields = line.split(',')
+    fields = line.split(",")
     for i in range(N_FEATURES):
         s.write(str(fields[ids[i]]) + ",")
 
     # Move info data fields
-    for f in fields[max_features:max_features + N_INFO]:
+    for f in fields[max_features : max_features + N_INFO]:
         s.write(str(f) + ",")
 
     # Return output without trailing comma
@@ -59,7 +59,7 @@ def filter_line(line, max_features, ids):
 
 
 # Filter full data to reduced features
-with open(wells_file, 'r') as f:
+with open(wells_file, "r") as f:
     # First line is labels only
     all_labels = f.readline()
 
@@ -67,8 +67,9 @@ with open(wells_file, 'r') as f:
     with mp.Pool(mp.cpu_count()) as pool:
         output = pool.map(
             partial(filter_line, max_features=max_features, ids=ids),
-            f.readlines())
-    
+            f.readlines(),
+        )
+
     # output = []
     # for line in f.readlines():
     #     output.append(filter_line(line, max_features, ids))
@@ -76,11 +77,14 @@ with open(wells_file, 'r') as f:
 t3 = time.time()
 
 # Write results
-with open(output_file, 'w') as f:
-    all_labels = all_labels.replace('\n', '').split(',')
-    labels = reduce(lambda rem, id: rem + ',' + all_labels[id], ids, "")[1:]
-    labels += reduce(lambda rem, id: rem + ',' + all_labels[id],
-                     range(max_features, max_features + N_INFO), "")
+with open(output_file, "w") as f:
+    all_labels = all_labels.replace("\n", "").split(",")
+    labels = reduce(lambda rem, id: rem + "," + all_labels[id], ids, "")[1:]
+    labels += reduce(
+        lambda rem, id: rem + "," + all_labels[id],
+        range(max_features, max_features + N_INFO),
+        "",
+    )
     print(labels, file=f)
 
     for o in output:

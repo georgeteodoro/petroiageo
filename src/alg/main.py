@@ -22,95 +22,115 @@ def print_progress(with_progress, r):
 
 
 def config_arg_parser():
-    parser = argparse.ArgumentParser(description='POV')
+    parser = argparse.ArgumentParser(description="POV")
 
-    parser.add_argument('--config',
-                        dest='config_file',
-                        action='store',
-                        required=True,
-                        help="The yaml config file path to be read")
-    parser.add_argument('--it',
-                        dest='load_it',
-                        action='store',
-                        required=False,
-                        help='Iteration to load')
-    parser.add_argument('--nits',
-                        dest='num_its',
-                        action='store',
-                        required=False,
-                        help='Number of iterations to run')
-    parser.add_argument('--nf',
-                        dest='num_features',
-                        action='store',
-                        required=False,
-                        help='Number of total features')
-    parser.add_argument('--nsf',
-                        dest='num_select_features',
-                        action='store',
-                        required=False,
-                        help='Number of maximum features to be '\
-                            'selected')
-    parser.add_argument('--ntf',
-                        dest='num_tested_features',
-                        action='store',
-                        default=0,
-                        help='Number of features to be tested before choosing '\
-                            'a selected feature.')
-    parser.add_argument('--wp',
-                        dest='with_progress',
-                        action='store_true',
-                        default=True,
-                        help='Enable showing progress of iterations. '\
-                            'This can mess the slurm output up.')
-    parser.add_argument('--no-wp',
-                        dest='with_progress',
-                        action='store_false',
-                        help='Disables showing progress of iterations.')
+    parser.add_argument(
+        "--config",
+        dest="config_file",
+        action="store",
+        required=True,
+        help="The yaml config file path to be read",
+    )
+    parser.add_argument(
+        "--it",
+        dest="load_it",
+        action="store",
+        required=False,
+        help="Iteration to load",
+    )
+    parser.add_argument(
+        "--nits",
+        dest="num_its",
+        action="store",
+        required=False,
+        help="Number of iterations to run",
+    )
+    parser.add_argument(
+        "--nf",
+        dest="num_features",
+        action="store",
+        required=False,
+        help="Number of total features",
+    )
+    parser.add_argument(
+        "--nsf",
+        dest="num_select_features",
+        action="store",
+        required=False,
+        help="Number of maximum features to be " "selected",
+    )
+    parser.add_argument(
+        "--ntf",
+        dest="num_tested_features",
+        action="store",
+        default=0,
+        help="Number of features to be tested before choosing "
+        "a selected feature.",
+    )
+    parser.add_argument(
+        "--wp",
+        dest="with_progress",
+        action="store_true",
+        default=True,
+        help="Enable showing progress of iterations. "
+        "This can mess the slurm output up.",
+    )
+    parser.add_argument(
+        "--no-wp",
+        dest="with_progress",
+        action="store_false",
+        help="Disables showing progress of iterations.",
+    )
 
-    parser.add_argument('--local',
-                        dest='local_files',
-                        action='store_true',
-                        help='Read files from main.py root folder.')
+    parser.add_argument(
+        "--local",
+        dest="local_files",
+        action="store_true",
+        help="Read files from main.py root folder.",
+    )
 
-    parser.add_argument('--sp',
-                        dest='is_sampling',
-                        action='store_true',
-                        help='Whether sampling should be used '\
-                             'for feature selection (default=False).')
+    parser.add_argument(
+        "--sp",
+        dest="is_sampling",
+        action="store_true",
+        help="Whether sampling should be used "
+        "for feature selection (default=False).",
+    )
 
     return parser
 
 
-def update_config_file_params_with_args(config: config_parser.Config,
-                                        args) -> config_parser.Config:
+def update_config_file_params_with_args(
+    config: config_parser.Config, args
+) -> config_parser.Config:
     if args.num_select_features is not None:
-        config.alg['max_num_features'] = int(args.num_select_features)
+        config.alg["max_num_features"] = int(args.num_select_features)
 
     if args.load_it is not None:
-        config.alg['starting_it'] = int(args.load_it)
+        config.alg["starting_it"] = int(args.load_it)
 
     if args.num_its is not None:
-        config.alg['num_its'] = int(args.num_its)
+        config.alg["num_its"] = int(args.num_its)
 
     if args.num_features is not None:
-        config.add_param('num_features', int(args.num_features))
+        config.add_param("num_features", int(args.num_features))
     else:
-        config.add_param('num_features', 0)
+        config.add_param("num_features", 0)
 
     if args.with_progress is not None:
-        config.add_param('with_progress', args.with_progress)
+        config.add_param("with_progress", args.with_progress)
 
     if (args.local_files is not None) and args.local_files:
         spcp = f"./{pathlib.Path(config['starting_porosity_cube_path']).name}"
-        config['starting_porosity_cube_path'] = spcp
+        config["starting_porosity_cube_path"] = spcp
         config.features_folder = "./features/"
 
-    config.add_param('full_depth_chunks', True)
-    config.add_param('window', 3)
+    config.add_param("full_depth_chunks", True)
+    config.add_param("window", 3)
 
-    config.add_param('max_tested_features', int(args.num_tested_features))
-    
-    config.add_param('is_sampling', bool(args.is_sampling))
+    config.add_param("max_tested_features", int(args.num_tested_features))
+
+    config.add_param("is_sampling", bool(args.is_sampling))
 
     return config
 
@@ -130,13 +150,16 @@ def main():
     mpi_module.initialize(config)
 
     # Run base algorithm
-    alg = BaseInvertedLearning(H5SeismicDataLoader(config),
-                               H5PorosityDataLoader(config),
-                               H5ExpandAlg(config),
-                               H5FeatureSelectionAlg(config),
-                               H5ApplyAlg(config), config)
+    alg = BaseInvertedLearning(
+        H5SeismicDataLoader(config),
+        H5PorosityDataLoader(config),
+        H5ExpandAlg(config),
+        H5FeatureSelectionAlg(config),
+        H5ApplyAlg(config),
+        config,
+    )
     alg.run()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -12,14 +12,14 @@ from tqdm import tqdm
 
 import sys
 
-sys.path.insert(0, '..')
+sys.path.insert(0, "..")
 
 from alg import common
 
 
-def porosity_points_py2hdf5(porosity_file, hdf5_file_path, hypercube_shape,
-                            chunk_shape, real_points):
-
+def porosity_points_py2hdf5(
+    porosity_file, hdf5_file_path, hypercube_shape, chunk_shape, real_points
+):
     print(f"Loading porosity file")
     porosity_file_path = pathlib.Path(porosity_file)
     # if porosity_file_path.suffix == ".txt":
@@ -29,19 +29,26 @@ def porosity_points_py2hdf5(porosity_file, hdf5_file_path, hypercube_shape,
 
     (x, y, z) = hypercube_shape
 
-    print('[porosity_points_py2hdf5] Creating hdf5 file')
+    print("[porosity_points_py2hdf5] Creating hdf5 file")
     new_h5_porosity_path = pathlib.Path(hdf5_file_path)
-    porosity_h5_f = h5py.File(new_h5_porosity_path, 'w')
+    porosity_h5_f = h5py.File(new_h5_porosity_path, "w")
     porosity_h5_dset = porosity_h5_f.create_dataset(
-        'p',
+        "p",
         hypercube_shape,
-        dtype=np.dtype([('x', np.int64), ('y', np.int64), ('z', np.int64),
-                        ('phi', np.float64), ('real', np.int64),
-                        ('well_id', np.int64)]),
+        dtype=np.dtype(
+            [
+                ("x", np.int64),
+                ("y", np.int64),
+                ("z", np.int64),
+                ("phi", np.float64),
+                ("real", np.int64),
+                ("well_id", np.int64),
+            ]
+        ),
         chunks=chunk_shape,
     )
 
-    print(f'[porosity_points_py2hdf5] Filling coordinates')
+    print(f"[porosity_points_py2hdf5] Filling coordinates")
     for i in tqdm(range(x)):
         # Batching of yz coordinates for writing on hdf5 file
         all_yz = []
@@ -54,51 +61,70 @@ def porosity_points_py2hdf5(porosity_file, hdf5_file_path, hypercube_shape,
         # Commit all points for a given x coordinate
         porosity_h5_dset[i, ...] = all_yz
 
-    print(f'[porosity_points_py2hdf5] Updating {len(porosity_np)} values')
-    for (x, y, z, p) in tqdm(porosity_np):
+    print(f"[porosity_points_py2hdf5] Updating {len(porosity_np)} values")
+    for x, y, z, p in tqdm(porosity_np):
         if (x, y) in real_points:
             real = common.RealValues.real
             well_id = real_points.index((x, y))
         else:
             real = common.RealValues.canal
             well_id = -1
-        porosity_h5_dset[np.int64(x), np.int64(y),
-                         np.int64(z)] = (np.int64(x), np.int64(y), np.int64(z),
-                                         p, real, well_id)
+        porosity_h5_dset[np.int64(x), np.int64(y), np.int64(z)] = (
+            np.int64(x),
+            np.int64(y),
+            np.int64(z),
+            p,
+            real,
+            well_id,
+        )
 
     porosity_h5_f.close()
 
 
 def config_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description='POV')
+    parser = argparse.ArgumentParser(description="POV")
 
     parser.add_argument(
-        '-f',
-        dest='feat_file_path',
-        action='store',
+        "-f",
+        dest="feat_file_path",
+        action="store",
         required=True,
-        help="The base npy feat file path to get the hypercube shape from")
+        help="The base npy feat file path to get the hypercube shape from",
+    )
     parser.add_argument(
-        '-p',
-        dest='porosity_file',
-        action='store',
+        "-p",
+        dest="porosity_file",
+        action="store",
         required=True,
-        help='The file path with the base porosity. As it may be a subset '\
-             'of the whole 3D cube, it is not possible to get the cube shape '\
-             'from this.')
+        help="The file path with the base porosity. As it may be a subset "
+        "of the whole 3D cube, it is not possible to get the cube shape "
+        "from this.",
+    )
 
-    parser.add_argument('-o',
-                        dest='hdf5_file',
-                        action='store',
-                        required=True,
-                        help='The hdf5 file path to be generated.')
+    parser.add_argument(
+        "-o",
+        dest="hdf5_file",
+        action="store",
+        required=True,
+        help="The hdf5 file path to be generated.",
+    )
 
     return parser
 
 
-if __name__ == '__main__':
-    wells_coords = [(134, 227), (146, 500), (167, 186), (174, 365), (200, 102),
-                    (236, 113), (250, 315), (287, 242), (230, 194), (344, 276)]
+if __name__ == "__main__":
+    wells_coords = [
+        (134, 227),
+        (146, 500),
+        (167, 186),
+        (174, 365),
+        (200, 102),
+        (236, 113),
+        (250, 315),
+        (287, 242),
+        (230, 194),
+        (344, 276),
+    ]
 
     parser = config_arg_parser()
     args = parser.parse_args()
@@ -107,5 +133,10 @@ if __name__ == '__main__':
     hdf5_file_path = args.hdf5_file
     chunk_shape = (100, 100, 251)
 
-    porosity_points_py2hdf5(porosity_file_path, hdf5_file_path,
-                            hypercube_shape, chunk_shape, wells_coords)
+    porosity_points_py2hdf5(
+        porosity_file_path,
+        hdf5_file_path,
+        hypercube_shape,
+        chunk_shape,
+        wells_coords,
+    )

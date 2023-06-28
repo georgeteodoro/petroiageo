@@ -13,14 +13,14 @@ def gen_expanded_points(main_df, canal_df, real_wells, it):
     # Set distance ring to be generated
     ring = it + 1
     ring_circunf = ring * 2 + 1  # single width
-    ring_circunf = ring_circunf**2 - (ring_circunf - 2)**2
+    ring_circunf = ring_circunf**2 - (ring_circunf - 2) ** 2
 
     # Allocate ndarray for new points
     # Number of cols = 6 : (x,y,z,well,real,phi)
-    expanded_points_np = np.empty((ring_circunf * MAX_DEPTH, 5),
-                                  dtype=np.int32)
-    expanded_points_phi_np = np.empty((ring_circunf * MAX_DEPTH, ),
-                                      dtype=np.float64)
+    expanded_points_np = np.empty((ring_circunf * MAX_DEPTH, 5), dtype=np.int32)
+    expanded_points_phi_np = np.empty(
+        (ring_circunf * MAX_DEPTH,), dtype=np.float64
+    )
 
     # Expand around each original well
     well_id = 0
@@ -28,7 +28,7 @@ def gen_expanded_points(main_df, canal_df, real_wells, it):
     for well in real_wells:
         expanded_points_i = 0
 
-        print(f'==== Expanding well {well}')
+        print(f"==== Expanding well {well}")
         for z in range(MAX_DEPTH):
             # Only expand from real points (present at a certain depth)
             well_coord = (well[0], well[1], z)
@@ -45,19 +45,28 @@ def gen_expanded_points(main_df, canal_df, real_wells, it):
 
                         # Create new expanded point (real=2) with
                         # phi val from canal point
-                        canal_phi = canal_df.loc[(x, y, z)]['phi']
+                        canal_phi = canal_df.loc[(x, y, z)]["phi"]
 
                         if canal_phi == 0 or not is_real_point:
-                            expanded_points_np[expanded_points_i] = (x, y, z,
-                                                                     well_id,
-                                                                     3)
+                            expanded_points_np[expanded_points_i] = (
+                                x,
+                                y,
+                                z,
+                                well_id,
+                                3,
+                            )
                             expanded_points_phi_np[expanded_points_i] = 0
                         else:
-                            expanded_points_np[expanded_points_i] = (x, y, z,
-                                                                     well_id,
-                                                                     2)
+                            expanded_points_np[expanded_points_i] = (
+                                x,
+                                y,
+                                z,
+                                well_id,
+                                2,
+                            )
                             expanded_points_phi_np[
-                                expanded_points_i] = canal_phi
+                                expanded_points_i
+                            ] = canal_phi
 
                         expanded_points_i = expanded_points_i + 1
 
@@ -71,14 +80,18 @@ def gen_expanded_points(main_df, canal_df, real_wells, it):
         expanded_points_df = pd.DataFrame(
             # filt_expanded_points_np,
             expanded_points_np,
-            columns=['x', 'y', 'z', 'well', 'real'],
-            dtype=np.int32)
-        expanded_points_df['phi'] = expanded_points_phi_np
-        index = pd.MultiIndex.from_arrays([
-            expanded_points_df['x'], expanded_points_df['y'],
-            expanded_points_df['z']
-        ],
-                                          names=common.MAIN_DF_INDEX_NAMES)
+            columns=["x", "y", "z", "well", "real"],
+            dtype=np.int32,
+        )
+        expanded_points_df["phi"] = expanded_points_phi_np
+        index = pd.MultiIndex.from_arrays(
+            [
+                expanded_points_df["x"],
+                expanded_points_df["y"],
+                expanded_points_df["z"],
+            ],
+            names=common.MAIN_DF_INDEX_NAMES,
+        )
         expanded_points_df.set_index(index, inplace=True)
         main_df = pd.concat([main_df, expanded_points_df])
 
@@ -89,5 +102,5 @@ def gen_expanded_points(main_df, canal_df, real_wells, it):
     return main_df
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     data_aug(sys.argv[1], 3)

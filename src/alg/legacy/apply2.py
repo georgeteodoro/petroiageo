@@ -9,7 +9,7 @@ from sklearn import ensemble
 import lightgbm as lgb
 
 # Parameters
-LABEL_COLUMN_NAME = 'phi'
+LABEL_COLUMN_NAME = "phi"
 RANDOM_STATE = 1
 
 
@@ -18,7 +18,7 @@ def get_error(df, pred):
     # rmsd = 0
     count = 0
     for i in range(len(pred)):
-        if df['real'][i] == 1:  # TODO: optimize 'if' out with products
+        if df["real"][i] == 1:  # TODO: optimize 'if' out with products
             mae += abs(pred[i] - df[LABEL_COLUMN_NAME][i])
             # rmsd += (pred[i] - df[LABEL_COLUMN_NAME][i])**2
             count += 1
@@ -30,12 +30,14 @@ def get_error(df, pred):
 
 
 def predict_gradient_boosting(x, y):
-    regressor = ensemble.GradientBoostingRegressor(n_estimators=20,
-                                                   max_depth=8,
-                                                   min_samples_split=5,
-                                                   learning_rate=0.1,
-                                                   loss='ls',
-                                                   random_state=RANDOM_STATE)
+    regressor = ensemble.GradientBoostingRegressor(
+        n_estimators=20,
+        max_depth=8,
+        min_samples_split=5,
+        learning_rate=0.1,
+        loss="ls",
+        random_state=RANDOM_STATE,
+    )
 
     regressor = regressor.fit(x, y)
     return regressor.predict(x)
@@ -43,17 +45,17 @@ def predict_gradient_boosting(x, y):
 
 def predict_lightgbm(x, y):
     params = {
-        'boosting_type': 'gbdt',
-        'objective': 'regression',
-        'metric': {'l2', 'l1'},
-        'num_leaves': 31,
-        'learning_rate': 0.1,
-        'feature_fraction': 0.9,
-        'bagging_fraction': 0.8,
-        'bagging_freq': 5,
-        'verbose': 0,
+        "boosting_type": "gbdt",
+        "objective": "regression",
+        "metric": {"l2", "l1"},
+        "num_leaves": 31,
+        "learning_rate": 0.1,
+        "feature_fraction": 0.9,
+        "bagging_fraction": 0.8,
+        "bagging_freq": 5,
+        "verbose": 0,
         # 'device_type': 'gpu',
-        'random_state': RANDOM_STATE
+        "random_state": RANDOM_STATE,
     }
 
     gbm = lgb.train(
@@ -62,7 +64,8 @@ def predict_lightgbm(x, y):
         num_boost_round=100,
         # valid_sets=lgb_eval,
         # early_stopping_rounds=2,
-        valid_sets=lgb.Dataset(x, y))
+        valid_sets=lgb.Dataset(x, y),
+    )
 
     return gbm.predict(x, num_iteration=gbm.best_iteration)
 
@@ -108,19 +111,20 @@ def eval_model(df, features):
 
     t4 = time.time()
     for i in range(len(x)):
-        if pred[i] < 0.025: pred[i] = 0
+        if pred[i] < 0.025:
+            pred[i] = 0
         # Label=1 means real well point
         # Label=2 means predicted point of previous iterations
-        if df['real'][i] == 1 or df['real'][i] == 2:
+        if df["real"][i] == 1 or df["real"][i] == 2:
             pred[i] = df[LABEL_COLUMN_NAME][i]
         print(int(x[i][0]), int(x[i][1]), int(x[i][2]), pred[i])
 
     t5 = time.time()
 
-    with open('apply-error.log', mode='a') as f:
+    with open("apply-error.log", mode="a") as f:
         print("MAE: " + str(mae), file=f)
 
-    with open('apply-times.log', mode='a') as f:
+    with open("apply-times.log", mode="a") as f:
         print("prep: " + str(t2 - t1), file=f)
         print("predict: " + str(t3 - t2), file=f)
         print("error-calc: " + str(t4 - t3), file=f)
@@ -133,35 +137,32 @@ df = pd.read_csv(sys.argv[1])
 df.dropna(axis=0, subset=[LABEL_COLUMN_NAME], inplace=True)
 
 cur_features_labels = list(df.columns)
-cur_features_labels.remove('well')
-cur_features_labels.remove('real')
-cur_features_labels.remove('X')
-cur_features_labels.remove('Y')
-cur_features_labels.remove('depth')
+cur_features_labels.remove("well")
+cur_features_labels.remove("real")
+cur_features_labels.remove("X")
+cur_features_labels.remove("Y")
+cur_features_labels.remove("depth")
 cur_features_labels.remove(LABEL_COLUMN_NAME)
-cur_features_labels.remove('rho')
-cur_features_labels.remove('vp')
-cur_features_labels.remove('vs')
+cur_features_labels.remove("rho")
+cur_features_labels.remove("vp")
+cur_features_labels.remove("vs")
 
-coord_labels = ['X', 'Y', 'depth']
+coord_labels = ["X", "Y", "depth"]
 
 eval_model(df, coord_labels + cur_features_labels)
-
-
-
 
 
 # labels = ['X', 'Y', 'depth']
 # i = 0
 # for f1 in coord_labels + cur_features_labels:
-#     if i == 15: break # no more than 15 features 
+#     if i == 15: break # no more than 15 features
 #     i = i + 1
 
 #     if f1 in labels: continue
 #     x = f1
-    
+
 #     max_error = 1000
-    
+
 #     for f2 in filtered_features:
 #         if f2 in labels: continue
 #         rmse, mae = eval_bootstrap(df, labels + [f2])
@@ -171,4 +172,3 @@ eval_model(df, coord_labels + cur_features_labels)
 #             x = f2
 #             max_error = rmse
 #     labels.append(x)
-

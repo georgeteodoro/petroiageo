@@ -3,14 +3,24 @@ import pandas as pd
 from numba import jit
 
 # Real points
-real = [[146, 500], [287, 242], [200, 102], [344, 276], [134, 227], [250, 315],
-        [174, 365], [236, 113], [167, 186], [230, 194]]
+real = [
+    [146, 500],
+    [287, 242],
+    [200, 102],
+    [344, 276],
+    [134, 227],
+    [250, 315],
+    [174, 365],
+    [236, 113],
+    [167, 186],
+    [230, 194],
+]
 
 
 # Converter to ease usage of txt files with numpy efficiency
 # This only needs to be ran once
 def get_np_wells_data(filename):
-    f = open(filename, 'r')
+    f = open(filename, "r")
     num_lines = sum(1 for _ in f)
     f.seek(0)  # Reset file pointer
 
@@ -22,7 +32,7 @@ def get_np_wells_data(filename):
 
     # Convert wells data to np.array format
     for line in f.readlines():
-        fields = [s.replace('\n', '') for s in line.split(' ')]
+        fields = [s.replace("\n", "") for s in line.split(" ")]
 
         # Check it this is a real point
         if [int(fields[0]), int(fields[1])] in real:
@@ -38,7 +48,7 @@ def get_np_wells_data(filename):
             int(fields[1]),
             int(fields[2]),
             int(real_id),
-            int(real_val)
+            int(real_val),
         ]
         phi_np[i] = float(fields[3])
         i = i + 1
@@ -53,15 +63,16 @@ def get_wells_data(filename):
     int_values_np, phi_np = get_np_wells_data(filename)
 
     # Convert wells data to pandas.DataFrame format
-    int_values_df = pd.DataFrame(int_values_np,
-                                 columns=['x', 'y', 'z', 'well', 'real'])
-    phi_df = pd.DataFrame(phi_np, columns=['phi'])
+    int_values_df = pd.DataFrame(
+        int_values_np, columns=["x", "y", "z", "well", "real"]
+    )
+    phi_df = pd.DataFrame(phi_np, columns=["phi"])
     wells_df = pd.concat([int_values_df, phi_df], axis=1)
 
     # Creates a join on left (seismic_df)
     # result = pd.merge(seismic_df, wells_df, on=['x', 'y', 'z'], how='left')
     # result.fillna({'well': -1, 'real': 2}, inplace=True)
-    wells_df = wells_df.astype({'well': int, 'real': int})
+    wells_df = wells_df.astype({"well": int, "real": int})
 
     # Ok to sort since we access points directly, without adding more points
     # However, should we index this value?

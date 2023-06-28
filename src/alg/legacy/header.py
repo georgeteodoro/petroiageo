@@ -18,5 +18,5 @@ def prepare_header(window):
     return "".join(out_list)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     prepare_header(3)
