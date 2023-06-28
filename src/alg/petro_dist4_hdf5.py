@@ -230,15 +230,14 @@ def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Datase
 
         t2 = time()
 
+        status = MPI.Status()
+
         # Request a job from manager
         comm.send(None,
                   dest=manager_rank,
                   tag=MPI_TAGS.WORKER_EMPTY_RESULT.value)
 
-        # Get first message from Manager
-        status = MPI.Status()
-        new_features = comm.recv(source=manager_rank, status=status)
-        manager_tag = status.Get_tag()
+        new_features, manager_tag = _get_new_feats_from_manager(status)
 
         t3 = time()
         profiling.prof_fsel_worker_comm_time(it, rank, t3 - t2, config)
@@ -296,9 +295,7 @@ def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Datase
             # Return results to manager
             comm.send(results, dest=manager_rank)
 
-            # Wait for new job
-            new_features = comm.recv(source=manager_rank, status=status)
-            manager_tag = status.Get_tag()
+            new_features, manager_tag = _get_new_feats_from_manager(status)
 
             t7 = time()
             profiling.prof_fsel_worker_comm_time(it, rank, t7 - t6, config)
@@ -333,6 +330,10 @@ def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Datase
     best_result = comm.bcast(None, root=manager_rank)
     return best_result
 
+def _get_new_feats_from_manager(status:MPI.Status) -> Tuple[list[str], int]:
+    new_features:list[str] = comm.recv(source=manager_rank, status=status)
+    manager_tag = status.Get_tag()
+    return new_features, manager_tag
 
 if __name__ == '__main__':
     with open("tmp_data/nwells-0.csv", mode='r') as f:
