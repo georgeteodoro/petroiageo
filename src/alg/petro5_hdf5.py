@@ -49,18 +49,35 @@ def get_best_features_set(
     return best_features_set, best_error
 
 
-# See discussion for incremental learning:
-# https://stackoverflow.com/questions/73664093/lightgbm-train-vs-update-vs-refit
 def eval_bootstrap(
     cur_h5_train_list: hdf5_util.HDFMultiColList,
     cur_h5_test_list: hdf5_util.HDFMultiColList,
     wells_id: list[int],
     num_threads=1,
-):
+) -> Tuple[float, float]:
+    """
+    Train a regressor on cur_h5_train_list using data of wells in wells_id.
+    If cur_h5_test_list == None, then test errors will be based on the
+    validation data for each Leave-one-well-out iteration.
+    Return the mean rmse and mean mae errors
+    """
     params["num_threads"] = num_threads
 
     profiling = False
 
+    rmse_list, mae_list = _leave_one_well_out_training(
+        cur_h5_train_list, cur_h5_test_list, wells_id, profiling
+    )
+
+    return np.mean(rmse_list), np.mean(mae_list)
+
+
+def _leave_one_well_out_training(
+    cur_h5_train_list: hdf5_util.HDFMultiColList,
+    cur_h5_test_list: hdf5_util.HDFMultiColList,
+    wells_id: int,
+    profiling: bool,
+) -> Tuple[list[float], list[float]]:
     # Test data is the same for all wells if test_only_wells are
     # active, so it's only setup once
     if cur_h5_test_list is not None:
@@ -97,7 +114,7 @@ def eval_bootstrap(
                 f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Total time {t4-t0}"
             )
 
-    return np.mean(rmse_list), np.mean(mae_list)
+    return rmse_list, mae_list
 
 
 def _incremental_learning(
@@ -105,6 +122,10 @@ def _incremental_learning(
     profiling: bool,
     curr_well_id: int,
 ) -> Tuple[np.ndarray, np.ndarray, lgb.Booster]:
+    """
+    See discussion for incremental learning:
+    https://stackoverflow.com/questions/73664093/lightgbm-train-vs-update-vs-refit
+    """
     # Extract the validation data
     # Since the same validation data is supposed to be used for
     # all incremental trainings and is small enough to fit in
