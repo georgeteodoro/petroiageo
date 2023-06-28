@@ -420,10 +420,6 @@ def create_tmp_dset(
     return cur_h5, cur_h5_dset, test_h5, test_h5_dset
 
 
-# exp_n_features: number of features to be selected
-# max_tested_features: number of features to be compared
-#   default=0 means all features.
-#   Used for debugging and reducing computing cost
 def get_features_sets(
     porosity_data_h5: h5py.Dataset,
     features_dict_h5: Dict[str, h5py.Dataset],
@@ -434,6 +430,12 @@ def get_features_sets(
     max_tested_features: int,
     config: Config,
 ):
+    """
+    exp_n_features: number of features to be selected
+    max_tested_features: number of features to be compared
+    default=0 means all features.
+    Used for debugging and reducing computing cost
+    """
     t0 = time()
 
     # Points used for training: real and propagated
