@@ -86,11 +86,11 @@ def _find_feats_set(all_features:list, max_feats_to_select:int, max_feats_to_tes
 
         f_it_req_time += time() - t1
 
-        new_best_feature, t3, f_it_req_time, feats_sets_and_its_errors = _find_curr_best_feature(it, 
-                                                                      curr_f_set_best_err, 
-                                                                      feats_sets_and_its_errors, 
-                                                                      f_it_req_time, 
-                                                                      remaining_features)
+        new_best_feature, total_worker_time, feats_sets_and_its_errors = _find_curr_best_feature(
+            it, curr_f_set_best_err, feats_sets_and_its_errors, remaining_features)
+        
+        f_it_req_time += total_worker_time
+        t3 = time()
 
         comm.bcast(new_best_feature, root=manager_rank)
         curr_f_set_best_err.append(new_best_feature)
@@ -114,13 +114,14 @@ def _bcast_done_msg_to_workers():
 
 def _find_curr_best_feature(it:int , curr_f_set_best_err:list[str], 
                             feats_sets_and_its_errors:list[tuple[list, float]], 
-                            f_it_req_time:float, 
-                            remaining_features:list) -> Tuple[str, float, float, list[tuple[list, float]]]:
+                            remaining_features:list
+                            ) -> Tuple[str, float, list[tuple[list, float]]]:
     new_best_feature = None
     best_error = float("inf")
 
     workers_done = 0
     # Iterate through all features to be tested
+    total_worker_time = 0
     while _not_all_workers_done(workers_done):
         status = MPI.Status()
         data = comm.recv(status=status)
@@ -161,9 +162,9 @@ def _find_curr_best_feature(it:int , curr_f_set_best_err:list[str],
                           tag=MPI_TAGS.MANAGER_FEATURE_DONE.value)
             workers_done = workers_done + 1
 
-        t3 = time()
-        f_it_req_time += t3 - t2
-    return new_best_feature, t3, f_it_req_time, feats_sets_and_its_errors
+        total_worker_time += time() - t2
+
+    return new_best_feature, total_worker_time, feats_sets_and_its_errors
 
 def _worker_sent_feat_eval(status:MPI.Status) -> bool:
     return status.Get_tag() != MPI_TAGS.WORKER_EMPTY_RESULT.value
