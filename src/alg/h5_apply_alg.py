@@ -107,50 +107,20 @@ class H5ApplyAlg(AbstractApplyAlg):
                     continue
 
                 # Filter points to predict
-                expanded_points_np = cur_chunk_np[is_chunk_pred_points_list]
+                expanded_points_np: np.ndarray = cur_chunk_np[
+                    is_chunk_pred_points_list
+                ]
 
                 to_propagate_count = len(expanded_points_np)
                 p_sum = p_sum + to_propagate_count
 
-                # Get coordinates of points to predict
-                coords_3d_np = expanded_points_np[["x", "y", "z"]]
-
-                # Create new ndarray for keeping all features values
-                # of the current chunk
-                predict_features_type = [
-                    (f"f{f}", np.float64) for f in range(len(best_features_set))
-                ]
-                to_predict_np = np.empty(
-                    to_propagate_count, dtype=predict_features_type
+                to_predict_np = self._get_data_to_predict(
+                    best_features_set,
+                    features_dict_h5,
+                    displacement_cube_shape,
+                    expanded_points_np,
+                    to_propagate_count,
                 )
-
-                # Function to filter features with a given coords list
-                def _gen_list_features(feature_dset, coords_3d_np):
-                    for coord in coords_3d_np:
-                        yield feature_dset[tuple(coord)]
-
-                # Fill features values
-                for f_idx, feature in enumerate(best_features_set):
-                    # Apply the displacement
-                    cur_coords_3d_np = coords_3d_np.copy()
-                    for d_id, coord_s in enumerate(["x", "y", "z"]):
-                        cur_coords_3d_np[coord_s] = (
-                            cur_coords_3d_np[coord_s]
-                            + feature[d_id + 1]
-                            + ((displacement_cube_shape[d_id] - 1) / 2)
-                        )
-
-                    # Filter features' values for current chunk coords
-                    feature_values = _gen_list_features(
-                        features_dict_h5[feature[0]], cur_coords_3d_np.flat
-                    )
-
-                    to_predict_np[f"f{f_idx}"] = np.fromiter(
-                        feature_values, np.float64
-                    )
-
-                # Convert to_predict_np from a ndarray to a regular 2d array
-                to_predict_np = np.array(to_predict_np.tolist())
 
                 t5 = time()
                 profiling.prof_predict_pred_insert_time(
@@ -198,6 +168,54 @@ class H5ApplyAlg(AbstractApplyAlg):
             print(f"[main][{it}][R{my_rank}] waiting points propagation")
 
         comm.Barrier()
+
+    def _get_data_to_predict(
+        self,
+        best_features_set: set,
+        features_dict_h5: Dict[str, h5py.Dataset],
+        displacement_cube_shape: tuple,
+        expanded_points_np: np.ndarray,
+        to_propagate_count: int,
+    ) -> np.ndarray:
+        # Get coordinates of points to predict
+        coords_3d_np = expanded_points_np[["x", "y", "z"]]
+
+        # Create new ndarray for keeping all features values
+        # of the current chunk
+        predict_features_type = [
+            (f"f{f}", np.float64) for f in range(len(best_features_set))
+        ]
+        to_predict_np = np.empty(
+            to_propagate_count, dtype=predict_features_type
+        )
+
+        # Function to filter features with a given coords list
+        def _gen_list_features(feature_dset, coords_3d_np):
+            for coord in coords_3d_np:
+                yield feature_dset[tuple(coord)]
+
+                # Fill features values
+
+        for f_idx, feature in enumerate(best_features_set):
+            # Apply the displacement
+            cur_coords_3d_np = coords_3d_np.copy()
+            for d_id, coord_s in enumerate(["x", "y", "z"]):
+                cur_coords_3d_np[coord_s] = (
+                    cur_coords_3d_np[coord_s]
+                    + feature[d_id + 1]
+                    + ((displacement_cube_shape[d_id] - 1) / 2)
+                )
+
+                # Filter features' values for current chunk coords
+            feature_values = _gen_list_features(
+                features_dict_h5[feature[0]], cur_coords_3d_np.flat
+            )
+
+            to_predict_np[f"f{f_idx}"] = np.fromiter(feature_values, np.float64)
+
+            # Convert to_predict_np from a ndarray to a regular 2d array
+        to_predict_np = np.array(to_predict_np.tolist())
+        return to_predict_np
 
     def _train_regressor(
         self,
@@ -248,7 +266,7 @@ class H5ApplyAlg(AbstractApplyAlg):
         )
 
         regressor = None
-        #incremental learning
+        # incremental learning
         # TODO: Change this loop to go over the chunks themselves
         for c in range(cur_h5_train_list.n_chunks):
             # Generate a training dataset for all data on chunk c
