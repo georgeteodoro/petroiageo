@@ -253,14 +253,10 @@ def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Datase
         # Run jobs until there are not any more features to test
         # print(f'[petro4_dist_hdf5][w{rank}][it{it}] new iteration')
         while (_there_are_feats_to_test(manager_tag)):
-            # print(f'[petro4_dist_hdf5][w{rank}][it{it}] '\
-            #       f'Received new_features: {new_features}')
 
             # Run all features received by the manager
-            results = []
+            results:list[Tuple[str, float]] = []
             for new_feature in new_features:
-                # print(f'[petro4_dist_hdf5][w{rank}][it{it}] '\
-                #       f'Testing feature: {new_feature}')
                 t4 = time()
                 # Insert temporary feature
                 petro5_hdf5.insert_filtered_feature(
