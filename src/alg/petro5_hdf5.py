@@ -61,8 +61,8 @@ def eval_bootstrap(
 
     profiling = False
 
-    rmse_list:list[float] = []
-    mae_list:list[float] = []
+    rmse_list: list[float] = []
+    mae_list: list[float] = []
 
     # Test data is the same for all wells if test_only_wells are
     # active, so it's only setup once
@@ -75,7 +75,7 @@ def eval_bootstrap(
         # Since the same validation data is supposed to be used for
         # all incremental trainings and is small enough to fit in
         # memory
-        X_val_np, y_val_np = cur_h5_train_list.get_well_out_data(w)
+        X_val_np, y_val_np = cur_h5_train_list.get_data_from_well(w)
 
         # Incremental training on all cur_h5_train_list chunks
         regressor = None
@@ -85,10 +85,11 @@ def eval_bootstrap(
             t1 = time()
             # Generate a training dataset for all data on chunk c without
             # data from well w
-            X_train_np, y_train_np = cur_h5_train_list.get_data_not_in_well(c, w)
+            X_train_np, y_train_np = cur_h5_train_list.get_data_not_in_well(
+                c, w
+            )
             lgb_train_dataset = lgb.Dataset(X_train_np, y_train_np)
 
-            # Create validation dataset
             lgb_eval_dataset = lgb.Dataset(
                 X_val_np, y_val_np, reference=lgb_train_dataset
             )

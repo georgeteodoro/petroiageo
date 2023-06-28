@@ -1,5 +1,6 @@
 from math import ceil
 import numpy as np
+from typing import Tuple
 import h5py
 
 
@@ -124,9 +125,11 @@ class HDFMultiColList:
         # self.all_features_and_coords.append(f_str)
         self.all_features.append(f_str)
 
-    def get_well_out_data(self, well_id):
+    def get_data_from_well(self, well_id) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Returns all data, input (X) and output (y), from a given well
+        Returns all data, input (X) and output (y), from a given well.
+        y is corresponds to the 'phi' column.
+        X corresponds to all cols - 'phi'.
         """
         X_val_list = []
         y_val_list = []
@@ -142,15 +145,15 @@ class HDFMultiColList:
             X_val_list.append(well_data[self.all_features])
             y_val_list.append(well_data["phi"])
 
-        X_val_np = np.concatenate(X_val_list).reshape(-1)
-        y_val_np = np.concatenate(y_val_list).reshape(-1)
+        X = np.concatenate(X_val_list).reshape(-1)
+        y = np.concatenate(y_val_list).reshape(-1)
 
         # Convert from structured array to simple array
         # This conversion from array->list->array may be inefficient...
-        X_val_np = np.array(X_val_np.tolist())
-        y_val_np = np.array(y_val_np.tolist())
+        X = np.array(X.tolist())
+        y = np.array(y.tolist())
 
-        return X_val_np, y_val_np
+        return X, y
 
     def get_data_not_in_well(self, chunk=-1, well_id=-1):
         """
