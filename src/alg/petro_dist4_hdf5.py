@@ -244,7 +244,8 @@ def _eval_feats_requested_by_manager(features_dict_h5:Dict[str, h5py.Dataset],
                                     hypercube_shape:tuple, 
                                     n_testing_wells:int, 
                                     cur_h5_train_list:hdf5_util.HDFMultiColList, 
-                                    cur_h5_test_list:hdf5_util.HDFMultiColList):
+                                    cur_h5_test_list:hdf5_util.HDFMultiColList
+                                    ) -> Tuple[float, int, float]:
     cur_f_set = ['x', 'y', 'z']
 
     # Profiling info
@@ -277,7 +278,7 @@ def _eval_feats_requested_by_manager(features_dict_h5:Dict[str, h5py.Dataset],
             cur_h5_test_list.add_new_col()
 
         while (_there_are_feats_to_test(manager_tag)):
-            results = _eval_curr_feats(features_dict_h5, 
+            results, total_jobs, total_exec_time = _eval_curr_feats(features_dict_h5, 
                              displacement_cube_shape, 
                              it, config, 
                              training_wells, 
@@ -340,7 +341,8 @@ def _eval_curr_feats(features_dict_h5:Dict[str, h5py.Dataset],
                      total_jobs:int,
                      total_exec_time:float,
                      f_it:int,
-                     new_features:list[str]):
+                     new_features:list[str]
+                     ) -> Tuple[list[Tuple[str, float]], int, float]:
     results:list[Tuple[str, float]] = []
     for new_feature in new_features:
         t4 = time()
@@ -371,7 +373,7 @@ def _eval_curr_feats(features_dict_h5:Dict[str, h5py.Dataset],
         total_jobs += 1
         total_exec_time += t6 - t4
     
-    return results
+    return results, total_jobs, total_exec_time
 
 def _there_are_feats_to_test(manager_tag) -> bool:
     return manager_tag != MPI_TAGS.MANAGER_FEATURE_DONE.value
