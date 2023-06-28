@@ -159,12 +159,12 @@ class HDFMultiColList:
             well_data = cur_chunk[cur_chunk["well_id"] != well_id]
         else:
             well_data = cur_chunk
-        X_val_np = well_data[self.all_features]
-        y_val_np = well_data["phi"]
+        X_filtered_np: np.ndarray = well_data[self.all_features]
+        y_filtered_np: np.ndarray = well_data["phi"]
 
         # Convert from structured array to simple array
         # This conversion from array->list->array may be inefficient...
-        X_val_np = np.array(X_val_np.tolist())
-        y_val_np = np.array(y_val_np.tolist())
+        X_filtered_np = np.array(X_filtered_np.tolist())
+        y_filtered_np = np.array(y_filtered_np.tolist())
 
-        return X_val_np, y_val_np
+        return X_filtered_np, y_filtered_np
