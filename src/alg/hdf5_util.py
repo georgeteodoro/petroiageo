@@ -3,9 +3,11 @@ import numpy as np
 import h5py
 
 
-# Perform a fold on a clustered h5 object, using the least amount
-# of memory.
 def fold_h5_all_clusters(d_h5, f, out_0):
+    """
+    Perform a fold on a clustered h5 object, using the least amount
+    of memory.
+    """
     chunks = d_h5.chunks
     x_shape = d_h5.shape[0]
     y_shape = d_h5.shape[1]
@@ -33,10 +35,12 @@ def fold_h5_all_clusters(d_h5, f, out_0):
     return out
 
 
-# Perform a conditional update on a clustered h5 object, using the least amount
-# of memory. All rows from the given 'column' for which the condition is True
-# are updated to 'val'.
 def conditional_map_h5_all_clusters(d_h5, cond_f, column_val_list):
+    """
+    Perform a conditional update on a clustered h5 object, using the least amount
+    of memory. All rows from the given 'column' for which the condition is True
+    are updated to 'val'.
+    """
     chunks = d_h5.chunks
     x_shape = d_h5.shape[0]
     y_shape = d_h5.shape[1]
@@ -77,11 +81,14 @@ def conditional_map_h5_chunk(d_h5, cond_f, column_val_list, chunk_slice):
     d_h5[chunk_slice] = chunk_np
 
 
-# Out-of-core structure to access hdf5 a dataset with chunking.
-# Copying this object does not copy its data.
-# Both train and validation data are inside
-# Able to add new features columns on the fly as well as change a given column
 class HDFMultiColList:
+    """
+    Out-of-core structure to access hdf5 a dataset with chunking.
+    Copying this object does not copy its data.
+    Both train and validation data are inside
+    Able to add new features columns on the fly as well as change a given column
+    """
+
     def __init__(self, cur_h5_dset: h5py.Dataset):
         """
         cur_h5_dset must be 1D
@@ -147,10 +154,28 @@ class HDFMultiColList:
 
     def get_data_not_in_well(self, chunk=-1, well_id=-1):
         """
-        Return a single chunk of data which is not related to well_id
-        No guarantees are made about the size of the output
+        Return a single chunk of data which is not related to well_id.
+        If the chunk is not passed (-1), returns the whole data.
+        No guarantees are made about the size of the output.
         """
-        # If the chunk is not passed, returns the whole data
+        cur_chunk = self._get_target_chunk(chunk)
+
+        well_data = self._filter_data(well_id, cur_chunk)
+        X_filtered_np: np.ndarray = well_data[self.all_features]
+        y_filtered_np: np.ndarray = well_data["phi"]
+
+        # Convert from structured array to simple array
+        # This conversion from array->list->array may be inefficient...
+        X_filtered_np = np.array(X_filtered_np.tolist())
+        y_filtered_np = np.array(y_filtered_np.tolist())
+
+        return X_filtered_np, y_filtered_np
+
+    def _get_target_chunk(self, chunk: int = -1) -> np.ndarray:
+        """
+        Returns the target chunk from self.cur_h5_dset.
+        If the chunk is not passed, returns the whole data
+        """
         if chunk < 0:
             cur_chunk = self.cur_h5_dset[:]
         else:
@@ -163,17 +188,7 @@ class HDFMultiColList:
 
             # Load the hypercube chunk
             cur_chunk = self.cur_h5_dset[cur_slice]
-
-        well_data = self._filter_data(well_id, cur_chunk)
-        X_filtered_np: np.ndarray = well_data[self.all_features]
-        y_filtered_np: np.ndarray = well_data["phi"]
-
-        # Convert from structured array to simple array
-        # This conversion from array->list->array may be inefficient...
-        X_filtered_np = np.array(X_filtered_np.tolist())
-        y_filtered_np = np.array(y_filtered_np.tolist())
-
-        return X_filtered_np, y_filtered_np
+        return cur_chunk
 
     def _filter_data(self, well_id: int, cur_chunk):
         """
