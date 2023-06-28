@@ -252,7 +252,7 @@ def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Datase
 
         # Run jobs until there are not any more features to test
         # print(f'[petro4_dist_hdf5][w{rank}][it{it}] new iteration')
-        while (manager_tag != MPI_TAGS.MANAGER_FEATURE_DONE.value):
+        while (_there_are_feats_to_test(manager_tag)):
             # print(f'[petro4_dist_hdf5][w{rank}][it{it}] '\
             #       f'Received new_features: {new_features}')
 
@@ -328,6 +328,9 @@ def worker(porosity_data_h5:h5py.Dataset, features_dict_h5:Dict[str, h5py.Datase
     # Get broadcasted resulting features and errors
     best_result = comm.bcast(None, root=manager_rank)
     return best_result
+
+def _there_are_feats_to_test(manager_tag):
+    return manager_tag != MPI_TAGS.MANAGER_FEATURE_DONE.value
 
 def _all_expected_feats_sets_tested(manager_tag:int) -> bool:
     return manager_tag == MPI_TAGS.MANAGER_FINISH.value
