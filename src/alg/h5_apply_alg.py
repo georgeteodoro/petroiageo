@@ -2,6 +2,7 @@ import h5py
 from typing import Dict
 import lightgbm as lgb
 from time import time
+from typing import Tuple, Dict
 import numpy as np
 
 from inverted_learning_interface import AbstractApplyAlg
@@ -65,71 +66,21 @@ class H5ApplyAlg(AbstractApplyAlg):
                 window_size * 2 + 1,
             )
 
-            t0 = time()
-
             # Remove coordinates from features set
             best_features_set.remove("x")
             best_features_set.remove("y")
             best_features_set.remove("z")
 
-            # Points used for training: real and propagated
-            is_training_point_f = lambda d: (
-                (d["real"] == common.RealValues.real)
-                | (d["real"] == common.RealValues.propagated)
-            )
-
-            # Creates a temporary h5 structure to perform the training
-            cur_h5, cur_h5_dset, _, _ = petro5_hdf5.create_tmp_dset(
+            regressor = self._train_regressor(
+                best_features_set,
+                features_dict_h5,
                 porosity_data_h5,
-                is_training_point_f,
-                len(best_features_set),
-                f"-r{rank}",
-                features_only=True,
+                it,
+                rank,
+                displacement_cube_shape,
             )
-            cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
-
-            hypercube_shape = porosity_data_h5.shape
-
-            t1 = time()
-            profiling.prof_predict_create_time(it, t1 - t0, self._config)
-
-            # Add each feature to the TestData list (TD)
-            for feature in best_features_set:
-                cur_h5_train_list.add_new_col()
-                petro5_hdf5.insert_filtered_feature(
-                    cur_h5_dset,
-                    cur_h5_train_list,
-                    features_dict_h5,
-                    feature,
-                    hypercube_shape,
-                    displacement_cube_shape,
-                )
-
-            t2 = time()
-            profiling.prof_predict_insert_time(
-                it, len(best_features_set), t2 - t1, self._config
-            )
-
-            regressor = None
-            # TODO: Change this loop to go over the chunks themselves
-            for c in range(cur_h5_train_list.n_chunks):
-                # Generate a training dataset for all data on chunk c
-                X_train_np, y_train_np = cur_h5_train_list.get_data_not_in_well(c)
-                lgb_train_dataset = lgb.Dataset(X_train_np, y_train_np)
-
-                # Perform training
-                regressor = lgb.train(
-                    params,
-                    lgb_train_dataset,
-                    init_model=regressor,
-                    num_boost_round=100,
-                    keep_training_booster=True,
-                )
-
-            cur_h5.close()
 
             t3 = time()
-            profiling.prof_predict_train_times(it, t3 - t2, self._config)
 
             # Perform prediction of expanded points
             p_sum = 0
@@ -250,6 +201,75 @@ class H5ApplyAlg(AbstractApplyAlg):
             print(f"[main][{it}][R{my_rank}] waiting points propagation")
 
         comm.Barrier()
+
+    def _train_regressor(
+        self,
+        best_features_set: set,
+        features_dict_h5: Dict[str, h5py.Dataset],
+        porosity_data_h5: h5py.Dataset,
+        it: int,
+        rank: int,
+        displacement_cube_shape: tuple,
+    ) -> lgb.Booster:
+        t0 = time()
+        # Points used for training: real and propagated
+        is_training_point_f = lambda d: (
+            (d["real"] == common.RealValues.real)
+            | (d["real"] == common.RealValues.propagated)
+        )
+
+        # Creates a temporary h5 structure to perform the training
+        cur_h5, cur_h5_dset, _, _ = petro5_hdf5.create_tmp_dset(
+            porosity_data_h5,
+            is_training_point_f,
+            len(best_features_set),
+            f"-r{rank}",
+            features_only=True,
+        )
+        cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
+
+        hypercube_shape = porosity_data_h5.shape
+
+        t1 = time()
+        profiling.prof_predict_create_time(it, t1 - t0, self._config)
+
+        # Add each feature to the TestData list (TD)
+        for feature in best_features_set:
+            cur_h5_train_list.add_new_col()
+            petro5_hdf5.insert_filtered_feature(
+                cur_h5_dset,
+                cur_h5_train_list,
+                features_dict_h5,
+                feature,
+                hypercube_shape,
+                displacement_cube_shape,
+            )
+
+        t2 = time()
+        profiling.prof_predict_insert_time(
+            it, len(best_features_set), t2 - t1, self._config
+        )
+
+        regressor = None
+        # TODO: Change this loop to go over the chunks themselves
+        for c in range(cur_h5_train_list.n_chunks):
+            # Generate a training dataset for all data on chunk c
+            X_train_np, y_train_np = cur_h5_train_list.get_data_not_in_well(c)
+            lgb_train_dataset = lgb.Dataset(X_train_np, y_train_np)
+
+            # Perform training
+            regressor = lgb.train(
+                params,
+                lgb_train_dataset,
+                init_model=regressor,
+                num_boost_round=100,
+                keep_training_booster=True,
+            )
+
+        cur_h5.close()
+        t3 = time()
+        profiling.prof_predict_train_times(it, t3 - t2, self._config)
+        return regressor
 
     def _single_compatible(self, to_compare):
         # Check if to_compare have h5 support
