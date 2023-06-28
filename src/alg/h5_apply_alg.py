@@ -133,7 +133,7 @@ class H5ApplyAlg(AbstractApplyAlg):
                 for f_idx, feature in enumerate(best_features_set):
                     # Apply the displacement
                     cur_coords_3d_np = coords_3d_np.copy()
-                    for coord_s, d_id in [("x", 0), ("y", 1), ("z", 2)]:
+                    for d_id, coord_s in enumerate(["x", "y", "z"]):
                         cur_coords_3d_np[coord_s] = (
                             cur_coords_3d_np[coord_s]
                             + feature[d_id + 1]
