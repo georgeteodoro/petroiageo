@@ -79,7 +79,6 @@ def _find_feats_set(all_features:list, max_feats_to_select:int, max_feats_to_tes
     for f_it in range(max_feats_to_select):
         # Profiling time counter
         f_it_req_time = 0
-
         t1 = time()
 
         remaining_features = _remaining_feats_to_test(all_features, curr_f_set_best_err)
@@ -119,7 +118,7 @@ def _find_curr_best_feature(it:int , curr_f_set_best_err:list[str],
                             remaining_features:list) -> Tuple[str, float, float, list[tuple[list, float]]]:
     new_best_feature = None
     best_error = float("inf")
-    # Reset workers done and wait for next feature set
+
     workers_done = 0
     # Iterate through all features to be tested
     while _not_all_workers_done(workers_done):
@@ -165,7 +164,7 @@ def _find_curr_best_feature(it:int , curr_f_set_best_err:list[str],
 
         t3 = time()
         f_it_req_time += t3 - t2
-    return new_best_feature,t3, f_it_req_time, feats_sets_and_its_errors
+    return new_best_feature, t3, f_it_req_time, feats_sets_and_its_errors
 
 def _not_all_workers_done(workers_done):
     return workers_done < mpi_size - 1
@@ -254,16 +253,13 @@ def _eval_feats_requested_by_manager(features_dict_h5:Dict[str, h5py.Dataset],
     while True:
         # For profiling
         f_it = len(cur_h5_train_list.all_features) + 1
-
         t2 = time()
 
         status = MPI.Status()
-
         # Request a job from manager
         comm.send(None,
                   dest=manager_rank,
                   tag=MPI_TAGS.WORKER_EMPTY_RESULT.value)
-
         new_features, manager_tag = _get_new_feats_from_manager(status)
 
         t3 = time()
@@ -297,7 +293,6 @@ def _eval_feats_requested_by_manager(features_dict_h5:Dict[str, h5py.Dataset],
 
             # Return results to manager
             comm.send(results, dest=manager_rank)
-
             new_features, manager_tag = _get_new_feats_from_manager(status)
 
             t7 = time()
@@ -343,9 +338,11 @@ def _eval_curr_feats(features_dict_h5:Dict[str, h5py.Dataset],
                      f_it:int,
                      new_features:list[str]
                      ) -> Tuple[list[Tuple[str, float]], int, float]:
+    
     results:list[Tuple[str, float]] = []
     for new_feature in new_features:
         t4 = time()
+
         # Insert temporary feature
         petro5_hdf5.insert_filtered_feature(
                     cur_h5_dset, cur_h5_train_list, features_dict_h5,
