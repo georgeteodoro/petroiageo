@@ -267,8 +267,8 @@ class H5ApplyAlg(AbstractApplyAlg):
             )
 
         cur_h5.close()
-        t3 = time()
-        profiling.prof_predict_train_times(it, t3 - t2, self._config)
+
+        profiling.prof_predict_train_times(it, time() - t2, self._config)
         return regressor
 
     def _single_compatible(self, to_compare):
