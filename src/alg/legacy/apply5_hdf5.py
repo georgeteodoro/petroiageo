@@ -84,7 +84,7 @@ def perf_predition(
     for c in range(cur_h5_train_list.n_chunks):
         # Generate a training dataset for all data on chunk c without
         # data from well w
-        X_train_np, y_train_np = cur_h5_train_list.get_all_well_data(c)
+        X_train_np, y_train_np = cur_h5_train_list.get_data_not_in_well(c)
         lgb_train_dataset = lgb.Dataset(X_train_np, y_train_np)
 
         # Perform training

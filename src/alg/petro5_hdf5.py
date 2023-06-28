@@ -52,19 +52,22 @@ def get_best_features_set(
 # See discussion for incremental learning:
 # https://stackoverflow.com/questions/73664093/lightgbm-train-vs-update-vs-refit
 def eval_bootstrap(
-    cur_h5_train_list, cur_h5_test_list, wells_id, num_threads=1
+    cur_h5_train_list: hdf5_util.HDFMultiColList,
+    cur_h5_test_list: hdf5_util.HDFMultiColList,
+    wells_id: list[int],
+    num_threads=1,
 ):
     params["num_threads"] = num_threads
 
     profiling = False
 
-    rmse_list = []
-    mae_list = []
+    rmse_list:list[float] = []
+    mae_list:list[float] = []
 
     # Test data is the same for all wells if test_only_wells are
     # active, so it's only setup once
     if cur_h5_test_list is not None:
-        X_test_np, y_test_np = cur_h5_test_list.get_all_well_data()
+        X_test_np, y_test_np = cur_h5_test_list.get_data_not_in_well()
 
     t0 = time()
     for w in wells_id:
@@ -82,7 +85,7 @@ def eval_bootstrap(
             t1 = time()
             # Generate a training dataset for all data on chunk c without
             # data from well w
-            X_train_np, y_train_np = cur_h5_train_list.get_all_well_data(c, w)
+            X_train_np, y_train_np = cur_h5_train_list.get_data_not_in_well(c, w)
             lgb_train_dataset = lgb.Dataset(X_train_np, y_train_np)
 
             # Create validation dataset
