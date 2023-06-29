@@ -42,9 +42,8 @@ def get_features_sets(
         return None
 
     if rank == manager_rank:
-        return manager(
-            all_features, max_feats_to_select, max_feats_to_test, it, config
-        )
+        return manager(all_features, max_feats_to_select, max_feats_to_test,
+                       it, config)
 
     elif rank != manager_rank:
         return worker(
@@ -67,8 +66,7 @@ def manager(
     t0 = time()
 
     total_req_time, feats_sets_and_its_errors, t4 = _find_feats_set(
-        all_features, max_feats_to_select, max_feats_to_test, it, config
-    )
+        all_features, max_feats_to_select, max_feats_to_test, it, config)
 
     # Broadcast resulting features and errors
     best_result = petro5_hdf5.get_best_features_set(feats_sets_and_its_errors)
@@ -76,9 +74,8 @@ def manager(
 
     t5 = time()
     profiling.prof_fsel_manager_sync_times(it, t5 - t4, config)
-    profiling.prof_fsel_manager_time(
-        it, total_req_time + t5 - t4, t5 - t0, config
-    )
+    profiling.prof_fsel_manager_time(it, total_req_time + t5 - t4, t5 - t0,
+                                     config)
 
     return best_result
 
@@ -102,12 +99,10 @@ def _find_feats_set(
         f_it_req_time = 0
         t1 = time()
 
-        remaining_features = _remaining_feats_to_test(
-            all_features, curr_f_set_best_err
-        )
-        remaining_features = _limit_feats_to_test(
-            max_feats_to_test, remaining_features
-        )
+        remaining_features = _remaining_feats_to_test(all_features,
+                                                      curr_f_set_best_err)
+        remaining_features = _limit_feats_to_test(max_feats_to_test,
+                                                  remaining_features)
 
         f_it_req_time += time() - t1
 
@@ -173,15 +168,12 @@ def _find_curr_best_feature(
 
         if _worker_sent_feat_eval(status):
             for cur_feature, cur_error in data:
-                print(
-                    f"[petro4_dist_hdf5][manager][it{it}] Tested "
-                    f"feature {curr_f_set_best_err + [cur_feature]} "
-                    f"with error {cur_error}"
-                )
+                print(f"[petro4_dist_hdf5][manager][it{it}] Tested "
+                      f"feature {curr_f_set_best_err + [cur_feature]} "
+                      f"with error {cur_error}")
 
                 feats_sets_and_its_errors.append(
-                    (curr_f_set_best_err + [cur_feature], cur_error)
-                )
+                    (curr_f_set_best_err + [cur_feature], cur_error))
 
                 # Update new best, if necessary
                 if best_error > cur_error:
@@ -196,9 +188,9 @@ def _find_curr_best_feature(
             comm.send(new_features, dest=worker_rank)
         else:
             # Send finish message
-            comm.send(
-                None, dest=worker_rank, tag=MPI_TAGS.MANAGER_FEATURE_DONE.value
-            )
+            comm.send(None,
+                      dest=worker_rank,
+                      tag=MPI_TAGS.MANAGER_FEATURE_DONE.value)
             workers_done = workers_done + 1
 
         total_worker_time += time() - t2
@@ -238,8 +230,7 @@ def worker(
     is_training_point_f = lambda d: (
         (d["real"] == common.RealValues.real)
         | (d["real"] == common.RealValues.canal_expanded)
-        | (d["real"] == common.RealValues.propagated)
-    )
+        | (d["real"] == common.RealValues.propagated))
 
     test_only_wells = config.alg["test_only_wells"]
     wells_coords = config.wells["coords"]
@@ -250,6 +241,8 @@ def worker(
         porosity_data_h5,
         is_training_point_f,
         exp_n_features,
+        config,
+        it,
         f"-r{rank}",
         test_only_wells=test_only_wells,
     )
@@ -280,9 +273,8 @@ def worker(
         cur_h5_test_list,
     )
 
-    profiling.prof_fsel_worker_times(
-        it, rank, total_exec_time, t8 - t0, total_jobs, config
-    )
+    profiling.prof_fsel_worker_times(it, rank, total_exec_time, t8 - t0,
+                                     total_jobs, config)
 
     # Get broadcasted resulting features and errors
     best_result = comm.bcast(None, root=manager_rank)
@@ -314,9 +306,9 @@ def _eval_feats_requested_by_manager(
 
         status = MPI.Status()
         # Request a job from manager
-        comm.send(
-            None, dest=manager_rank, tag=MPI_TAGS.WORKER_EMPTY_RESULT.value
-        )
+        comm.send(None,
+                  dest=manager_rank,
+                  tag=MPI_TAGS.WORKER_EMPTY_RESULT.value)
         new_features, manager_tag = _get_new_feats_from_manager(status)
 
         t3 = time()
@@ -436,9 +428,9 @@ def _eval_curr_feats(
         t5 = time()
         profiling.prof_fsel_worker_insert_time(it, rank, f_it, t5 - t4, config)
 
-        rmse, mae = petro5_hdf5.eval_bootstrap(
-            cur_h5_train_list, cur_h5_test_list, training_wells
-        )
+        rmse, mae = petro5_hdf5.eval_bootstrap(cur_h5_train_list,
+                                               cur_h5_test_list,
+                                               training_wells)
 
         results.append((new_feature, rmse))
         t6 = time()

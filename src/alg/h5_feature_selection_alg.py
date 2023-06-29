@@ -56,8 +56,7 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
 
         # Calculate remaining variables
         all_features = self._generate_seismic_features_names(
-            window_size, base_features
-        )
+            window_size, base_features)
         displacement_cube_shape = (
             window_size * 2 + 1,
             window_size * 2 + 1,

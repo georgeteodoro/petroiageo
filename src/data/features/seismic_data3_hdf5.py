@@ -26,16 +26,6 @@ def seismic_feature_np2hdf5_planar(
     print(f"[seismic_feature_np2hdf5_planar] reading {feature_name}")
     feature_np = np.load(feature_path)
 
-    # displacement_window = 2
-    # feature_np = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
-    # feature_np[0, 0, 0] = 1
-    # feature_np[1, 0, 0] = 2
-    # feature_np[0, 1, 0] = 3
-    # feature_np[1, 1, 0] = 4
-    # feature_np[0, 0, 1] = 5
-    # feature_np[0, 1, 1] = 6
-    # feature_np[1, 0, 1] = 7
-    # feature_np[1, 1, 1] = 8
     data_shape = feature_np.shape
 
     print(
@@ -63,12 +53,10 @@ def seismic_feature_np2hdf5_planar(
     )
 
     feature_full_np = assign_regular_inside_points(
-        feature_name, feature_np, feature_full_np, x_slice, y_slice, z_slice
-    )
+        feature_name, feature_np, feature_full_np, x_slice, y_slice, z_slice)
 
     print(
-        f"[seismic_feature_np2hdf5_planar] assigning borders of {feature_name}"
-    )
+        f'[seismic_feature_np2hdf5_planar] assigning borders of {feature_name}')
     # Top/bottom regions
     for z in range(displacement_window):
         feature_full_np[x_slice, y_slice, z] = feature_np[:, :, 0]
@@ -370,7 +358,7 @@ if __name__ == "__main__":
     base_features_folder = pathlib.Path(args.feat_folder)
 
     target_features_files_names_with_extension = [
-        # 'FAR.npy', 'NEAR_envelope_.npy', 'NEAR_gersztenkorn_5-5-9.npy',
+        # 'NEAR.npy', 'NEAR_envelope_.npy', 'NEAR_gersztenkorn_5-5-9.npy',
         # 'NEAR_instantaneous-frequency_.npy', 'NEAR_rms-5_.npy', 'MID.npy',
         # 'NEAR_gaussian-curvature_.npy', 'NEAR_gst_3-3-11.npy',
         # 'NEAR_max-curvature_.npy', 'NEAR_shape-index_.npy',

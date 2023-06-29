@@ -36,9 +36,11 @@ class H5ExpandAlg(AbstractExpandAlg):
 
             t1 = time()
 
-            print(
-                f"[gen_expanded_points][it{it}] Expanding points on ring {ring}"
-            )
+            print(f"[gen_expanded_points][it{it}] "\
+                  f"Hypercube shape: {porosity_data_h5.shape}")
+
+            print(f"[gen_expanded_points][it{it}] "\
+                  f"Expanding points on ring {ring}")
             # Generate a list of points to be expanded
             well_id = 0
             total_chunk_update_time = 0
@@ -50,26 +52,18 @@ class H5ExpandAlg(AbstractExpandAlg):
                 well_y_bot = well[1] + ring
 
                 # Conditions for points on each ring wall
-                left_wall_cond = (
-                    lambda d: (d["x"] == well_x_left)
-                    & (d["y"] <= well_y_bot)
-                    & (d["y"] >= well_y_top)
-                )
-                right_wall_cond = (
-                    lambda d: (d["x"] == well_x_right)
-                    & (d["y"] <= well_y_bot)
-                    & (d["y"] >= well_y_top)
-                )
-                top_wall_cond = (
-                    lambda d: (d["y"] == well_y_top)
-                    & (d["x"] <= well_x_right)
-                    & (d["x"] >= well_x_left)
-                )
-                bot_wall_cond = (
-                    lambda d: (d["y"] == well_y_bot)
-                    & (d["x"] <= well_x_right)
-                    & (d["x"] >= well_x_left)
-                )
+                left_wall_cond = (lambda d: (d["x"] == well_x_left)
+                                  & (d["y"] <= well_y_bot)
+                                  & (d["y"] >= well_y_top))
+                right_wall_cond = (lambda d: (d["x"] == well_x_right)
+                                   & (d["y"] <= well_y_bot)
+                                   & (d["y"] >= well_y_top))
+                top_wall_cond = (lambda d: (d["y"] == well_y_top)
+                                 & (d["x"] <= well_x_right)
+                                 & (d["x"] >= well_x_left))
+                bot_wall_cond = (lambda d: (d["y"] == well_y_bot)
+                                 & (d["x"] <= well_x_right)
+                                 & (d["x"] >= well_x_left))
 
                 # Used only for profiling
                 n_chunk = -1
@@ -92,12 +86,10 @@ class H5ExpandAlg(AbstractExpandAlg):
                     chunk_y_bot = chunk_slice[1].stop - 1
 
                     # chunk is used as a base to compare
-                    no_ovlp_x = (chunk_x_right < well_x_left) | (
-                        chunk_x_left > well_x_right
-                    )
-                    no_ovlp_y = (chunk_y_bot < well_y_top) | (
-                        chunk_y_top > well_y_bot
-                    )
+                    no_ovlp_x = (chunk_x_right
+                                 < well_x_left) | (chunk_x_left > well_x_right)
+                    no_ovlp_y = (chunk_y_bot < well_y_top) | (chunk_y_top
+                                                              > well_y_bot)
 
                     # full_depth_chunks: whether the chunks for
                     # porosity_data_h5 includes the full depth, i.e.,
@@ -108,7 +100,8 @@ class H5ExpandAlg(AbstractExpandAlg):
                         if no_ovlp_x | no_ovlp_y:
                             continue
                     else:
-                        print("[expand4_hdf5] Not using full_depth_chunks=True")
+                        print(
+                            "[expand4_hdf5] Not using full_depth_chunks=True")
                         raise NotImplementedError
 
                     ran_chunks += 1  # Used only for profiling
@@ -121,12 +114,10 @@ class H5ExpandAlg(AbstractExpandAlg):
                     hdf5_util.conditional_map_h5_chunk(
                         porosity_data_h5,
                         lambda d: (d["real"] == common.RealValues.empty)
-                        & (
-                            left_wall_cond(d)
-                            | right_wall_cond(d)
-                            | top_wall_cond(d)
-                            | bot_wall_cond(d)
-                        ),
+                        & (left_wall_cond(d)
+                           | right_wall_cond(d)
+                           | top_wall_cond(d)
+                           | bot_wall_cond(d)),
                         [
                             ("real", common.RealValues.expanded),
                             ("well_id", well_id),
@@ -136,12 +127,10 @@ class H5ExpandAlg(AbstractExpandAlg):
                     hdf5_util.conditional_map_h5_chunk(
                         porosity_data_h5,
                         lambda d: (d["real"] == common.RealValues.canal)
-                        & (
-                            left_wall_cond(d)
-                            | right_wall_cond(d)
-                            | top_wall_cond(d)
-                            | bot_wall_cond(d)
-                        ),
+                        & (left_wall_cond(d)
+                           | right_wall_cond(d)
+                           | top_wall_cond(d)
+                           | bot_wall_cond(d)),
                         [
                             ("real", common.RealValues.canal_expanded),
                             ("well_id", well_id),
@@ -151,18 +140,15 @@ class H5ExpandAlg(AbstractExpandAlg):
 
                     t3 = time()
                     total_chunk_update_time += t3 - t2
-                    profiling.prof_expand_chunk_time(
-                        it, n_chunk, t3 - t2, self._config
-                    )
+                    profiling.prof_expand_chunk_time(it, n_chunk, t3 - t2,
+                                                     self._config)
 
                 well_id = well_id + 1
 
-            profiling.prof_expand_chunks_time(
-                it, total_chunk_update_time, self._config
-            )
-            profiling.prof_expand_chunks_ran(
-                it, ran_chunks, total_chunks, self._config
-            )
+            profiling.prof_expand_chunks_time(it, total_chunk_update_time,
+                                              self._config)
+            profiling.prof_expand_chunks_ran(it, ran_chunks, total_chunks,
+                                             self._config)
 
         else:
             my_rank = rank

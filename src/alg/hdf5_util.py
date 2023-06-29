@@ -105,6 +105,15 @@ class HDFMultiColList:
         self.chunk_size = self.cur_h5_dset.chunks[0]
         self.n_chunks = int(np.ceil(cur_h5_dset.size / self.chunk_size))
 
+        # if sampling_config is not None:
+        #     self.sampling_window = sampling_config['its_window_size']
+        #     self.sampling_max_points = sampling_config['max_points']
+        # else:
+        #     self.sampling_window = None
+        #     self.sampling_max_points = None
+
+    # Updates the last column with new values from a generator
+    # Overwrites the previous values on this column
     def update_last_col_chunk(self, feature_gen):
         """
         Updates the last column with new values from a generator

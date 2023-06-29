@@ -30,17 +30,9 @@ params = {
     # "tree_learner": "data",
 }
 
-# This version only works for the first iteration.
-# The tmp dataset is a list based on the sparse data of the
-# porosity dataset. It can either be incremental or need to be
-# reassembled each iteration. If incremental, indices will be
-# mismatched between features and tmp list. If reassembling,
-# it will be inefficient.
-
 
 def get_best_features_set(
-    features_sets: list[tuple[list, float]]
-) -> Tuple[list, float]:
+        features_sets: list[tuple[list, float]]) -> Tuple[list, float]:
     # Sort by second column (id 1)
     features_sets.sort(key=lambda tup: tup[1])
     best_features_set = features_sets[0][0]
@@ -65,9 +57,9 @@ def eval_bootstrap(
 
     profiling = False
 
-    rmse_list, mae_list = _leave_one_well_out_training(
-        cur_h5_train_list, cur_h5_test_list, wells_id, profiling
-    )
+    rmse_list, mae_list = _leave_one_well_out_training(cur_h5_train_list,
+                                                       cur_h5_test_list,
+                                                       wells_id, profiling)
 
     return np.mean(rmse_list), np.mean(mae_list)
 
@@ -90,8 +82,7 @@ def _leave_one_well_out_training(
     # Leave-One-Well-Out
     for curr_well_id in wells_id:
         X_val, y_val, regressor = _incremental_learning(
-            cur_h5_train_list, profiling, curr_well_id
-        )
+            cur_h5_train_list, profiling, curr_well_id)
         t3 = time()
 
         # Calculate error metrics
@@ -100,7 +91,7 @@ def _leave_one_well_out_training(
             y_test = y_val
 
         pred = regressor.predict(X_test)
-        rmse = np.sqrt(np.mean((pred - y_test) ** 2))
+        rmse = np.sqrt(np.mean((pred - y_test)**2))
         mae = mean_absolute_error(pred, y_test)
         rmse_list.append(rmse)
         mae_list.append(mae)
@@ -140,13 +131,12 @@ def _incremental_learning(
         t1 = time()
 
         X_train, y_train = cur_h5_train_list.get_data_not_in_well(
-            chunk_idx, curr_well_id
-        )
+            chunk_idx, curr_well_id)
         lgb_train_dataset = lgb.Dataset(X_train, y_train)
 
-        lgb_eval_dataset = lgb.Dataset(
-            X_val, y_val, reference=lgb_train_dataset
-        )
+        lgb_eval_dataset = lgb.Dataset(X_val,
+                                       y_val,
+                                       reference=lgb_train_dataset)
 
         t2 = time()
 
@@ -165,24 +155,18 @@ def _incremental_learning(
         training_time += t3 - t2
 
         if profiling:
-            print(
-                f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Setup in "
-                f"{t2 - t1}"
-            )
+            print(f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Setup in "
+                  f"{t2 - t1}")
             print(
                 f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Training in "
-                f"{t3 - t2}"
-            )
+                f"{t3 - t2}")
 
     if profiling:
-        print(
-            f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Final setup in "
-            f"{setup_time}"
-        )
+        print(f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Final setup in "
+              f"{setup_time}")
         print(
             f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Final training in "
-            f"{training_time}"
-        )
+            f"{training_time}")
 
     return X_val, y_val, regressor
 
@@ -214,11 +198,9 @@ def insert_filtered_feature(
 
         # Apply the displacement
         for coord_s, d_id in [("x", 0), ("y", 1), ("z", 2)]:
-            coord_3d_np[coord_s] = (
-                coord_3d_np[coord_s]
-                + cur_feature[d_id + 1]
-                + ((displacement_cube_shape[d_id] - 1) / 2)
-            )
+            coord_3d_np[coord_s] = (coord_3d_np[coord_s] +
+                                    cur_feature[d_id + 1] +
+                                    ((displacement_cube_shape[d_id] - 1) / 2))
 
         t3 = time()
         if profile_time:
@@ -228,18 +210,18 @@ def insert_filtered_feature(
         # data into a ndarray variable, to later copy it to the cur_h5_seq
         # object.
         def _feature_generator(feature_dset, coord_3d_np, chunk_start):
+
             def _gen_list_features(feature_dset, coord_3d_np):
                 for coord in coord_3d_np:
                     yield feature_dset[tuple(coord)]
 
             # Append slice of current chunk to features list
-            yield slice(
-                chunk_start, chunk_start + len(coord_3d_np)
-            ), _gen_list_features(feature_dset, coord_3d_np)
+            yield slice(chunk_start,
+                        chunk_start + len(coord_3d_np)), _gen_list_features(
+                            feature_dset, coord_3d_np)
 
-        feature_gen = _feature_generator(
-            features_dict_h5[cur_feature[0]], coord_3d_np, chunk_start
-        )
+        feature_gen = _feature_generator(features_dict_h5[cur_feature[0]],
+                                         coord_3d_np, chunk_start)
 
         chunk_start += list_chunk_slice[0].stop - list_chunk_slice[0].start - 1
 
@@ -253,29 +235,63 @@ def insert_filtered_feature(
         t5 = time()
         if profile_time:
             print(
-                f"[insert_filtered_feature] insert_disp_feature_time: {t5-t4}"
-            )
+                f"[insert_filtered_feature] insert_disp_feature_time: {t5-t4}")
 
     t6 = time()
     if profile_time:
         print(f"[insert_filtered_feature] full_time: {t6-t0}")
 
 
-def create_tmp_dset(
-    porosity_data_h5: h5py.Dataset,
-    is_training_point_f,
-    n_features,
-    suf_str="",
-    list_chunk_size=1000,
-    features_only=False,
-    test_only_wells=[],
-) -> Tuple[h5py.File, h5py.Dataset, h5py.File, h5py.Dataset]:
-    profiling = False
+def _is_well_in_list(d, l):
+    ret = np.full((d.shape), False, dtype=bool)
+    for x in l:
+        ret += d["well_id"] == x
+    return ret
+
+
+def _is_well_not_in_list(d, l):
+    ret = np.full((d.shape), True, dtype=bool)
+    for x in l:
+        ret *= d["well_id"] != x
+    return ret
+
+
+def _prepare_sampling(sampling_window, is_training_point_f2, porosity_data_h5,
+                      sampling_max_points, sampling_dist, it):
+
+    # Add sapling window for training, if required
+    min_ring = max(0, it - sampling_window)
+    is_training_point_f = lambda d: is_training_point_f2(d) & (d['ring'] >=
+                                                               min_ring)
+
+    n_training_points = hdf5_util.fold_h5_all_clusters(
+        porosity_data_h5, lambda d: len(d[is_training_point_f(d)]), 0)
+
+    # Add sampling of points by max length limit, if required
+    if sampling_max_points > 0:
+        n_training_points = min(n_training_points, sampling_max_points)
+
+        if sampling_dist is not None:
+            print('============================='\
+                  'Sampling_dist not implemented.')
+
+    return n_training_points, is_training_point_f
+
+
+def _prepare_h5(suf_str, test_only_wells, features_only, n_features,
+                is_training_point_base_f, porosity_data_h5, it, config):
+    """
+    Generate the h5 File and dataset objects.
+    """
+
+    # Get config parameters
+    sampling_window = config.alg['sampling']['its_window_size']
+    sampling_max_points = config.alg['sampling']['max_points']
+    sampling_dist = config.alg['sampling']['beta_dist']
 
     filename = f"cur{suf_str}.h5"
     filename_test = f"cur{suf_str}-test.h5"
 
-    t0 = time()
     # If the cur file exists, it should be deleted
     # A new tmp file is created by iteration
     if os.path.exists(filename):
@@ -283,10 +299,14 @@ def create_tmp_dset(
     if os.path.exists(filename_test):
         os.remove(filename_test)
 
-    # Creates a temporary h5 structure to maintain the porosity
-    # and features data
-    cur_h5 = h5py.File(f"{filename}", "w")
+    # Creates a temporary h5 structure to maintain the porosity and features
+    # data, as well as one for the test-only data, if necessary
+    cur_h5 = h5py.File(f'{filename}', 'w')
+    test_h5 = None
+    if len(test_only_wells) > 0:
+        test_h5 = h5py.File(f'{filename_test}', 'w')
 
+    # Creates the datatype for the h5 structure, with or without 'well_id'
     if features_only:
         cur_data_type = [
             ("x", np.int64),
@@ -303,30 +323,17 @@ def create_tmp_dset(
             ("well_id", np.int64),
         ]
 
-    cur_data_type = cur_data_type + [
-        (f"f{f}", np.float64) for f in range(n_features)
-    ]
+    # Add the features fields and create the np datatype
+    cur_data_type = cur_data_type + [(f'f{f}', np.float64)
+                                     for f in range(n_features)]
     cur_data_type = np.dtype(cur_data_type)
-
-    def _is_well_in_list(d, l):
-        ret = np.full((d.shape), False, dtype=bool)
-        for x in l:
-            ret += d["well_id"] == x
-        return ret
-
-    def _is_well_not_in_list(d, l):
-        ret = np.full((d.shape), True, dtype=bool)
-        for x in l:
-            ret *= d["well_id"] != x
-        return ret
 
     # Select whether training points include all points or there are test
     # points as well
-    is_training_point_f2 = is_training_point_f
+    is_training_point_f2 = is_training_point_base_f
     if len(test_only_wells) > 0:
-        is_training_point_f2 = lambda d: is_training_point_f(
-            d
-        ) & _is_well_not_in_list(d, test_only_wells)
+        is_training_point_f2 = lambda d: is_training_point_base_f(
+            d) & _is_well_not_in_list(d, test_only_wells)
 
         n_test_points = hdf5_util.fold_h5_all_clusters(
             porosity_data_h5,
@@ -334,24 +341,61 @@ def create_tmp_dset(
             0,
         )
 
+    # Calculate the maximum number of training points
     n_training_points = hdf5_util.fold_h5_all_clusters(
-        porosity_data_h5, lambda d: len(d[is_training_point_f2(d)]), 0
-    )
+        porosity_data_h5, lambda d: len(d[is_training_point_f2(d)]), 0)
 
-    print("============== NEED TO AUTOMATE TMP_LIST CHUNK_SIZE")
+    # Perform sampling by updating the is_training_point_f filter function
+    # and n_training_points
+    is_training_point_f = is_training_point_f2
+    if sampling_window > 0:
+        n_training_points, is_training_point_f = _prepare_sampling(
+            sampling_window, is_training_point_f2, porosity_data_h5,
+            sampling_max_points, sampling_dist, it)
+
+    print('============== NEED TO AUTOMATE TMP_LIST CHUNK_SIZE')
     # cur_chunksize = (n_training_points / 10, )
-    cur_chunksize = (n_training_points,)
+    cur_chunksize = (n_training_points, )
 
-    cur_h5_dset = cur_h5.create_dataset(
-        "c", (n_training_points,), dtype=cur_data_type, chunks=cur_chunksize
-    )
-    test_h5 = None
+    # Create the h5 datasets
+    cur_h5_dset = cur_h5.create_dataset('c', (n_training_points, ),
+                                        dtype=cur_data_type,
+                                        chunks=cur_chunksize)
     test_h5_dset = None
     if len(test_only_wells) > 0:
-        test_h5 = h5py.File(f"{filename_test}", "w")
-        test_h5_dset = test_h5.create_dataset(
-            "c", (n_test_points,), dtype=cur_data_type, chunks=(n_test_points,)
-        )
+        test_h5_dset = test_h5.create_dataset('c', (n_test_points, ),
+                                              dtype=cur_data_type,
+                                              chunks=(n_test_points, ))
+
+    return (cur_h5, cur_h5_dset, test_h5, test_h5_dset, n_training_points,
+            is_training_point_f)
+
+
+def create_tmp_dset(
+    porosity_data_h5: h5py.Dataset,
+    is_training_point_base_f,
+    n_features,
+    config,
+    it,
+    suf_str="",
+    list_chunk_size=1000,
+    features_only=False,
+    test_only_wells=[],
+) -> Tuple[h5py.File, h5py.Dataset, h5py.File, h5py.Dataset]:
+
+    profiling = False
+
+    sampling_max_points = config.alg['sampling']['max_points']
+
+    filename = f"cur{suf_str}.h5"
+    filename_test = f"cur{suf_str}-test.h5"
+
+    t0 = time()
+    (cur_h5, cur_h5_dset, test_h5, test_h5_dset, n_training_points,
+     is_training_point_f) = _prepare_h5(suf_str, test_only_wells,
+                                        features_only, n_features,
+                                        is_training_point_base_f,
+                                        porosity_data_h5, it, config)
 
     t1 = time()
     if profiling:
@@ -366,6 +410,7 @@ def create_tmp_dset(
     prev_end = 0
     prev_end_test = 0
     hypercube_shape = porosity_data_h5.shape
+    sampling_inserted = 0
     for chunk_slice in porosity_data_h5.iter_chunks():
         # Get current chunk
         chunk_np = porosity_data_h5[chunk_slice]
@@ -373,22 +418,27 @@ def create_tmp_dset(
         # Extract training points from chunk
         training_points = chunk_np[is_training_point_f(chunk_np)]
 
+        # Performs sampling on training_points
+        if sampling_max_points > 0:
+            n_points_to_insert = min(len(training_points),
+                                     n_training_points - sampling_inserted)
+            training_points = training_points[:n_points_to_insert]
+
+        # Generate test-only data, if necessary
         if len(test_only_wells) > 0:
             # Filer out training points, removing the test data
-            training_points = training_points[
-                _is_well_not_in_list(training_points, test_only_wells)
-            ]
+            training_points = training_points[_is_well_not_in_list(
+                training_points, test_only_wells)]
 
             # Add test data to its unique list
-            test_points = training_points[
-                _is_well_in_list(training_points, test_only_wells)
-            ]
+            test_points = training_points[_is_well_in_list(
+                training_points, test_only_wells)]
             test_h5_dset[
                 "x",
                 "y",
                 "z",
                 "phi",
-                prev_end_test : (prev_end_test + len(test_points)),
+                prev_end_test:(prev_end_test + len(test_points)),
             ] = test_points[["x", "y", "z", "phi"]]
             prev_end_test += len(test_points)
 
@@ -399,7 +449,7 @@ def create_tmp_dset(
                 "y",
                 "z",
                 "phi",
-                prev_end : (prev_end + len(training_points)),
+                prev_end:(prev_end + len(training_points)),
             ] = training_points[["x", "y", "z", "phi"]]
         else:
             cur_h5_dset[
@@ -408,7 +458,7 @@ def create_tmp_dset(
                 "z",
                 "phi",
                 "well_id",
-                prev_end : (prev_end + len(training_points)),
+                prev_end:(prev_end + len(training_points)),
             ] = training_points[["x", "y", "z", "phi", "well_id"]]
         prev_end += len(training_points)
 
@@ -420,6 +470,10 @@ def create_tmp_dset(
     return cur_h5, cur_h5_dset, test_h5, test_h5_dset
 
 
+# exp_n_features: number of features to be selected
+# max_tested_features: number of features to be compared
+#   default=0 means all features.
+#   Used for debugging and reducing computing cost
 def get_features_sets(
     porosity_data_h5: h5py.Dataset,
     features_dict_h5: Dict[str, h5py.Dataset],
@@ -430,20 +484,13 @@ def get_features_sets(
     max_tested_features: int,
     config: Config,
 ):
-    """
-    exp_n_features: number of features to be selected
-    max_tested_features: number of features to be compared
-    default=0 means all features.
-    Used for debugging and reducing computing cost
-    """
     t0 = time()
 
     # Points used for training: real and propagated
     is_training_point_f = lambda d: (
         (d["real"] == common.RealValues.real)
         | (d["real"] == common.RealValues.canal_expanded)
-        | (d["real"] == common.RealValues.propagated)
-    )
+        | (d["real"] == common.RealValues.propagated))
 
     test_only_wells = config.alg["test_only_wells"]
     wells_coords = config.wells["coords"]
@@ -517,18 +564,17 @@ def get_features_sets(
                 )
 
             t5 = time()
-            print(
-                f"[get_features_sets][{cur_feature}] "
-                f"insert_feature_time: {t5-t4}"
-            )
+            print(f"[get_features_sets][{cur_feature}] "
+                  f"insert_feature_time: {t5-t4}")
 
             # Test the model with cur_feature
-            rmse, mae = eval_bootstrap(
-                cur_h5_train_list, cur_h5_test_list, training_wells
-            )
+            rmse, mae = eval_bootstrap(cur_h5_train_list, cur_h5_test_list,
+                                       training_wells)
             t6 = time()
-            print(f"[get_features_sets][{cur_feature}] " f"train_time: {t6-t5}")
-            print(f"[get_features_sets][{cur_feature}] " f"error: {rmse}")
+            print(f"[get_features_sets][{cur_feature}] "
+                  f"train_time: {t6-t5}")
+            print(f"[get_features_sets][{cur_feature}] "
+                  f"error: {rmse}")
 
             results.append((cur_f_set + [cur_feature], rmse, mae))
 
@@ -537,16 +583,15 @@ def get_features_sets(
                 best_error = rmse
                 best_feature = cur_feature
 
-            print(
-                f"[get_features_sets][it{it}] Tested features "
-                f"{cur_f_set+ [cur_feature]} with error {rmse}"
-            )
+            print(f"[get_features_sets][it{it}] Tested features "
+                  f"{cur_f_set+ [cur_feature]} with error {rmse}")
 
         # Remove the best feature from the features list
         all_features.remove(best_feature)
 
         t7 = time()
-        print(f"[get_features_sets][it{it}] " f"full_it_time: {t7-t3}")
+        print(f"[get_features_sets][it{it}] "
+              f"full_it_time: {t7-t3}")
 
         # Update the last column of the sequence object to the best feature
         insert_filtered_feature(
@@ -572,10 +617,8 @@ def get_features_sets(
         cur_f_set.append(best_feature)
 
         t8 = time()
-        print(
-            f"[get_features_sets][{best_feature}] "
-            f"commit_feature_time: {t8-t7}"
-        )
+        print(f"[get_features_sets][{best_feature}] "
+              f"commit_feature_time: {t8-t7}")
 
     t9 = time()
     print(f"[get_features_sets] full_time: {t9-t0}")

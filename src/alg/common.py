@@ -19,6 +19,5 @@ def enum(*sequential, **named):
 
 
 # expanded = to be propagated
-RealValues = enum(
-    "real", "propagated", "canal", "canal_expanded", "expanded", "empty"
-)
+RealValues = enum("real", "propagated", "canal", "canal_expanded", "expanded",
+                  "empty")

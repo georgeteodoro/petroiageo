@@ -57,7 +57,8 @@ def config_arg_parser():
         dest="num_select_features",
         action="store",
         required=False,
-        help="Number of maximum features to be " "selected",
+        help="Number of maximum features to be "
+        "selected",
     )
     parser.add_argument(
         "--ntf",
@@ -100,9 +101,8 @@ def config_arg_parser():
     return parser
 
 
-def update_config_file_params_with_args(
-    config: config_parser.Config, args
-) -> config_parser.Config:
+def update_config_file_params_with_args(config: config_parser.Config,
+                                        args) -> config_parser.Config:
     if args.num_select_features is not None:
         config.alg["max_num_features"] = int(args.num_select_features)
 

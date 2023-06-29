@@ -17,15 +17,14 @@ sys.path.insert(0, "..")
 from alg import common
 
 
-def porosity_points_py2hdf5(
-    porosity_file, hdf5_file_path, hypercube_shape, chunk_shape, real_points
-):
+def porosity_points_py2hdf5(porosity_file, hdf5_file_path, hypercube_shape,
+                            chunk_shape, real_points):
     print(f"Loading porosity file")
     porosity_file_path = pathlib.Path(porosity_file)
     # if porosity_file_path.suffix == ".txt":
     #     porosity_np = np.loadtxt(porosity_file_path, delimiter=" ")
     # elif porosity_file_path.suffix == ".npy":
-    porosity_np = np.load(porosity_file_path)
+    porosity_np = np.load(porosity_file_path, allow_pickle=True)
 
     (x, y, z) = hypercube_shape
 
@@ -35,16 +34,15 @@ def porosity_points_py2hdf5(
     porosity_h5_dset = porosity_h5_f.create_dataset(
         "p",
         hypercube_shape,
-        dtype=np.dtype(
-            [
-                ("x", np.int64),
-                ("y", np.int64),
-                ("z", np.int64),
-                ("phi", np.float64),
-                ("real", np.int64),
-                ("well_id", np.int64),
-            ]
-        ),
+        dtype=np.dtype([
+            ("x", np.int64),
+            ("y", np.int64),
+            ("z", np.int64),
+            ("phi", np.float64),
+            ("real", np.int64),
+            ("ring", np.int64),
+            ("well_id", np.int64),
+        ]),
         chunks=chunk_shape,
     )
 
@@ -56,7 +54,7 @@ def porosity_points_py2hdf5(
             # Batching of z coordinates for writing on hdf5 file
             all_z = []
             for k in range(z):
-                all_z = all_z + [(i, j, k, 0, common.RealValues.empty, -1)]
+                all_z = all_z + [(i, j, k, 0, common.RealValues.empty, -1, -1)]
             all_yz = all_yz + [all_z]
         # Commit all points for a given x coordinate
         porosity_h5_dset[i, ...] = all_yz
@@ -66,17 +64,21 @@ def porosity_points_py2hdf5(
         if (x, y) in real_points:
             real = common.RealValues.real
             well_id = real_points.index((x, y))
+            ring = 0
         else:
             real = common.RealValues.canal
             well_id = -1
-        porosity_h5_dset[np.int64(x), np.int64(y), np.int64(z)] = (
-            np.int64(x),
-            np.int64(y),
-            np.int64(z),
-            p,
-            real,
-            well_id,
-        )
+            ring = -1
+        porosity_h5_dset[np.int64(x), np.int64(y),
+                         np.int64(z)] = (
+                             np.int64(x),
+                             np.int64(y),
+                             np.int64(z),
+                             p,
+                             real,
+                             ring,
+                             well_id,
+                         )
 
     porosity_h5_f.close()
 
@@ -128,10 +130,12 @@ if __name__ == "__main__":
 
     parser = config_arg_parser()
     args = parser.parse_args()
-    hypercube_shape = np.load(pathlib.Path(args.feat_file_path)).shape
+    hypercube_shape = np.load(pathlib.Path(args.feat_file_path),
+                              allow_pickle=True).shape
     porosity_file_path = args.porosity_file
     hdf5_file_path = args.hdf5_file
-    chunk_shape = (100, 100, 251)
+    # chunk_shape = (100, 100, 251)
+    chunk_shape = (434, 323, 251)
 
     porosity_points_py2hdf5(
         porosity_file_path,

@@ -58,11 +58,9 @@ class H5SeismicDataLoader(AbstractSeismicDataLoader):
             if ".h5" not in str(feature_path):
                 continue
             self._features_files_dict_h5[feature] = h5py.File(
-                feature_path, "r", **mpi_kwargs
-            )
+                feature_path, "r", **mpi_kwargs)
             features_dset_dict_h5[feature] = self._features_files_dict_h5[
-                feature
-            ]["f"]
+                feature]["f"]
 
             # TODO: fix this assertion
             # # Assert whether the dimensions are compatible

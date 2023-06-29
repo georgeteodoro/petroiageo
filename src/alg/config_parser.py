@@ -23,11 +23,9 @@ class FeatureSelection(enum.Enum):
             new_feat_selection = FeatureSelection[key]
             return new_feat_selection
         except:
-            error_msg = (
-                f"Key error for FeatureSelectionType. "
-                f"Got {key} but should be one of "
-                f"{[key for key in FeatureSelection.__members__]}"
-            )
+            error_msg = (f"Key error for FeatureSelectionType. "
+                         f"Got {key} but should be one of "
+                         f"{[key for key in FeatureSelection.__members__]}")
             raise KeyError(error_msg)
 
 
@@ -43,10 +41,8 @@ class SaveModelTypes:
     def raise_if_not_valid(save_model_type):
         if isinstance(save_model_type, list):
             if not SaveModelTypes._has_positives_only(save_model_type):
-                raise ValueError(
-                    "alg.save_models_on: The list should have "
-                    "positive integers only!"
-                )
+                raise ValueError("alg.save_models_on: The list should have "
+                                 "positive integers only!")
         elif isinstance(save_model_type, str):
             valid_strs = [SaveModelTypes.ALL, SaveModelTypes.LAST]
             if save_model_type[:6] == "every_":
@@ -55,16 +51,12 @@ class SaveModelTypes:
                     if n == 0:
                         raise
                 except:
-                    raise ValueError(
-                        "alg.save_models_on: 'n' "
-                        "should be a positive integer!"
-                    )
+                    raise ValueError("alg.save_models_on: 'n' "
+                                     "should be a positive integer!")
             elif save_model_type not in valid_strs:
-                raise ValueError(
-                    f"alg.save_models_on: This str is not valid. "
-                    f"Should be one of {valid_strs} but "
-                    f"'{save_model_type}' was given!"
-                )
+                raise ValueError(f"alg.save_models_on: This str is not valid. "
+                                 f"Should be one of {valid_strs} but "
+                                 f"'{save_model_type}' was given!")
 
 
 def list_func_applier_decorator(func):
@@ -97,12 +89,12 @@ class ConfigTypeCaster:
 
         treated_dict.update(config_dict)
         if "alg" in config_dict:
-            treated_dict["alg"] = cls._type_cast_alg_configs(config_dict["alg"])
+            treated_dict["alg"] = cls._type_cast_alg_configs(
+                config_dict["alg"])
 
         if "wells" in config_dict:
             treated_dict["wells"] = cls._treat_wells_configs(
-                config_dict["wells"]
-            )
+                config_dict["wells"])
 
         return treated_dict
 
@@ -134,8 +126,7 @@ class ConfigTypeCaster:
 
         if "sampling" in alg_configs:
             treated_sampling_config = cls._type_cast_sampling_configs(
-                alg_configs["sampling"]
-            )
+                alg_configs["sampling"])
             treated_alg_configs["sampling"] = treated_sampling_config
 
         return treated_alg_configs
@@ -157,8 +148,7 @@ class ConfigTypeCaster:
 
         if "beta_dist" in sampling_configs:
             treated_beta_dist_configs = cls._type_cast_beta_dist_configs(
-                sampling_configs["beta_dist"]
-            )
+                sampling_configs["beta_dist"])
             treated_sampling_config["beta_dist"] = treated_beta_dist_configs
 
         return treated_sampling_config
@@ -189,8 +179,7 @@ class ConfigTypeCaster:
 
         if "coords" in wells_configs:
             treated_coords_configs = cls._treat_wells_coords_configs(
-                wells_configs["coords"]
-            )
+                wells_configs["coords"])
             treated_wells_configs["coords"] = treated_coords_configs
 
         return treated_wells_configs
@@ -231,13 +220,11 @@ class ConfigTypeCaster:
     @staticmethod
     def _which_python_bool_value(yaml_bool: str) -> bool:
         raise NotImplementedError(
-            "Not implemented! This should be file format dependent!"
-        )
+            "Not implemented! This should be file format dependent!")
 
     @classmethod
     def _apply_key_func_mapping_to_dict_and_modify_target_dict(
-        cls, key_func_map: dict, base_dict: dict, dict_to_modify: dict
-    ):
+            cls, key_func_map: dict, base_dict: dict, dict_to_modify: dict):
         """
         Apply the func associated with the key in base_dict but its result is
         saved in dict_to_modify
@@ -251,14 +238,14 @@ class ConfigTypeCaster:
             )
 
     @staticmethod
-    def _apply_func_to_simple_key_if_present(
-        base_dict: dict, key, func, dict_to_modify: dict
-    ):
+    def _apply_func_to_simple_key_if_present(base_dict: dict, key, func,
+                                             dict_to_modify: dict):
         if key in base_dict:
             dict_to_modify[key] = func(base_dict[key])
 
 
 class YAMLConfigTypeCaster(ConfigTypeCaster):
+
     @staticmethod
     def _which_python_bool_value(input_bool: str) -> bool:
         if input_bool.lower() in ["y", "yes", "on", "true"]:
@@ -267,8 +254,7 @@ class YAMLConfigTypeCaster(ConfigTypeCaster):
             return False
         else:
             raise ValueError(
-                f" {input_bool} not identified as a valid yaml boolean!"
-            )
+                f" {input_bool} not identified as a valid yaml boolean!")
 
 
 class ConfigValidator:
@@ -300,28 +286,23 @@ class ConfigValidator:
 
         if not cls._has_positives_only(alg_configs["validation_only_wells"]):
             raise ValueError(
-                "alg.validation_only_wells: well index can't be negative!"
-            )
+                "alg.validation_only_wells: well index can't be negative!")
 
         num_wells = len(config_dict["wells"]["coords"])
-        if not cls._under_max_value_only(
-            alg_configs["validation_only_wells"], num_wells
-        ):
+        if not cls._under_max_value_only(alg_configs["validation_only_wells"],
+                                         num_wells):
             raise ValueError(
                 f"alg.validation_only_wells: Invalid well index. Max: {num_wells-1}"
             )
 
         if not cls._has_positives_only(alg_configs["test_only_wells"]):
             raise ValueError(
-                "alg.test_only_wells: well index can't be negative!"
-            )
+                "alg.test_only_wells: well index can't be negative!")
 
-        if not cls._under_max_value_only(
-            alg_configs["test_only_wells"], num_wells
-        ):
+        if not cls._under_max_value_only(alg_configs["test_only_wells"],
+                                         num_wells):
             raise ValueError(
-                f"alg.test_only_wells: Invalid well index. Max: {num_wells-1}"
-            )
+                f"alg.test_only_wells: Invalid well index. Max: {num_wells-1}")
 
         try:
             # Just try to access a feature selection type
@@ -360,13 +341,11 @@ class ConfigValidator:
         beta_dist_dict = config_dict["beta_dist"]
         if beta_dist_dict["beta"] < 0:
             raise ValueError(
-                f"alg.sampling.beta_dist.beta: Beta value cant be negative!"
-            )
+                f"alg.sampling.beta_dist.beta: Beta value cant be negative!")
 
         if beta_dist_dict["alpha"] < 0:
             raise ValueError(
-                f"alg.sampling.beta_dist.alpha: Alpha value cant be negative!"
-            )
+                f"alg.sampling.beta_dist.alpha: Alpha value cant be negative!")
 
     @staticmethod
     def _has_positives_only(my_list: list) -> bool:
@@ -394,12 +373,12 @@ class Config:
         "wells",
     ]
 
-    def __init__(
-        self, config_path, config_dict: dict = None, config_str: str = None
-    ):
-        input_config = self._get_input_config(
-            config_path, config_dict, config_str
-        )
+    def __init__(self,
+                 config_path,
+                 config_dict: dict = None,
+                 config_str: str = None):
+        input_config = self._get_input_config(config_path, config_dict,
+                                              config_str)
 
         input_config = self._treat_input_config(input_config)
 
@@ -416,8 +395,7 @@ class Config:
     @classmethod
     def _get_config_type_caster(cls) -> ConfigTypeCaster:
         raise NotImplementedError(
-            "Not implemented! This should be file type dependent!"
-        )
+            "Not implemented! This should be file type dependent!")
 
     def _update_config_with_input_config(self, input_config: dict):
         if "wells" in input_config:
@@ -431,25 +409,23 @@ class Config:
 
         if "starting_porosity_cube_path" in input_config:
             self.config["starting_porosity_cube_path"] = input_config[
-                "starting_porosity_cube_path"
-            ]
+                "starting_porosity_cube_path"]
 
         if "porosity_cube_output_path" in input_config:
             self.config["porosity_cube_output_path"] = input_config[
-                "porosity_cube_output_path"
-            ]
+                "porosity_cube_output_path"]
 
-    def _get_input_config(
-        self, config_path, config_dict: dict = None, config_str: str = None
-    ):
+    def _get_input_config(self,
+                          config_path,
+                          config_dict: dict = None,
+                          config_str: str = None):
         """
         Tries to choose where are the input configs. If every param is none, return a empty dict.
         """
 
         if config_path is not None:
             if isinstance(config_path, str) or isinstance(
-                config_path, pathlib.Path
-            ):
+                    config_path, pathlib.Path):
                 self._raise_if_path_doesnt_exists_or_isnt_file(config_path)
                 return self._parse_config_file(config_path)
 
@@ -540,8 +516,7 @@ class Config:
             self.config[param_name] = param_value
         else:
             raise InvalidNewParamError(
-                "This new param's name is equal to a base param!"
-            )
+                "This new param's name is equal to a base param!")
 
     def remove_param(self, param_name: str):
         """
@@ -552,8 +527,7 @@ class Config:
             del self.config[param_name]
         else:
             raise InvalidNewParamError(
-                "This new param's name is equal to a base param!"
-            )
+                "This new param's name is equal to a base param!")
 
     def get_param(self, param_name: str):
         """
@@ -575,9 +549,8 @@ class Config:
         Returns a list of tuples with the wells coords:
         [(1,2),(3,4),(5,6)...]
         """
-        return [
-            (well["x"], well["y"]) for well in self.config["wells"]["coords"]
-        ]
+        return [(well["x"], well["y"])
+                for well in self.config["wells"]["coords"]]
 
     @property
     def alg(self):
@@ -615,21 +588,20 @@ class Config:
         raise AttributeError("por_cube_output_path is read only!")
 
     @property
-    def features_files_paths(self) -> list[pathlib.Path]:
+    def features_files_paths(self):
         """
         Returns a list with the complete path to every feature in the feature folder
         """
         features_folder_path = pathlib.Path(self.config["features_folder"])
         features_paths = [
-            path
-            for path in list(features_folder_path.glob("*"))
+            path for path in list(features_folder_path.glob("*"))
             if path.is_file()
         ]
         complete_paths = [path.absolute() for path in features_paths]
         return complete_paths
 
     @property
-    def features_files_names(self) -> list[str]:
+    def features_files_names(self):
         """
         Returns a list with the name of every feature in the feature folder.
         A feature name is equal to the name of its file without the suffix.
@@ -637,8 +609,7 @@ class Config:
         """
         features_folder_path = pathlib.Path(self.config["features_folder"])
         features_paths = [
-            path
-            for path in list(features_folder_path.glob("*"))
+            path for path in list(features_folder_path.glob("*"))
             if path.is_file()
         ]
         features_names = [path.stem for path in features_paths]
@@ -646,9 +617,11 @@ class Config:
 
 
 class YAMLConfig(Config):
-    def __init__(
-        self, config_path, config_dict: dict = None, config_str: str = None
-    ):
+
+    def __init__(self,
+                 config_path,
+                 config_dict: dict = None,
+                 config_str: str = None):
         super().__init__(config_path, config_dict, config_str)
 
     def _parse_config_file(self, file_path: str) -> dict:
