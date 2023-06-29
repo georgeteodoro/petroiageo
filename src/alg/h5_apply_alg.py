@@ -139,12 +139,15 @@ class H5ApplyAlg(AbstractApplyAlg):
                 cur_chunk_np["phi"][updated_coords] = new_phi_np
                 cur_chunk_np["real"][
                     updated_coords] = common.RealValues.propagated
+                cur_chunk_np['ring'][updated_coords] = it
 
                 # Only update 'phi' and 'real' values of expanded points
                 porosity_data_h5["phi", cur_slice[0], cur_slice[1],
                                  cur_slice[2]] = cur_chunk_np["phi"]
                 porosity_data_h5["real", cur_slice[0], cur_slice[1],
                                  cur_slice[2]] = cur_chunk_np["real"]
+                porosity_data_h5['ring', cur_slice[0], cur_slice[1],
+                                 cur_slice[2]] = cur_chunk_np['ring']
 
                 t7 = time()
                 profiling.prof_predict_pred_update_time(

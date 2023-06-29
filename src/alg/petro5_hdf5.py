@@ -282,6 +282,9 @@ def _prepare_h5(suf_str, test_only_wells, features_only, n_features,
                 is_training_point_base_f, porosity_data_h5, it, config):
     """
     Generate the h5 File and dataset objects.
+    Also setup the filter function to return only training points and returns
+    the total number of sampled training points. If no sampling is done, 
+    returns all training points.
     """
 
     # Get config parameters
