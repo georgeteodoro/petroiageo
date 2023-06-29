@@ -15,19 +15,19 @@ from config_parser import Config
 RANDOM_STATE = 1
 
 params = {
-    "max_bin": 128,
-    "max_depth": 10,
-    "learning_rate": 0.1,
-    "boosting_type": "gbdt",
-    "objective": "regression",
-    "metric": "mae",
-    "num_leaves": 20,
-    "verbose": -1,
-    "min_data": 10,
-    "boost_from_average": True,
-    "bagging_freq": 1,
-    "random_state": RANDOM_STATE,
-    # "tree_learner": "data",
+    'max_bin': 128,
+    'max_depth': 10,
+    'learning_rate': 0.1,
+    'boosting_type': 'gbdt',
+    'objective': 'regression',
+    'metric': 'mae',
+    'num_leaves': 20,
+    'verbose': -1,
+    'min_data': 10,
+    'boost_from_average': True,
+    'bagging_freq': 1,
+    'random_state': RANDOM_STATE,
+    # 'tree_learner': 'data',
 }
 
 
@@ -53,7 +53,7 @@ def eval_bootstrap(
     validation data for each Leave-one-well-out iteration.
     Return the mean rmse and mean mae errors
     """
-    params["num_threads"] = num_threads
+    params['num_threads'] = num_threads
 
     profiling = False
 
@@ -98,12 +98,10 @@ def _leave_one_well_out_training(
 
         if profiling:
             t4 = time()
-            print(
-                f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Evaluating in {t4-t3}"
-            )
-            print(
-                f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Total time {t4-t0}"
-            )
+            print(f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] "\
+                  f"Evaluating in {t4-t3}")
+            print(f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] "\
+                  f"Total time {t4-t0}")
 
     return rmse_list, mae_list
 
@@ -117,6 +115,7 @@ def _incremental_learning(
     See discussion for incremental learning:
     https://stackoverflow.com/questions/73664093/lightgbm-train-vs-update-vs-refit
     """
+
     # Extract the validation data
     # Since the same validation data is supposed to be used for
     # all incremental trainings and is small enough to fit in
@@ -190,14 +189,14 @@ def insert_filtered_feature(
         # print(f'[insert_filtered_feature] chunk size: {len(chunk_np)}')
 
         # Get the coordinates list
-        coord_3d_np = chunk_np[["x", "y", "z"]]
+        coord_3d_np = chunk_np[['x', 'y', 'z']]
 
         t2 = time()
         if profile_time:
             print(f"[insert_filtered_feature] get_slice_time: {t2-t1}")
 
         # Apply the displacement
-        for coord_s, d_id in [("x", 0), ("y", 1), ("z", 2)]:
+        for coord_s, d_id in [('x', 0), ('y', 1), ('z', 2)]:
             coord_3d_np[coord_s] = (coord_3d_np[coord_s] +
                                     cur_feature[d_id + 1] +
                                     ((displacement_cube_shape[d_id] - 1) / 2))
@@ -245,14 +244,14 @@ def insert_filtered_feature(
 def _is_well_in_list(d, l):
     ret = np.full((d.shape), False, dtype=bool)
     for x in l:
-        ret += d["well_id"] == x
+        ret += d['well_id'] == x
     return ret
 
 
 def _is_well_not_in_list(d, l):
     ret = np.full((d.shape), True, dtype=bool)
     for x in l:
-        ret *= d["well_id"] != x
+        ret *= d['well_id'] != x
     return ret
 
 
@@ -272,8 +271,8 @@ def _prepare_sampling(sampling_window, is_training_point_f2, porosity_data_h5,
         n_training_points = min(n_training_points, sampling_max_points)
 
         if sampling_dist is not None:
-            print('============================='\
-                  'Sampling_dist not implemented.')
+            print("============================="\
+                  "Sampling_dist not implemented.")
 
     return n_training_points, is_training_point_f
 
@@ -292,8 +291,8 @@ def _prepare_h5(suf_str, test_only_wells, features_only, n_features,
     sampling_max_points = config.alg['sampling']['max_points']
     sampling_dist = config.alg['sampling']['beta_dist']
 
-    filename = f"cur{suf_str}.h5"
-    filename_test = f"cur{suf_str}-test.h5"
+    filename = f'cur{suf_str}.h5'
+    filename_test = f'cur{suf_str}-test.h5'
 
     # If the cur file exists, it should be deleted
     # A new tmp file is created by iteration
@@ -312,18 +311,18 @@ def _prepare_h5(suf_str, test_only_wells, features_only, n_features,
     # Creates the datatype for the h5 structure, with or without 'well_id'
     if features_only:
         cur_data_type = [
-            ("x", np.int64),
-            ("y", np.int64),
-            ("z", np.int64),
-            ("phi", np.float64),
+            ('x', np.int64),
+            ('y', np.int64),
+            ('z', np.int64),
+            ('phi', np.float64),
         ]
     else:
         cur_data_type = [
-            ("x", np.int64),
-            ("y", np.int64),
-            ("z", np.int64),
-            ("phi", np.float64),
-            ("well_id", np.int64),
+            ('x', np.int64),
+            ('y', np.int64),
+            ('z', np.int64),
+            ('phi', np.float64),
+            ('well_id', np.int64),
         ]
 
     # Add the features fields and create the np datatype
@@ -356,7 +355,7 @@ def _prepare_h5(suf_str, test_only_wells, features_only, n_features,
             sampling_window, is_training_point_f2, porosity_data_h5,
             sampling_max_points, sampling_dist, it)
 
-    print('============== NEED TO AUTOMATE TMP_LIST CHUNK_SIZE')
+    print("============== NEED TO AUTOMATE TMP_LIST CHUNK_SIZE")
     # cur_chunksize = (n_training_points / 10, )
     cur_chunksize = (n_training_points, )
 
@@ -380,7 +379,7 @@ def create_tmp_dset(
     n_features,
     config,
     it,
-    suf_str="",
+    suf_str='',
     list_chunk_size=1000,
     features_only=False,
     test_only_wells=[],
@@ -390,8 +389,8 @@ def create_tmp_dset(
 
     sampling_max_points = config.alg['sampling']['max_points']
 
-    filename = f"cur{suf_str}.h5"
-    filename_test = f"cur{suf_str}-test.h5"
+    filename = f'cur{suf_str}.h5'
+    filename_test = f'cur{suf_str}-test.h5'
 
     t0 = time()
     (cur_h5, cur_h5_dset, test_h5, test_h5_dset, n_training_points,
@@ -425,44 +424,50 @@ def create_tmp_dset(
         if sampling_max_points > 0:
             n_points_to_insert = min(len(training_points),
                                      n_training_points - sampling_inserted)
+            sampling_inserted += n_points_to_insert
             training_points = training_points[:n_points_to_insert]
+
+            # If sampling reached its maximum size, no more chunks are
+            # required to be iterated
+            if len(training_points) == 0:
+                break
 
         # Generate test-only data, if necessary
         if len(test_only_wells) > 0:
-            # Filer out training points, removing the test data
-            training_points = training_points[_is_well_not_in_list(
-                training_points, test_only_wells)]
-
             # Add test data to its unique list
             test_points = training_points[_is_well_in_list(
                 training_points, test_only_wells)]
             test_h5_dset[
-                "x",
-                "y",
-                "z",
-                "phi",
+                'x',
+                'y',
+                'z',
+                'phi',
                 prev_end_test:(prev_end_test + len(test_points)),
-            ] = test_points[["x", "y", "z", "phi"]]
+            ] = test_points[['x', 'y', 'z', 'phi']]
             prev_end_test += len(test_points)
+
+            # Filer out training points, removing the test data
+            training_points = training_points[_is_well_not_in_list(
+                training_points, test_only_wells)]
 
         # Append these porosity values to the current dataset
         if features_only:
             cur_h5_dset[
-                "x",
-                "y",
-                "z",
-                "phi",
+                'x',
+                'y',
+                'z',
+                'phi',
                 prev_end:(prev_end + len(training_points)),
-            ] = training_points[["x", "y", "z", "phi"]]
+            ] = training_points[['x', 'y', 'z', 'phi']]
         else:
             cur_h5_dset[
-                "x",
-                "y",
-                "z",
-                "phi",
-                "well_id",
+                'x',
+                'y',
+                'z',
+                'phi',
+                'well_id',
                 prev_end:(prev_end + len(training_points)),
-            ] = training_points[["x", "y", "z", "phi", "well_id"]]
+            ] = training_points[['x', 'y', 'z', 'phi', 'well_id']]
         prev_end += len(training_points)
 
     t2 = time()
@@ -491,12 +496,12 @@ def get_features_sets(
 
     # Points used for training: real and propagated
     is_training_point_f = lambda d: (
-        (d["real"] == common.RealValues.real)
-        | (d["real"] == common.RealValues.canal_expanded)
-        | (d["real"] == common.RealValues.propagated))
+        (d['real'] == common.RealValues.real)
+        | (d['real'] == common.RealValues.canal_expanded)
+        | (d['real'] == common.RealValues.propagated))
 
-    test_only_wells = config.alg["test_only_wells"]
-    wells_coords = config.wells["coords"]
+    test_only_wells = config.alg['test_only_wells']
+    wells_coords = config.wells['coords']
     training_wells = list(range(len(wells_coords)))
     training_wells = [x for x in training_wells if x not in test_only_wells]
 
@@ -514,7 +519,7 @@ def get_features_sets(
         cur_h5_test_list = hdf5_util.HDFMultiColList(test_h5_dset)
 
     # Current features set with the best error
-    cur_f_set = ["x", "y", "z"]
+    cur_f_set = ['x', 'y', 'z']
 
     # List of features sets and their error metric
     results = []
@@ -525,7 +530,7 @@ def get_features_sets(
     for it in range(exp_n_features):
         t3 = time()
         # Reset best feature and its error
-        best_error = float("inf")
+        best_error = float('inf')
         best_feature = None
 
         # Setup the new column to be tested
