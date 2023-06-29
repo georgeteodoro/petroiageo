@@ -1,6 +1,16 @@
 """
 This script transforms .npy features data to hdf5 format so it can be used by 
 the algorithm.
+
+Naming convention: A region can be center (c), border (b), rod (r) or cube (q).
+Example for a 2D 5x4x3 region (stack the 3 regions) 
+with displacement_window = 1:
+
+[:,:,0]       [:,:,1]       [:,:,2]
+q r r r q     r b b b r     q r r r q
+r b b b r     b c c c b     r b b b r
+r b b b r     b c c c b     r b b b r
+q r r r q     r b b b r     q r r r q
 """
 
 import argparse
@@ -10,16 +20,9 @@ from math import prod
 import pathlib
 
 
-def coord_3d_to_planar(x, y, z, shape):
-    return x * shape[2] * shape[1] + y * shape[2] + z
-
-
-def seismic_feature_np2hdf5_planar(
-    feature_path: pathlib.Path,
-    chunk_shape,
-    displacement_window,
-    target_folder: pathlib.Path,
-):
+def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path, chunk_shape,
+                                   displacement_window,
+                                   output_dir: pathlib.Path, mult_factor):
     feature_name = feature_path.stem
 
     # Open feature
@@ -28,139 +31,228 @@ def seismic_feature_np2hdf5_planar(
 
     data_shape = feature_np.shape
 
-    print(
-        f"[seismic_feature_np2hdf5_planar] original shape: {data_shape} "
-        f"with length {prod(data_shape)}"
-    )
+    print(f"[seismic_feature_np2hdf5_planar] original shape: {data_shape} "
+          f"with length {prod(data_shape)}")
 
-    large_data_shape = create_new_3d_np_array_with_borders(
-        displacement_window, data_shape
-    )
+    # Generate large data shape for replicating the data
+    large_data_shape = [
+        mult_factor[i] * data_shape[i] for i in range(len(data_shape))
+    ]
+    large_data_shape = (np.array(large_data_shape) +
+                        (2 * displacement_window)).tolist()
 
-    print(
-        f"[seismic_feature_np2hdf5_planar] new shape: {large_data_shape} "
-        f"with length {prod(large_data_shape)}"
-    )
+    print(f"[seismic_feature_np2hdf5_planar] new shape: {large_data_shape} "
+          f"with length {prod(large_data_shape)}")
 
     feature_full_np = np.empty(shape=large_data_shape, dtype=np.float64)
 
-    (
-        x_slice,
-        y_slice,
-        z_slice,
-    ) = create_slices_for_internal_region_of_feature_full_np(
-        displacement_window, large_data_shape
+    print(f"[seismic_feature_np2hdf5_planar] "\
+          f"assigning center of {feature_name}")
+    _fill_center(feature_full_np, feature_np, data_shape, mult_factor,
+                 displacement_window)
+
+    print(f"[seismic_feature_np2hdf5_planar] "\
+          f"assigning borders of {feature_name}")
+    _fill_borders(feature_full_np, data_shape, displacement_window)
+
+    print(f"[seismic_feature_np2hdf5_planar] "\
+          f"assigning cubes of {feature_name}")
+    _fill_cubes(feature_full_np, feature_np, data_shape, large_data_shape,
+                displacement_window)
+
+    print(f"[seismic_feature_np2hdf5_planar] "\
+          f"assigning rods of {feature_name}")
+    _fill_rods(feature_full_np, large_data_shape, displacement_window)
+
+    _create_feature_hdf5_file(
+        feature_name,
+        output_dir,
+        chunk_shape,
+        large_data_shape,
+        feature_full_np,
     )
 
-    feature_full_np = assign_regular_inside_points(
-        feature_name, feature_np, feature_full_np, x_slice, y_slice, z_slice)
+###############################################################################
 
-    print(
-        f'[seismic_feature_np2hdf5_planar] assigning borders of {feature_name}')
+
+def _create_feature_hdf5_file(
+    feature_name: str,
+    output_dir: pathlib.Path,
+    chunk_shape,
+    large_data_shape,
+    feature_full_np,
+):
+    print(f"[seismic_feature_np2hdf5_planar] "\
+          f"creating hdf5 of feature {feature_name}")
+    with h5py.File(output_dir / f'{feature_name}.h5', 'w') as h5_f:
+        _ = h5_f.create_dataset(
+            'f',
+            large_data_shape,
+            dtype=np.float64,
+            chunks=chunk_shape,
+            data=feature_full_np.flat,
+        )
+
+
+def _fill_center(feature_full_np, feature_np, data_shape, mult_factor,
+                 displacement_window):
+    # Fill multiple copies of 'feature_np' on the large space
+    for f_x in range(mult_factor[0]):
+        for f_y in range(mult_factor[1]):
+            for f_z in range(mult_factor[2]):
+                # Create the slices shaped by the original input data
+                # 'feature_np'. These slices are shifted by the displacement
+                # window. For large_data these represent a single replica of
+                # 'feature_np' data. x_i represents the start coordinate and
+                # x_o represents the end coordinate.
+                x_i = displacement_window + (f_x * data_shape[0])
+                x_o = displacement_window + ((f_x + 1) * data_shape[0])
+                y_i = displacement_window + (f_y * data_shape[1])
+                y_o = displacement_window + ((f_y + 1) * data_shape[1])
+                z_i = displacement_window + (f_z * data_shape[2])
+                z_o = displacement_window + ((f_z + 1) * data_shape[2])
+
+                # Fill values of the current slice with a
+                # full copy of feature_np
+                feature_full_np[x_i:x_o, y_i:y_o,
+                                z_i:z_o] = feature_np[:, :, :]
+
+
+def _fill_borders(feature_full_np, data_shape, displacement_window):
+
+    # Create the slices for the region inside the displacement window. This
+    # region have the feature_np data (with mult replications if needed).
+    # However, it excludes the displacement windows borders.
+    x_slice = slice(displacement_window, data_shape[0] - displacement_window)
+    y_slice = slice(displacement_window, data_shape[1] - displacement_window)
+    z_slice = slice(displacement_window, data_shape[2] - displacement_window)
+
     # Top/bottom regions
     for z in range(displacement_window):
-        feature_full_np[x_slice, y_slice, z] = feature_np[:, :, 0]
-        feature_full_np[
-            x_slice, y_slice, large_data_shape[2] - z - 1
-        ] = feature_np[:, :, data_shape[2] - 1]
+        # Top
+        feature_full_np[x_slice, y_slice, z] = feature_full_np[x_slice,
+                                                               y_slice, 0]
+
+        # Bottom
+        feature_full_np[x_slice, y_slice, data_shape[2] - z -
+                        1] = feature_full_np[x_slice, y_slice,
+                                             data_shape[2] - 1]
 
     # Left/right regions
     for y in range(displacement_window):
-        feature_full_np[x_slice, y, z_slice] = feature_np[:, 0, :]
-        feature_full_np[
-            x_slice, large_data_shape[1] - y - 1, z_slice
-        ] = feature_np[:, data_shape[1] - 1, :]
+        # Left
+        feature_full_np[x_slice, y, z_slice] = feature_full_np[x_slice, 0,
+                                                               z_slice]
+
+        # Right
+        feature_full_np[x_slice, data_shape[1] - y - 1,
+                        z_slice] = feature_full_np[x_slice, data_shape[1] - 1,
+                                                   z_slice]
 
     # Front/back regions
     for x in range(displacement_window):
-        feature_full_np[x, y_slice, z_slice] = feature_np[0, :, :]
-        feature_full_np[
-            large_data_shape[0] - x - 1, y_slice, z_slice
-        ] = feature_np[data_shape[0] - 1, :, :]
+        # Front
+        feature_full_np[x, y_slice, z_slice] = feature_full_np[0, y_slice,
+                                                               z_slice]
 
-    # Create slices for regions
+        # Back
+        feature_full_np[data_shape[0] - x - 1, y_slice,
+                        z_slice] = feature_full_np[data_shape[0] - 1, y_slice,
+                                                   z_slice]
+
+
+def _fill_cubes(feature_full_np, feature_np, data_shape, large_data_shape,
+                displacement_window):
+    # Create slices for displacement border regions
     top_slice = slice(0, displacement_window)
-    bottom_slice = slice(
-        large_data_shape[2] - displacement_window, large_data_shape[2]
-    )
+    bottom_slice = slice(large_data_shape[2] - displacement_window,
+                         large_data_shape[2])
     left_slice = slice(0, displacement_window)
-    right_slice = slice(
-        large_data_shape[1] - displacement_window, large_data_shape[1]
-    )
+    right_slice = slice(large_data_shape[1] - displacement_window,
+                        large_data_shape[1])
     front_slice = slice(0, displacement_window)
-    back_slice = slice(
-        large_data_shape[0] - displacement_window, large_data_shape[0]
-    )
+    back_slice = slice(large_data_shape[0] - displacement_window,
+                       large_data_shape[0])
 
     # Top-front-left cube region
     feature_full_np[front_slice, left_slice, top_slice] = feature_np[0, 0, 0]
 
     # Top-front-right cube region
-    feature_full_np[front_slice, right_slice, top_slice] = feature_np[
-        0, data_shape[1] - 1, 0
-    ]
+    feature_full_np[front_slice, right_slice,
+                    top_slice] = feature_np[0, data_shape[1] - 1, 0]
 
     # Top-back-left cube region
-    feature_full_np[back_slice, left_slice, top_slice] = feature_np[
-        data_shape[0] - 1, 0, 0
-    ]
+    feature_full_np[back_slice, left_slice,
+                    top_slice] = feature_np[data_shape[0] - 1, 0, 0]
 
     # Top-back-right cube region
-    feature_full_np[back_slice, right_slice, top_slice] = feature_np[
-        data_shape[0] - 1, data_shape[1] - 1, 0
-    ]
+    feature_full_np[back_slice, right_slice,
+                    top_slice] = feature_np[data_shape[0] - 1,
+                                            data_shape[1] - 1, 0]
 
     # Bottom-front-left cube region
-    feature_full_np[front_slice, left_slice, bottom_slice] = feature_np[
-        0, 0, data_shape[2] - 1
-    ]
+    feature_full_np[front_slice, left_slice,
+                    bottom_slice] = feature_np[0, 0, data_shape[2] - 1]
 
     # Bottom-front-right cube region
-    feature_full_np[front_slice, right_slice, bottom_slice] = feature_np[
-        0, data_shape[1] - 1, data_shape[2] - 1
-    ]
+    feature_full_np[front_slice, right_slice,
+                    bottom_slice] = feature_np[0, data_shape[1] - 1,
+                                               data_shape[2] - 1]
 
     # Bottom-back-left cube region
-    feature_full_np[back_slice, left_slice, bottom_slice] = feature_np[
-        data_shape[0] - 1, 0, data_shape[2] - 1
-    ]
+    feature_full_np[back_slice, left_slice,
+                    bottom_slice] = feature_np[data_shape[0] - 1, 0,
+                                               data_shape[2] - 1]
 
     # Bottom-back-right cube region
-    feature_full_np[back_slice, right_slice, bottom_slice] = feature_np[
-        data_shape[0] - 1, data_shape[1] - 1, data_shape[2] - 1
-    ]
+    feature_full_np[back_slice, right_slice,
+                    bottom_slice] = feature_np[data_shape[0] - 1,
+                                               data_shape[1] - 1,
+                                               data_shape[2] - 1]
+
+
+def _fill_rods(feature_full_np, large_data_shape, displacement_window):
+    # Create the slices for the region inside the displacement window. This
+    # region have the feature_np data (with mult replications if needed).
+    # However, it excludes the displacement windows borders.
+    x_slice = slice(displacement_window,
+                    large_data_shape[0] - displacement_window)
+    y_slice = slice(displacement_window,
+                    large_data_shape[1] - displacement_window)
+    z_slice = slice(displacement_window,
+                    large_data_shape[2] - displacement_window)
 
     # Top rod regions
     for y in range(displacement_window):
         for z in range(displacement_window):
             # Top left
             feature_full_np[
-                displacement_window : large_data_shape[0] - displacement_window,
+                displacement_window:large_data_shape[0] - displacement_window,
                 y,
                 z,
-            ] = feature_np[:, 0, 0]
+            ] = feature_full_np[x_slice, 0, 0]
 
             # Top right
             feature_full_np[
-                displacement_window : large_data_shape[0] - displacement_window,
+                displacement_window:large_data_shape[0] - displacement_window,
                 large_data_shape[1] - displacement_window + y,
                 z,
-            ] = feature_np[:, data_shape[1] - 1, 0]
+            ] = feature_full_np[x_slice, large_data_shape[1] - 1, 0]
 
             x = y
             # Top front
             feature_full_np[
                 x,
-                displacement_window : large_data_shape[1] - displacement_window,
+                displacement_window:large_data_shape[1] - displacement_window,
                 z,
-            ] = feature_np[0, :, 0]
+            ] = feature_full_np[0, y_slice, 0]
 
             # Top back
             feature_full_np[
                 large_data_shape[0] - displacement_window + x,
-                displacement_window : large_data_shape[1] - displacement_window,
+                displacement_window:large_data_shape[1] - displacement_window,
                 z,
-            ] = feature_np[data_shape[0] - 1, :, 0]
+            ] = feature_full_np[large_data_shape[0] - 1, y_slice, 0]
 
     # Center rod regions
     for x in range(displacement_window):
@@ -169,193 +261,119 @@ def seismic_feature_np2hdf5_planar(
             feature_full_np[
                 x,
                 y,
-                displacement_window : large_data_shape[2] - displacement_window,
-            ] = feature_np[0, 0, :]
+                displacement_window:large_data_shape[2] - displacement_window,
+            ] = feature_full_np[0, 0, z_slice]
 
             # Front right
             feature_full_np[
                 x,
                 large_data_shape[1] - displacement_window + y,
-                displacement_window : large_data_shape[2] - displacement_window,
-            ] = feature_np[0, data_shape[1] - 1, :]
+                displacement_window:large_data_shape[2] - displacement_window,
+            ] = feature_full_np[0, large_data_shape[1] - 1, z_slice]
 
             # Back left
             feature_full_np[
                 large_data_shape[0] - displacement_window + x,
                 y,
-                displacement_window : large_data_shape[2] - displacement_window,
-            ] = feature_np[data_shape[0] - 1, 0, :]
+                displacement_window:large_data_shape[2] - displacement_window,
+            ] = feature_full_np[large_data_shape[0] - 1, 0, z_slice]
 
             # Back right
             feature_full_np[
                 large_data_shape[0] - displacement_window + x,
                 large_data_shape[1] - displacement_window + y,
-                displacement_window : large_data_shape[2] - displacement_window,
-            ] = feature_np[data_shape[0] - 1, data_shape[1] - 1, :]
+                displacement_window:large_data_shape[2] - displacement_window,
+            ] = feature_full_np[large_data_shape[0] - 1,
+                                large_data_shape[1] - 1, z_slice]
 
     # Bottom rod regions
     for y in range(displacement_window):
         for z in range(displacement_window):
             # Bottom left
             feature_full_np[
-                displacement_window : large_data_shape[0] - displacement_window,
+                displacement_window:large_data_shape[0] - displacement_window,
                 y,
                 large_data_shape[2] - displacement_window + z,
-            ] = feature_np[:, 0, data_shape[2] - 1]
+            ] = feature_full_np[x_slice, 0, large_data_shape[2] - 1]
 
             # Bottom right
             feature_full_np[
-                displacement_window : large_data_shape[0] - displacement_window,
+                displacement_window:large_data_shape[0] - displacement_window,
                 large_data_shape[1] - displacement_window + y,
                 large_data_shape[2] - displacement_window + z,
-            ] = feature_np[:, data_shape[1] - 1, data_shape[2] - 1]
+            ] = feature_full_np[x_slice, large_data_shape[1] - 1,
+                                large_data_shape[2] - 1]
 
             x = y
             # Bottom front
             feature_full_np[
                 x,
-                displacement_window : large_data_shape[1] - displacement_window,
+                displacement_window:large_data_shape[1] - displacement_window,
                 large_data_shape[2] - displacement_window + z,
-            ] = feature_np[0, :, data_shape[2] - 1]
+            ] = feature_full_np[0, y_slice, large_data_shape[2] - 1]
 
             # Bottom back
             feature_full_np[
                 large_data_shape[0] - displacement_window + x,
-                displacement_window : large_data_shape[1] - displacement_window,
+                displacement_window:large_data_shape[1] - displacement_window,
                 large_data_shape[2] - displacement_window + z,
-            ] = feature_np[data_shape[0] - 1, :, data_shape[2] - 1]
-
-    # <<<<<<< HEAD:src/data/features/seismic_data3_hdf5.py
-    create_feature_hdf5_file(
-        feature_name,
-        target_folder,
-        chunk_shape,
-        large_data_shape,
-        feature_full_np,
-    )
+            ] = feature_full_np[large_data_shape[0] - 1, y_slice,
+                                large_data_shape[2] - 1]
 
 
-def assign_regular_inside_points(
-    feature_name, feature_np, feature_full_np, x_slice, y_slice, z_slice
-):
-    print(
-        f"[seismic_feature_np2hdf5_planar] assigning center of {feature_name}"
-    )
-    feature_full_np[x_slice, y_slice, z_slice] = feature_np[:, :, :]
-    return feature_full_np
-
-
-def create_slices_for_internal_region_of_feature_full_np(
-    displacement_window, large_data_shape
-):
-    x_slice = slice(
-        displacement_window, large_data_shape[0] - displacement_window
-    )
-    y_slice = slice(
-        displacement_window, large_data_shape[1] - displacement_window
-    )
-    z_slice = slice(
-        displacement_window, large_data_shape[2] - displacement_window
-    )
-
-    return x_slice, y_slice, z_slice
-
-
-def create_feature_hdf5_file(
-    feature_name: str,
-    target_folder: pathlib.Path,
-    chunk_shape,
-    large_data_shape,
-    feature_full_np,
-):
-    print(
-        f"[seismic_feature_np2hdf5_planar] creating hdf5 of feature {feature_name}"
-    )
-    with h5py.File(target_folder / f"{feature_name}.h5", "w") as h5_f:
-        _ = h5_f.create_dataset(
-            "f",
-            large_data_shape,
-            # =======
-            #     # Create hdf5 file
-            #     print(
-            #         f'[seismic_feature_np2hdf5_planar] creating hdf5 of feature {feature}')
-            #     with h5py.File(f'./dados/{feature}.h5', 'w') as h5_f:
-            #         # h5_dset = h5_f.create_dataset('f', (prod(large_data_shape), ),
-            #         #                               dtype=np.float64,
-            #         #                               chunks=(prod(chunk_shape), ),
-            #         #                               data=feature_full_np.flat)
-            #         h5_dset = h5_f.create_dataset('f',
-            #                                       large_data_shape,
-            # >>>>>>> 11208d0 (Using larger chunks and better logging for distributed execution.):seismic_data3_hdf5.py
-            dtype=np.float64,
-            chunks=chunk_shape,
-            data=feature_full_np.flat,
-        )
-
-
-def create_new_3d_np_array_with_borders(displacement_window, data_shape):
-    return (np.array(data_shape) + (2 * displacement_window)).tolist()
-
-
-# NOD DONE YET (may be unused)
-def seismic_feature_np2hdf5_3d(feature, chunk_shape, max_displacement):
-    # Open feature
-    print(f"[seismic_feature_np2hdf5] reading {feature}")
-    feature_np = np.load(f"./dados/{feature}.npy")
-    data_shape = feature_np.shape
-
-    # Add max_displacement to begin and end of every coordinate
-    data_shape[0] = data_shape[0] + 2 * max_displacement
-    data_shape[1] = data_shape[1] + 2 * max_displacement
-    data_shape[2] = data_shape[2] + 2 * max_displacement
-
-    # Create hdf5 file
-    print(f"[seismic_feature_np2hdf5] writing {feature} to hdf5")
-    with h5py.File(f"./dados/{feature}.h5", "w") as h5_f:
-        h5_dset = h5_f.create_dataset(
-            "f",
-            (prod(data_shape),),
-            dtype=np.float64,
-            chunks=(prod(chunk_shape),),
-            # data=feature_np.flat
-        )
-
-    # Fill the data in the center of the structure
+###############################################################################
 
 
 def config_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="POV")
+    parser = argparse.ArgumentParser(description='POV')
 
     parser.add_argument(
-        "--base-feat-folder",
-        dest="feat_folder",
+        '-f',
+        dest='feature_dir',
         type=pathlib.Path,
         required=True,
-        help="The base features folder to read files from.",
+        help="The base features directory to read files from.",
     )
 
     parser.add_argument(
-        "--target-h5-folder",
-        dest="target_folder",
+        '-o',
+        dest='output_dir',
         type=pathlib.Path,
         required=False,
-        help="The folder in which to save the newly created h5 files. If not\
-                            defined, it will be the same as --base-feat-folder.",
+        help="Output directory for newly created h5 files. If not defined, "\
+        "-f feature_dir is used.",
     )
+
+    parser.add_argument(
+        '--large',
+        dest='mult_factor',
+        action='store',
+        required=False,
+        help="Return a larger dataset for testing. the 'mult_factor' "
+        "represents how much larger the original hypercube should be."
+        "It should be a tuple of 3 values, each multiplying one of the"
+        "dimensions (x, y, z). E.g., (1, 2, 2).",
+    )
+
     return parser
 
 
-if __name__ == "__main__":
-    # <<<<<<< HEAD:src/data/features/seismic_data3_hdf5.py
+if __name__ == '__main__':
     parser = config_arg_parser()
     args = parser.parse_args()
 
-    if args.target_folder is None:
-        args.target_folder = args.feat_folder
+    if args.output_dir is None:
+        args.output_dir = args.feature_dir
 
-    print(args.target_folder, type(args.target_folder))
+    # Base mult_factor is 1, thus returning the original data
+    # without enlarging it
+    mult_factor = (1, 1, 1)
+    if args.mult_factor:
+        mult_factor = eval(args.mult_factor)
 
-    base_features_folder = pathlib.Path(args.feat_folder)
+    print(args.output_dir, type(args.output_dir))
+
+    base_features_dir = pathlib.Path(args.feature_dir)
 
     target_features_files_names_with_extension = [
         # 'NEAR.npy', 'NEAR_envelope_.npy', 'NEAR_gersztenkorn_5-5-9.npy',
@@ -372,11 +390,11 @@ if __name__ == "__main__":
         # 'NEAR_gersztenkorn_5-5-11.npy', 'NEAR_gst_5-5-7.npy',
         # 'NEAR_most-positive-curvature_.npy', 'NEAR_dip-curvature_.npy',
         # 'NEAR_gersztenkorn_5-5-7.npy', 'NEAR_gst_5-5-9.npy',
-        "NEAR.npy"
+        'FAR.npy'
     ]
 
     complete_files_path = [
-        base_features_folder / file
+        base_features_dir / file
         for file in target_features_files_names_with_extension
     ]
 
@@ -387,47 +405,13 @@ if __name__ == "__main__":
         if not file.is_file():
             raise ValueError(f"{file} is not a file!")
 
-        if not file.suffix == ".npy":
+        if not file.suffix == '.npy':
             raise ValueError(f"{file} is not a .npy file!")
 
     disp_window = 3
     chunk_shape = (100, 100, 251 + disp_window + disp_window)
     [
-        seismic_feature_np2hdf5_planar(
-            f, chunk_shape, disp_window, args.target_folder
-        )
+        seismic_feature_np2hdf5_planar(f, chunk_shape, disp_window,
+                                       args.output_dir, mult_factor)
         for f in complete_files_path
-        # =======
-        # features = ['NEAR', 'MID', 'FAR', 'UFAR', 'GERSZ', 'GST']
-        # # features = ['FAR']
-        # # features = [
-        # #     "FAR", "MID", "NEAR_azimuth_", "NEAR_contour-curvature_",
-        # #     "NEAR_curvedness_", "NEAR_dip-angle_", "NEAR_dip-curvature_",
-        # #     "NEAR_envelope_", "NEAR_gaussian-curvature_",
-        # #     "NEAR_gersztenkorn_3-3-11", "NEAR_gersztenkorn_3-3-7",
-        # #     "NEAR_gersztenkorn_3-3-9", "NEAR_gersztenkorn_5-5-11",
-        # #     "NEAR_gersztenkorn_5-5-7", "NEAR_gersztenkorn_5-5-9",
-        # #     "NEAR_gst_3-3-11", "NEAR_gst_3-3-7", "NEAR_gst_3-3-9",
-        # #     "NEAR_gst_5-5-11", "NEAR_gst_5-5-7", "NEAR_gst_5-5-9",
-        # #     "NEAR_instantaneous-frequency_", "NEAR_max-curvature_",
-        # #     "NEAR_mean-curvature_", "NEAR_min-curvature_",
-        # #     "NEAR_most-negative-curvature_", "NEAR_most-positive-curvature_",
-        # #     "NEAR", "NEAR_rms-5_", "NEAR_shape-index_", "NEAR_sobel_5-5-11", "UFAR"
-        # # ]
-        # disp_window = 3
-        # # Full size is (434, 646, 251)
-        # # This size cannot be used due to a limitation in the way data is accounted
-        # # by hdf5. Smaller sizes (less that 2GB per chunk) are required
-        # # chunk_size_x = 100
-        # # chunk_size_y = 100
-        # # chunk_size_z = 251
-        # chunk_size_x = 434
-        # chunk_size_y = 323
-        # chunk_size_z = 251
-        # [
-        #     seismic_feature_np2hdf5_planar(
-        #         f, (chunk_size_x, chunk_size_y,
-        #             chunk_size_z + disp_window + disp_window), disp_window)
-        #     for f in features
-        # >>>>>>> 11208d0 (Using larger chunks and better logging for distributed execution.):seismic_data3_hdf5.py
     ]
