@@ -429,7 +429,7 @@ def create_tmp_dset(
 
             # If sampling reached its maximum size, no more chunks are
             # required to be iterated
-            if len(training_points) == 0:
+            if sampling_inserted == sampling_max_points:
                 break
 
         # Generate test-only data, if necessary
