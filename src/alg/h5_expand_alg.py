@@ -140,8 +140,8 @@ class H5ExpandAlg(AbstractExpandAlg):
 
                     t3 = time()
                     total_chunk_update_time += t3 - t2
-                    profiling.prof_expand_chunk_time(it, n_chunk, t3 - t2,
-                                                     self._config)
+                    profiling.prof_expand_chunk_time(it, well_id, n_chunk,
+                                                     t3 - t2, self._config)
 
                 well_id = well_id + 1
 

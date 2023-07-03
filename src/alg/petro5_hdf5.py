@@ -137,6 +137,10 @@ def _incremental_learning(
                                        y_val,
                                        reference=lgb_train_dataset)
 
+        if len(X_val) == 0 | len(y_val) == 0:
+            raise Exception(f"[petro5_hdf5] Bad data: well_id {wells_id} "\
+                             "have no points on porosity dataset.")
+
         t2 = time()
 
         regressor = lgb.train(

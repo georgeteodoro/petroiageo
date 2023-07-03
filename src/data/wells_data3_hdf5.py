@@ -29,7 +29,7 @@ def _new_random_coord(x, y, expanded_real_points):
         new_x = f_rand() * x
         new_y = f_rand() * y
 
-    return new_x, new_y
+    return abs(round(new_x)), abs(round(new_y))
 
 
 def porosity_points_py2hdf5(porosity_file, hdf5_file_path, hypercube_shape,
@@ -121,10 +121,13 @@ def porosity_points_py2hdf5(porosity_file, hdf5_file_path, hypercube_shape,
         # Filter only real data
         expanded_real_points = real_points.copy()
         well_id = len(real_points)
+        print('[porosity_points_py2hdf5] New well points:')
         for _ in range(1, mult_factor * len(real_points)):
             # Get a new random coordinate for the well and update it in the
             # full_depth_well to be copied
             new_x, new_y = _new_random_coord(x, y, expanded_real_points)
+            expanded_real_points.append((new_x, new_y))
+            print(f'({new_x}, {new_y})')
             full_depth_well['x'] = new_x
             full_depth_well['y'] = new_y
             full_depth_well['well_id'] = well_id
@@ -179,8 +182,18 @@ def config_arg_parser() -> argparse.ArgumentParser:
 
 
 if __name__ == '__main__':
+    # wells_coords = [(34, 97), (98, 46), (55, 30), (101, 132), (33, 184)]
     wells_coords = [
-	(34, 97), (98, 46), (55, 30), (101, 132), (33, 184)
+        (134, 227),
+        (146, 500),
+        (167, 186),
+        (174, 365),
+        (200, 102),
+        (236, 113),
+        (250, 315),
+        (287, 242),
+        (230, 194),
+        (344, 276),
     ]
 
     parser = config_arg_parser()
@@ -191,8 +204,9 @@ if __name__ == '__main__':
     hdf5_file_path = args.hdf5_file
     mult_factor = int(args.mult_factor)
 
-    chunk_shape = (100, 100, 16)
-    #chunk_shape = (434, 323, 251)
+    # chunk_shape = (100, 100, 16)
+    # chunk_shape = (434, 323, 251)
+    chunk_shape = (300, 200, hypercube_shape[2])
 
     porosity_points_py2hdf5(
         porosity_file_path,
