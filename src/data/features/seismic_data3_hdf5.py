@@ -72,6 +72,7 @@ def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path, chunk_shape,
         feature_full_np,
     )
 
+
 ###############################################################################
 
 
@@ -395,10 +396,10 @@ if __name__ == '__main__':
     if target_features_files_names_with_extension[0] == "all":
         complete_files_path = list(base_features_dir.glob("*.npy"))
     else:
-    	complete_files_path = [
-        	base_features_dir / file
-        	for file in target_features_files_names_with_extension
-    	]
+        complete_files_path = [
+            base_features_dir / file
+            for file in target_features_files_names_with_extension
+        ]
 
     for file in complete_files_path:
         if not file.exists():
