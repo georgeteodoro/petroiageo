@@ -43,6 +43,7 @@ def porosity_points_py2hdf5(porosity_file, hdf5_file_path, hypercube_shape,
 
     print("[porosity_points_py2hdf5] Creating hdf5 file")
     new_h5_porosity_path = pathlib.Path(hdf5_file_path)
+    new_h5_porosity_path.parent.mkdir(exist_ok=True, parents=True)
     porosity_h5_f = h5py.File(new_h5_porosity_path, 'w')
     data_type = np.dtype([
         ('x', np.int64),
@@ -179,16 +180,7 @@ def config_arg_parser() -> argparse.ArgumentParser:
 
 if __name__ == '__main__':
     wells_coords = [
-        (134, 227),
-        (146, 500),
-        (167, 186),
-        (174, 365),
-        (200, 102),
-        (236, 113),
-        (250, 315),
-        (287, 242),
-        (230, 194),
-        (344, 276),
+	(34, 97), (98, 46), (55, 30), (101, 132), (33, 184)
     ]
 
     parser = config_arg_parser()
@@ -199,8 +191,8 @@ if __name__ == '__main__':
     hdf5_file_path = args.hdf5_file
     mult_factor = int(args.mult_factor)
 
-    # chunk_shape = (100, 100, 251)
-    chunk_shape = (434, 323, 251)
+     chunk_shape = (100, 100, 16)
+    #chunk_shape = (434, 323, 251)
 
     porosity_points_py2hdf5(
         porosity_file_path,
