@@ -9,7 +9,7 @@
 module load python/3.9.6
 
 source ../../../../meu_python/bin/activate
-FEATS_FOLDER='../../../data/POV/features/'
-TARGET_FOLDER='../../../data/POV/features/h5_features/'
+FEATS_FOLDER='../../../data/ANP/features/area1'
+TARGET_FOLDER='../../../data/ANP/features/area1/hdf5'
 
-python3 seismic_data3_hdf5.py --base-feat-folder $FEATS_FOLDER --target-h5-folder $TARGET_FOLDER
+python3 seismic_data3_hdf5.py -f $FEATS_FOLDER -o $TARGET_FOLDER
