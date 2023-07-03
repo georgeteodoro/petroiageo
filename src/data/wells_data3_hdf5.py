@@ -191,7 +191,7 @@ if __name__ == '__main__':
     hdf5_file_path = args.hdf5_file
     mult_factor = int(args.mult_factor)
 
-     chunk_shape = (100, 100, 16)
+    chunk_shape = (100, 100, 16)
     #chunk_shape = (434, 323, 251)
 
     porosity_points_py2hdf5(
