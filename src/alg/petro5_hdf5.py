@@ -81,8 +81,8 @@ def _leave_one_well_out_training(
 
     # Leave-One-Well-Out
     for curr_well_id in wells_id:
-        X_val, y_val, regressor = _incremental_learning(
-            cur_h5_train_list, profiling, curr_well_id)
+        X_val, y_val, regressor = _incremental_learning(cur_h5_train_list,
+                                                        profiling, curr_well_id)
         t3 = time()
 
         # Calculate error metrics
@@ -138,7 +138,7 @@ def _incremental_learning(
                                        reference=lgb_train_dataset)
 
         if len(X_val) == 0 | len(y_val) == 0:
-            raise Exception(f"[petro5_hdf5] Bad data: well_id {wells_id} "\
+            raise Exception(f"[petro5_hdf5] Bad data: well_id {curr_well_id} "\
                              "have no points on porosity dataset.")
 
         t2 = time()
@@ -160,9 +160,8 @@ def _incremental_learning(
         if profiling:
             print(f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Setup in "
                   f"{t2 - t1}")
-            print(
-                f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Training in "
-                f"{t3 - t2}")
+            print(f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Training in "
+                  f"{t3 - t2}")
 
     if profiling:
         print(f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Final setup in "
@@ -398,9 +397,8 @@ def create_tmp_dset(
 
     t0 = time()
     (cur_h5, cur_h5_dset, test_h5, test_h5_dset, n_training_points,
-     is_training_point_f) = _prepare_h5(suf_str, test_only_wells,
-                                        features_only, n_features,
-                                        is_training_point_base_f,
+     is_training_point_f) = _prepare_h5(suf_str, test_only_wells, features_only,
+                                        n_features, is_training_point_base_f,
                                         porosity_data_h5, it, config)
 
     t1 = time()
