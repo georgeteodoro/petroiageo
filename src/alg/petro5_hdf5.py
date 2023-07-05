@@ -81,8 +81,8 @@ def _leave_one_well_out_training(
 
     # Leave-One-Well-Out
     for curr_well_id in wells_id:
-        X_val, y_val, regressor = _incremental_learning(cur_h5_train_list,
-                                                        profiling, curr_well_id)
+        X_val, y_val, regressor = _incremental_learning(
+            cur_h5_train_list, profiling, curr_well_id)
         t3 = time()
 
         # Calculate error metrics
@@ -160,8 +160,9 @@ def _incremental_learning(
         if profiling:
             print(f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Setup in "
                   f"{t2 - t1}")
-            print(f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Training in "
-                  f"{t3 - t2}")
+            print(
+                f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Training in "
+                f"{t3 - t2}")
 
     if profiling:
         print(f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Final setup in "
@@ -396,9 +397,10 @@ def create_tmp_dset(
     filename_test = f'cur{suf_str}-test.h5'
 
     t0 = time()
-    (cur_h5, cur_h5_dset, test_h5, test_h5_dset, n_training_points,
-     is_training_point_f) = _prepare_h5(suf_str, test_only_wells, features_only,
-                                        n_features, is_training_point_base_f,
+    (train_h5_file, train_empty_h5_dset, test_h5, test_h5_dset, n_training_points,
+     is_training_point_f) = _prepare_h5(suf_str, test_only_wells,
+                                        features_only, n_features,
+                                        is_training_point_base_f,
                                         porosity_data_h5, it, config)
 
     t1 = time()
@@ -454,7 +456,7 @@ def create_tmp_dset(
 
         # Append these porosity values to the current dataset
         if features_only:
-            cur_h5_dset[
+            train_empty_h5_dset[
                 'x',
                 'y',
                 'z',
@@ -462,7 +464,7 @@ def create_tmp_dset(
                 prev_end:(prev_end + len(training_points)),
             ] = training_points[['x', 'y', 'z', 'phi']]
         else:
-            cur_h5_dset[
+            train_empty_h5_dset[
                 'x',
                 'y',
                 'z',
@@ -475,9 +477,9 @@ def create_tmp_dset(
     t2 = time()
     if profiling:
         print(f"[get_features_sets] cur_copy_porosity_time: {t2-t1}")
-        print(f"[get_features_sets] final_lenght: {cur_h5_dset.shape}")
+        print(f"[get_features_sets] final_lenght: {train_empty_h5_dset.shape}")
 
-    return cur_h5, cur_h5_dset, test_h5, test_h5_dset
+    return train_h5_file, train_empty_h5_dset, test_h5, test_h5_dset
 
 
 # exp_n_features: number of features to be selected
