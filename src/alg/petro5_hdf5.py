@@ -453,24 +453,8 @@ def create_tmp_dset(
             training_points = training_points[_is_well_not_in_list(
                 training_points, test_only_wells)]
 
-        # Append these porosity values to the current dataset
-        if features_only:
-            train_empty_h5_dset[
-                'x',
-                'y',
-                'z',
-                'phi',
-                prev_end:(prev_end + len(training_points)),
-            ] = training_points[['x', 'y', 'z', 'phi']]
-        else:
-            train_empty_h5_dset[
-                'x',
-                'y',
-                'z',
-                'phi',
-                'well_id',
-                prev_end:(prev_end + len(training_points)),
-            ] = training_points[['x', 'y', 'z', 'phi', 'well_id']]
+        train_empty_h5_dset = append_training_points_to_dset(
+            features_only, train_empty_h5_dset, prev_end, training_points)
         prev_end += len(training_points)
 
     t2 = time()
@@ -479,6 +463,34 @@ def create_tmp_dset(
         print(f"[get_features_sets] final_lenght: {train_empty_h5_dset.shape}")
 
     return train_h5_file, train_empty_h5_dset, test_h5_file, test_empty_h5_dset
+
+
+def append_training_points_to_dset(
+        features_only: bool, target_dset: h5py.Dataset, prev_end: int,
+        training_points: np.ndarray) -> h5py.Dataset:
+    """
+    Append training_points to the current dataset. 
+    Return the target_dset
+    """
+    if features_only:
+        target_dset[
+            'x',
+            'y',
+            'z',
+            'phi',
+            prev_end:(prev_end + len(training_points)),
+        ] = training_points[['x', 'y', 'z', 'phi']]
+    else:
+        target_dset[
+            'x',
+            'y',
+            'z',
+            'phi',
+            'well_id',
+            prev_end:(prev_end + len(training_points)),
+        ] = training_points[['x', 'y', 'z', 'phi', 'well_id']]
+
+    return target_dset
 
 
 # exp_n_features: number of features to be selected
