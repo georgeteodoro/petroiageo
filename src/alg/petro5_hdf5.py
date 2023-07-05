@@ -438,8 +438,7 @@ def create_tmp_dset(
         # Generate test-only data, if necessary
         if len(test_only_wells) > 0:
             # Add test data to its unique list
-            test_points = training_points[_is_well_in_list(
-                training_points, test_only_wells)]
+            test_points = chunk_np[_is_well_in_list(chunk_np, test_only_wells)]
             test_empty_h5_dset[
                 'x',
                 'y',
@@ -448,10 +447,6 @@ def create_tmp_dset(
                 prev_end_test:(prev_end_test + len(test_points)),
             ] = test_points[['x', 'y', 'z', 'phi']]
             prev_end_test += len(test_points)
-
-            # Filer out training points, removing the test data
-            training_points = training_points[_is_well_not_in_list(
-                training_points, test_only_wells)]
 
         train_empty_h5_dset = append_training_points_to_dset(
             features_only, train_empty_h5_dset, prev_end, training_points)
