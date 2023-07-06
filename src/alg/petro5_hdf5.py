@@ -513,10 +513,10 @@ def _get_n_sampling_points_per_chunk(porosity_data_h5: h5py.Dataset,
 
 
 def _get_num_chunks_of_h5data(porosity_data_h5: h5py.Dataset) -> int:
-    chunk_size = porosity_data_h5.chunks[0]
-    n_chunks = int(np.ceil(porosity_data_h5.size / chunk_size))
+    chunk_shape = np.array(porosity_data_h5.chunks)
+    data_shape = np.array(porosity_data_h5.shape)
+    n_chunks = int(np.prod(np.ceil(data_shape / chunk_shape)))
     return n_chunks
-
 
 def append_training_points_to_dset(
         features_only: bool, target_dset: h5py.Dataset, prev_end: int,
