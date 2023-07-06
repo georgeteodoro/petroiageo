@@ -2,7 +2,7 @@ import numpy as np
 from time import time
 from typing import Tuple, Dict
 import h5py
-from math import prod
+from math import prod, ceil
 import os
 
 from sklearn.metrics import mean_squared_error, mean_absolute_error
@@ -391,10 +391,7 @@ def create_tmp_dset(
 
     profiling = False
 
-    sampling_max_points = config.alg['sampling']['max_points']
-
-    filename = f'cur{suf_str}.h5'
-    filename_test = f'cur{suf_str}-test.h5'
+    sampling_max_points:int = config.alg['sampling']['max_points']
 
     t0 = time()
     (train_h5_file, train_empty_h5_dset, test_h5_file, test_empty_h5_dset,
@@ -414,9 +411,16 @@ def create_tmp_dset(
     # This ndarray can be too large to fit in memory.
     prev_end = 0
     prev_end_test = 0
-    hypercube_shape = porosity_data_h5.shape
-    sampling_inserted = 0
-    for chunk_slice in porosity_data_h5.iter_chunks():
+
+    must_sample = sampling_max_points > 0 and n_training_points > sampling_max_points
+    if must_sample:
+        sampling_points_per_chunk = _get_n_sampling_points_per_chunk(
+            porosity_data_h5, sampling_max_points, is_training_point_f)
+
+        rng = np.random.default_rng()
+
+    n_already_sampled = 0
+    for chunk_id, chunk_slice in enumerate(porosity_data_h5.iter_chunks()):
         # Get current chunk
         chunk_np = porosity_data_h5[chunk_slice]
 
@@ -424,16 +428,14 @@ def create_tmp_dset(
         training_points = chunk_np[is_training_point_f(chunk_np)]
 
         # Performs sampling on training_points
-        if sampling_max_points > 0:
-            n_points_to_insert = min(len(training_points),
-                                     n_training_points - sampling_inserted)
-            sampling_inserted += n_points_to_insert
-            training_points = training_points[:n_points_to_insert]
+        if must_sample:
+            points_still_to_sample = sampling_max_points - n_already_sampled
+            n_points_to_sample_chunk = sampling_points_per_chunk[chunk_id]
+            training_points = _sample_points(points_still_to_sample,
+                                             n_points_to_sample_chunk, rng,
+                                             training_points)
 
-            # If sampling reached its maximum size, no more chunks are
-            # required to be iterated
-            if sampling_inserted == sampling_max_points:
-                break
+            n_already_sampled += len(training_points)
 
         # Generate test-only data, if necessary
         if len(test_only_wells) > 0:
@@ -448,9 +450,15 @@ def create_tmp_dset(
             ] = test_points[['x', 'y', 'z', 'phi']]
             prev_end_test += len(test_points)
 
-        train_empty_h5_dset = append_training_points_to_dset(
-            features_only, train_empty_h5_dset, prev_end, training_points)
-        prev_end += len(training_points)
+        if training_points is not None and len(training_points) > 0:
+            train_empty_h5_dset = append_training_points_to_dset(
+                features_only, train_empty_h5_dset, prev_end, training_points)
+            prev_end += len(training_points)
+
+        # If sampling reached its maximum size, no more chunks are
+        # required to be iterated. The >= is just to be sure.
+        if must_sample and n_already_sampled >= sampling_max_points:
+            break
 
     t2 = time()
     if profiling:
@@ -458,6 +466,56 @@ def create_tmp_dset(
         print(f"[get_features_sets] final_lenght: {train_empty_h5_dset.shape}")
 
     return train_h5_file, train_empty_h5_dset, test_h5_file, test_empty_h5_dset
+
+
+def _sample_points(max_points_still_to_sample: int,
+                   n_points_to_sample_chunk: int, rng: np.random.Generator,
+                   training_points: np.ndarray) -> np.ndarray:
+    """
+    Sample n = min(n_points_to_sample_chunk, max_points_still_to_sample)
+    points from training_points with the rng
+    """
+    num_points_to_sample = min(n_points_to_sample_chunk,
+                               max_points_still_to_sample)
+
+    #This accepts probabilities
+    training_points = rng.choice(training_points,
+                                 num_points_to_sample,
+                                 replace=False)
+
+    return training_points
+
+
+def _get_n_sampling_points_per_chunk(porosity_data_h5: h5py.Dataset,
+                                     sampling_max_points: int,
+                                     is_training_point_f) -> np.ndarray:
+    """
+    Calculates how many sampling points should be sampled by chunk.
+    The total of sampled points is proportional to the number of training
+    points in that chunk.
+    The total of sampling points returned may be greater than 
+    sampling_max_points so this must be checked when used
+    """
+
+    n_chunks = _get_num_chunks_of_h5data(porosity_data_h5)
+    training_points_per_chunk = np.zeros(n_chunks)
+    for chunk_id, chunk_slice in enumerate(porosity_data_h5.iter_chunks()):
+        chunk_np = porosity_data_h5[chunk_slice]
+        training_points = chunk_np[is_training_point_f(chunk_np)]
+        training_points_per_chunk[chunk_id] = len(training_points)
+
+        #Sample proportionally on training points per chunk
+    sampling_points_per_chunk = training_points_per_chunk / np.sum(
+        training_points_per_chunk)
+    sampling_points_per_chunk *= sampling_max_points
+    sampling_points_per_chunk = np.ceil(sampling_points_per_chunk)
+    return sampling_points_per_chunk
+
+
+def _get_num_chunks_of_h5data(porosity_data_h5: h5py.Dataset) -> int:
+    chunk_size = porosity_data_h5.chunks[0]
+    n_chunks = int(np.ceil(porosity_data_h5.size / chunk_size))
+    return n_chunks
 
 
 def append_training_points_to_dset(
