@@ -1,6 +1,7 @@
 from unittest import TestCase, main
 from petro5_hdf5 import _get_num_chunks_of_h5data, _sample_points
 from petro5_hdf5 import _get_n_sampling_points_per_chunk, _is_well_in_list
+from petro5_hdf5 import _count_train_test_points_per_chunk
 import h5py
 import tempfile
 import numpy as np
@@ -65,12 +66,57 @@ class TestSampling(TestCase):
 
         self.assertTrue(max_points_to_sample, len(sample))
 
-    def test_can_define_n_sampling_points_per_chunk(self):
-        is_training_point_f = lambda c: _is_well_in_list(c, [1, 3, 7])
-        sampling_max_points = 1000
+    def test_can_get_train_test_points_per_chunk(self):
+        train_wells = [1, 3, 7]
+        test_wells = [2, 4, 5]
+        is_training_point_f = lambda c: _is_well_in_list(c, train_wells)
+        is_test_point_f = lambda c: _is_well_in_list(c, test_wells)
+        n_train_per_chunk, n_test_per_chunk = _count_train_test_points_per_chunk(
+            self.dset, is_training_point_f, is_test_point_f)
+
+        n_chunks = 200
+        expected_train_chunks_with_points = np.full(n_chunks,
+                                                    False,
+                                                    dtype=np.bool8)
+        expected_test_chunks_with_points = np.full(n_chunks,
+                                                   False,
+                                                   dtype=np.bool8)
+        for i in range(n_chunks):
+            #Every 20 chunks, changes the well associated with it
+            curr_well_of_chunk = i // 20
+            if curr_well_of_chunk in train_wells:
+                expected_train_chunks_with_points[i] = True
+
+            if curr_well_of_chunk in test_wells:
+                expected_test_chunks_with_points[i] = True
+        self.assertTrue(
+            np.all(n_train_per_chunk[expected_train_chunks_with_points] > 0))
+        self.assertTrue(
+            np.all(n_test_per_chunk[expected_test_chunks_with_points] > 0))
+
+    def test_can_calc_n_sampling_points_per_chunk(self):
+        n_train_points_per_chunk = np.array(
+            [0, 10, 10, 0, 0, 10, 0, 10, 0, 10])
+        max_sampling_points = 20
+        expected_n_samp_points_p_chunks = np.array(
+            [0, 4, 4, 0, 0, 4, 0, 4, 0, 4])
+
         samps_per_chunk = _get_n_sampling_points_per_chunk(
-            self.dset, sampling_max_points, is_training_point_f)
-        self.assertTrue(np.sum(samps_per_chunk) >= sampling_max_points)
+            n_train_points_per_chunk, max_sampling_points)
+        self.assertTrue(
+            np.sum(expected_n_samp_points_p_chunks - samps_per_chunk) == 0)
+    
+    def test_sample_every_point_if_n_points_less_than_max_samps(self):
+        n_train_points_per_chunk = np.array(
+            [0, 10, 10, 0, 0, 10, 0, 10, 0, 10])
+        max_sampling_points = 200
+        expected_n_samp_points_p_chunks = np.array(
+            [0, 10, 10, 0, 0, 10, 0, 10, 0, 10])
+
+        samps_per_chunk = _get_n_sampling_points_per_chunk(
+            n_train_points_per_chunk, max_sampling_points)
+        self.assertTrue(
+            np.sum(expected_n_samp_points_p_chunks - samps_per_chunk) == 0)
 
     def tearDown(self):
         #this order matters
