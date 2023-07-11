@@ -252,7 +252,7 @@ def _is_well_in_list(d: np.ndarray, l: list) -> np.ndarray:
     return ret
 
 
-def _is_well_not_in_list(d, l):
+def _is_well_not_in_list(d: np.ndarray, l: list) -> np.ndarray:
     ret = np.full((d.shape), True, dtype=bool)
     for x in l:
         ret *= d['well_id'] != x

@@ -3,6 +3,7 @@ from petro5_hdf5 import _get_num_chunks_of_h5data, _sample_points
 from petro5_hdf5 import _get_n_sampling_points_per_chunk, _is_well_in_list
 from petro5_hdf5 import _count_train_test_points_per_chunk
 from petro5_hdf5 import _limit_training_points, _is_well_in_list
+from petro5_hdf5 import _is_well_not_in_list
 import h5py
 import tempfile
 import numpy as np
@@ -166,6 +167,19 @@ class TestSamplingWithoutData(TestCase):
         ]
         expected = np.array(expected_list, dtype=bool)
         result = _is_well_in_list(data, target_wells)
+        self.assertTrue((expected == result).all())
+
+    def test_is_well_not_in_list(self):
+        my_dtype = [('well_id', np.int64)]
+        my_dtype = np.dtype(my_dtype)
+        data = np.empty(10, dtype=my_dtype)
+        data['well_id'] = np.arange(10)
+        target_wells = [1, 7, 9]
+        expected_list = [
+            True, False, True, True, True, True, True, False, True, False
+        ]
+        expected = np.array(expected_list, dtype=bool)
+        result = _is_well_not_in_list(data, target_wells)
         self.assertTrue((expected == result).all())
 
 
