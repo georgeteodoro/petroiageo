@@ -1,6 +1,6 @@
 import numpy as np
 from time import time
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Callable
 import h5py
 from math import prod, ceil
 import os
@@ -260,7 +260,8 @@ def _is_well_not_in_list(d, l):
 
 
 def _prepare_sampling(sampling_window, is_training_point_f2, is_test_point_f,
-                      porosity_data_h5, sampling_max_points, it):
+                      porosity_data_h5, sampling_max_points,
+                      it) -> Tuple[int, Callable, Callable]:
 
     # Add sampling window for training and test, if required
     min_ring = max(0, it - sampling_window)
@@ -272,11 +273,22 @@ def _prepare_sampling(sampling_window, is_training_point_f2, is_test_point_f,
     n_training_points = hdf5_util.fold_h5_all_clusters(
         porosity_data_h5, lambda d: len(d[is_training_point_f(d)]), 0)
 
-    # Add sampling of points by max length limit, if required
-    if sampling_max_points > 0:
-        n_training_points = min(n_training_points, sampling_max_points)
+    n_training_points = _limit_training_points(sampling_max_points,
+                                               n_training_points)
 
     return n_training_points, is_training_point_f, is_test_point_f2
+
+
+def _limit_training_points(sampling_max_points: int,
+                           curr_n_train_points: int) -> int:
+    """
+    Defines the total of training points required.
+    If sampling_max_points > 0 and it is lower then curr_n_train_points,
+    then it will be forced. A negative sampling_max_points means no sampling.
+    """
+    if sampling_max_points > 0:
+        curr_n_train_points = min(curr_n_train_points, sampling_max_points)
+    return curr_n_train_points
 
 
 def _prepare_h5(suf_str: str, test_only_wells: list, features_only: bool,
