@@ -259,11 +259,15 @@ def _is_well_not_in_list(d, l):
     return ret
 
 
-def _prepare_sampling(sampling_window, is_training_point_f2, is_test_point_f,
-                      porosity_data_h5, sampling_max_points,
-                      it) -> Tuple[int, Callable, Callable]:
-
-    # Add sampling window for training and test, if required
+def _add_sampling_window_to_filters(sampling_window: int,
+                                    is_training_point_f2: Callable,
+                                    is_test_point_f: Callable,
+                                    porosity_data_h5,
+                                    it) -> Tuple[int, Callable, Callable]:
+    """
+    Updates the is_training_point_f2 and is_test_point_f filter functions 
+    and n_training_points based on sampling_window
+    """
     min_ring = max(0, it - sampling_window)
     is_in_min_ring = lambda d: (d['ring'] >= min_ring)
     is_training_point_f = lambda d: is_training_point_f2(d) & is_in_min_ring(d)
@@ -272,9 +276,6 @@ def _prepare_sampling(sampling_window, is_training_point_f2, is_test_point_f,
 
     n_training_points = hdf5_util.fold_h5_all_clusters(
         porosity_data_h5, lambda d: len(d[is_training_point_f(d)]), 0)
-
-    n_training_points = _limit_training_points(sampling_max_points,
-                                               n_training_points)
 
     return n_training_points, is_training_point_f, is_test_point_f2
 
@@ -302,8 +303,8 @@ def _prepare_h5(suf_str: str, test_only_wells: list, features_only: bool,
     """
 
     # Get config parameters
-    sampling_window = config.alg['sampling']['its_window_size']
-    sampling_max_points = config.alg['sampling']['max_points']
+    sampling_window: int = config.alg['sampling']['its_window_size']
+    sampling_max_points: int = config.alg['sampling']['max_points']
 
     filename = f'cur{suf_str}.h5'
     filename_test = f'cur{suf_str}-test.h5'
@@ -363,16 +364,18 @@ def _prepare_h5(suf_str: str, test_only_wells: list, features_only: bool,
     n_training_points = hdf5_util.fold_h5_all_clusters(
         porosity_data_h5, lambda d: len(d[is_training_point_f2(d)]), 0)
 
-    # Perform sampling by updating the is_training_point_f filter function
-    # and n_training_points
+    # Configures sampling
     is_training_point_f = is_training_point_f2
     if sampling_window > 0:
         (n_training_points, is_training_point_f,
-         is_test_point_f) = _prepare_sampling(sampling_window,
-                                              is_training_point_f2,
-                                              is_test_point_f,
-                                              porosity_data_h5,
-                                              sampling_max_points, it)
+         is_test_point_f) = _add_sampling_window_to_filters(
+             sampling_window, is_training_point_f2, is_test_point_f,
+             porosity_data_h5, it)
+
+    #We may not have the sampling window and still have
+    #sampling max points defined
+    n_training_points = _limit_training_points(sampling_max_points,
+                                               n_training_points)
 
     print("============== NEED TO AUTOMATE TMP_LIST CHUNK_SIZE")
     # cur_chunksize = (n_training_points / 10, )
