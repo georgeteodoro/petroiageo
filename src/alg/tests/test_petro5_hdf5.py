@@ -114,7 +114,7 @@ class TestSamplingWithoutData(TestCase):
         samps_per_chunk = _get_n_sampling_points_per_chunk(
             n_train_points_per_chunk, max_sampling_points)
         self.assertTrue(
-            np.sum(expected_n_samp_points_p_chunks - samps_per_chunk) == 0)
+            np.array_equal(samps_per_chunk, expected_n_samp_points_p_chunks))
 
     def test_sample_every_point_if_n_points_less_than_max_samps(self):
         n_train_points_per_chunk = np.array(
@@ -126,7 +126,7 @@ class TestSamplingWithoutData(TestCase):
         samps_per_chunk = _get_n_sampling_points_per_chunk(
             n_train_points_per_chunk, max_sampling_points)
         self.assertTrue(
-            np.sum(expected_n_samp_points_p_chunks - samps_per_chunk) == 0)
+            np.array_equal(samps_per_chunk, expected_n_samp_points_p_chunks))
 
     def test_can_limit_n_training_points(self):
         curr_training_points = 10
@@ -167,7 +167,7 @@ class TestSamplingWithoutData(TestCase):
         ]
         expected = np.array(expected_list, dtype=bool)
         result = _is_well_in_list(data, target_wells)
-        self.assertTrue((expected == result).all())
+        self.assertTrue(np.array_equal(expected, result))
 
     def test_is_well_not_in_list(self):
         my_dtype = [('well_id', np.int64)]
@@ -180,7 +180,7 @@ class TestSamplingWithoutData(TestCase):
         ]
         expected = np.array(expected_list, dtype=bool)
         result = _is_well_not_in_list(data, target_wells)
-        self.assertTrue((expected == result).all())
+        self.assertTrue(np.array_equal(expected, result))
 
 
 class TestFeatureSelection(TestCase):
@@ -192,6 +192,7 @@ class TestFeatureSelection(TestCase):
         expected = (["f1", "f2", "f3"], 0.1)
         best_feature = get_best_features_set(b_features_set)
         self.assertTupleEqual(expected, best_feature)
+
 
 if __name__ == "__main__":
     main()
