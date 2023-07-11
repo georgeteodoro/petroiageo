@@ -245,7 +245,7 @@ def insert_filtered_feature(
         print(f"[insert_filtered_feature] full_time: {t6-t0}")
 
 
-def _is_well_in_list(d, l):
+def _is_well_in_list(d: np.ndarray, l: list) -> np.ndarray:
     ret = np.full((d.shape), False, dtype=bool)
     for x in l:
         ret += d['well_id'] == x
