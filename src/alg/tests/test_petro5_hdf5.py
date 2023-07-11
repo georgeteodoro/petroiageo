@@ -2,6 +2,7 @@ from unittest import TestCase, main
 from petro5_hdf5 import _get_num_chunks_of_h5data, _sample_points
 from petro5_hdf5 import _get_n_sampling_points_per_chunk, _is_well_in_list
 from petro5_hdf5 import _count_train_test_points_per_chunk
+from petro5_hdf5 import _limit_training_points
 import h5py
 import tempfile
 import numpy as np
@@ -105,7 +106,7 @@ class TestSampling(TestCase):
             n_train_points_per_chunk, max_sampling_points)
         self.assertTrue(
             np.sum(expected_n_samp_points_p_chunks - samps_per_chunk) == 0)
-    
+
     def test_sample_every_point_if_n_points_less_than_max_samps(self):
         n_train_points_per_chunk = np.array(
             [0, 10, 10, 0, 0, 10, 0, 10, 0, 10])
@@ -117,6 +118,34 @@ class TestSampling(TestCase):
             n_train_points_per_chunk, max_sampling_points)
         self.assertTrue(
             np.sum(expected_n_samp_points_p_chunks - samps_per_chunk) == 0)
+
+    def test_can_limit_n_training_points(self):
+        curr_training_points = 10
+        max_points_to_sample = 2
+        new_n_train_points = _limit_training_points(max_points_to_sample,
+                                                    curr_training_points)
+        self.assertEqual(new_n_train_points, max_points_to_sample)
+    
+    def test_dont_limit_n_train_points(self):
+        curr_training_points = 10
+        max_points_to_sample = 20
+        new_n_train_points = _limit_training_points(max_points_to_sample,
+                                                    curr_training_points)
+        self.assertEqual(new_n_train_points, curr_training_points)
+    
+    def test_dont_limit_n_train_points_if_negative(self):
+        curr_training_points = 10
+        max_points_to_sample = -1
+        new_n_train_points = _limit_training_points(max_points_to_sample,
+                                                    curr_training_points)
+        self.assertEqual(new_n_train_points, curr_training_points)
+    
+    def test_dont_limit_n_train_points_if_zero(self):
+        curr_training_points = 10
+        max_points_to_sample = 0
+        new_n_train_points = _limit_training_points(max_points_to_sample,
+                                                    curr_training_points)
+        self.assertEqual(new_n_train_points, curr_training_points)
 
     def tearDown(self):
         #this order matters

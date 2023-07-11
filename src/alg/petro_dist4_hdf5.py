@@ -237,6 +237,9 @@ def worker(
     training_wells = list(range(len(wells_coords)))
     training_wells = [x for x in training_wells if x not in test_only_wells]
 
+    #At the feature selection stage, there should be sampling of
+    #points from the iterations considered
+    should_sample_max_points = True
     cur_h5, cur_h5_dset, test_h5, test_h5_dset = petro5_hdf5.create_tmp_dset(
         porosity_data_h5,
         is_training_point_f,
@@ -245,7 +248,7 @@ def worker(
         it,
         f"-r{rank}",
         test_only_wells=test_only_wells,
-    )
+        should_sample_max_points=should_sample_max_points)
 
     hypercube_shape: tuple = porosity_data_h5.shape
     n_testing_wells = len(test_only_wells)
