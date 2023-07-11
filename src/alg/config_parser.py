@@ -374,7 +374,7 @@ class Config:
     ]
 
     def __init__(self,
-                 config_path,
+                 config_path: str = None,
                  config_dict: dict = None,
                  config_str: str = None):
         input_config = self._get_input_config(config_path, config_dict,
@@ -619,7 +619,7 @@ class Config:
 class YAMLConfig(Config):
 
     def __init__(self,
-                 config_path,
+                 config_path: str = None,
                  config_dict: dict = None,
                  config_str: str = None):
         super().__init__(config_path, config_dict, config_str)
