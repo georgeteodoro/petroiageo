@@ -4,6 +4,7 @@ from petro5_hdf5 import _get_n_sampling_points_per_chunk, _is_well_in_list
 from petro5_hdf5 import _count_train_test_points_per_chunk
 from petro5_hdf5 import _limit_training_points, _is_well_in_list
 from petro5_hdf5 import _is_well_not_in_list, get_best_features_set
+from petro5_hdf5 import append_points_to_dset
 import h5py
 import tempfile
 import numpy as np
@@ -15,15 +16,15 @@ class TestSamplingWithData(TestCase):
         self.tmp_file = tempfile.TemporaryFile()
         self.h5_file = h5py.File(self.tmp_file, 'a')
 
-        cur_data_type = [
+        self.cur_data_type = [
             ('x', np.int64),
             ('y', np.int64),
             ('z', np.int64),
             ('phi', np.float64),
             ('well_id', np.int64),
         ]
-        cur_data_type = np.dtype(cur_data_type)
-        data = np.empty((100, 100, 20, 20, 10), dtype=cur_data_type)
+        self.cur_data_type = np.dtype(self.cur_data_type)
+        data = np.empty((100, 100, 20, 20, 10), dtype=self.cur_data_type)
 
         for i in range(100):
             for j in range(100):
@@ -37,7 +38,7 @@ class TestSamplingWithData(TestCase):
                 data[i, j]['well_id'] = np.array([i // 10] * 10)
 
         self.dset = self.h5_file.create_dataset("default",
-                                                dtype=cur_data_type,
+                                                dtype=self.cur_data_type,
                                                 data=data,
                                                 chunks=(10, 10, 10, 20, 10))
 
@@ -95,6 +96,45 @@ class TestSamplingWithData(TestCase):
             np.all(n_train_per_chunk[expected_train_chunks_with_points] > 0))
         self.assertTrue(
             np.all(n_test_per_chunk[expected_test_chunks_with_points] > 0))
+
+    def test_append_points_to_empty_dset(self):
+        n_points_to_append = 10
+        points_to_append = self.dset[:n_points_to_append]
+        empty_dset = self.h5_file.create_dataset("empty",
+                                                 shape=(10, 100, 20, 20,
+                                                        n_points_to_append),
+                                                 dtype=self.cur_data_type)
+        features_only = False
+        prev_end = 0
+        empty_dset, new_prev = append_points_to_dset(features_only, empty_dset,
+                                                     prev_end,
+                                                     points_to_append)
+
+        self.assertTrue(np.array_equal(points_to_append, empty_dset[:]))
+
+    def test_append_points_to_not_empty_dset(self):
+        n_starting_points = 20
+        curr_prev_end = 0
+        n_points_to_append = 10
+        not_empty_dset = self.h5_file.create_dataset(
+            "not_empty",
+            shape=(n_starting_points + n_points_to_append, 100, 20, 20, 10),
+            dtype=self.cur_data_type)
+
+        features_only = False
+        starting_points = self.dset[:n_starting_points]
+        not_empty_dset, curr_prev_end = append_points_to_dset(
+            features_only, not_empty_dset, curr_prev_end, starting_points)
+
+        points_to_append = self.dset[n_starting_points:n_starting_points +
+                                     n_points_to_append]
+        not_empty_dset, curr_prev_end = append_points_to_dset(
+            features_only, not_empty_dset, curr_prev_end, points_to_append)
+
+        expected_points = self.dset[:n_starting_points + n_points_to_append]
+        expected_new_prev = n_starting_points + n_points_to_append
+        self.assertTrue(np.array_equal(expected_points, not_empty_dset[:]))
+        self.assertEqual(curr_prev_end, expected_new_prev)
 
     def tearDown(self):
         #this order matters
