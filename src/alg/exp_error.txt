@@ -1,0 +1,11 @@
+iteration;error;features
+1; 4.8599219584823565; Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 0, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 2
+2; 3.5517855201190276; Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 0, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 -3, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -2 -2
+3; 2.401743388848552; Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 0
+4; 2.093660322543222; Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 -3, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 3, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 0
+5; 1.945666741258594; Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 0, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 -3, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 2
+6; 2.4725679247901944; Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 0
+7; 2.066842463848952; Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 2
+8; 1.6269176803292147; Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 -2, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 -1, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -2 -2
+9; 1.4335953329449764; Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 1, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 0
+10; 1.208342581737675; Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 0, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 1, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 -1

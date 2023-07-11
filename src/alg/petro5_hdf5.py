@@ -272,9 +272,10 @@ def _prepare_h5(suf_str: str,
                 test_only_wells: list,
                 features_only: bool,
                 n_features: int,
-                train_data_filter: DataFilter,
-                test_data_filter: DataFilter,
+                is_training_point_base_f,
+                is_test_point_f,
                 porosity_data_h5: h5py.Dataset,
+                it: int,
                 config: Config,
                 should_sample_max_points: bool = True):
     """
@@ -284,10 +285,13 @@ def _prepare_h5(suf_str: str,
     If should_sample_max_points, then considers the max_points param of the 
     sampling param in config. If not, then no sampling of max points
     is used
+    If should_sample_max_points, then considers the max_points param of the 
+    sampling param in config. If not, then no sampling of max points
+    is used
     """
 
-    #We may not have the sampling window and still have
-    #sampling max points defined
+    # Get config parameters
+    sampling_window: int = config.alg['sampling']['its_window_size']
     if should_sample_max_points:
         sampling_max_points: int = config.alg['sampling']['max_points']
     else:
@@ -409,6 +413,28 @@ def _get_chunk_shape(n_points: int, max_chunksize: int) -> Tuple[int]:
     chunkshape = (chunksize, )
     return chunkshape
 
+    #We may not have the sampling window and still have
+    #sampling max points defined
+    n_training_points = _limit_training_points(sampling_max_points,
+                                               n_training_points)
+
+    print("============== NEED TO AUTOMATE TMP_LIST CHUNK_SIZE")
+    # cur_chunksize = (n_training_points / 10, )
+    cur_chunksize = (n_training_points, )
+
+    # Create the h5 datasets
+    cur_h5_dset = cur_h5.create_dataset('c', (n_training_points, ),
+                                        dtype=cur_data_type,
+                                        chunks=cur_chunksize)
+    test_h5_dset = None
+    if n_test_only_wells > 0:
+        test_h5_dset = test_h5.create_dataset('c', (n_test_points, ),
+                                              dtype=cur_data_type,
+                                              chunks=(n_test_points, ))
+
+    return (cur_h5, cur_h5_dset, test_h5, test_h5_dset, n_training_points,
+            sampling_max_points, is_training_point_f, is_test_point_f)
+
 
 def create_tmp_dset(
     porosity_data_h5: h5py.Dataset,
@@ -419,7 +445,7 @@ def create_tmp_dset(
     suf_str: str = '',
     list_chunk_size: int = 1000,
     features_only: bool = False,
-    test_wells_ids: list = None,
+    test_only_wells: list = None,
     should_sample_max_points: bool = True
 ) -> Tuple[h5py.File, h5py.Dataset, h5py.File, h5py.Dataset]:
 
@@ -428,22 +454,16 @@ def create_tmp_dset(
         test_wells_ids = list()
 
     profiling = False
-    test_data_filter = WellsDataFilter(test_wells_ids)
 
-    train_data_filter = _config_filters(
-        test_wells_ids, train_data_filter, it,
-        config.alg['sampling']['its_window_size'])
+    is_test_point_f = lambda c: _is_well_in_list(c, test_only_wells)
 
     t0 = time()
-    (train_h5_file, test_h5_file, samp_max_points) = _prepare_h5(
-        suf_str, test_wells_ids, features_only, n_features, train_data_filter,
-        test_data_filter, porosity_data_h5, config, should_sample_max_points)
-
-    train_empty_h5_dset: h5py.Dataset = train_h5_file[TMP_DSET_NAME]
-    if test_h5_file is not None:
-        test_empty_h5_dset: h5py.Dataset = test_h5_file[TMP_DSET_NAME]
-    else:
-        test_empty_h5_dset = None
+    (train_h5_file, train_empty_h5_dset, test_h5_file, test_empty_h5_dset,
+     n_training_points, samp_max_points, is_training_point_f,
+     is_test_point_f) = _prepare_h5(suf_str, test_only_wells, features_only,
+                                    n_features, is_training_point_base_f,
+                                    is_test_point_f, porosity_data_h5, it,
+                                    config, should_sample_max_points)
 
     t1 = time()
     if profiling:
@@ -719,15 +739,15 @@ def get_features_sets(
 
     #At the feature selection stage, there should be sampling of
     #points from the iterations considered
-    # We use the test_h5_file just to close it to make sure
-    cur_h5, cur_h5_dset, test_h5, _ = create_tmp_dset(
+    should_sample_max_points = True
+    cur_h5, cur_h5_dset, test_h5, test_h5_dset = create_tmp_dset(
         porosity_data_h5,
         data_filter,
         exp_n_features,
         config,
         it,
         test_only_wells=test_only_wells,
-    )
+        should_sample_max_points=should_sample_max_points)
 
     # Create training temporary object
     cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)

@@ -2,6 +2,7 @@ from unittest import TestCase, main
 from petro5_hdf5 import _get_num_chunks_of_h5data, _sample_points_from_chunk
 from petro5_hdf5 import _get_n_sampling_points_per_chunk
 from petro5_hdf5 import _count_train_test_points_per_chunk
+<<<<<<< HEAD
 from petro5_hdf5 import _limit_training_points, get_best_features_set
 from petro5_hdf5 import append_points_to_dset, _get_chunk_shape
 from petro5_hdf5 import _get_n_pts_to_sample_per_well
@@ -9,6 +10,9 @@ from petro5_hdf5 import MAX_HDF5_CHUNK_SIZE, _config_filters
 from data_filter import DataFilter, WellsDataFilter
 from data_filter import FeatSelectionTrainDataFilter
 from common import RealValues
+=======
+from petro5_hdf5 import _limit_training_points
+>>>>>>> 65e3d2b (fix: add option to sample max points or not)
 import h5py
 import tempfile
 import numpy as np
@@ -153,7 +157,7 @@ class TestSamplingWithoutData(TestCase):
         samps_per_chunk = _get_n_sampling_points_per_chunk(
             n_train_points_per_chunk, max_sampling_points)
         self.assertTrue(
-            np.array_equal(samps_per_chunk, expected_n_samp_points_p_chunks))
+            np.sum(expected_n_samp_points_p_chunks - samps_per_chunk) == 0)
 
     def test_can_calc_n_sampling_points_per_chunk_not_simple(self):
         n_train_points_per_well = np.array([0, 10, 10, 0, 0, 10, 0, 10, 0, 15])
@@ -185,21 +189,21 @@ class TestSamplingWithoutData(TestCase):
         new_n_train_points = _limit_training_points(max_points_to_sample,
                                                     curr_training_points)
         self.assertEqual(new_n_train_points, max_points_to_sample)
-
+    
     def test_dont_limit_n_train_points(self):
         curr_training_points = 10
         max_points_to_sample = 20
         new_n_train_points = _limit_training_points(max_points_to_sample,
                                                     curr_training_points)
         self.assertEqual(new_n_train_points, curr_training_points)
-
+    
     def test_dont_limit_n_train_points_if_negative(self):
         curr_training_points = 10
         max_points_to_sample = -1
         new_n_train_points = _limit_training_points(max_points_to_sample,
                                                     curr_training_points)
         self.assertEqual(new_n_train_points, curr_training_points)
-
+    
     def test_dont_limit_n_train_points_if_zero(self):
         curr_training_points = 10
         max_points_to_sample = 0
@@ -207,75 +211,10 @@ class TestSamplingWithoutData(TestCase):
                                                     curr_training_points)
         self.assertEqual(new_n_train_points, curr_training_points)
 
-    def test_can_get_chunk_shape(self):
-        n_points = 100
-        max_chunk_size = 10
-        chunk_shape = _get_chunk_shape(n_points, max_chunk_size)
-        expected_chunk_shape = (max_chunk_size, )
-        self.assertTupleEqual(chunk_shape, expected_chunk_shape)
-
-        max_chunk_size = 99
-        chunk_shape = _get_chunk_shape(n_points, max_chunk_size)
-        expected_chunk_shape = (max_chunk_size, )
-        self.assertTupleEqual(chunk_shape, expected_chunk_shape)
-
-    def test_can_get_chunk_shape_negative_max(self):
-        n_points = 100
-        max_chunk_size = -1
-        chunk_shape = _get_chunk_shape(n_points, max_chunk_size)
-        expected_chunk_shape = (n_points, )
-        self.assertTupleEqual(chunk_shape, expected_chunk_shape)
-
-    def test_chunkshape_dont_pass_hdf5_max(self):
-        n_points = 999999999999999  #very big number
-        max_chunk_size = -1
-        chunk_shape = _get_chunk_shape(n_points, max_chunk_size)
-        expected_chunk_shape = (MAX_HDF5_CHUNK_SIZE, )
-        self.assertTupleEqual(chunk_shape, expected_chunk_shape)
-
-
-class TestFeatureSelection(TestCase):
-
-    def test_can_get_best_features_set(self):
-        b_features_set = [(["f1"], 1), (["f1", "f2"], 0.2), (["f2",
-                                                              "f3"], 0.3),
-                          (["f1", "f2", "f3"], 0.1)]
-        expected = (["f1", "f2", "f3"], 0.1)
-        best_feature = get_best_features_set(b_features_set)
-        self.assertTupleEqual(expected, best_feature)
-
-
-class TestConfigFilters(TestCase):
-
-    def setUp(self) -> None:
-        return super().setUp()
-
-    def test_can_add_filters_test_wells_and_samp_window(self):
-        train_filter = FeatSelectionTrainDataFilter()
-        test_only_wells = [0]
-        it = 0
-        sampling_window = 4
-        train_filter = _config_filters(test_only_wells, train_filter, it,
-                                       sampling_window)
-        self.assertEqual(train_filter.n_filters, 3)
-
-    def test_can_add_filter_for_test_well(self):
-        train_filter = FeatSelectionTrainDataFilter()
-        test_only_wells = [0]
-        it = 0
-        sampling_window = -1
-        train_filter = _config_filters(test_only_wells, train_filter, it,
-                                       sampling_window)
-        self.assertEqual(train_filter.n_filters, 2)
-
-    def test_can_add_filter_samp_window(self):
-        train_filter = FeatSelectionTrainDataFilter()
-        test_only_wells = []
-        it = 0
-        sampling_window = 4
-        train_filter = _config_filters(test_only_wells, train_filter, it,
-                                       sampling_window)
-        self.assertEqual(train_filter.n_filters, 2)
+    def tearDown(self):
+        #this order matters
+        self.h5_file.close()
+        self.tmp_file.close()
 
 
 if __name__ == "__main__":

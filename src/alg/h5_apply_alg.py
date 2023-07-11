@@ -231,13 +231,48 @@ class H5ApplyAlg(AbstractApplyAlg):
         return to_predict_np
 
     def _train_regressor(
-            self, it: int,
-            cur_h5_train_list: hdf5_util.HDFMultiColList) -> lgb.Booster:
-        """
-        Train the regressor on all data available in the last n iterations
-        defined in self._config. We must ignore the points associated with 
-        the testing wells.
-        """
+        self,
+        best_features_set: set,
+        features_dict_h5: Dict[str, h5py.Dataset],
+        porosity_data_h5: h5py.Dataset,
+        it: int,
+        rank: int,
+        displacement_cube_shape: tuple,
+    ) -> lgb.Booster:
+        t0 = time()
+        # Points used for training: real and propagated
+        is_training_point_f = lambda d: (
+            (d["real"] == common.RealValues.real)
+            | (d["real"] == common.RealValues.propagated))
+
+        # Creates a temporary h5 structure to perform the training
+        #There should be no sampling of points at this stage
+        #all points from the last n iterations should be used
+        #even if n == all iterations
+        should_sample_max_points = False
+        cur_h5, cur_h5_dset, _, _ = petro5_hdf5.create_tmp_dset(
+            porosity_data_h5,
+            is_training_point_f,
+            len(best_features_set),
+            self._config,
+            it,
+            f'-r{rank}',
+            features_only=True,
+            should_sample_max_points=should_sample_max_points)
+        cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
+
+        hypercube_shape = porosity_data_h5.shape
+
+        t1 = time()
+        profiling.prof_predict_create_time(it, t1 - t0, self._config)
+
+        # Add each feature to the TestData list (TD)
+        for feature in best_features_set:
+            cur_h5_train_list.add_new_col()
+            petro5_hdf5.insert_filtered_feature(cur_h5_dset, cur_h5_train_list,
+                                                features_dict_h5, feature,
+                                                hypercube_shape,
+                                                displacement_cube_shape)
 
         t2 = time()
 
