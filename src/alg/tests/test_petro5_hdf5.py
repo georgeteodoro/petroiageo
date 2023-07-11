@@ -3,7 +3,7 @@ from petro5_hdf5 import _get_num_chunks_of_h5data, _sample_points
 from petro5_hdf5 import _get_n_sampling_points_per_chunk, _is_well_in_list
 from petro5_hdf5 import _count_train_test_points_per_chunk
 from petro5_hdf5 import _limit_training_points, _is_well_in_list
-from petro5_hdf5 import _is_well_not_in_list
+from petro5_hdf5 import _is_well_not_in_list, get_best_features_set
 import h5py
 import tempfile
 import numpy as np
@@ -182,6 +182,16 @@ class TestSamplingWithoutData(TestCase):
         result = _is_well_not_in_list(data, target_wells)
         self.assertTrue((expected == result).all())
 
+
+class TestFeatureSelection(TestCase):
+
+    def test_can_get_best_features_set(self):
+        b_features_set = [(["f1"], 1), (["f1", "f2"], 0.2), (["f2",
+                                                              "f3"], 0.3),
+                          (["f1", "f2", "f3"], 0.1)]
+        expected = (["f1", "f2", "f3"], 0.1)
+        best_feature = get_best_features_set(b_features_set)
+        self.assertTupleEqual(expected, best_feature)
 
 if __name__ == "__main__":
     main()
