@@ -8,7 +8,7 @@ import tempfile
 import numpy as np
 
 
-class TestSampling(TestCase):
+class TestSamplingWithData(TestCase):
 
     def setUp(self):
         self.tmp_file = tempfile.TemporaryFile()
@@ -95,6 +95,14 @@ class TestSampling(TestCase):
         self.assertTrue(
             np.all(n_test_per_chunk[expected_test_chunks_with_points] > 0))
 
+    def tearDown(self):
+        #this order matters
+        self.h5_file.close()
+        self.tmp_file.close()
+
+
+class TestSamplingWithoutData(TestCase):
+
     def test_can_calc_n_sampling_points_per_chunk(self):
         n_train_points_per_chunk = np.array(
             [0, 10, 10, 0, 0, 10, 0, 10, 0, 10])
@@ -125,32 +133,27 @@ class TestSampling(TestCase):
         new_n_train_points = _limit_training_points(max_points_to_sample,
                                                     curr_training_points)
         self.assertEqual(new_n_train_points, max_points_to_sample)
-    
+
     def test_dont_limit_n_train_points(self):
         curr_training_points = 10
         max_points_to_sample = 20
         new_n_train_points = _limit_training_points(max_points_to_sample,
                                                     curr_training_points)
         self.assertEqual(new_n_train_points, curr_training_points)
-    
+
     def test_dont_limit_n_train_points_if_negative(self):
         curr_training_points = 10
         max_points_to_sample = -1
         new_n_train_points = _limit_training_points(max_points_to_sample,
                                                     curr_training_points)
         self.assertEqual(new_n_train_points, curr_training_points)
-    
+
     def test_dont_limit_n_train_points_if_zero(self):
         curr_training_points = 10
         max_points_to_sample = 0
         new_n_train_points = _limit_training_points(max_points_to_sample,
                                                     curr_training_points)
         self.assertEqual(new_n_train_points, curr_training_points)
-
-    def tearDown(self):
-        #this order matters
-        self.h5_file.close()
-        self.tmp_file.close()
 
 
 if __name__ == "__main__":
