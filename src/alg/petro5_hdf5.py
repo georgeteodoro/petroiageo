@@ -260,8 +260,7 @@ def _is_well_not_in_list(d, l):
 
 
 def _prepare_sampling(sampling_window, is_training_point_f2, is_test_point_f,
-                      porosity_data_h5, sampling_max_points, sampling_dist,
-                      it):
+                      porosity_data_h5, sampling_max_points, it):
 
     # Add sampling window for training and test, if required
     min_ring = max(0, it - sampling_window)
@@ -276,10 +275,6 @@ def _prepare_sampling(sampling_window, is_training_point_f2, is_test_point_f,
     # Add sampling of points by max length limit, if required
     if sampling_max_points > 0:
         n_training_points = min(n_training_points, sampling_max_points)
-
-        if sampling_dist is not None:
-            print("============================="\
-                  "Sampling_dist not implemented.")
 
     return n_training_points, is_training_point_f, is_test_point_f2
 
@@ -297,7 +292,6 @@ def _prepare_h5(suf_str: str, test_only_wells: list, features_only: bool,
     # Get config parameters
     sampling_window = config.alg['sampling']['its_window_size']
     sampling_max_points = config.alg['sampling']['max_points']
-    sampling_dist = config.alg['sampling']['beta_dist']
 
     filename = f'cur{suf_str}.h5'
     filename_test = f'cur{suf_str}-test.h5'
@@ -361,10 +355,12 @@ def _prepare_h5(suf_str: str, test_only_wells: list, features_only: bool,
     # and n_training_points
     is_training_point_f = is_training_point_f2
     if sampling_window > 0:
-        (n_training_points,
-         is_training_point_f, is_test_point_f) = _prepare_sampling(
-             sampling_window, is_training_point_f2, is_test_point_f,
-             porosity_data_h5, sampling_max_points, sampling_dist, it)
+        (n_training_points, is_training_point_f,
+         is_test_point_f) = _prepare_sampling(sampling_window,
+                                              is_training_point_f2,
+                                              is_test_point_f,
+                                              porosity_data_h5,
+                                              sampling_max_points, it)
 
     print("============== NEED TO AUTOMATE TMP_LIST CHUNK_SIZE")
     # cur_chunksize = (n_training_points / 10, )
