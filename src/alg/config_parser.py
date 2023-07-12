@@ -128,6 +128,11 @@ class ConfigTypeCaster:
             treated_sampling_config = cls._type_cast_sampling_configs(
                 alg_configs["sampling"])
             treated_alg_configs["sampling"] = treated_sampling_config
+        
+        if "parallel" in alg_configs:
+            treated_parallel_config = cls._type_cast_parallel_configs(
+                alg_configs["parallel"])
+            treated_alg_configs["parallel"] = treated_parallel_config
 
         return treated_alg_configs
 
@@ -152,6 +157,23 @@ class ConfigTypeCaster:
             treated_sampling_config["beta_dist"] = treated_beta_dist_configs
 
         return treated_sampling_config
+    
+    @classmethod
+    def _type_cast_parallel_configs(cls, parallel_configs: dict) -> dict:
+        treated_parallel_config = dict()
+
+        # So non treated/non expected keys remain in treated_sampling_config
+        treated_parallel_config.update(parallel_configs)
+
+        key_func_to_apply_dict = {"max_points_per_chunk": int}
+
+        cls._apply_key_func_mapping_to_dict_and_modify_target_dict(
+            key_func_map=key_func_to_apply_dict,
+            base_dict=parallel_configs,
+            dict_to_modify=treated_parallel_config,
+        )
+
+        return treated_parallel_config
 
     @classmethod
     def _type_cast_beta_dist_configs(cls, beta_dist_configs: dict) -> dict:
@@ -321,6 +343,11 @@ class ConfigValidator:
 
         SaveModelTypes.raise_if_not_valid(alg_configs["save_models_on"])
 
+        if alg_configs['parallel']['max_points_per_chunk'] == 0:
+            raise ValueError(
+                f"alg.parallel.max_points_per_chunk: Can't be zero!"
+            )
+
     @staticmethod
     def _raise_if_wells_config_not_valid(config_dict: dict):
         wells_config = config_dict["wells"]
@@ -482,6 +509,7 @@ class Config:
         base_config["validation_only_wells"] = list()
         base_config["test_only_wells"] = list()
         base_config["sampling"] = self._base_sampling_config()
+        base_config["parallel"] = self._base_parallel_config()
         base_config["feature_selection_type"] = FeatureSelection["FORWARD"]
         base_config["max_num_features"] = 1
         base_config["max_exec_time"] = -1
@@ -494,6 +522,11 @@ class Config:
         base_config["its_window_size"] = -1
         base_config["max_points"] = -1
         base_config["beta_dist"] = self._base_penalty_sampling_func_config()
+        return base_config
+
+    def _base_parallel_config(self) -> dict:
+        base_config = dict()
+        base_config["max_points_per_chunk"] = 10000
         return base_config
 
     def _base_penalty_sampling_func_config(self) -> dict:

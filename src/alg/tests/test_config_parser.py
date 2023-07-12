@@ -4,13 +4,23 @@ from unittest import TestCase, main
 
 
 class TestYAMLConfig(TestCase):
+
     def test_can_update_base_conf_from_str(self):
         starting_it = 10
         num_its = 20
         generate_porosity_cube = "true"
         feature_selection_type = "NONE"
         coords = [[1, 2], [3, 4], {"x": 4, "y": 5}]
-        expected_coords = [{"x": 1, "y": 2}, {"x": 3, "y": 4}, {"x": 4, "y": 5}]
+        expected_coords = [{
+            "x": 1,
+            "y": 2
+        }, {
+            "x": 3,
+            "y": 4
+        }, {
+            "x": 4,
+            "y": 5
+        }]
         base_save_cube_every_n_its_expected = -1
         yaml_str = f"""
         alg:
@@ -57,8 +67,7 @@ class TestYAMLConfig(TestCase):
           feature_selection_type: {}
         """
         my_config = config_parser.YAMLConfig(
-            config_str=yaml_str_fmt.format(feature_selection_1)
-        )
+            config_str=yaml_str_fmt.format(feature_selection_1))
         self.assertEqual(
             my_config.alg["feature_selection_type"],
             config_parser.FeatureSelection[feature_selection_1],
@@ -66,8 +75,7 @@ class TestYAMLConfig(TestCase):
 
         feature_selection_2 = "NONE"
         my_config = config_parser.YAMLConfig(
-            config_str=yaml_str_fmt.format(feature_selection_2)
-        )
+            config_str=yaml_str_fmt.format(feature_selection_2))
         self.assertEqual(
             my_config.alg["feature_selection_type"],
             config_parser.FeatureSelection[feature_selection_2],
@@ -84,14 +92,12 @@ class TestYAMLConfig(TestCase):
         save_model_type = "every_2.2"
         with self.assertRaises(ValueError):
             my_config = config_parser.YAMLConfig(
-                config_str=yaml_str_fmt.format(save_model_type)
-            )
+                config_str=yaml_str_fmt.format(save_model_type))
 
         save_model_type = "every_0"
         with self.assertRaises(ValueError):
             my_config = config_parser.YAMLConfig(
-                config_str=yaml_str_fmt.format(save_model_type)
-            )
+                config_str=yaml_str_fmt.format(save_model_type))
 
     def test_accepts_valid_save_model_type(self):
         save_model_types = ["last", "all", "every_4", "every_1"]
@@ -103,8 +109,7 @@ class TestYAMLConfig(TestCase):
         """
         for model in save_model_types:
             my_config = config_parser.YAMLConfig(
-                config_str=yaml_str_fmt.format(model)
-            )
+                config_str=yaml_str_fmt.format(model))
             self.assertEqual(my_config.alg["save_models_on"], model)
 
     def test_accepts_list_of_dict_for_wells_coords(self):
@@ -119,14 +124,22 @@ class TestYAMLConfig(TestCase):
             y: 3
         """
         expected_wells_coords_dicts = [
-            {"x": 1, "y": 1},
-            {"x": 2, "y": 2},
-            {"x": 3, "y": 3},
+            {
+                "x": 1,
+                "y": 1
+            },
+            {
+                "x": 2,
+                "y": 2
+            },
+            {
+                "x": 3,
+                "y": 3
+            },
         ]
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
-        self.assertListEqual(
-            my_config.wells["coords"], expected_wells_coords_dicts
-        )
+        self.assertListEqual(my_config.wells["coords"],
+                             expected_wells_coords_dicts)
 
     def test_accepts_list_of_lists_for_wells_coords(self):
         yaml_str = """
@@ -134,14 +147,22 @@ class TestYAMLConfig(TestCase):
           coords: [[1,1],[2,2],[3,3]]
         """
         expected_wells_coords_dicts = [
-            {"x": 1, "y": 1},
-            {"x": 2, "y": 2},
-            {"x": 3, "y": 3},
+            {
+                "x": 1,
+                "y": 1
+            },
+            {
+                "x": 2,
+                "y": 2
+            },
+            {
+                "x": 3,
+                "y": 3
+            },
         ]
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
-        self.assertListEqual(
-            my_config.wells["coords"], expected_wells_coords_dicts
-        )
+        self.assertListEqual(my_config.wells["coords"],
+                             expected_wells_coords_dicts)
 
     def test_accepts_lists_as_items_for_wells_coords(self):
         yaml_str = """
@@ -152,14 +173,22 @@ class TestYAMLConfig(TestCase):
           - [3,3]
         """
         expected_wells_coords_dicts = [
-            {"x": 1, "y": 1},
-            {"x": 2, "y": 2},
-            {"x": 3, "y": 3},
+            {
+                "x": 1,
+                "y": 1
+            },
+            {
+                "x": 2,
+                "y": 2
+            },
+            {
+                "x": 3,
+                "y": 3
+            },
         ]
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
-        self.assertListEqual(
-            my_config.wells["coords"], expected_wells_coords_dicts
-        )
+        self.assertListEqual(my_config.wells["coords"],
+                             expected_wells_coords_dicts)
 
     def test_accepts_multiple_ways_to_wells_coords(self):
         yaml_str = """
@@ -171,14 +200,22 @@ class TestYAMLConfig(TestCase):
           - [3, 3]
         """
         expected_wells_coords_dicts = [
-            {"x": 1, "y": 1},
-            {"x": 2, "y": 2},
-            {"x": 3, "y": 3},
+            {
+                "x": 1,
+                "y": 1
+            },
+            {
+                "x": 2,
+                "y": 2
+            },
+            {
+                "x": 3,
+                "y": 3
+            },
         ]
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
-        self.assertListEqual(
-            my_config.wells["coords"], expected_wells_coords_dicts
-        )
+        self.assertListEqual(my_config.wells["coords"],
+                             expected_wells_coords_dicts)
 
     def test_raise_on_negative_wells_coords(self):
         yaml_str = """
@@ -348,8 +385,7 @@ class TestYAMLConfig(TestCase):
         for invalid_value in invalid_values:
             with self.assertRaises(ValueError):
                 my_config = config_parser.YAMLConfig(
-                    config_str=yaml_str_fmt.format(invalid_value)
-                )
+                    config_str=yaml_str_fmt.format(invalid_value))
 
     def test_raise_on_invalid_sampling_max_points(self):
         invalid_values = [3.2, "a"]
@@ -364,8 +400,7 @@ class TestYAMLConfig(TestCase):
         for invalid_value in invalid_values:
             with self.assertRaises(ValueError):
                 my_config = config_parser.YAMLConfig(
-                    config_str=yaml_str_fmt.format(invalid_value)
-                )
+                    config_str=yaml_str_fmt.format(invalid_value))
 
     def test_raise_invalid_sampling_beta_dist_params(self):
         invalid_params = [
@@ -389,8 +424,7 @@ class TestYAMLConfig(TestCase):
         for alpha, beta in invalid_params:
             with self.assertRaises(ValueError):
                 my_config = config_parser.YAMLConfig(
-                    config_str=yaml_str_fmt.format(alpha, beta)
-                )
+                    config_str=yaml_str_fmt.format(alpha, beta))
 
     def test_can_add_new_attribute(self):
         yaml_str = """
@@ -435,6 +469,33 @@ class TestYAMLConfig(TestCase):
         for base_param in config_parser.Config.TOP_LEVEL_BASE_CONFIGS:
             with self.assertRaises(config_parser.InvalidNewParamError):
                 my_config.remove_param(base_param)
+
+    def test_can_get_max_chunk_size(self):
+        yaml_str = """
+        wells:
+          coords: [[1,1],[2,2]]
+        """
+        my_config = config_parser.YAMLConfig(config_str=yaml_str)
+        try:
+            _ = my_config.alg['parallel']['max_points_per_chunk']
+            self.assertTrue(True)
+        except:
+            self.assertTrue(False)
+
+    def test_raise_invalid_parallel_chunksize(self):
+        invalid_params = [0, 'a']
+        yaml_str = """
+        wells:
+          coords: [[1,1],[2,2]]
+        
+        alg:
+          parallel:
+            max_points_per_chunk: {}
+        """
+        for invalid_param in invalid_params:
+            with self.assertRaises(ValueError):
+                _ = config_parser.YAMLConfig(
+                    config_str=yaml_str.format(invalid_param))
 
 
 if __name__ == "__main__":
