@@ -376,38 +376,51 @@ def _prepare_h5(suf_str: str,
         )
 
     # Calculate the maximum number of training points
-    n_training_points = hdf5_util.fold_h5_all_clusters(
+    n_train_points = hdf5_util.fold_h5_all_clusters(
         porosity_data_h5, lambda d: len(d[is_training_point_f2(d)]), 0)
 
     # Configures sampling
     is_training_point_f = is_training_point_f2
     if sampling_window > 0:
-        (n_training_points, is_training_point_f,
+        (n_train_points, is_training_point_f,
          is_test_point_f) = _add_sampling_window_to_filters(
              sampling_window, is_training_point_f2, is_test_point_f,
              porosity_data_h5, it)
 
     #We may not have the sampling window and still have
     #sampling max points defined
-    n_training_points = _limit_training_points(sampling_max_points,
-                                               n_training_points)
+    n_train_points = _limit_training_points(sampling_max_points,
+                                            n_train_points)
 
-    print("============== NEED TO AUTOMATE TMP_LIST CHUNK_SIZE")
-    # cur_chunksize = (n_training_points / 10, )
-    cur_chunksize = (n_training_points, )
+    chunksize = config.alg['parallel']['max_points_per_chunk']
+    train_chunkshape = _get_chunk_shape(n_train_points, chunksize)
 
     # Create the h5 datasets
-    cur_h5_dset = cur_h5.create_dataset('c', (n_training_points, ),
+    cur_h5_dset = cur_h5.create_dataset('c', (n_train_points, ),
                                         dtype=cur_data_type,
-                                        chunks=cur_chunksize)
+                                        chunks=train_chunkshape)
     test_h5_dset = None
     if n_test_only_wells > 0:
+        test_chunkshape = _get_chunk_shape(n_test_points, chunksize)
+
         test_h5_dset = test_h5.create_dataset('c', (n_test_points, ),
                                               dtype=cur_data_type,
-                                              chunks=(n_test_points, ))
+                                              chunks=test_chunkshape)
 
-    return (cur_h5, cur_h5_dset, test_h5, test_h5_dset, n_training_points,
+    return (cur_h5, cur_h5_dset, test_h5, test_h5_dset, n_train_points,
             sampling_max_points, is_training_point_f, is_test_point_f)
+
+
+def _get_chunk_shape(n_points: int, max_chunksize: int) -> Tuple[int]:
+    """
+    Doesnt expects max_chunksize to be 0. It must be checked before
+    as it already is in the config_parser
+    """
+    if max_chunksize < 0 or n_points < max_chunksize:
+        chunkshape = (n_points, )
+    else:
+        chunkshape = (max_chunksize, )
+    return chunkshape
 
 
 def create_tmp_dset(
