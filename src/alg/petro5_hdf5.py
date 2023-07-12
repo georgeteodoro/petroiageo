@@ -466,12 +466,8 @@ def create_tmp_dset(
 
         rng = np.random.default_rng()
 
-    n_train_points_added = 0
     n_test_only_wells = len(test_only_wells)
-    still_should_add_train_points = True
     #Go through each chunk again. Adds all test points for sure.
-    #Stops adding train points when n_train_points_added >= sampling_max_points
-    #if must_sample
     for chunk_id, chunk_slice in enumerate(porosity_data_h5.iter_chunks()):
         #only reads data if necessary
         if train_points_per_chunk[chunk_id] > 0 or test_points_per_chunk[
@@ -489,8 +485,7 @@ def create_tmp_dset(
                     test_feats_only, test_empty_h5_dset, prev_end_test,
                     test_points)
 
-            if still_should_add_train_points and train_points_per_chunk[
-                    chunk_id] > 0:
+            if train_points_per_chunk[chunk_id] > 0:
 
                 training_points = chunk_np[is_training_point_f(chunk_np)]
 
@@ -498,23 +493,12 @@ def create_tmp_dset(
                 if must_sample:
                     n_points_to_sample_chunk = sampling_points_per_chunk[
                         chunk_id]
-                    n_still_to_sample = samp_max_points - n_train_points_added
-                    training_points = _sample_points(n_still_to_sample,
-                                                     n_points_to_sample_chunk,
+                    training_points = _sample_points(n_points_to_sample_chunk,
                                                      rng, training_points)
 
                 train_empty_h5_dset, prev_end = append_points_to_dset(
                     features_only, train_empty_h5_dset, prev_end,
                     training_points)
-
-                n_train_points_added += len(training_points)
-
-                # If sampling reached its maximum size, we dont need
-                # anymore train points. The >= is just to be sure.
-                #still iterate over the remaining chunks
-                #kinda equivalent to chunk_id == last_chunk_with_train_points
-                if must_sample and n_train_points_added >= samp_max_points:
-                    still_should_add_train_points = False
 
         no_more_train_chunks = chunk_id >= last_chunk_with_train_points
         no_more_test_chunks = chunk_id >= last_chunk_with_test_points
@@ -529,22 +513,16 @@ def create_tmp_dset(
     return train_h5_file, train_empty_h5_dset, test_h5_file, test_empty_h5_dset
 
 
-def _sample_points(max_points_still_to_sample: int,
-                   n_points_to_sample_chunk: int, rng: np.random.Generator,
+def _sample_points(n_points_to_sample_chunk: int, rng: np.random.Generator,
                    training_points: np.ndarray) -> np.ndarray:
     """
     Sample n = min(n_points_to_sample_chunk, max_points_still_to_sample)
     points from training_points with the rng
     """
-    if n_points_to_sample_chunk == max_points_still_to_sample:
-        return training_points
-
-    num_points_to_sample = min(n_points_to_sample_chunk,
-                               max_points_still_to_sample)
 
     #This accepts probabilities
     training_points = rng.choice(training_points,
-                                 num_points_to_sample,
+                                 n_points_to_sample_chunk,
                                  replace=False)
 
     return training_points
@@ -557,7 +535,10 @@ def _get_n_sampling_points_per_chunk(training_points_per_chunk: np.ndarray,
     The total of sampled points is proportional to the number of training
     points in that chunk.
     The total of sampling points returned may be greater than 
-    sampling_max_points so this must be checked when used
+    sampling_max_points so this must be checked when used.
+    The total of sampling points is in the interval:
+    [sampling_max_points, sampling_max_points+n_chunks]
+    because of the np.ceil used
     """
 
     #Sample proportionally on training points per chunk
