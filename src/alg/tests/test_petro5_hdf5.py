@@ -4,7 +4,7 @@ from petro5_hdf5 import _get_n_sampling_points_per_chunk, _is_well_in_list
 from petro5_hdf5 import _count_train_test_points_per_chunk
 from petro5_hdf5 import _limit_training_points, _is_well_in_list
 from petro5_hdf5 import _is_well_not_in_list, get_best_features_set
-from petro5_hdf5 import append_points_to_dset
+from petro5_hdf5 import append_points_to_dset, _get_chunk_shape
 import h5py
 import tempfile
 import numpy as np
@@ -208,6 +208,25 @@ class TestSamplingWithoutData(TestCase):
         expected = np.array(expected_list, dtype=bool)
         result = _is_well_not_in_list(data, target_wells)
         self.assertTrue(np.array_equal(expected, result))
+    
+    def test_can_get_chunk_shape(self):
+        n_points = 100
+        max_chunk_size = 10
+        chunk_shape = _get_chunk_shape(n_points, max_chunk_size)
+        expected_chunk_shape = (10,)
+        self.assertTupleEqual(chunk_shape, expected_chunk_shape)
+
+        max_chunk_size = 99
+        chunk_shape = _get_chunk_shape(n_points, max_chunk_size)
+        expected_chunk_shape = (99,)
+        self.assertTupleEqual(chunk_shape, expected_chunk_shape)
+    
+    def test_can_get_chunk_shape_negative_max(self):
+        n_points = 100
+        max_chunk_size = -1
+        chunk_shape = _get_chunk_shape(n_points, max_chunk_size)
+        expected_chunk_shape = (100,)
+        self.assertTupleEqual(chunk_shape, expected_chunk_shape)
 
 
 class TestFeatureSelection(TestCase):
