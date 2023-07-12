@@ -50,6 +50,12 @@ alg:
       alpha: 1
       beta: 1
   
+  parallel: #parallelism stuff
+    # Max num of points for each chunk of the training and test points at the
+    # feature selection stage. If negative, use all points in a single chunk.
+    # Cant be 0
+    max_points_per_chunk: 10000
+  
   # Feature selection type. Options: ['FORWARD', 'NONE']. Default: FORWARD
   feature_selection_type: "FORWARD"
   
