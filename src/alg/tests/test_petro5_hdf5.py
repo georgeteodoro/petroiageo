@@ -209,31 +209,31 @@ class TestSamplingWithoutData(TestCase):
         expected = np.array(expected_list, dtype=bool)
         result = _is_well_not_in_list(data, target_wells)
         self.assertTrue(np.array_equal(expected, result))
-    
+
     def test_can_get_chunk_shape(self):
         n_points = 100
         max_chunk_size = 10
         chunk_shape = _get_chunk_shape(n_points, max_chunk_size)
-        expected_chunk_shape = (max_chunk_size,)
+        expected_chunk_shape = (max_chunk_size, )
         self.assertTupleEqual(chunk_shape, expected_chunk_shape)
 
         max_chunk_size = 99
         chunk_shape = _get_chunk_shape(n_points, max_chunk_size)
-        expected_chunk_shape = (max_chunk_size,)
+        expected_chunk_shape = (max_chunk_size, )
         self.assertTupleEqual(chunk_shape, expected_chunk_shape)
-    
+
     def test_can_get_chunk_shape_negative_max(self):
         n_points = 100
         max_chunk_size = -1
         chunk_shape = _get_chunk_shape(n_points, max_chunk_size)
-        expected_chunk_shape = (n_points,)
+        expected_chunk_shape = (n_points, )
         self.assertTupleEqual(chunk_shape, expected_chunk_shape)
-    
+
     def test_chunkshape_dont_pass_hdf5_max(self):
-        n_points = 999999999999999 #very big number
+        n_points = 999999999999999  #very big number
         max_chunk_size = -1
         chunk_shape = _get_chunk_shape(n_points, max_chunk_size)
-        expected_chunk_shape = (MAX_HDF5_CHUNK_SIZE,)
+        expected_chunk_shape = (MAX_HDF5_CHUNK_SIZE, )
         self.assertTupleEqual(chunk_shape, expected_chunk_shape)
 
 
