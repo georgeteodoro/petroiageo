@@ -412,7 +412,8 @@ if __name__ == '__main__':
             raise ValueError(f"{file} is not a .npy file!")
 
     disp_window = 3
-    chunk_shape = (100, 100, 32 + disp_window + disp_window)
+    # chunk_shape = (100, 100, 32 + disp_window + disp_window)
+    chunk_shape = (100, 100, 251 + disp_window + disp_window)
     [
         seismic_feature_np2hdf5_planar(f, chunk_shape, disp_window,
                                        args.output_dir, mult_factor)

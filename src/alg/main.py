@@ -57,8 +57,7 @@ def config_arg_parser():
         dest="num_select_features",
         action="store",
         required=False,
-        help="Number of maximum features to be "
-        "selected",
+        help="Number of maximum features to be selected",
     )
     parser.add_argument(
         "--ntf",
@@ -66,7 +65,7 @@ def config_arg_parser():
         action="store",
         default=0,
         help="Number of features to be tested before choosing "
-        "a selected feature.",
+        "a selected feature (default=0, i.e., all).",
     )
     parser.add_argument(
         "--wp",
