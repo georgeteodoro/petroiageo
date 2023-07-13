@@ -13,7 +13,7 @@ import common
 from config_parser import Config
 
 RANDOM_STATE = 1
-MAX_HDF5_CHUNK_SIZE = 4_294_967_296 #2 ** 32
+MAX_HDF5_CHUNK_SIZE = 4_294_967_296  #2 ** 32
 
 params = {
     'max_bin': 128,
@@ -422,10 +422,10 @@ def _get_chunk_shape(n_points: int, max_chunksize: int) -> Tuple[int]:
         chunksize = n_points
     else:
         chunksize = max_chunksize
-    
+
     if chunksize > MAX_HDF5_CHUNK_SIZE:
         chunksize = MAX_HDF5_CHUNK_SIZE
-    
+
     chunkshape = (chunksize, )
     return chunkshape
 
