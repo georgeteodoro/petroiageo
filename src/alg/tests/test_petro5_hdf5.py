@@ -5,6 +5,7 @@ from petro5_hdf5 import _count_train_test_points_per_chunk
 from petro5_hdf5 import _limit_training_points, _is_well_in_list
 from petro5_hdf5 import _is_well_not_in_list, get_best_features_set
 from petro5_hdf5 import append_points_to_dset, _get_chunk_shape
+from petro5_hdf5 import MAX_HDF5_CHUNK_SIZE
 import h5py
 import tempfile
 import numpy as np
@@ -213,19 +214,26 @@ class TestSamplingWithoutData(TestCase):
         n_points = 100
         max_chunk_size = 10
         chunk_shape = _get_chunk_shape(n_points, max_chunk_size)
-        expected_chunk_shape = (10,)
+        expected_chunk_shape = (max_chunk_size,)
         self.assertTupleEqual(chunk_shape, expected_chunk_shape)
 
         max_chunk_size = 99
         chunk_shape = _get_chunk_shape(n_points, max_chunk_size)
-        expected_chunk_shape = (99,)
+        expected_chunk_shape = (max_chunk_size,)
         self.assertTupleEqual(chunk_shape, expected_chunk_shape)
     
     def test_can_get_chunk_shape_negative_max(self):
         n_points = 100
         max_chunk_size = -1
         chunk_shape = _get_chunk_shape(n_points, max_chunk_size)
-        expected_chunk_shape = (100,)
+        expected_chunk_shape = (n_points,)
+        self.assertTupleEqual(chunk_shape, expected_chunk_shape)
+    
+    def test_chunkshape_dont_pass_hdf5_max(self):
+        n_points = 999999999999999 #very big number
+        max_chunk_size = -1
+        chunk_shape = _get_chunk_shape(n_points, max_chunk_size)
+        expected_chunk_shape = (MAX_HDF5_CHUNK_SIZE,)
         self.assertTupleEqual(chunk_shape, expected_chunk_shape)
 
 
