@@ -94,7 +94,7 @@ class DataFilter():
         """
         ret = np.full((data.shape), True, dtype=bool)
         for filter_f in self._filter_list:
-            ret += filter_f(data)
+            ret *= filter_f(data)
 
         return ret
 
