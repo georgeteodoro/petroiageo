@@ -57,6 +57,18 @@ class TestDataFilter(TestCase):
         result_size = len(self.data_filter.filter(self.dset[:]))
         self.assertTrue(result_size > 0 and result_size < self.dset.size)
 
+    def test_add_in_well_list_filter(self):
+        well_ids = [1, 2]
+        self.data_filter.add_in_well_list_filter(well_ids)
+        result_size = len(self.data_filter.filter(self.dset[:]))
+        self.assertTrue(result_size > 0 and result_size < self.dset.size)
+
+    def test_add_in_well_empty_list_filter(self):
+        well_ids = list()
+        self.data_filter.add_in_well_list_filter(well_ids)
+        result_size = len(self.data_filter.filter(self.dset[:]))
+        self.assertTrue(result_size == 0)
+
     def tearDown(self):
         #this order matters
         self.h5_file.close()
@@ -77,6 +89,11 @@ class TestDataFilterWithoutData(TestCase):
 
         with self.assertRaises(ValueError):
             self.data_filter.add_min_ring_filter(3.0)
+
+    def test_invalid_in_well_list(self):
+        invalid_well_ids = 1
+        with self.assertRaises(TypeError):
+            self.data_filter.add_in_well_list_filter(invalid_well_ids)
 
 
 if __name__ == "__main__":
