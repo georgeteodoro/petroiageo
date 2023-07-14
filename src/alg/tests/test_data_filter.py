@@ -45,13 +45,13 @@ class TestDataFilter(TestCase):
                                                 dtype=self.cur_data_type,
                                                 data=data,
                                                 chunks=(10, 10, 10, 20, 10, 1))
-        
+
         self.data_filter = DataFilter()
 
     def test_dont_filter_anything(self):
         result = self.data_filter.filter(self.dset[:])
         self.assertEqual(len(result), self.dset.size)
-    
+
     def test_add_min_ring_filter(self):
         self.data_filter.add_min_ring_filter(15)
         result_size = len(self.data_filter.filter(self.dset[:]))
@@ -61,21 +61,22 @@ class TestDataFilter(TestCase):
         #this order matters
         self.h5_file.close()
         self.tmp_file.close()
-    
+
+
 class TestDataFilterWithoutData(TestCase):
+
     def setUp(self) -> None:
         self.data_filter = DataFilter()
-        
+
     def test_invalid_min_ring(self):
         with self.assertRaises(ValueError):
             self.data_filter.add_min_ring_filter(-1)
-        
+
         with self.assertRaises(ValueError):
             self.data_filter.add_min_ring_filter(3.2)
-        
+
         with self.assertRaises(ValueError):
             self.data_filter.add_min_ring_filter(3.0)
-
 
 
 if __name__ == "__main__":
