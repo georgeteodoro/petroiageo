@@ -49,8 +49,8 @@ class TestDataFilter(TestCase):
         self.data_filter = DataFilter()
 
     def test_dont_filter_anything(self):
-        result = self.data_filter.filter(self.dset[:])
-        self.assertEqual(len(result), self.dset.size)
+        result_size = len(self.data_filter.filter(self.dset[:]))
+        self.assertEqual(result_size, self.dset.size)
 
     def test_add_min_ring_filter(self):
         self.data_filter.add_min_ring_filter(15)
@@ -69,6 +69,24 @@ class TestDataFilter(TestCase):
         result_size = len(self.data_filter.filter(self.dset[:]))
         self.assertTrue(result_size == 0)
 
+    def test_add_not_in_well_list_filter_unused_well(self):
+        well_ids = [10000]
+        self.data_filter.add_not_in_well_list_filter(well_ids)
+        result_size = len(self.data_filter.filter(self.dset[:]))
+        self.assertEqual(result_size, self.dset.size)
+
+    def test_add_not_in_well_list(self):
+        well_ids = [1, 2]
+        self.data_filter.add_not_in_well_list_filter(well_ids)
+        result_size = len(self.data_filter.filter(self.dset[:]))
+        self.assertTrue(result_size > 0 and result_size < self.dset.size)
+    
+    def test_add_not_in_well_empty_list(self):
+        well_ids = []
+        self.data_filter.add_not_in_well_list_filter(well_ids)
+        result_size = len(self.data_filter.filter(self.dset[:]))
+        self.assertEqual(result_size, self.dset.size)
+
     def tearDown(self):
         #this order matters
         self.h5_file.close()
@@ -76,6 +94,9 @@ class TestDataFilter(TestCase):
 
 
 class TestDataFilterWithoutData(TestCase):
+    """
+    This is so these tests run faster
+    """
 
     def setUp(self) -> None:
         self.data_filter = DataFilter()
@@ -94,6 +115,11 @@ class TestDataFilterWithoutData(TestCase):
         invalid_well_ids = 1
         with self.assertRaises(TypeError):
             self.data_filter.add_in_well_list_filter(invalid_well_ids)
+
+    def test_invalid_not_in_well_list(self):
+        invalid_well_ids = 1
+        with self.assertRaises(TypeError):
+            self.data_filter.add_not_in_well_list_filter(invalid_well_ids)
 
 
 if __name__ == "__main__":
