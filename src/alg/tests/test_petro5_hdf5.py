@@ -24,15 +24,23 @@ class TestSamplingWithData(TestCase):
             ('phi', np.float64),
             ('well_id', np.int64),
         ]
-        self.cur_data_type = np.dtype(self.cur_data_type)
-        data = np.empty((100, 100, 20, 20, 10), dtype=self.cur_data_type)
 
-        for i in range(100):
-            for j in range(100):
+        x_size = 100
+        y_size = 100
+        z_size = 20
+        phi_size = 20
+        well_id_size = 10
+        self.cur_data_type = np.dtype(self.cur_data_type)
+        data = np.empty((x_size, y_size, z_size, phi_size, well_id_size),
+                        dtype=self.cur_data_type)
+
+        for i in range(x_size):
+            for j in range(y_size):
                 data[i, j]['x'] = i
                 data[i, j]['y'] = j
                 data[i, j]['z'] = np.arange(10)
-                data[i, j]['phi'] = np.random.rand(20, 20, 10)
+                data[i, j]['phi'] = np.random.rand(z_size, phi_size,
+                                                   well_id_size)
                 #The cube has x ranges associated with a well
                 #example: if x in [0, 10], well = 0,
                 #example: if x in [40, 50], well = 4
