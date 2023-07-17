@@ -287,7 +287,7 @@ def _prepare_h5(suf_str: str,
     """
     Generate the h5 File and dataset objects.
     Also setup the filter functions to return only training and test points 
-    and returns the total number of sampled training points. If no sampling is 
+    and returns the total number of sampled training points. If no sampling is
     done, returns all training and test points.
     If should_sample_max_points, then considers the max_points param of the 
     sampling param in config. If not, then no sampling of max points
@@ -296,20 +296,8 @@ def _prepare_h5(suf_str: str,
     cur_h5, test_h5, cur_data_type = _create_files(suf_str, test_only_wells,
                                                    features_only, n_features)
 
-    # Select whether training points include all points or there are test
-    # points as well
-    there_are_test_wells = True if len(test_only_wells) > 0 else False
-    if there_are_test_wells:
-        train_data_filter.add_not_in_well_list_filter(test_only_wells)
-
-    # Get config parameters and configure sampling
-    sampling_window: int = config.alg['sampling']['its_window_size']
-    if sampling_window > 0:
-        train_data_filter, test_data_filter = _add_sampling_window_to_filters(
-            sampling_window, train_data_filter, test_data_filter, it)
-
-    # Calculate the maximum number of training points
-    n_train_points = train_data_filter.filter_count_dset(porosity_data_h5)
+    train_data_filter, test_data_filter = _config_filters(
+        test_only_wells, train_data_filter, test_data_filter, it, config)
 
     #We may not have the sampling window and still have
     #sampling max points defined
@@ -319,6 +307,9 @@ def _prepare_h5(suf_str: str,
         # negative means no sampling and all points should be used
         #from the sampling_window
         sampling_max_points = -1
+
+    # Calculate the maximum number of training points
+    n_train_points = train_data_filter.filter_count_dset(porosity_data_h5)
 
     n_train_points = _limit_training_points(sampling_max_points,
                                             n_train_points)
@@ -330,6 +321,7 @@ def _prepare_h5(suf_str: str,
     cur_h5.create_dataset(TMP_DSET_NAME, (n_train_points, ),
                           dtype=cur_data_type,
                           chunks=train_chunkshape)
+    there_are_test_wells = True if len(test_only_wells) > 0 else False
     if there_are_test_wells:
         n_test_points = test_data_filter.filter_count_dset(porosity_data_h5)
         test_chunkshape = _get_chunk_shape(n_test_points, chunksize)
@@ -340,6 +332,26 @@ def _prepare_h5(suf_str: str,
 
     return (cur_h5, test_h5, sampling_max_points, train_data_filter,
             test_data_filter)
+
+
+def _config_filters(test_only_wells: list, train_data_filter: DataFilter,
+                    test_data_filter: DataFilter, it: int,
+                    config: Config) -> Tuple[DataFilter, DataFilter]:
+    """
+    Updates the data filters based on the presence of testing wells
+    and a sampling window
+    """
+    there_are_test_wells = True if len(test_only_wells) > 0 else False
+    if there_are_test_wells:
+        train_data_filter.add_not_in_well_list_filter(test_only_wells)
+
+    # Get config parameters and configure sampling
+    sampling_window: int = config.alg['sampling']['its_window_size']
+    if sampling_window > 0:
+        train_data_filter, test_data_filter = _add_sampling_window_to_filters(
+            sampling_window, train_data_filter, test_data_filter, it)
+
+    return train_data_filter, test_data_filter
 
 
 def _create_files(suf_str: str, test_only_wells: list, features_only: bool,
