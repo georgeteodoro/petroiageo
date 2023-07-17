@@ -126,7 +126,7 @@ class PredTrainDataFilter(DataFilter):
     """
     The final prediction train data filter. It automatically
     uses data that are RealValue.real or RealValues.propagated.
-    If used along with a TestDataFilter, should use the
+    If used along with a WellsDataFilter, should use the
     add_not_in_well_list_filter method with the well_ids_list
     of the Test Data.
     """
@@ -143,7 +143,7 @@ class FeatSelectionTrainDataFilter(PredTrainDataFilter):
     The Feature Selection train data filter. It automatically
     uses data that are RealValue.real, RealValues.propagated
     or RealValues.canal_expanded.
-    If used along with a TestDataFilter, should use the
+    If used along with a WellsDataFilter, should use the
     add_not_in_well_list_filter method with the well_ids_list
     of the Test Data.
     """
