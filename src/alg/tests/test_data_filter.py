@@ -135,7 +135,7 @@ class TestDataFilterWithoutData(TestCase):
             self.data_filter.filter_count_dset(invalid_dset)
 
 
-class TestPredTrainDataFilter(TestCase):
+class TestTrainDataFilters(TestCase):
 
     def setUp(self) -> None:
         self.tmp_file = tempfile.TemporaryFile()
@@ -145,11 +145,12 @@ class TestPredTrainDataFilter(TestCase):
                          ('phi', np.float64), ('well_id', np.int64),
                          ('ring', np.int8), ('real', np.int8)]
         cur_data_type = np.dtype(cur_data_type)
-        x_size = 50
-        y_size = 50
-        z_size = 20
-        phi_size = 20
-        well_id_size = 10
+        #Dont need a big dataset here
+        x_size = 10
+        y_size = 10
+        z_size = 10
+        phi_size = 10
+        well_id_size = 5
         ring_size = 1
         real_size = 1
         data = np.empty((x_size, y_size, z_size, phi_size, well_id_size,
@@ -161,15 +162,16 @@ class TestPredTrainDataFilter(TestCase):
             for j in range(y_size):
                 data[i, j]['x'] = i
                 data[i, j]['y'] = j
-                data[i, j]['z'] = np.arange(10)[:, np.newaxis, np.newaxis]
+                data[i, j]['z'] = np.arange(well_id_size)[:, np.newaxis,
+                                                          np.newaxis]
                 data[i,
                      j]['phi'] = np.random.rand(z_size, phi_size, well_id_size,
                                                 ring_size, real_size)
                 #The cube has x ranges associated with a well
                 #example: if x in [0, 10], well = 0,
                 #example: if x in [40, 50], well = 4
-                data[i, j]['well_id'] = np.array([i // 10] * 10)[:, np.newaxis,
-                                                                 np.newaxis]
+                data[i, j]['well_id'] = np.array(
+                    [i // 10] * well_id_size)[:, np.newaxis, np.newaxis]
 
                 #The ring num is based from the middle y
                 data[i, j]['ring'] = abs(middle_y - j)
@@ -181,13 +183,18 @@ class TestPredTrainDataFilter(TestCase):
         self.dset = self.h5_file.create_dataset("default",
                                                 dtype=cur_data_type,
                                                 data=data,
-                                                chunks=(10, 10, 10, 20, 10, 1,
+                                                chunks=(10, 10, 10, 10, 5, 1,
                                                         1))
 
-        self.data_filter = PredTrainDataFilter()
+        self.pred_data_filter = PredTrainDataFilter()
+        self.feat_sel_data_filter = FeatSelectionTrainDataFilter()
 
-    def test_can_filter_automatically(self):
-        result_size = len(self.data_filter.filter(self.dset[:]))
+    def test_pred_df_can_filter_automatically(self):
+        result_size = len(self.pred_data_filter.filter(self.dset[:]))
+        self.assertTrue(result_size > 0 and result_size < self.dset.size)
+
+    def test_feat_sel_df_can_filter_automatically(self):
+        result_size = len(self.feat_sel_data_filter.filter(self.dset[:]))
         self.assertTrue(result_size > 0 and result_size < self.dset.size)
 
     def tearDown(self):
