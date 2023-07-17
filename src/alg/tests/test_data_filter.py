@@ -95,6 +95,17 @@ class TestDataFilter(TestCase):
         self.data_filter.add_min_ring_filter(15)
         result_size = self.data_filter.filter_count_dset(self.dset)
         self.assertTrue(result_size > 0 and result_size < self.dset.size)
+    
+    def test_can_filter_chunks(self):
+        well_ids = [1, 2]
+        self.data_filter.add_not_in_well_list_filter(well_ids)
+        for chunk_slice in self.dset.iter_chunks():
+            chunk_data = self.dset[chunk_slice]
+            try:
+                _ = self.data_filter.filter(chunk_data)
+                self.assertTrue(True)
+            except Exception as e:
+                self.assertTrue(False)
 
     def tearDown(self):
         #this order matters
