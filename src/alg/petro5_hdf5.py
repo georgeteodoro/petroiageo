@@ -293,48 +293,12 @@ def _prepare_h5(suf_str: str,
     sampling param in config. If not, then no sampling of max points
     is used
     """
-    filename = f'cur{suf_str}.h5'
-    filename_test = f'cur{suf_str}-test.h5'
-
-    # If the cur file exists, it should be deleted
-    # A new tmp file is created by iteration
-    if os.path.exists(filename):
-        os.remove(filename)
-    if os.path.exists(filename_test):
-        os.remove(filename_test)
-
-    # Creates a temporary h5 structure to maintain the porosity and features
-    # data, as well as one for the test-only data, if necessary
-    cur_h5 = h5py.File(f'{filename}', 'w')
-    test_h5 = None
-    there_are_test_wells = True if len(test_only_wells) > 0 else False
-    if there_are_test_wells:
-        test_h5 = h5py.File(f'{filename_test}', 'w')
-
-    # Creates the datatype for the h5 structure, with or without 'well_id'
-    if features_only:
-        cur_data_type = [
-            ('x', np.int64),
-            ('y', np.int64),
-            ('z', np.int64),
-            ('phi', np.float64),
-        ]
-    else:
-        cur_data_type = [
-            ('x', np.int64),
-            ('y', np.int64),
-            ('z', np.int64),
-            ('phi', np.float64),
-            ('well_id', np.int64),
-        ]
-
-    # Add the features fields and create the np datatype
-    cur_data_type = cur_data_type + [(f'f{f}', np.float64)
-                                     for f in range(n_features)]
-    cur_data_type = np.dtype(cur_data_type)
+    cur_h5, test_h5, cur_data_type = _create_files(suf_str, test_only_wells,
+                                                   features_only, n_features)
 
     # Select whether training points include all points or there are test
     # points as well
+    there_are_test_wells = True if len(test_only_wells) > 0 else False
     if there_are_test_wells:
         train_data_filter.add_not_in_well_list_filter(test_only_wells)
 
@@ -376,6 +340,54 @@ def _prepare_h5(suf_str: str,
 
     return (cur_h5, test_h5, sampling_max_points, train_data_filter,
             test_data_filter)
+
+
+def _create_files(suf_str: str, test_only_wells: list, features_only: bool,
+                  n_features: int) -> Tuple[h5py.File, h5py.File, np.dtype]:
+    """
+    Create the h5py files that will have the temporary datasets
+    used from training and testing
+    """
+    filename = f'cur{suf_str}.h5'
+    filename_test = f'cur{suf_str}-test.h5'
+
+    # If the cur file exists, it should be deleted
+    # A new tmp file is created by iteration
+    if os.path.exists(filename):
+        os.remove(filename)
+    if os.path.exists(filename_test):
+        os.remove(filename_test)
+
+    # Creates a temporary h5 structure to maintain the porosity and features
+    # data, as well as one for the test-only data, if necessary
+    cur_h5 = h5py.File(f'{filename}', 'w')
+    test_h5 = None
+    there_are_test_wells = True if len(test_only_wells) > 0 else False
+    if there_are_test_wells:
+        test_h5 = h5py.File(f'{filename_test}', 'w')
+
+    # Creates the datatype for the h5 structure, with or without 'well_id'
+    if features_only:
+        cur_data_type = [
+            ('x', np.int64),
+            ('y', np.int64),
+            ('z', np.int64),
+            ('phi', np.float64),
+        ]
+    else:
+        cur_data_type = [
+            ('x', np.int64),
+            ('y', np.int64),
+            ('z', np.int64),
+            ('phi', np.float64),
+            ('well_id', np.int64),
+        ]
+
+    # Add the features fields and create the np datatype
+    cur_data_type = cur_data_type + [(f'f{f}', np.float64)
+                                     for f in range(n_features)]
+    cur_data_type = np.dtype(cur_data_type)
+    return cur_h5, test_h5, cur_data_type
 
 
 def _get_chunk_shape(n_points: int, max_chunksize: int) -> Tuple[int]:
