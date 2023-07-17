@@ -9,6 +9,7 @@ import profiling
 import h5py
 from typing import Dict, Tuple
 from config_parser import Config
+from data_filter import FeatSelectionTrainDataFilter
 
 # Initialization of mpi variables
 comm = MPI.COMM_WORLD
@@ -226,11 +227,7 @@ def worker(
 ):
     t0 = time()
 
-    # Points used for training: real, expanded and propagated
-    is_training_point_f = lambda d: (
-        (d["real"] == common.RealValues.real)
-        | (d["real"] == common.RealValues.canal_expanded)
-        | (d["real"] == common.RealValues.propagated))
+    data_filter = FeatSelectionTrainDataFilter()
 
     test_only_wells = config.alg["test_only_wells"]
     wells_coords = config.wells["coords"]
@@ -242,7 +239,7 @@ def worker(
     should_sample_max_points = True
     cur_h5, cur_h5_dset, test_h5, test_h5_dset = petro5_hdf5.create_tmp_dset(
         porosity_data_h5,
-        is_training_point_f,
+        data_filter,
         exp_n_features,
         config,
         it,

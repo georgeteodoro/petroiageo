@@ -6,6 +6,7 @@ from petro5_hdf5 import _limit_training_points, _is_well_in_list
 from petro5_hdf5 import _is_well_not_in_list, get_best_features_set
 from petro5_hdf5 import append_points_to_dset, _get_chunk_shape
 from petro5_hdf5 import MAX_HDF5_CHUNK_SIZE
+from data_filter import DataFilter
 import h5py
 import tempfile
 import numpy as np
@@ -68,10 +69,11 @@ class TestSamplingWithData(TestCase):
     def test_can_get_train_test_points_per_chunk(self):
         train_wells = [1, 3, 7]
         test_wells = [2, 4, 5]
-        is_training_point_f = lambda c: _is_well_in_list(c, train_wells)
+        train_data_filter = DataFilter()
+        train_data_filter.add_in_well_list_filter(train_wells)
         is_test_point_f = lambda c: _is_well_in_list(c, test_wells)
         n_train_per_chunk, n_test_per_chunk = _count_train_test_points_per_chunk(
-            self.dset, is_training_point_f, is_test_point_f)
+            self.dset, train_data_filter, is_test_point_f)
 
         n_chunks = 200
         expected_train_chunks_with_points = np.full(n_chunks,
