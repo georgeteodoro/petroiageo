@@ -155,7 +155,7 @@ class FeatSelectionTrainDataFilter(PredTrainDataFilter):
                                   | (d["real"] == RealValues.propagated)))
 
 
-class TestDataFilter(DataFilter):
+class TestWellsDataFilter(DataFilter):
     """
     The Test data filter. As test data is defined based on the well id,
     it requires a well_ids_list and automatically adds the
