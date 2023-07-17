@@ -246,22 +246,19 @@ def insert_filtered_feature(
         print(f"[insert_filtered_feature] full_time: {t6-t0}")
 
 
-def _add_sampling_window_to_filters(
-        sampling_window: int, train_data_filter: DataFilter,
-        test_data_filter: DataFilter, porosity_data_h5,
-        it) -> Tuple[int, DataFilter, WellsDataFilter]:
+def _add_sampling_window_to_filters(sampling_window: int,
+                                    train_data_filter: DataFilter,
+                                    test_data_filter: DataFilter,
+                                    it) -> Tuple[DataFilter, DataFilter]:
     """
-    Updates the train and test filters and n_training_points 
-    based on sampling_window
+    Updates the train and test filters based on sampling_window
     """
     min_ring = max(0, it - sampling_window)
 
     train_data_filter.add_min_ring_filter(min_ring)
     test_data_filter.add_min_ring_filter(min_ring)
 
-    n_training_points = train_data_filter.filter_count_dset(porosity_data_h5)
-
-    return n_training_points, train_data_filter, test_data_filter
+    return train_data_filter, test_data_filter
 
 
 def _limit_training_points(sampling_max_points: int,
@@ -295,16 +292,6 @@ def _prepare_h5(suf_str: str,
     sampling param in config. If not, then no sampling of max points
     is used
     """
-
-    # Get config parameters
-    sampling_window: int = config.alg['sampling']['its_window_size']
-    if should_sample_max_points:
-        sampling_max_points: int = config.alg['sampling']['max_points']
-    else:
-        # negative means no sampling and all points should be used
-        #from the sampling_window
-        sampling_max_points = -1
-
     filename = f'cur{suf_str}.h5'
     filename_test = f'cur{suf_str}-test.h5'
 
@@ -319,8 +306,8 @@ def _prepare_h5(suf_str: str,
     # data, as well as one for the test-only data, if necessary
     cur_h5 = h5py.File(f'{filename}', 'w')
     test_h5 = None
-    n_test_only_wells = len(test_only_wells)
-    if n_test_only_wells > 0:
+    there_are_test_wells = True if len(test_only_wells) > 0 else False
+    if there_are_test_wells:
         test_h5 = h5py.File(f'{filename_test}', 'w')
 
     # Creates the datatype for the h5 structure, with or without 'well_id'
@@ -347,22 +334,27 @@ def _prepare_h5(suf_str: str,
 
     # Select whether training points include all points or there are test
     # points as well
-    if n_test_only_wells > 0:
+    if there_are_test_wells:
         train_data_filter.add_not_in_well_list_filter(test_only_wells)
-        n_test_points = test_data_filter.filter_count_dset(porosity_data_h5)
+
+    # Get config parameters and configure sampling
+    sampling_window: int = config.alg['sampling']['its_window_size']
+    if sampling_window > 0:
+        train_data_filter, test_data_filter = _add_sampling_window_to_filters(
+            sampling_window, train_data_filter, test_data_filter, it)
 
     # Calculate the maximum number of training points
     n_train_points = train_data_filter.filter_count_dset(porosity_data_h5)
 
-    # Configures sampling
-    if sampling_window > 0:
-        (n_train_points, train_data_filter,
-         test_data_filter) = _add_sampling_window_to_filters(
-             sampling_window, train_data_filter, test_data_filter,
-             porosity_data_h5, it)
-
     #We may not have the sampling window and still have
     #sampling max points defined
+    if should_sample_max_points:
+        sampling_max_points: int = config.alg['sampling']['max_points']
+    else:
+        # negative means no sampling and all points should be used
+        #from the sampling_window
+        sampling_max_points = -1
+        
     n_train_points = _limit_training_points(sampling_max_points,
                                             n_train_points)
 
@@ -374,7 +366,8 @@ def _prepare_h5(suf_str: str,
                                         dtype=cur_data_type,
                                         chunks=train_chunkshape)
     test_h5_dset = None
-    if n_test_only_wells > 0:
+    if there_are_test_wells:
+        n_test_points = test_data_filter.filter_count_dset(porosity_data_h5)
         test_chunkshape = _get_chunk_shape(n_test_points, chunksize)
 
         test_h5_dset = test_h5.create_dataset('c', (n_test_points, ),

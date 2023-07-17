@@ -1,9 +1,8 @@
 from unittest import TestCase, main
 from petro5_hdf5 import _get_num_chunks_of_h5data, _sample_points
-from petro5_hdf5 import _get_n_sampling_points_per_chunk, _is_well_in_list
+from petro5_hdf5 import _get_n_sampling_points_per_chunk
 from petro5_hdf5 import _count_train_test_points_per_chunk
-from petro5_hdf5 import _limit_training_points, _is_well_in_list
-from petro5_hdf5 import _is_well_not_in_list, get_best_features_set
+from petro5_hdf5 import _limit_training_points, get_best_features_set
 from petro5_hdf5 import append_points_to_dset, _get_chunk_shape
 from petro5_hdf5 import MAX_HDF5_CHUNK_SIZE
 from data_filter import DataFilter, WellsDataFilter
@@ -193,32 +192,6 @@ class TestSamplingWithoutData(TestCase):
         new_n_train_points = _limit_training_points(max_points_to_sample,
                                                     curr_training_points)
         self.assertEqual(new_n_train_points, curr_training_points)
-
-    def test_is_well_in_list(self):
-        my_dtype = [('well_id', np.int64)]
-        my_dtype = np.dtype(my_dtype)
-        data = np.empty(10, dtype=my_dtype)
-        data['well_id'] = np.arange(10)
-        target_wells = [1, 7, 9]
-        expected_list = [
-            False, True, False, False, False, False, False, True, False, True
-        ]
-        expected = np.array(expected_list, dtype=bool)
-        result = _is_well_in_list(data, target_wells)
-        self.assertTrue(np.array_equal(expected, result))
-
-    def test_is_well_not_in_list(self):
-        my_dtype = [('well_id', np.int64)]
-        my_dtype = np.dtype(my_dtype)
-        data = np.empty(10, dtype=my_dtype)
-        data['well_id'] = np.arange(10)
-        target_wells = [1, 7, 9]
-        expected_list = [
-            True, False, True, True, True, True, True, False, True, False
-        ]
-        expected = np.array(expected_list, dtype=bool)
-        result = _is_well_not_in_list(data, target_wells)
-        self.assertTrue(np.array_equal(expected, result))
 
     def test_can_get_chunk_shape(self):
         n_points = 100
