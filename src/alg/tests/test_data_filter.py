@@ -250,7 +250,7 @@ class TestWellsDataFilter(TestCase):
         #There are 3 wells in total, 2 of them are test wells
         target_wells = [0, 1]
         self.data_filter = WellsDataFilter(target_wells)
-    
+
     def test_can_filter_automatically(self):
         result_size = len(self.data_filter.filter(self.dset[:]))
         self.assertTrue(result_size > 0 and result_size < self.dset.size)
@@ -259,6 +259,7 @@ class TestWellsDataFilter(TestCase):
         #this order matters
         self.h5_file.close()
         self.tmp_file.close()
+
 
 if __name__ == "__main__":
     main()
