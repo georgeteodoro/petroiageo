@@ -1,15 +1,13 @@
 import numpy as np
 from time import time
-from typing import Tuple, Dict, Callable
+from typing import Tuple, Dict
 import h5py
-from math import prod, ceil
 import os
 
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.metrics import mean_absolute_error
 import lightgbm as lgb
 
 import hdf5_util
-import common
 from config_parser import Config
 from data_filter import WellsDataFilter, DataFilter
 from data_filter import FeatSelectionTrainDataFilter
@@ -248,38 +246,22 @@ def insert_filtered_feature(
         print(f"[insert_filtered_feature] full_time: {t6-t0}")
 
 
-def _is_well_in_list(d: np.ndarray, l: list) -> np.ndarray:
-    ret = np.full((d.shape), False, dtype=bool)
-    for x in l:
-        ret += d['well_id'] == x
-    return ret
-
-
-def _is_well_not_in_list(d: np.ndarray, l: list) -> np.ndarray:
-    ret = np.full((d.shape), True, dtype=bool)
-    for x in l:
-        ret *= d['well_id'] != x
-    return ret
-
-
-def _add_sampling_window_to_filters(sampling_window: int,
-                                    train_data_filter: DataFilter,
-                                    is_test_point_f: Callable,
-                                    porosity_data_h5,
-                                    it) -> Tuple[int, DataFilter, Callable]:
+def _add_sampling_window_to_filters(
+        sampling_window: int, train_data_filter: DataFilter,
+        test_data_filter: DataFilter, porosity_data_h5,
+        it) -> Tuple[int, DataFilter, WellsDataFilter]:
     """
-    Updates the is_training_point_f2 and is_test_point_f filter functions 
-    and n_training_points based on sampling_window
+    Updates the train and test filters and n_training_points 
+    based on sampling_window
     """
     min_ring = max(0, it - sampling_window)
-    is_in_min_ring = lambda d: (d['ring'] >= min_ring)
-    train_data_filter.add_min_ring_filter(min_ring)
 
-    is_test_point_f2 = lambda d: is_test_point_f(d) & is_in_min_ring(d)
+    train_data_filter.add_min_ring_filter(min_ring)
+    test_data_filter.add_min_ring_filter(min_ring)
 
     n_training_points = train_data_filter.filter_count_dset(porosity_data_h5)
 
-    return n_training_points, train_data_filter, is_test_point_f2
+    return n_training_points, train_data_filter, test_data_filter
 
 
 def _limit_training_points(sampling_max_points: int,
@@ -299,7 +281,7 @@ def _prepare_h5(suf_str: str,
                 features_only: bool,
                 n_features: int,
                 train_data_filter: DataFilter,
-                is_test_point_f,
+                test_data_filter: DataFilter,
                 porosity_data_h5: h5py.Dataset,
                 it: int,
                 config: Config,
@@ -367,13 +349,7 @@ def _prepare_h5(suf_str: str,
     # points as well
     if n_test_only_wells > 0:
         train_data_filter.add_not_in_well_list_filter(test_only_wells)
-
-        is_test_point_f_count = lambda d: is_test_point_f(d).sum()
-        n_test_points = hdf5_util.fold_h5_all_clusters(
-            porosity_data_h5,
-            is_test_point_f_count,
-            0,
-        )
+        n_test_points = test_data_filter.filter_count_dset(porosity_data_h5)
 
     # Calculate the maximum number of training points
     n_train_points = train_data_filter.filter_count_dset(porosity_data_h5)
@@ -381,8 +357,8 @@ def _prepare_h5(suf_str: str,
     # Configures sampling
     if sampling_window > 0:
         (n_train_points, train_data_filter,
-         is_test_point_f) = _add_sampling_window_to_filters(
-             sampling_window, train_data_filter, is_test_point_f,
+         test_data_filter) = _add_sampling_window_to_filters(
+             sampling_window, train_data_filter, test_data_filter,
              porosity_data_h5, it)
 
     #We may not have the sampling window and still have
@@ -406,7 +382,7 @@ def _prepare_h5(suf_str: str,
                                               chunks=test_chunkshape)
 
     return (cur_h5, cur_h5_dset, test_h5, test_h5_dset, n_train_points,
-            sampling_max_points, train_data_filter, is_test_point_f)
+            sampling_max_points, train_data_filter, test_data_filter)
 
 
 def _get_chunk_shape(n_points: int, max_chunksize: int) -> Tuple[int]:
@@ -444,16 +420,15 @@ def create_tmp_dset(
         test_only_wells = list()
 
     profiling = False
-
-    is_test_point_f = lambda c: _is_well_in_list(c, test_only_wells)
+    test_data_filter = WellsDataFilter(test_only_wells)
 
     t0 = time()
     (train_h5_file, train_empty_h5_dset, test_h5_file, test_empty_h5_dset,
      n_training_points, samp_max_points, train_data_filter,
-     is_test_point_f) = _prepare_h5(suf_str, test_only_wells, features_only,
-                                    n_features, train_data_filter,
-                                    is_test_point_f, porosity_data_h5, it,
-                                    config, should_sample_max_points)
+     test_data_filter) = _prepare_h5(suf_str, test_only_wells, features_only,
+                                     n_features, train_data_filter,
+                                     test_data_filter, porosity_data_h5, it,
+                                     config, should_sample_max_points)
 
     t1 = time()
     if profiling:
@@ -470,7 +445,7 @@ def create_tmp_dset(
 
     (train_points_per_chunk,
      test_points_per_chunk) = _count_train_test_points_per_chunk(
-         porosity_data_h5, train_data_filter, is_test_point_f)
+         porosity_data_h5, train_data_filter, test_data_filter)
 
     last_chunk_with_train_points = np.where(
         train_points_per_chunk > 0)[0].max()
@@ -495,7 +470,8 @@ def create_tmp_dset(
             # Generate test-only data, if necessary
             if test_points_per_chunk[chunk_id] > 0 and n_test_only_wells > 0:
                 #Add test data to its unique list
-                test_points = chunk_np[is_test_point_f(chunk_np)]
+                #could be test_data_filter.filter(chunk_np) aswell
+                test_points = chunk_np[test_data_filter.satisfies(chunk_np)]
 
                 test_feats_only = True
                 test_empty_h5_dset, prev_end_test = append_points_to_dset(
@@ -572,12 +548,11 @@ def _get_n_sampling_points_per_chunk(training_points_per_chunk: np.ndarray,
 
 def _count_train_test_points_per_chunk(
         porosity_data_h5: h5py.Dataset, train_data_filter: DataFilter,
-        is_test_point_f) -> Tuple[np.ndarray, np.ndarray]:
+        test_data_filter: DataFilter) -> Tuple[np.ndarray, np.ndarray]:
     """
     Counts how many training and testing points there are per chunk of 
     porosity_data_h5
     """
-    num_test_points_f = lambda c: len(c[is_test_point_f(c)])
 
     n_chunks = _get_num_chunks_of_h5data(porosity_data_h5)
 
@@ -586,9 +561,12 @@ def _count_train_test_points_per_chunk(
 
     for chunk_id, chunk_slice in enumerate(porosity_data_h5.iter_chunks()):
         chunk_np = porosity_data_h5[chunk_slice]
+
         n_train_p = len(train_data_filter.filter(chunk_np))
         training_points_per_chunk[chunk_id] = n_train_p
-        test_points_per_chunk[chunk_id] = num_test_points_f(chunk_np)
+
+        n_test_p = len(test_data_filter.filter(chunk_np))
+        test_points_per_chunk[chunk_id] = n_test_p
 
     return training_points_per_chunk, test_points_per_chunk
 
