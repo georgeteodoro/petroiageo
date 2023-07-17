@@ -374,8 +374,8 @@ def _prepare_h5(suf_str: str,
                                dtype=cur_data_type,
                                chunks=test_chunkshape)
 
-    return (cur_h5, test_h5, n_train_points, sampling_max_points,
-            train_data_filter, test_data_filter)
+    return (cur_h5, test_h5, sampling_max_points, train_data_filter,
+            test_data_filter)
 
 
 def _get_chunk_shape(n_points: int, max_chunksize: int) -> Tuple[int]:
@@ -416,15 +416,17 @@ def create_tmp_dset(
     test_data_filter = WellsDataFilter(test_only_wells)
 
     t0 = time()
-    (train_h5_file, test_h5_file, n_training_points, samp_max_points,
-     train_data_filter,
+    (train_h5_file, test_h5_file, samp_max_points, train_data_filter,
      test_data_filter) = _prepare_h5(suf_str, test_only_wells, features_only,
                                      n_features, train_data_filter,
                                      test_data_filter, porosity_data_h5, it,
                                      config, should_sample_max_points)
 
-    train_empty_h5_dset = train_h5_file[TMP_DSET_NAME]
-    test_empty_h5_dset = test_h5_file[TMP_DSET_NAME]
+    train_empty_h5_dset: h5py.Dataset = train_h5_file[TMP_DSET_NAME]
+    test_empty_h5_dset: h5py.Dataset = test_h5_file[TMP_DSET_NAME]
+
+    n_training_points = train_empty_h5_dset.size
+
     t1 = time()
     if profiling:
         print(f"[get_features_sets] cur_create_time: {t1-t0}")
