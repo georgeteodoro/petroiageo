@@ -240,10 +240,8 @@ class H5ApplyAlg(AbstractApplyAlg):
         displacement_cube_shape: tuple,
     ) -> lgb.Booster:
         t0 = time()
-        # Points used for training: real and propagated
-        is_training_point_f = lambda d: (
-            (d["real"] == common.RealValues.real)
-            | (d["real"] == common.RealValues.propagated))
+
+        data_filter = PredTrainDataFilter()
 
         # Creates a temporary h5 structure to perform the training
         #There should be no sampling of points at this stage
@@ -252,7 +250,7 @@ class H5ApplyAlg(AbstractApplyAlg):
         should_sample_max_points = False
         cur_h5, cur_h5_dset, _, _ = petro5_hdf5.create_tmp_dset(
             porosity_data_h5,
-            is_training_point_f,
+            data_filter,
             len(best_features_set),
             self._config,
             it,
