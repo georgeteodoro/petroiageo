@@ -86,6 +86,13 @@ class TestDataFilter(TestCase):
         self.data_filter.add_not_in_well_list_filter(well_ids)
         result_size = len(self.data_filter.filter(self.dset[:]))
         self.assertEqual(result_size, self.dset.size)
+    
+    def test_can_count_data_given_filters(self):
+        well_ids = [1, 2]
+        self.data_filter.add_not_in_well_list_filter(well_ids)
+        self.data_filter.add_min_ring_filter(15)
+        result_size = self.data_filter.filter_count_dset(self.dset)
+        self.assertTrue(result_size > 0 and result_size < self.dset.size)
 
     def tearDown(self):
         #this order matters
@@ -120,6 +127,11 @@ class TestDataFilterWithoutData(TestCase):
         invalid_well_ids = 1
         with self.assertRaises(TypeError):
             self.data_filter.add_not_in_well_list_filter(invalid_well_ids)
+
+    def test_raise_on_invalid_dset(self):
+        invalid_dset = np.arange(10)
+        with self.assertRaises(TypeError):
+            self.data_filter.filter_count_dset(invalid_dset)
 
 
 if __name__ == "__main__":

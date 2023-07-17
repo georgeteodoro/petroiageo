@@ -111,6 +111,9 @@ class DataFilter():
         Counts how many data satisfy the current filters
         in the dset.
         """
+        if not isinstance(dset, h5py.Dataset):
+            raise TypeError(f"dset should be a h5py.Dataset but was {type(dset)}")
+        
         return fold_h5_all_clusters(
             dset,
             lambda a: self.satisfies(a).sum(),
