@@ -14,6 +14,7 @@ from data_filter import FeatSelectionTrainDataFilter
 
 RANDOM_STATE = 1
 MAX_HDF5_CHUNK_SIZE = 4_294_967_296  #2 ** 32
+TMP_DSET_NAME = 'c'
 
 params = {
     'max_bin': 128,
@@ -354,7 +355,7 @@ def _prepare_h5(suf_str: str,
         # negative means no sampling and all points should be used
         #from the sampling_window
         sampling_max_points = -1
-        
+
     n_train_points = _limit_training_points(sampling_max_points,
                                             n_train_points)
 
@@ -362,20 +363,19 @@ def _prepare_h5(suf_str: str,
     train_chunkshape = _get_chunk_shape(n_train_points, chunksize)
 
     # Create the h5 datasets
-    cur_h5_dset = cur_h5.create_dataset('c', (n_train_points, ),
-                                        dtype=cur_data_type,
-                                        chunks=train_chunkshape)
-    test_h5_dset = None
+    cur_h5.create_dataset(TMP_DSET_NAME, (n_train_points, ),
+                          dtype=cur_data_type,
+                          chunks=train_chunkshape)
     if there_are_test_wells:
         n_test_points = test_data_filter.filter_count_dset(porosity_data_h5)
         test_chunkshape = _get_chunk_shape(n_test_points, chunksize)
 
-        test_h5_dset = test_h5.create_dataset('c', (n_test_points, ),
-                                              dtype=cur_data_type,
-                                              chunks=test_chunkshape)
+        test_h5.create_dataset(TMP_DSET_NAME, (n_test_points, ),
+                               dtype=cur_data_type,
+                               chunks=test_chunkshape)
 
-    return (cur_h5, cur_h5_dset, test_h5, test_h5_dset, n_train_points,
-            sampling_max_points, train_data_filter, test_data_filter)
+    return (cur_h5, test_h5, n_train_points, sampling_max_points,
+            train_data_filter, test_data_filter)
 
 
 def _get_chunk_shape(n_points: int, max_chunksize: int) -> Tuple[int]:
@@ -416,13 +416,15 @@ def create_tmp_dset(
     test_data_filter = WellsDataFilter(test_only_wells)
 
     t0 = time()
-    (train_h5_file, train_empty_h5_dset, test_h5_file, test_empty_h5_dset,
-     n_training_points, samp_max_points, train_data_filter,
+    (train_h5_file, test_h5_file, n_training_points, samp_max_points,
+     train_data_filter,
      test_data_filter) = _prepare_h5(suf_str, test_only_wells, features_only,
                                      n_features, train_data_filter,
                                      test_data_filter, porosity_data_h5, it,
                                      config, should_sample_max_points)
 
+    train_empty_h5_dset = train_h5_file[TMP_DSET_NAME]
+    test_empty_h5_dset = test_h5_file[TMP_DSET_NAME]
     t1 = time()
     if profiling:
         print(f"[get_features_sets] cur_create_time: {t1-t0}")
