@@ -120,8 +120,8 @@ def update_config_file_params_with_args(config: config_parser.Config,
         config.add_param("with_progress", args.with_progress)
 
     if (args.local_files is not None) and args.local_files:
-        spcp = f"./{pathlib.Path(config['starting_porosity_cube_path']).name}"
-        config["starting_porosity_cube_path"] = spcp
+        spcp = f"./{pathlib.Path(config.starting_porosity_cube_path).name}"
+        config.starting_porosity_cube_path = spcp
         config.features_folder = "./features/"
 
     config.add_param("full_depth_chunks", True)
