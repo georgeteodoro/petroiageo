@@ -471,9 +471,17 @@ def create_tmp_dset(
      test_points_per_chunk) = _count_train_test_points_per_chunk(
          porosity_data_h5, train_data_filter, test_data_filter)
 
+    #There will be train points for sure
     last_chunk_with_train_points = np.where(
         train_points_per_chunk > 0)[0].max()
-    last_chunk_with_test_points = np.where(test_points_per_chunk > 0)[0].max()
+
+    #There may be no test points (no test wells)
+    is_there_test_points_on_c = np.where(test_points_per_chunk > 0)[0]
+    if len(is_there_test_points_on_c) > 0:
+        last_chunk_with_test_points = is_there_test_points_on_c.max()
+    else:
+        #should be 0 or negative
+        last_chunk_with_test_points = 0
 
     must_sample = samp_max_points > 0 and n_training_points > samp_max_points
     if must_sample:
