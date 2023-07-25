@@ -447,7 +447,10 @@ def create_tmp_dset(
                                      config, should_sample_max_points)
 
     train_empty_h5_dset: h5py.Dataset = train_h5_file[TMP_DSET_NAME]
-    test_empty_h5_dset: h5py.Dataset = test_h5_file[TMP_DSET_NAME]
+    if test_h5_file is not None:
+        test_empty_h5_dset: h5py.Dataset = test_h5_file[TMP_DSET_NAME]
+    else:
+        test_empty_h5_dset = None
 
     n_training_points = train_empty_h5_dset.size
 
