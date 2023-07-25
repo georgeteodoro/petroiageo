@@ -1,5 +1,5 @@
 import yaml
-
+from typing import List
 try:
     from yaml import CBaseLoader as Loader
 except ImportError:
@@ -625,11 +625,7 @@ class Config:
         """
         Returns a list with the complete path to every feature in the feature folder
         """
-        features_folder_path = pathlib.Path(self.config["features_folder"])
-        features_paths = [
-            path for path in list(features_folder_path.glob("*"))
-            if path.is_file()
-        ]
+        features_paths = self._get_feat_files_paths()
         complete_paths = [path.absolute() for path in features_paths]
         return complete_paths
 
@@ -640,13 +636,17 @@ class Config:
         A feature name is equal to the name of its file without the suffix.
         Example: feature1.h5 -> name:feature1
         """
-        features_folder_path = pathlib.Path(self.config["features_folder"])
-        features_paths = [
-            path for path in list(features_folder_path.glob("*"))
-            if path.is_file()
-        ]
+        features_paths = self._get_feat_files_paths()
         features_names = [path.stem for path in features_paths]
         return features_names
+
+    def _get_feat_files_paths(self) -> List[pathlib.Path]:
+        features_folder_path = pathlib.Path(self.config["features_folder"])
+        features_paths = sorted([
+            path for path in list(features_folder_path.glob("*"))
+            if path.is_file()
+        ])
+        return features_paths
 
 
 class YAMLConfig(Config):
