@@ -70,6 +70,7 @@ class H5SeismicDataLoader(AbstractSeismicDataLoader):
             # else:
             #     raise Exception
 
+        print(f"Features dict keys: {list(features_dset_dict_h5.keys())}")
         return features_dset_dict_h5
 
     def _single_compatible(self, to_compare):
