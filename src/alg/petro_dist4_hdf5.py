@@ -41,10 +41,10 @@ def get_features_sets(
     if mpi_size < 2:
         print("[petro4_dist_hdf5] 2 minimum processes required")
         return None
+    
+    print(f"Features dict keys: {list(features_dict_h5.keys())}")
 
     if rank == manager_rank:
-        #So it prints only one time
-        print(f"Features dict keys: {list(features_dict_h5.keys())}")
         return manager(all_features, max_feats_to_select, max_feats_to_test,
                        it, config)
 
