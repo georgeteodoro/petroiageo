@@ -310,10 +310,9 @@ def _prepare_h5(suf_str: str,
 
     # Calculate the maximum number of training points
     n_train_points = train_data_filter.filter_count_dset(porosity_data_h5)
-
     n_train_points = _limit_training_points(sampling_max_points,
                                             n_train_points)
-
+    assert n_train_points > 0
     chunksize = config.alg['parallel']['max_points_per_chunk']
     train_chunkshape = _get_chunk_shape(n_train_points, chunksize)
 
