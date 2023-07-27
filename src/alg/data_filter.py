@@ -115,11 +115,19 @@ class DataFilter():
             raise TypeError(
                 f"dset should be a h5py.Dataset but was {type(dset)}")
 
-        return fold_h5_all_clusters(
-            dset,
-            lambda a: self.satisfies(a).sum(),
-            0,
-        )
+        # return fold_h5_all_clusters(
+        #     dset,
+        #     lambda a: self.satisfies(a).sum(),
+        #     0,
+        # )
+
+        count = 0
+        for chunk_slice in dset.iter_chunks():
+            data = dset[chunk_slice]
+            count += self.satisfies(data).sum()
+        
+        return count
+
 
 
 class PredTrainDataFilter(DataFilter):
