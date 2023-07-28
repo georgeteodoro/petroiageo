@@ -131,7 +131,7 @@ class DataFilter():
         for chunk_slice in dset.iter_chunks():
             data = dset[chunk_slice]
             count += self.satisfies(data).sum()
-        
+
         return count
 
     @property
@@ -139,24 +139,28 @@ class DataFilter():
         return self._in_wells.copy()
 
     @in_wells.setter
-    def in_wells(self, new_in_wells:list) -> None:
+    def in_wells(self, new_in_wells: list) -> None:
         raise AttributeError("cant set in_wells!")
 
     @property
     def not_in_wells(self) -> list:
         return self._not_in_wells.copy()
-    
+
     @not_in_wells.setter
-    def not_in_wells(self, new_not_in_wells:list) -> None:
+    def not_in_wells(self, new_not_in_wells: list) -> None:
         raise AttributeError("cant set not_in_wells!")
-    
+
     @property
     def min_ring(self) -> int:
         return self._min_ring
-    
+
     @min_ring.setter
     def min_ring(self, new_min_ring) -> None:
         raise AttributeError("cant set min_ring!")
+
+    def __str__(self) -> str:
+        return f"min_ring: {self._min_ring}, in_wells: {self._in_wells}, \
+            not_in_wells: {self._not_in_wells}"
 
 
 class PredTrainDataFilter(DataFilter):
