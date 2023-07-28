@@ -145,7 +145,22 @@ class TestDataFilterWithoutData(TestCase):
         invalid_dset = np.arange(10)
         with self.assertRaises(TypeError):
             self.data_filter.filter_count_dset(invalid_dset)
+    
+    def test_can_get_min_ring(self):
+        min_ring = 4
+        self.data_filter.add_min_ring_filter(min_ring)
+        self.assertTrue(min_ring, self.data_filter.min_ring)
+    
+    def test_can_get_in_wells(self):
+        in_wells_list = [1,3,6]
+        self.data_filter.add_in_well_list_filter(in_wells_list)
+        self.assertListEqual(in_wells_list, self.data_filter.in_wells)
 
+    def test_can_get_not_in_wells(self):
+        not_in_wells_list = [1,3,6]
+        self.data_filter.add_not_in_well_list_filter(not_in_wells_list)
+        self.assertListEqual(not_in_wells_list, self.data_filter.not_in_wells)
+    
 
 class TestTrainDataFilters(TestCase):
 
