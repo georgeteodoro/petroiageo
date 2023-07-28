@@ -299,6 +299,9 @@ def _prepare_h5(suf_str: str,
 
     train_data_filter, test_data_filter = _config_filters(
         test_only_wells, train_data_filter, test_data_filter, it, config)
+    
+    print(f"TRAIN_FILTER: {train_data_filter}")
+    print(f"TEST_FILTER: {test_data_filter}")
 
     #We may not have the sampling window and still have
     #sampling max points defined
