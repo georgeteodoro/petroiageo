@@ -233,6 +233,8 @@ def worker(
     wells_coords = config.wells["coords"]
     training_wells = list(range(len(wells_coords)))
     training_wells = [x for x in training_wells if x not in test_only_wells]
+    print(f"training wells: {training_wells}")
+    print(f"Orig_test_wells: {test_only_wells}")
 
     #At the feature selection stage, there should be sampling of
     #points from the iterations considered
