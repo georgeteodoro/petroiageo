@@ -259,6 +259,7 @@ def _add_sampling_window_to_filters(sampling_window: int,
     train_data_filter.add_min_ring_filter(min_ring)
     test_data_filter.add_min_ring_filter(min_ring)
 
+    print(f"added min ring: {min_ring}")
     return train_data_filter, test_data_filter
 
 
@@ -308,6 +309,7 @@ def _prepare_h5(suf_str: str,
         #from the sampling_window
         sampling_max_points = -1
 
+    print(f"sampling_max_points: {sampling_max_points}")
     # Calculate the maximum number of training points
     n_train_points = train_data_filter.filter_count_dset(porosity_data_h5)
     n_train_points = _limit_training_points(sampling_max_points,
@@ -323,6 +325,7 @@ def _prepare_h5(suf_str: str,
     there_are_test_wells = True if len(test_only_wells) > 0 else False
     if there_are_test_wells:
         n_test_points = test_data_filter.filter_count_dset(porosity_data_h5)
+        assert n_test_points > 0
         test_chunkshape = _get_chunk_shape(n_test_points, chunksize)
 
         test_h5.create_dataset(TMP_DSET_NAME, (n_test_points, ),
@@ -343,6 +346,7 @@ def _config_filters(test_only_wells: list, train_data_filter: DataFilter,
     there_are_test_wells = True if len(test_only_wells) > 0 else False
     if there_are_test_wells:
         train_data_filter.add_not_in_well_list_filter(test_only_wells)
+        print(f"There are test wells")
 
     # Get config parameters and configure sampling
     sampling_window: int = config.alg['sampling']['its_window_size']
@@ -434,6 +438,8 @@ def create_tmp_dset(
 
     if test_only_wells is None:
         test_only_wells = list()
+
+    print(f"new test_wells: {test_only_wells}")
 
     profiling = False
     test_data_filter = WellsDataFilter(test_only_wells)
