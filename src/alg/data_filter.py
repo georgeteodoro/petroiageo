@@ -14,6 +14,9 @@ class DataFilter():
 
     def __init__(self):
         self._filter_list = list()
+        self._min_ring = None
+        self._in_wells = list()
+        self._not_in_wells = list()
 
     def add_min_ring_filter(self, min_ring: int) -> DataFilter:
         """
@@ -24,6 +27,7 @@ class DataFilter():
             raise ValueError("min_ring should be a non negative integer!")
 
         self._filter_list.append(lambda d: (d['ring'] >= min_ring))
+        self._min_ring = min_ring
         return self
 
     def add_not_in_well_list_filter(self, well_ids_list: list) -> DataFilter:
@@ -39,6 +43,7 @@ class DataFilter():
         self._filter_list.append(
             self._is_well_not_in_list_decorator(well_ids_list))
 
+        self._not_in_wells.extend(well_ids_list)
         return self
 
     def _is_well_not_in_list_decorator(self, well_ids_list: list) -> Callable:
@@ -69,6 +74,7 @@ class DataFilter():
         self._filter_list.append(
             self._is_well_in_list_decorator(well_ids_list))
 
+        self._in_wells.extend(well_ids_list)
         return self
 
     def _is_well_in_list_decorator(self, well_ids_list: list) -> Callable:
@@ -128,6 +134,29 @@ class DataFilter():
         
         return count
 
+    @property
+    def in_wells(self) -> list:
+        return self._in_wells.copy()
+
+    @in_wells.setter
+    def in_wells(self, new_in_wells:list) -> None:
+        raise AttributeError("cant set in_wells!")
+
+    @property
+    def not_in_wells(self) -> list:
+        return self._not_in_wells.copy()
+    
+    @not_in_wells.setter
+    def not_in_wells(self, new_not_in_wells:list) -> None:
+        raise AttributeError("cant set not_in_wells!")
+    
+    @property
+    def min_ring(self) -> int:
+        return self._min_ring
+    
+    @min_ring.setter
+    def min_ring(self, new_min_ring) -> None:
+        raise AttributeError("cant set min_ring!")
 
 
 class PredTrainDataFilter(DataFilter):
