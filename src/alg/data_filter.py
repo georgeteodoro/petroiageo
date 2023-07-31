@@ -158,9 +158,17 @@ class DataFilter():
     def min_ring(self, new_min_ring) -> None:
         raise AttributeError("cant set min_ring!")
 
+    @property
+    def n_filters(self) -> int:
+        return len(self._filter_list)
+
+    @n_filters.setter
+    def n_filters(self, new_n_filters) -> None:
+        raise AttributeError("cant set n_filters!")
+
     def __str__(self) -> str:
         return f"min_ring: {self._min_ring}, in_wells: {self._in_wells}, \
-            not_in_wells: {self._not_in_wells}"
+not_in_wells: {self._not_in_wells}, n_filters: {self.n_filters}"
 
 
 class PredTrainDataFilter(DataFilter):
