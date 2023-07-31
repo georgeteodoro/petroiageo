@@ -160,7 +160,7 @@ class TestDataFilterWithoutData(TestCase):
         not_in_wells_list = [1, 3, 6]
         self.data_filter.add_not_in_well_list_filter(not_in_wells_list)
         self.assertListEqual(not_in_wells_list, self.data_filter.not_in_wells)
-    
+
     def test_can_get_n_filters(self):
         not_in_wells_list = [1, 3, 6]
         self.data_filter.add_not_in_well_list_filter(not_in_wells_list)
@@ -171,6 +171,7 @@ class TestDataFilterWithoutData(TestCase):
     def test_can_get_str(self):
         self.assertTrue("min_ring" in str(self.data_filter))
         self.assertTrue("n_filters" in str(self.data_filter))
+
 
 class TestTrainDataFilters(TestCase):
 
@@ -238,6 +239,15 @@ class TestTrainDataFilters(TestCase):
         #this order matters
         self.h5_file.close()
         self.tmp_file.close()
+
+
+class TestFeatSelTrainDataFilterWithoutData(TestCase):
+
+    def setUp(self) -> None:
+        self.data_filter = FeatSelectionTrainDataFilter()
+
+    def test_n_filters_base_is_one(self):
+        self.assertEqual(self.data_filter.n_filters, 1)
 
 
 class TestWellsDataFilter(TestCase):
