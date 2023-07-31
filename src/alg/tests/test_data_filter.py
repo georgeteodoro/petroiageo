@@ -324,5 +324,18 @@ class TestWellsDataFilter(TestCase):
         self.tmp_file.close()
 
 
+class TestWellsDataFilterWithoutData(TestCase):
+
+    def setUp(self) -> None:
+        self.data_filter = WellsDataFilter([4, 5])
+
+    def test_n_filters_base_is_one(self):
+        self.assertEqual(self.data_filter.n_filters, 1)
+
+    def test_n_filters_after_add(self):
+        self.data_filter.add_not_in_well_list_filter([1, 2])
+        self.assertEqual(self.data_filter.n_filters, 2)
+
+
 if __name__ == "__main__":
     main()
