@@ -145,22 +145,22 @@ class TestDataFilterWithoutData(TestCase):
         invalid_dset = np.arange(10)
         with self.assertRaises(TypeError):
             self.data_filter.filter_count_dset(invalid_dset)
-    
+
     def test_can_get_min_ring(self):
         min_ring = 4
         self.data_filter.add_min_ring_filter(min_ring)
         self.assertTrue(min_ring, self.data_filter.min_ring)
-    
+
     def test_can_get_in_wells(self):
-        in_wells_list = [1,3,6]
+        in_wells_list = [1, 3, 6]
         self.data_filter.add_in_well_list_filter(in_wells_list)
         self.assertListEqual(in_wells_list, self.data_filter.in_wells)
 
     def test_can_get_not_in_wells(self):
-        not_in_wells_list = [1,3,6]
+        not_in_wells_list = [1, 3, 6]
         self.data_filter.add_not_in_well_list_filter(not_in_wells_list)
         self.assertListEqual(not_in_wells_list, self.data_filter.not_in_wells)
-    
+
 
 class TestTrainDataFilters(TestCase):
 
@@ -217,11 +217,11 @@ class TestTrainDataFilters(TestCase):
         self.feat_sel_data_filter = FeatSelectionTrainDataFilter()
 
     def test_pred_df_can_filter_automatically(self):
-        result_size = len(self.pred_data_filter.filter(self.dset[:]))
+        result_size = self.pred_data_filter.filter_count_dset(self.dset)
         self.assertTrue(result_size > 0 and result_size < self.dset.size)
 
     def test_feat_sel_df_can_filter_automatically(self):
-        result_size = len(self.feat_sel_data_filter.filter(self.dset[:]))
+        result_size = self.feat_sel_data_filter.filter_count_dset(self.dset)
         self.assertTrue(result_size > 0 and result_size < self.dset.size)
 
     def tearDown(self):
@@ -278,7 +278,7 @@ class TestWellsDataFilter(TestCase):
         self.data_filter = WellsDataFilter(target_wells)
 
     def test_can_filter_automatically(self):
-        result_size = len(self.data_filter.filter(self.dset[:]))
+        result_size = self.data_filter.filter_count_dset(self.dset)
         self.assertTrue(result_size > 0 and result_size < self.dset.size)
 
     def tearDown(self):
