@@ -42,10 +42,9 @@ class H5ExpandAlg(AbstractExpandAlg):
             print(f"[gen_expanded_points][it{it}] "\
                   f"Expanding points on ring {ring}")
             # Generate a list of points to be expanded
-            well_id = 0
             total_chunk_update_time = 0
             # TODO: add progress bar later
-            for well in wells_coords:
+            for well_id, well in enumerate(wells_coords):
                 well_x_left = well[0] - ring
                 well_x_right = well[0] + ring
                 well_y_top = well[1] - ring
@@ -149,8 +148,6 @@ class H5ExpandAlg(AbstractExpandAlg):
                     total_chunk_update_time += t3 - t2
                     profiling.prof_expand_chunk_time(it, well_id, n_chunk,
                                                      t3 - t2, self._config)
-
-                well_id = well_id + 1
 
             profiling.prof_expand_chunks_time(it, total_chunk_update_time,
                                               self._config)
