@@ -168,6 +168,10 @@ class TestDataFilterWithoutData(TestCase):
         self.data_filter.add_in_well_list_filter(in_wells_list)
         self.assertTrue(self.data_filter.n_filters == 2)
 
+    def test_can_get_str(self):
+        self.assertTrue("min_ring" in str(self.data_filter))
+        self.assertTrue("n_filters" in str(self.data_filter))
+
 class TestTrainDataFilters(TestCase):
 
     def setUp(self) -> None:
