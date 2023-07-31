@@ -249,6 +249,14 @@ class TestFeatSelTrainDataFilterWithoutData(TestCase):
     def test_n_filters_base_is_one(self):
         self.assertEqual(self.data_filter.n_filters, 1)
 
+class TestPredTrainDataFilterWithoutData(TestCase):
+
+    def setUp(self) -> None:
+        self.data_filter = PredTrainDataFilter()
+
+    def test_n_filters_base_is_one(self):
+        self.assertEqual(self.data_filter.n_filters, 1)
+
 
 class TestWellsDataFilter(TestCase):
 
