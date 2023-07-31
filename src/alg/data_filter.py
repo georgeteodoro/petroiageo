@@ -187,7 +187,7 @@ class PredTrainDataFilter(DataFilter):
                                   | (d["real"] == RealValues.propagated)))
 
 
-class FeatSelectionTrainDataFilter(PredTrainDataFilter):
+class FeatSelectionTrainDataFilter(DataFilter):
     """
     The Feature Selection train data filter. It automatically
     uses data that are RealValue.real, RealValues.propagated
