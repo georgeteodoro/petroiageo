@@ -4,8 +4,9 @@ from petro5_hdf5 import _get_n_sampling_points_per_chunk
 from petro5_hdf5 import _count_train_test_points_per_chunk
 from petro5_hdf5 import _limit_training_points, get_best_features_set
 from petro5_hdf5 import append_points_to_dset, _get_chunk_shape
-from petro5_hdf5 import MAX_HDF5_CHUNK_SIZE
+from petro5_hdf5 import MAX_HDF5_CHUNK_SIZE, _config_filters
 from data_filter import DataFilter, WellsDataFilter
+from data_filter import FeatSelectionTrainDataFilter
 import h5py
 import tempfile
 import numpy as np
@@ -229,6 +230,21 @@ class TestFeatureSelection(TestCase):
         expected = (["f1", "f2", "f3"], 0.1)
         best_feature = get_best_features_set(b_features_set)
         self.assertTupleEqual(expected, best_feature)
+
+
+class TestConfigFilters(TestCase):
+
+    def test_can_add_filters_test_wells_and_samp_window(self):
+        train_filter = FeatSelectionTrainDataFilter()
+        test_only_wells = [0]
+        test_filter = WellsDataFilter(test_only_wells)
+        it = 0
+        sampling_window = 4
+        train_filter, test_filter = _config_filters(test_only_wells,
+                                                    train_filter, test_filter,
+                                                    it, sampling_window)
+        self.assertEqual(train_filter.n_filters, 3)
+        self.assertEqual(test_filter.n_filters, 2)
 
 
 if __name__ == "__main__":
