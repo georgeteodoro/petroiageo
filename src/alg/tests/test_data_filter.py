@@ -179,9 +179,15 @@ class TestTrainDataFilters(TestCase):
         self.tmp_file = tempfile.TemporaryFile()
         self.h5_file = h5py.File(self.tmp_file, 'a')
 
-        cur_data_type = [('x', np.int64), ('y', np.int64), ('z', np.int64),
-                         ('phi', np.float64), ('well_id', np.int64),
-                         ('ring', np.int8), ('real', np.int8)]
+        cur_data_type = [
+            ('x', np.int64),
+            ('y', np.int64),
+            ('z', np.int64),
+            ('phi', np.float64),
+            ('real', np.int8),
+            ('well_id', np.int64),
+            ('ring', np.int8),
+        ]
         cur_data_type = np.dtype(cur_data_type)
         #Dont need a big dataset here
         x_size = 10
@@ -335,6 +341,79 @@ class TestWellsDataFilterWithoutData(TestCase):
     def test_n_filters_after_add(self):
         self.data_filter.add_not_in_well_list_filter([1, 2])
         self.assertEqual(self.data_filter.n_filters, 2)
+
+
+class TestIt0DataFilters(TestCase):
+
+    def _is_well_coord(self, x: int, y: int) -> bool:
+        return x == y and (x + y) % 4 == 0
+
+    def setUp(self) -> None:
+        self.tmp_file = tempfile.TemporaryFile()
+        self.h5_file = h5py.File(self.tmp_file, 'a')
+
+        cur_data_type = [
+            ('x', np.int64),
+            ('y', np.int64),
+            ('z', np.int64),
+            ('phi', np.float64),
+            ('real', np.int8),
+            ('well_id', np.int64),
+            ('ring', np.int8),
+        ]
+        cur_data_type = np.dtype(cur_data_type)
+        #Dont need a big dataset here
+        x_size = 10
+        y_size = 10
+        z_size = 10
+        phi_size = 10
+        well_id_size = 5
+        ring_size = 1
+        real_size = 1
+        data = np.empty((x_size, y_size, z_size, phi_size, well_id_size,
+                         ring_size, real_size),
+                        dtype=cur_data_type)
+
+        well_count = 0
+        for i in range(x_size):
+            for j in range(y_size):
+                data[i, j]['x'] = i
+                data[i, j]['y'] = j
+                data[i, j]['z'] = np.arange(well_id_size)[:, np.newaxis,
+                                                          np.newaxis]
+                data[i,
+                     j]['phi'] = np.random.rand(z_size, phi_size, well_id_size,
+                                                ring_size, real_size)
+                #Wells at positions:
+                # (2,2), (4,4), (6,6), (8,8) ...
+                well_id = well_count if self._is_well_coord(i, j) else -1
+                if well_id != -1:
+                    well_count += 1
+
+                data[i, j]['well_id'] = np.array(
+                    [well_id] * well_id_size)[:, np.newaxis, np.newaxis]
+
+                data[i, j]['ring'] = 0 if self._is_well_coord(i, j) else -1
+
+                data[i, j]['real'] = RealValues.real if self._is_well_coord(
+                    i, j) else RealValues.canal
+
+        self.dset = self.h5_file.create_dataset("default",
+                                                dtype=cur_data_type,
+                                                data=data,
+                                                chunks=(10, 10, 10, 10, 5, 1,
+                                                        1))
+
+    def test_can_filter_test_data(self):
+        data_filter = WellsDataFilter([0])
+        data_filter.add_min_ring_filter(0)
+        result_size = data_filter.filter_count_dset(self.dset)
+        self.assertTrue(result_size > 0 and result_size < self.dset.size)
+
+    def tearDown(self):
+        #this order matters
+        self.h5_file.close()
+        self.tmp_file.close()
 
 
 if __name__ == "__main__":
