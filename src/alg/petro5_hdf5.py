@@ -294,8 +294,6 @@ def _prepare_h5(suf_str: str,
     sampling param in config. If not, then no sampling of max points
     is used
     """
-    cur_h5, test_h5, cur_data_type = _create_files(suf_str, test_only_wells,
-                                                   features_only, n_features)
 
     train_data_filter, test_data_filter = _config_filters(
         test_only_wells, train_data_filter, test_data_filter, it,
@@ -323,6 +321,8 @@ def _prepare_h5(suf_str: str,
     train_chunkshape = _get_chunk_shape(n_train_points, chunksize)
 
     # Create the h5 datasets
+    cur_h5, test_h5, cur_data_type = _create_files(suf_str, test_only_wells,
+                                                   features_only, n_features)
     cur_h5.create_dataset(TMP_DSET_NAME, (n_train_points, ),
                           dtype=cur_data_type,
                           chunks=train_chunkshape)
@@ -439,6 +439,7 @@ def create_tmp_dset(
     should_sample_max_points: bool = True
 ) -> Tuple[h5py.File, h5py.Dataset, h5py.File, h5py.Dataset]:
 
+    assert porosity_data_h5.size > 0
     if test_only_wells is None:
         test_only_wells = list()
 

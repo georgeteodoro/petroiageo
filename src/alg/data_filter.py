@@ -46,7 +46,7 @@ class DataFilter():
                 self._is_well_not_in_list_decorator(well_ids_list))
 
             self._not_in_wells.extend(well_ids_list)
-        
+
         return self
 
     def _is_well_not_in_list_decorator(self, well_ids_list: list) -> Callable:
