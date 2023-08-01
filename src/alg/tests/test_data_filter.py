@@ -69,7 +69,7 @@ class TestDataFilter(TestCase):
         well_ids = list()
         self.data_filter.add_in_well_list_filter(well_ids)
         result_size = len(self.data_filter.filter(self.dset[:]))
-        self.assertTrue(result_size == 0)
+        self.assertEqual(result_size, self.dset.size)
 
     def test_add_not_in_well_list_filter_unused_well(self):
         well_ids = [10000]
