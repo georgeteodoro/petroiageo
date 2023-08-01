@@ -282,25 +282,16 @@ def _prepare_h5(suf_str: str,
                 train_data_filter: DataFilter,
                 test_data_filter: DataFilter,
                 porosity_data_h5: h5py.Dataset,
-                it: int,
                 config: Config,
                 should_sample_max_points: bool = True):
     """
     Generate the h5 File and dataset objects.
-    Also setup the filter functions to return only training and test points 
-    and returns the total number of sampled training points. If no sampling is
+    Also returns the total number of sampled training points. If no sampling is
     done, returns all training and test points.
     If should_sample_max_points, then considers the max_points param of the 
     sampling param in config. If not, then no sampling of max points
     is used
     """
-
-    train_data_filter, test_data_filter = _config_filters(
-        test_only_wells, train_data_filter, test_data_filter, it,
-        config.alg['sampling']['its_window_size'])
-
-    print(f"TRAIN_FILTER: {train_data_filter}")
-    print(f"TEST_FILTER: {test_data_filter}")
 
     #We may not have the sampling window and still have
     #sampling max points defined
@@ -336,8 +327,7 @@ def _prepare_h5(suf_str: str,
                                dtype=cur_data_type,
                                chunks=test_chunkshape)
 
-    return (cur_h5, test_h5, sampling_max_points, train_data_filter,
-            test_data_filter)
+    return (cur_h5, test_h5, sampling_max_points)
 
 
 def _config_filters(test_only_wells: list, train_data_filter: DataFilter,
@@ -448,12 +438,17 @@ def create_tmp_dset(
     profiling = False
     test_data_filter = WellsDataFilter(test_only_wells)
 
+    train_data_filter, test_data_filter = _config_filters(
+        test_only_wells, train_data_filter, test_data_filter, it,
+        config.alg['sampling']['its_window_size'])
+
+    print(f"TRAIN_FILTER: {train_data_filter}")
+    print(f"TEST_FILTER: {test_data_filter}")
+
     t0 = time()
-    (train_h5_file, test_h5_file, samp_max_points, train_data_filter,
-     test_data_filter) = _prepare_h5(suf_str, test_only_wells, features_only,
-                                     n_features, train_data_filter,
-                                     test_data_filter, porosity_data_h5, it,
-                                     config, should_sample_max_points)
+    (train_h5_file, test_h5_file, samp_max_points) = _prepare_h5(
+        suf_str, test_only_wells, features_only, n_features, train_data_filter,
+        test_data_filter, porosity_data_h5, config, should_sample_max_points)
 
     train_empty_h5_dset: h5py.Dataset = train_h5_file[TMP_DSET_NAME]
     if test_h5_file is not None:
