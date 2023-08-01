@@ -40,10 +40,13 @@ class DataFilter():
                 well_ids_list, tuple):
             raise TypeError("well_ids_list should be a list or a tuple!")
 
-        self._filter_list.append(
-            self._is_well_not_in_list_decorator(well_ids_list))
+        if len(well_ids_list) > 0:
 
-        self._not_in_wells.extend(well_ids_list)
+            self._filter_list.append(
+                self._is_well_not_in_list_decorator(well_ids_list))
+
+            self._not_in_wells.extend(well_ids_list)
+        
         return self
 
     def _is_well_not_in_list_decorator(self, well_ids_list: list) -> Callable:
@@ -71,10 +74,12 @@ class DataFilter():
                 well_ids_list, tuple):
             raise TypeError("well_ids_list should be a list or a tuple!")
 
-        self._filter_list.append(
-            self._is_well_in_list_decorator(well_ids_list))
+        if len(well_ids_list) > 0:
+            self._filter_list.append(
+                self._is_well_in_list_decorator(well_ids_list))
 
-        self._in_wells.extend(well_ids_list)
+            self._in_wells.extend(well_ids_list)
+
         return self
 
     def _is_well_in_list_decorator(self, well_ids_list: list) -> Callable:
