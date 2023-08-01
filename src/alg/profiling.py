@@ -61,7 +61,7 @@ def prof_expand_chunks_time(it, time, config):
     print(f"{base_str}{expand_str}{it_str(it)}[ran-chunks-time] {time}")
 
 
-def prof_expand_chunk_time(it, well_id, chunk, time, config):
+def prof_expand_chunk_time(it, well_id, chunk, time):
     print(f"{base_str}{expand_str}{it_str(it)}"\
           f"[w{well_id}chunk{chunk}-time] {time}")
 
