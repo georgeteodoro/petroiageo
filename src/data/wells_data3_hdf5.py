@@ -15,6 +15,7 @@ import sys
 sys.path.insert(0, "..")
 
 from alg import common
+from alg.datasets_names import POROSITY_DSET_NAME
 
 
 def _new_random_coord(x_len, y_len, expanded_real_points):
@@ -57,7 +58,7 @@ def porosity_points_py2hdf5(porosity_file, hdf5_file_path, hypercube_shape,
         ('well_id', np.int64),
     ])
     porosity_h5_dset = porosity_h5_f.create_dataset(
-        'p',
+        POROSITY_DSET_NAME,
         hypercube_shape,
         dtype=data_type,
         chunks=chunk_shape,

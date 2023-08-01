@@ -2,6 +2,7 @@ import h5py
 
 from inverted_learning_interface import AbstractPorosityDataLoader
 import config_parser
+from datasets_names import POROSITY_DSET_NAME
 
 
 class H5PorosityDataLoader(AbstractPorosityDataLoader):
@@ -42,7 +43,7 @@ class H5PorosityDataLoader(AbstractPorosityDataLoader):
             driver="mpio",
             comm=self._config.get_param("mpi_local_comm"),
         )
-        porosity_cube_dset = self._porosity_cube_file["p"]
+        porosity_cube_dset = self._porosity_cube_file[POROSITY_DSET_NAME]
 
         return porosity_cube_dset
 
