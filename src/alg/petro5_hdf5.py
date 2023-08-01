@@ -298,8 +298,9 @@ def _prepare_h5(suf_str: str,
                                                    features_only, n_features)
 
     train_data_filter, test_data_filter = _config_filters(
-        test_only_wells, train_data_filter, test_data_filter, it, config)
-    
+        test_only_wells, train_data_filter, test_data_filter, it,
+        config.alg['sampling']['its_window_size'])
+
     print(f"TRAIN_FILTER: {train_data_filter}")
     print(f"TEST_FILTER: {test_data_filter}")
 
@@ -341,7 +342,7 @@ def _prepare_h5(suf_str: str,
 
 def _config_filters(test_only_wells: list, train_data_filter: DataFilter,
                     test_data_filter: DataFilter, it: int,
-                    config: Config) -> Tuple[DataFilter, DataFilter]:
+                    sampling_window: int) -> Tuple[DataFilter, DataFilter]:
     """
     Updates the data filters based on the presence of testing wells
     and a sampling window
@@ -352,7 +353,6 @@ def _config_filters(test_only_wells: list, train_data_filter: DataFilter,
         print(f"There are test wells")
 
     # Get config parameters and configure sampling
-    sampling_window: int = config.alg['sampling']['its_window_size']
     if sampling_window > 0:
         train_data_filter, test_data_filter = _add_sampling_window_to_filters(
             sampling_window, train_data_filter, test_data_filter, it)
