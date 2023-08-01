@@ -34,8 +34,6 @@ class H5ExpandAlg(AbstractExpandAlg):
         if should_update:
             ring = it
 
-            t1 = time()
-
             print(f"[gen_expanded_points][it{it}] "\
                   f"Hypercube shape: {porosity_data_h5.shape}")
 
@@ -147,7 +145,7 @@ class H5ExpandAlg(AbstractExpandAlg):
                     t3 = time()
                     total_chunk_update_time += t3 - t2
                     profiling.prof_expand_chunk_time(it, well_id, n_chunk,
-                                                     t3 - t2, self._config)
+                                                     t3 - t2)
 
             profiling.prof_expand_chunks_time(it, total_chunk_update_time,
                                               self._config)
