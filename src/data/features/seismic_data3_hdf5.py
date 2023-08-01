@@ -19,6 +19,12 @@ import h5py
 from math import prod
 import pathlib
 
+import sys
+
+sys.path.insert(0, "../..")
+
+from alg.datasets_names import FEAT_DSET_NAME
+
 
 def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path, chunk_shape,
                                    displacement_window,
@@ -87,7 +93,7 @@ def _create_feature_hdf5_file(
           f"creating hdf5 of feature {feature_name}")
     with h5py.File(output_dir / f'{feature_name}.h5', 'w') as h5_f:
         _ = h5_f.create_dataset(
-            'f',
+            FEAT_DSET_NAME,
             large_data_shape,
             dtype=np.float64,
             chunks=chunk_shape,
@@ -120,10 +126,11 @@ def _fill_center(feature_full_np, feature_np, data_shape, mult_factor,
 
 
 def _fill_borders(feature_full_np, data_shape, displacement_window):
-
-    # Create the slices for the region inside the displacement window. This
-    # region have the feature_np data (with mult replications if needed).
-    # However, it excludes the displacement windows borders.
+    """
+    Create the slices for the region inside the displacement window. This
+    region have the feature_np data (with mult replications if needed).
+    However, it excludes the displacement windows borders.
+    """
     x_slice = slice(displacement_window, data_shape[0] - displacement_window)
     y_slice = slice(displacement_window, data_shape[1] - displacement_window)
     z_slice = slice(displacement_window, data_shape[2] - displacement_window)
@@ -213,9 +220,11 @@ def _fill_cubes(feature_full_np, feature_np, data_shape, large_data_shape,
 
 
 def _fill_rods(feature_full_np, large_data_shape, displacement_window):
-    # Create the slices for the region inside the displacement window. This
-    # region have the feature_np data (with mult replications if needed).
-    # However, it excludes the displacement windows borders.
+    """
+    Create the slices for the region inside the displacement window. This
+    region have the feature_np data (with mult replications if needed).
+    However, it excludes the displacement windows borders.
+    """
     x_slice = slice(displacement_window,
                     large_data_shape[0] - displacement_window)
     y_slice = slice(displacement_window,

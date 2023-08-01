@@ -3,6 +3,7 @@ from typing import Dict
 
 from inverted_learning_interface import AbstractSeismicDataLoader
 import config_parser
+from datasets_names import FEAT_DSET_NAME
 
 
 class H5SeismicDataLoader(AbstractSeismicDataLoader):
@@ -60,7 +61,7 @@ class H5SeismicDataLoader(AbstractSeismicDataLoader):
             self._features_files_dict_h5[feature] = h5py.File(
                 feature_path, "r", **mpi_kwargs)
             features_dset_dict_h5[feature] = self._features_files_dict_h5[
-                feature]["f"]
+                feature][FEAT_DSET_NAME]
 
             # TODO: fix this assertion
             # # Assert whether the dimensions are compatible
