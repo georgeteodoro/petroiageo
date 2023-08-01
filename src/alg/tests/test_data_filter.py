@@ -410,6 +410,13 @@ class TestIt0DataFilters(TestCase):
         result_size = data_filter.filter_count_dset(self.dset)
         self.assertTrue(result_size > 0 and result_size < self.dset.size)
 
+    def test_can_filter_feat_sel_train_data(self):
+        data_filter = FeatSelectionTrainDataFilter()
+        data_filter.add_min_ring_filter(0)
+        data_filter.add_not_in_well_list_filter([0])
+        result_size = data_filter.filter_count_dset(self.dset)
+        self.assertTrue(result_size > 0 and result_size < self.dset.size)
+
     def tearDown(self):
         #this order matters
         self.h5_file.close()
