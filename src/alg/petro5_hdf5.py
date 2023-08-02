@@ -513,6 +513,8 @@ def get_features_sets(
         porosity_data_h5,
         is_training_point_f,
         exp_n_features,
+        config,
+        it,
         test_only_wells=test_only_wells,
     )
 
