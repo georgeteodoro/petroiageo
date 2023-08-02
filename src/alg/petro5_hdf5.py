@@ -674,6 +674,8 @@ def get_features_sets(
         porosity_data_h5,
         data_filter,
         exp_n_features,
+        config,
+        it,
         test_only_wells=test_only_wells,
         should_sample_max_points=should_sample_max_points)
 
