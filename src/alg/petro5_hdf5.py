@@ -725,9 +725,9 @@ def get_features_sets(
         data_filter,
         exp_n_features,
         config,
-        alg_it,
-        test_wells_ids=test_wells_ids,
-        should_sample_max_points=True)
+        it,
+        test_only_wells=test_only_wells,
+    )
 
     # Create training temporary object
     cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
