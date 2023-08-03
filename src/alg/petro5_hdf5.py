@@ -301,7 +301,6 @@ def _prepare_h5(suf_str: str,
         #from the sampling_window
         sampling_max_points = -1
 
-    print(f"sampling_max_points: {sampling_max_points}")
     # Calculate the maximum number of training points
     n_train_points = train_data_filter.filter_count_dset(porosity_data_h5)
     n_train_points = _limit_training_points(sampling_max_points,
