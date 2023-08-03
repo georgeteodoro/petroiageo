@@ -37,12 +37,17 @@ class H5PorosityDataLoader(AbstractPorosityDataLoader):
         # structure.
         write_str = "r+"
 
+        # Setup HDF5 driver configuration
+        if self._config.get_param("mpi_size") > 1:
+            mpi_kwargs = {
+                "driver": "mpio",
+                "comm": self._config.get_param("mpi_local_comm"),
+            }
+        else:
+            mpi_kwargs = {}
+
         self._porosity_cube_file = h5py.File(
-            self._config.starting_porosity_cube_path,
-            write_str,
-            driver="mpio",
-            comm=self._config.get_param("mpi_local_comm"),
-        )
+            self._config.starting_porosity_cube_path, write_str, **mpi_kwargs)
         porosity_cube_dset = self._porosity_cube_file[POROSITY_DSET_NAME]
 
         return porosity_cube_dset
