@@ -46,6 +46,7 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
         max_num_features = self._config.alg["max_num_features"]
         num_features = self._config.get_param("num_features")
         base_features = self._config.features_files_names
+        assert len(base_features) > 0
         # TODO: Centralize this behavior of removing other files
         base_features = [f for f in base_features if f != ".gitkeep"]
         if num_features != 0:
