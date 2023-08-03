@@ -56,6 +56,18 @@ class H5ExpandAlg(AbstractExpandAlg):
                 bot_wall_cond = (lambda d: (d['y'] == well_y_bot)
                                  & (d['x'] <= well_x_right)
                                  & (d['x'] >= well_x_left))
+                left_wall_cond = (lambda d: (d['x'] == well_x_left)
+                                  & (d['y'] <= well_y_bot)
+                                  & (d['y'] >= well_y_top))
+                right_wall_cond = (lambda d: (d['x'] == well_x_right)
+                                   & (d['y'] <= well_y_bot)
+                                   & (d['y'] >= well_y_top))
+                top_wall_cond = (lambda d: (d['y'] == well_y_top)
+                                 & (d['x'] <= well_x_right)
+                                 & (d['x'] >= well_x_left))
+                bot_wall_cond = (lambda d: (d['y'] == well_y_bot)
+                                 & (d['x'] <= well_x_right)
+                                 & (d['x'] >= well_x_left))
 
                 # Used only for profiling
                 n_chunk = -1
@@ -101,6 +113,10 @@ class H5ExpandAlg(AbstractExpandAlg):
 
                     ran_chunks += 1  # Used only for profiling
 
+                    within_chunk_cond = (lambda d: (d['x'] >= chunk_x_left) &
+                                         (d['x'] <= chunk_x_right) &
+                                         (d['y'] >= chunk_y_top) &
+                                         (d['y'] <= chunk_y_bot))
                     within_chunk_cond = (lambda d: (d['x'] >= chunk_x_left) &
                                          (d['x'] <= chunk_x_right) &
                                          (d['y'] >= chunk_y_top) &
