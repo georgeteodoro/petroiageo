@@ -75,8 +75,9 @@ def conditional_map_h5_chunk(d_h5, cond_f, column_val_list, chunk_slice):
     chunk_np = d_h5[chunk_slice]
 
     # Update values of each column on condition
+    cond = cond_f(chunk_np)
     for column, val in column_val_list:
-        chunk_np[column] = np.where(cond_f(chunk_np), val, chunk_np[column])
+        chunk_np[column] = np.where(cond, val, chunk_np[column])
 
     # Forward values to hdf5 file
     d_h5[chunk_slice] = chunk_np
