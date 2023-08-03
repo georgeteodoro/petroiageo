@@ -27,7 +27,7 @@ class H5ExpandAlg(AbstractExpandAlg):
         Expand training wells
         """
         # Retrieve config parameters
-        wells_coords = self._config.train_wells_coords
+        wells_coords = self._config.wells_as_simple_list
         comm = self._config.get_param('mpi_global_comm')
         rank = self._config.get_param('mpi_rank')
         should_update = self._config.get_param('mpi_should_update_local')
@@ -117,7 +117,7 @@ class H5ExpandAlg(AbstractExpandAlg):
                                          (d['y'] <= chunk_y_bot))
 
                     # Update 'empty' values to 'expanded' if point is
-                    # on any ring border and if they are present on
+                    # on any ring border and if they are present on 
                     # this chunk
                     local_cond = lambda d: within_chunk_cond(d) & (
                         left_wall_cond(d)
@@ -127,8 +127,8 @@ class H5ExpandAlg(AbstractExpandAlg):
 
                     hdf5_util.conditional_map_h5_chunk(
                         porosity_data_h5,
-                        lambda d:
-                        (d['real'] == common.RealValues.empty) & local_cond(d),
+                        lambda d: (d['real'] == common.RealValues.empty) &
+                        local_cond(d),
                         [
                             ('well_id', well_id),
                             ('real', common.RealValues.expanded),
