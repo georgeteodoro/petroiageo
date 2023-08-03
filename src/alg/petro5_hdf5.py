@@ -259,7 +259,6 @@ def _add_sampling_window_to_filters(sampling_window: int,
     train_data_filter.add_min_ring_filter(min_ring)
     test_data_filter.add_min_ring_filter(min_ring)
 
-    print(f"added min ring: {min_ring}")
     return train_data_filter, test_data_filter
 
 
@@ -340,7 +339,6 @@ def _config_filters(test_only_wells: list, train_data_filter: DataFilter,
     there_are_test_wells = True if len(test_only_wells) > 0 else False
     if there_are_test_wells:
         train_data_filter.add_not_in_well_list_filter(test_only_wells)
-        print(f"There are test wells")
 
     # Get config parameters and configure sampling
     if sampling_window > 0:
@@ -433,17 +431,12 @@ def create_tmp_dset(
     if test_only_wells is None:
         test_only_wells = list()
 
-    print(f"new test_wells: {test_only_wells}")
-
     profiling = False
     test_data_filter = WellsDataFilter(test_only_wells)
 
     train_data_filter, test_data_filter = _config_filters(
         test_only_wells, train_data_filter, test_data_filter, it,
         config.alg['sampling']['its_window_size'])
-
-    print(f"TRAIN_FILTER: {train_data_filter}")
-    print(f"TEST_FILTER: {test_data_filter}")
 
     t0 = time()
     (train_h5_file, test_h5_file, samp_max_points) = _prepare_h5(
@@ -455,8 +448,6 @@ def create_tmp_dset(
         test_empty_h5_dset: h5py.Dataset = test_h5_file[TMP_DSET_NAME]
     else:
         test_empty_h5_dset = None
-
-    n_training_points = train_empty_h5_dset.size
 
     t1 = time()
     if profiling:
@@ -475,6 +466,8 @@ def create_tmp_dset(
      test_points_per_chunk) = _count_train_test_points_per_chunk(
          porosity_data_h5, train_data_filter, test_data_filter)
 
+    total_n_training_points_possible = np.sum(train_points_per_chunk)
+
     #There will be train points for sure
     last_chunk_with_train_points = np.where(
         train_points_per_chunk > 0)[0].max()
@@ -487,7 +480,7 @@ def create_tmp_dset(
         #should be 0 or negative
         last_chunk_with_test_points = 0
 
-    must_sample = samp_max_points > 0 and n_training_points > samp_max_points
+    must_sample = samp_max_points > 0 and total_n_training_points_possible > samp_max_points
     if must_sample:
         sampling_points_per_chunk = _get_n_sampling_points_per_chunk(
             train_points_per_chunk, samp_max_points)
@@ -518,7 +511,6 @@ def create_tmp_dset(
                 #could be train_data_filter.filter(chunk_np) aswell
                 training_points = chunk_np[train_data_filter.satisfies(
                     chunk_np)]
-
                 # Performs sampling on training_points
                 if must_sample:
                     n_points_to_sample_chunk = sampling_points_per_chunk[
@@ -578,7 +570,7 @@ def _get_n_sampling_points_per_chunk(training_points_per_chunk: np.ndarray,
 
     sampling_points_per_chunk = training_points_per_chunk / total_train_points
     sampling_points_per_chunk *= sampling_max_points
-    sampling_points_per_chunk = np.ceil(sampling_points_per_chunk)
+    sampling_points_per_chunk = np.ceil(sampling_points_per_chunk).astype(int)
     return sampling_points_per_chunk
 
 
@@ -623,6 +615,16 @@ def append_points_to_dset(features_only: bool, target_dset: h5py.Dataset,
     """
     n_points = len(points)
     new_prev = prev_end + n_points
+
+    # As the sampling_points may pass the target_dset.size
+    # (see _get_n_sampling_points_per_chunk)
+    # we must check if the curr n_points would lead to a
+    # shape error on target_dset
+    diff = new_prev - target_dset.size
+    if diff > 0:
+        new_prev = target_dset.size
+        points = points[:-diff]
+
     if features_only:
         target_dset[
             'x',
