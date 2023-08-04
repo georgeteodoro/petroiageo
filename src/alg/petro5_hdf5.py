@@ -481,14 +481,18 @@ def create_tmp_dset(
 
     must_sample = samp_max_points > 0 and total_n_training_points_possible > samp_max_points
     if must_sample:
+        print(f"MUST SAMPLE! ORIG: {total_n_training_points_possible} MAX: {samp_max_points}")
         sampling_points_per_chunk = _get_n_sampling_points_per_chunk(
             train_points_per_chunk, samp_max_points)
+    else:
+        print(f"NO NEED FOR SAMPLE! TOTAL: {total_n_training_points_possible}")
 
-        rng = np.random.default_rng()
+    rng = np.random.default_rng()
 
     n_test_only_wells = len(test_only_wells)
     #Go through each chunk again. Adds all test points for sure.
     for chunk_id, chunk_slice in enumerate(porosity_data_h5.iter_chunks()):
+        print(f"CHUNK ID: {chunk_id}")
         #only reads data if necessary
         if train_points_per_chunk[chunk_id] > 0 or test_points_per_chunk[
                 chunk_id] > 0:
@@ -510,12 +514,21 @@ def create_tmp_dset(
                 #could be train_data_filter.filter(chunk_np) aswell
                 training_points = chunk_np[train_data_filter.satisfies(
                     chunk_np)]
+
+                assert np.all(training_points["well_id"] >= 0)
                 # Performs sampling on training_points
                 if must_sample:
                     n_points_to_sample_chunk = sampling_points_per_chunk[
                         chunk_id]
-                    training_points = _sample_points(n_points_to_sample_chunk,
-                                                     rng, training_points)
+                    training_points = _sample_points_from_chunk(
+                        n_points_to_sample_chunk, rng, training_points)
+
+                ordered_well_ids, well_ids_count = np.unique(
+                    training_points['well_id'], return_counts=True)
+
+                print(
+                    f"wells: {ordered_well_ids}. SAMPS PER WELL: {well_ids_count}"
+                )
 
                 train_empty_h5_dset, prev_end = append_points_to_dset(
                     features_only, train_empty_h5_dset, prev_end,
@@ -534,19 +547,70 @@ def create_tmp_dset(
     return train_h5_file, train_empty_h5_dset, test_h5_file, test_empty_h5_dset
 
 
-def _sample_points(n_points_to_sample_chunk: int, rng: np.random.Generator,
-                   training_points: np.ndarray) -> np.ndarray:
+def _sample_points_from_chunk(n_points_to_sample_chunk: int,
+                              rng: np.random.Generator,
+                              training_points: np.ndarray) -> np.ndarray:
     """
-    Sample n = min(n_points_to_sample_chunk, max_points_still_to_sample)
-    points from training_points with the rng
+    Sample n_points_to_sample_chunk points from training_points with the rng. 
+    It sample points from every well in the chunk proportionally.
+
+    Example: 
+    If n_points_to_sample_chunk=100 and there are 3 wells
+    [1,2,3] with [100, 200, 300] points respectivelly in the chunk,
+    then, it will try to sample [17, 33, 50] points respectivelly
     """
 
-    #This accepts probabilities
-    training_points = rng.choice(training_points,
-                                 n_points_to_sample_chunk,
-                                 replace=False)
+    ordered_well_ids, well_ids_count = np.unique(training_points['well_id'],
+                                                 return_counts=True)
 
-    return training_points
+    print(f"SHOULD SAMPLE: {n_points_to_sample_chunk}")
+    n_samp_points_per_well = _get_n_pts_to_sample_per_well(
+        n_points_to_sample_chunk, well_ids_count)
+
+    sampled_training_points = None
+    for well_idx, well_id in enumerate(ordered_well_ids):
+        n_samp_points_well = n_samp_points_per_well[well_idx]
+        well_points = training_points[training_points['well_id'] == well_id]
+        assert np.all(well_points['well_id'] == well_id)
+        #This accepts probabilities
+        curr_sampled_points = rng.choice(well_points,
+                                         n_samp_points_well,
+                                         replace=False)
+
+        if sampled_training_points is None:
+            sampled_training_points = curr_sampled_points
+        else:
+            sampled_training_points = np.concatenate(
+                [sampled_training_points, curr_sampled_points])
+
+    print(f"SAMPLED: {sampled_training_points.shape}")
+
+    assert sampled_training_points.size == n_points_to_sample_chunk
+
+    return sampled_training_points
+
+
+def _get_n_pts_to_sample_per_well(n_points_to_sample_chunk: int,
+                                  n_pts_per_well: np.ndarray) -> np.ndarray:
+    # This might give more points to sample in total than
+    # n_points_to_sample_chunk because of the ceil. So it must be treated
+    n_samp_points_per_well = np.ceil((n_pts_per_well / n_pts_per_well.sum()) *
+                                     n_points_to_sample_chunk).astype(int)
+    # Treating difference
+    total_samples = n_samp_points_per_well.sum()
+    diff = total_samples - n_points_to_sample_chunk
+
+    if diff > 0:
+        print(f"DIFF: {diff}")
+        n_points_to_remove = np.rint(
+            (n_samp_points_per_well / total_samples) * diff).astype(int)
+        print(f"N_POINTS_TO_REMOVE: {n_points_to_remove}")
+
+        n_samp_points_per_well -= n_points_to_remove
+
+    # assert np.all(n_samp_points_per_well > 0)
+    assert np.sum(n_samp_points_per_well) == n_points_to_sample_chunk
+    return n_samp_points_per_well
 
 
 def _get_n_sampling_points_per_chunk(training_points_per_chunk: np.ndarray,
@@ -589,7 +653,9 @@ def _count_train_test_points_per_chunk(
     for chunk_id, chunk_slice in enumerate(porosity_data_h5.iter_chunks()):
         chunk_np = porosity_data_h5[chunk_slice]
 
-        n_train_p = len(train_data_filter.filter(chunk_np))
+        train_filtered = train_data_filter.filter(chunk_np)
+        assert np.all((train_filtered['well_id'] >= 0))
+        n_train_p = len(train_filtered)
         training_points_per_chunk[chunk_id] = n_train_p
 
         n_test_p = len(test_data_filter.filter(chunk_np))

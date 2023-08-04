@@ -1,5 +1,5 @@
 from unittest import TestCase, main
-from petro5_hdf5 import _get_num_chunks_of_h5data, _sample_points
+from petro5_hdf5 import _get_num_chunks_of_h5data, _sample_points_from_chunk
 from petro5_hdf5 import _get_n_sampling_points_per_chunk
 from petro5_hdf5 import _count_train_test_points_per_chunk
 from petro5_hdf5 import _limit_training_points, get_best_features_set
@@ -62,7 +62,7 @@ class TestSamplingWithData(TestCase):
         data = self.dset[chunk_slice]
         n_points_to_sample_chunk = 10
         rng = np.random.default_rng()
-        sample = _sample_points(n_points_to_sample_chunk, rng, data)
+        sample = _sample_points_from_chunk(n_points_to_sample_chunk, rng, data)
 
         self.assertTrue(n_points_to_sample_chunk, len(sample))
 
