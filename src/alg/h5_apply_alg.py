@@ -197,14 +197,14 @@ class H5ApplyAlg(AbstractApplyAlg):
                     cur_coords_3d_np[coord_s] + feature[d_id + 1] +
                     ((displacement_cube_shape[d_id] - 1) / 2))
 
-                # Filter features' values for current chunk coords
+            # Filter features values for current chunk coords
             feature_values = _gen_list_features(features_dict_h5[feature[0]],
                                                 cur_coords_3d_np.flat)
 
             to_predict_np[f"f{f_idx}"] = np.fromiter(feature_values,
                                                      np.float64)
 
-            # Convert to_predict_np from a ndarray to a regular 2d array
+        # Convert to_predict_np from a ndarray to a regular 2d array
         to_predict_np = np.array(to_predict_np.tolist())
         return to_predict_np
 
