@@ -137,6 +137,14 @@ def prof_fsel_worker_sync_time(it, worker, f_it, time, config):
           f"[worker-sync-time] {time}")
 
 
+# === Feature Selection - Common ==============================================
+
+
+def prof_fsel_best_feats_and_error(it, best_feats, error):
+    print(f"{base_str}{fsel_str}{it_str(it)}[best-features-and-error]"
+          f"{best_feats} with error {error}")
+
+
 # === Predict =================================================================
 def prof_predict_tot_time(it, time, config):
     print(f"{base_str}{predict_str}{it_str(it)} [predict-total-time] {time}")
