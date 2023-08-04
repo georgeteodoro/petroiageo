@@ -4,6 +4,7 @@ from typing import Dict
 from inverted_learning_interface import AbstractFeatureSelectionAlg
 import petro_dist4_hdf5
 import petro5_hdf5
+import profiling
 import config_parser
 
 
@@ -86,6 +87,9 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
                 max_tested_features,
                 self._config,
             )
+
+        profiling.prof_fsel_best_feats_and_error(it, best_features_set,
+                                                 best_error)
 
         return best_features_set
 
