@@ -2,7 +2,7 @@
 
 CONFIG_FILE='area1_config.yaml'
 BASELINE_POR_FILE='/home/daniel/Documentos/Git/petroiageo/data/ANP/processed/area1/porosity_data_baseline.h5'
-#This should be the same one on the CONFIG_FILE
+#This should be the same as the starting_porosity_cube_path param in the CONFIG_FILE
 TARGET_POR_FILE='/home/daniel/Documentos/Git/petroiageo/data/ANP/processed/area1/porosity_data.h5'
 
 #Create a copy of the baseline
