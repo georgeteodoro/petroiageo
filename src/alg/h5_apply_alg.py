@@ -225,7 +225,6 @@ class H5ApplyAlg(AbstractApplyAlg):
         #There should be no sampling of points at this stage
         #all points from the last n iterations should be used
         #even if n == all iterations
-        should_sample_max_points = False
         cur_h5, cur_h5_dset, _, _ = petro5_hdf5.create_tmp_dset(
             porosity_data_h5,
             data_filter,
@@ -234,7 +233,7 @@ class H5ApplyAlg(AbstractApplyAlg):
             it,
             f'-r{rank}',
             features_only=True,
-            should_sample_max_points=should_sample_max_points)
+            should_sample_max_points=False)
         cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
 
         hypercube_shape = porosity_data_h5.shape
