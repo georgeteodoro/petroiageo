@@ -84,6 +84,11 @@ class H5ApplyAlg(AbstractApplyAlg):
             t3 = time()
 
             # Perform prediction of expanded points
+
+            # Define a function to filter only the expanded points
+            is_to_pred_point_f = lambda d: (
+                (d["real"] == common.RealValues.canal_expanded)
+                | (d["real"] == common.RealValues.expanded))
             p_sum = 0
             chunk_n = -1
             for cur_slice in porosity_data_h5.iter_chunks():
@@ -91,11 +96,6 @@ class H5ApplyAlg(AbstractApplyAlg):
                 chunk_n += 1
 
                 cur_chunk_np = porosity_data_h5[cur_slice]
-
-                # Define a function to filter only the expanded points
-                is_to_pred_point_f = lambda d: (
-                    (d["real"] == common.RealValues.canal_expanded)
-                    | (d["real"] == common.RealValues.expanded))
 
                 # Check if there is any point on the current chunk to be updated
                 # TODO:
