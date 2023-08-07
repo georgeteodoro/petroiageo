@@ -1,4 +1,7 @@
 #!/usr/bin/sh
+# Esse script executa do forma local sem o MPI o algoritmo. Após definir variáveis
+# intuitivamente, é realizado uma cópia do arquivo de porosidade baseline.
+# A saída da execução é redirecionada ao final para um arquivo chamado log.log
 
 CONFIG_FILE='area1_config.yaml'
 BASELINE_POR_FILE='/home/daniel/Documentos/Git/petroiageo/data/ANP/processed/area1/porosity_data_baseline.h5'
@@ -8,4 +11,4 @@ TARGET_POR_FILE='/home/daniel/Documentos/Git/petroiageo/data/ANP/processed/area1
 #Create a copy of the baseline
 cp $BASELINE_POR_FILE $TARGET_POR_FILE
 
-python3 -u main.py --config  $CONFIG_FILE --nits 5 --nf 1 --nsf 2 --ntf 5
+python3 -u main.py --config  $CONFIG_FILE --nits 10 --nf 1 --nsf 3 --ntf 7 > log.log
