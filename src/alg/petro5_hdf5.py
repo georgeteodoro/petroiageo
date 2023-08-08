@@ -748,8 +748,8 @@ def get_features_sets(
     for feat_sel_it in range(exp_n_features):
         t3 = time()
         # Reset best feature and its error
-        best_error = float('inf')
-        best_feature = None
+        best_rmse_error = float('inf')
+        curr_best_feature = None
 
         # Setup the new column to be tested
         cur_h5_train_list.add_new_col()
@@ -805,9 +805,9 @@ def get_features_sets(
             results.append((best_feats_found + [cur_feature], rmse, mae))
 
             # Update current best feature
-            if rmse < best_error:
-                best_error = rmse
-                best_feature = cur_feature
+            if rmse < best_rmse_error:
+                best_rmse_error = rmse
+                curr_best_feature = cur_feature
 
             msg = f"[get_features_sets][it{alg_it}][feat_sel_it{feat_sel_it}]"
             msg += f"Tested features {best_feats_found+ [cur_feature]}"
@@ -815,7 +815,7 @@ def get_features_sets(
             print(msg)
 
         # Remove the best feature from the features list
-        all_features.remove(best_feature)
+        all_features.remove(curr_best_feature)
 
         t7 = time()
         print(f"[get_features_sets]it{alg_it}][feat_sel_it{feat_sel_it}] "
@@ -826,7 +826,7 @@ def get_features_sets(
             cur_h5_dset,
             cur_h5_train_list,
             features_dict_h5,
-            best_feature,
+            curr_best_feature,
             hypercube_shape,
             displacement_cube_shape,
         )
@@ -837,15 +837,15 @@ def get_features_sets(
                 test_h5_dset,
                 cur_h5_test_list,
                 features_dict_h5,
-                best_feature,
+                curr_best_feature,
                 hypercube_shape,
                 displacement_cube_shape,
             )
 
-        best_feats_found.append(best_feature)
+        best_feats_found.append(curr_best_feature)
 
         t8 = time()
-        print(f"[get_features_sets][{best_feature}] "
+        print(f"[get_features_sets][{curr_best_feature}] "
               f"commit_feature_time: {t8-t7}")
 
     t9 = time()
