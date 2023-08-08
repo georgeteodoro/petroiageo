@@ -6,6 +6,7 @@
 # Param $1: The log file path
 # Param $2: The target extracted info file path
 
-grep 'best-features-and-error' $1 | tr -d "()['" | cut -d ']' -f 1,2,4 --complement | tr ']' ',' | 
- cut -d ',' -f 2-4 --complement - | sed -e 's/ with error//g' -e 's/,/;/1' -e 's/\(.*\),/\1;/' -e 's/, \(-\?[0-9]\)/ \1/g' - \
- | awk -v OFS=';' -v FS=';' 'BEGIN{print "iteration", "error", "features"} {print $1, $3, $2}' > $2
+grep 'best-features-and-error' $1 | tr -d "()['" | cut -d ']' -f 1,3 --complement | tr ']' ',' | 
+ cut -d ',' -f 2-4 --complement - | sed -e 's/ with error//g' -e 's/,/;/1' -e 's/\(.*\),/\1;/' \
+ -e 's/, \(-\?[0-9]\)/ \1/g' -e 's/it//1' - | awk -v OFS=';' -v FS=';' \
+ 'BEGIN{print "iteration", "error", "features"} {print $1, $3, $2}' > $2

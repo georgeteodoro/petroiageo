@@ -88,8 +88,9 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
                 self._config,
             )
 
-        profiling.prof_fsel_best_feats_and_error(it, best_features_set,
-                                                 best_error)
+        msg = f"[get_features_sets][it{it}][best-features-and-error]"
+        msg += f"{best_features_set} with error {best_error}"
+        print(msg)
 
         return best_features_set
 
