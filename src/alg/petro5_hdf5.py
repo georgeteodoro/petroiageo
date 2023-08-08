@@ -706,7 +706,7 @@ def get_features_sets(
     features_dict_h5: Dict[str, h5py.Dataset],
     all_features: list,
     displacement_cube_shape: tuple,
-    it: int,
+    alg_it: int,
     exp_n_features: int,
     max_tested_features: int,
     config: Config,
@@ -726,7 +726,7 @@ def get_features_sets(
         data_filter,
         exp_n_features,
         config,
-        it,
+        alg_it,
         test_only_wells=test_only_wells,
         should_sample_max_points=True)
 
