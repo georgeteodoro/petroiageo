@@ -809,14 +809,16 @@ def get_features_sets(
                 best_error = rmse
                 best_feature = cur_feature
 
-            print(f"[get_features_sets][it{feat_sel_it}] Tested features "
-                  f"{best_feats_found+ [cur_feature]} with error {rmse}")
+            msg = f"[get_features_sets][it{alg_it}][feat_sel_it{feat_sel_it}]"
+            msg += f"Tested features {best_feats_found+ [cur_feature]}"
+            msg += f" with error {rmse}"
+            print(msg)
 
         # Remove the best feature from the features list
         all_features.remove(best_feature)
 
         t7 = time()
-        print(f"[get_features_sets][it{feat_sel_it}] "
+        print(f"[get_features_sets]it{alg_it}][feat_sel_it{feat_sel_it}] "
               f"full_it_time: {t7-t3}")
 
         # Update the last column of the sequence object to the best feature
