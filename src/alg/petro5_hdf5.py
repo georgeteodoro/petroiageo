@@ -745,7 +745,7 @@ def get_features_sets(
     hypercube_shape = porosity_data_h5.shape
 
     # Find a feature set with exp_n_features features
-    for it in range(exp_n_features):
+    for feat_sel_it in range(exp_n_features):
         t3 = time()
         # Reset best feature and its error
         best_error = float('inf')
@@ -809,14 +809,14 @@ def get_features_sets(
                 best_error = rmse
                 best_feature = cur_feature
 
-            print(f"[get_features_sets][it{it}] Tested features "
+            print(f"[get_features_sets][it{feat_sel_it}] Tested features "
                   f"{best_feats_found+ [cur_feature]} with error {rmse}")
 
         # Remove the best feature from the features list
         all_features.remove(best_feature)
 
         t7 = time()
-        print(f"[get_features_sets][it{it}] "
+        print(f"[get_features_sets][it{feat_sel_it}] "
               f"full_it_time: {t7-t3}")
 
         # Update the last column of the sequence object to the best feature
