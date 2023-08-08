@@ -7,6 +7,7 @@ from petro5_hdf5 import append_points_to_dset, _get_chunk_shape
 from petro5_hdf5 import MAX_HDF5_CHUNK_SIZE, _config_filters
 from data_filter import DataFilter, WellsDataFilter
 from data_filter import FeatSelectionTrainDataFilter
+from common import RealValues
 import h5py
 import tempfile
 import numpy as np
@@ -18,39 +19,38 @@ class TestSamplingWithData(TestCase):
         self.tmp_file = tempfile.TemporaryFile()
         self.h5_file = h5py.File(self.tmp_file, 'a')
 
-        self.cur_data_type = [
-            ('x', np.int64),
-            ('y', np.int64),
-            ('z', np.int64),
-            ('phi', np.float64),
-            ('well_id', np.int64),
-        ]
+        self.cur_data_type = [('x', np.int64), ('y', np.int64),
+                              ('z', np.int64), ('phi', np.float64),
+                              ('well_id', np.int64), ('real', np.int64)]
 
         x_size = 100
         y_size = 100
         z_size = 20
         phi_size = 20
         well_id_size = 10
+        real_size = 1
         self.cur_data_type = np.dtype(self.cur_data_type)
-        data = np.empty((x_size, y_size, z_size, phi_size, well_id_size),
-                        dtype=self.cur_data_type)
+        data = np.empty(
+            (x_size, y_size, z_size, phi_size, well_id_size, real_size),
+            dtype=self.cur_data_type)
 
         for i in range(x_size):
             for j in range(y_size):
                 data[i, j]['x'] = i
                 data[i, j]['y'] = j
-                data[i, j]['z'] = np.arange(10)
+                data[i, j]['z'] = np.arange(10)[:, np.newaxis]
                 data[i, j]['phi'] = np.random.rand(z_size, phi_size,
-                                                   well_id_size)
+                                                   well_id_size, real_size)
                 #The cube has x ranges associated with a well
                 #example: if x in [0, 10], well = 0,
                 #example: if x in [40, 50], well = 4
-                data[i, j]['well_id'] = np.array([i // 10] * 10)
+                data[i, j]['well_id'] = np.array([i // 10] * 10)[:, np.newaxis]
+                data[i, j]['real'] = RealValues.real
 
         self.dset = self.h5_file.create_dataset("default",
                                                 dtype=self.cur_data_type,
                                                 data=data,
-                                                chunks=(10, 10, 10, 20, 10))
+                                                chunks=(10, 10, 10, 20, 10, 1))
 
     def test_can_get_correct_n_chunks(self):
         expected_n_chunks = 200
@@ -100,7 +100,7 @@ class TestSamplingWithData(TestCase):
         points_to_append = self.dset[:n_points_to_append]
         empty_dset = self.h5_file.create_dataset("empty",
                                                  shape=(10, 100, 20, 20,
-                                                        n_points_to_append),
+                                                        n_points_to_append, 1),
                                                  dtype=self.cur_data_type)
         features_only = False
         prev_end = 0
@@ -116,7 +116,7 @@ class TestSamplingWithData(TestCase):
         n_points_to_append = 10
         not_empty_dset = self.h5_file.create_dataset(
             "not_empty",
-            shape=(n_starting_points + n_points_to_append, 100, 20, 20, 10),
+            shape=(n_starting_points + n_points_to_append, 100, 20, 20, 10, 1),
             dtype=self.cur_data_type)
 
         features_only = False
@@ -247,8 +247,8 @@ class TestConfigFilters(TestCase):
                                                     train_filter, test_filter,
                                                     it, sampling_window)
         self.assertEqual(train_filter.n_filters, 3)
-        self.assertEqual(test_filter.n_filters, 2)
-    
+        self.assertEqual(test_filter.n_filters, 3)
+
     def test_can_add_filter_for_test_well(self):
         train_filter = FeatSelectionTrainDataFilter()
         test_only_wells = [0]
@@ -259,8 +259,8 @@ class TestConfigFilters(TestCase):
                                                     train_filter, test_filter,
                                                     it, sampling_window)
         self.assertEqual(train_filter.n_filters, 2)
-        self.assertEqual(test_filter.n_filters, 1)
-    
+        self.assertEqual(test_filter.n_filters, 2)
+
     def test_can_add_filter_samp_window(self):
         train_filter = FeatSelectionTrainDataFilter()
         test_only_wells = []
@@ -271,7 +271,7 @@ class TestConfigFilters(TestCase):
                                                     train_filter, test_filter,
                                                     it, sampling_window)
         self.assertEqual(train_filter.n_filters, 2)
-        self.assertEqual(test_filter.n_filters, 1)
+        self.assertEqual(test_filter.n_filters, 2)
 
 
 if __name__ == "__main__":

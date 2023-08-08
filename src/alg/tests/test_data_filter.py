@@ -281,7 +281,8 @@ class TestWellsDataFilter(TestCase):
 
         self.cur_data_type = [('x', np.int64), ('y', np.int64),
                               ('z', np.int64), ('phi', np.float64),
-                              ('well_id', np.int64), ('ring', np.int8)]
+                              ('well_id', np.int64), ('ring', np.int8),
+                              ('real', np.int8)]
         self.cur_data_type = np.dtype(self.cur_data_type)
         #Dont need a big dataset here
         x_size = 30
@@ -290,31 +291,34 @@ class TestWellsDataFilter(TestCase):
         phi_size = 10
         well_id_size = 10
         ring_size = 1
-        data = np.empty(
-            (x_size, y_size, z_size, phi_size, well_id_size, ring_size),
-            dtype=self.cur_data_type)
+        real_size = 1
+        data = np.empty((x_size, y_size, z_size, phi_size, well_id_size,
+                         ring_size, real_size),
+                        dtype=self.cur_data_type)
 
         middle_y = y_size // 2
         for i in range(x_size):
             for j in range(y_size):
                 data[i, j]['x'] = i
                 data[i, j]['y'] = j
-                data[i, j]['z'] = np.arange(10)[:, np.newaxis]
-                data[i, j]['phi'] = np.random.rand(z_size, phi_size,
-                                                   well_id_size, ring_size)
+                data[i, j]['z'] = np.arange(10)[:, np.newaxis, np.newaxis]
+                data[i,
+                     j]['phi'] = np.random.rand(z_size, phi_size, well_id_size,
+                                                ring_size, real_size)
                 #The cube has x ranges associated with a well
                 #example: if x in [0, 10], well = 0,
                 #example: if x in [40, 50], well = 4
                 #There is going to be x_size//10 wells
-                data[i, j]['well_id'] = np.array([i // 10] * 10)[:, np.newaxis]
+                data[i, j]['well_id'] = np.array([i // 10] * 10)[:, np.newaxis, np.newaxis]
 
                 #The ring num is based from the middle y
                 data[i, j]['ring'] = abs(middle_y - j)
+                data[i, j]['real'] = RealValues.real
 
         self.dset = self.h5_file.create_dataset("default",
                                                 dtype=self.cur_data_type,
                                                 data=data,
-                                                chunks=(10, 10, 10, 10, 10, 1))
+                                                chunks=(10, 10, 10, 10, 10, 1, 1))
 
         #There are 3 wells in total, 2 of them are test wells
         target_wells = [0, 1]
@@ -335,12 +339,12 @@ class TestWellsDataFilterWithoutData(TestCase):
     def setUp(self) -> None:
         self.data_filter = WellsDataFilter([4, 5])
 
-    def test_n_filters_base_is_one(self):
-        self.assertEqual(self.data_filter.n_filters, 1)
+    def test_n_filters_base_is_two(self):
+        self.assertEqual(self.data_filter.n_filters, 2)
 
     def test_n_filters_after_add(self):
         self.data_filter.add_not_in_well_list_filter([1, 2])
-        self.assertEqual(self.data_filter.n_filters, 2)
+        self.assertEqual(self.data_filter.n_filters, 3)
 
 
 class TestIt0DataFilters(TestCase):
