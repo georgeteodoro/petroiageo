@@ -737,7 +737,7 @@ def get_features_sets(
         cur_h5_test_list = hdf5_util.HDFMultiColList(test_h5_dset)
 
     # Current features set with the best error
-    cur_f_set = ['x', 'y', 'z']
+    best_feats_found = ['x', 'y', 'z']
 
     # List of features sets and their error metric
     results = []
@@ -760,7 +760,7 @@ def get_features_sets(
         ii = 0
         for cur_feature in all_features:
             t4 = time()
-            if cur_feature in cur_f_set:
+            if cur_feature in best_feats_found:
                 continue
 
             # Early termination for debugging
@@ -802,7 +802,7 @@ def get_features_sets(
             print(f"[get_features_sets][{cur_feature}] "
                   f"error: {rmse}")
 
-            results.append((cur_f_set + [cur_feature], rmse, mae))
+            results.append((best_feats_found + [cur_feature], rmse, mae))
 
             # Update current best feature
             if rmse < best_error:
@@ -810,7 +810,7 @@ def get_features_sets(
                 best_feature = cur_feature
 
             print(f"[get_features_sets][it{it}] Tested features "
-                  f"{cur_f_set+ [cur_feature]} with error {rmse}")
+                  f"{best_feats_found+ [cur_feature]} with error {rmse}")
 
         # Remove the best feature from the features list
         all_features.remove(best_feature)
@@ -840,7 +840,7 @@ def get_features_sets(
                 displacement_cube_shape,
             )
 
-        cur_f_set.append(best_feature)
+        best_feats_found.append(best_feature)
 
         t8 = time()
         print(f"[get_features_sets][{best_feature}] "
