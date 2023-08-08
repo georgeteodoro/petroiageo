@@ -721,7 +721,6 @@ def get_features_sets(
 
     #At the feature selection stage, there should be sampling of
     #points from the iterations considered
-    should_sample_max_points = True
     cur_h5, cur_h5_dset, test_h5, test_h5_dset = create_tmp_dset(
         porosity_data_h5,
         data_filter,
@@ -729,7 +728,7 @@ def get_features_sets(
         config,
         it,
         test_only_wells=test_only_wells,
-        should_sample_max_points=should_sample_max_points)
+        should_sample_max_points=True)
 
     # Create training temporary object
     cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
