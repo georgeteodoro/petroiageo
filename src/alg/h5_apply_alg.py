@@ -241,7 +241,7 @@ class H5ApplyAlg(AbstractApplyAlg):
             it,
             f'-r{rank}',
             features_only=True,
-            test_only_wells=test_only_wells,
+            test_wells_ids=test_only_wells,
             should_sample_max_points=False)
         cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
 

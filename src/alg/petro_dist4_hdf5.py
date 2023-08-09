@@ -229,12 +229,10 @@ def worker(
 
     data_filter = FeatSelectionTrainDataFilter()
 
-    test_only_wells = config.alg["test_only_wells"]
-    wells_coords = config.wells["coords"]
-    training_wells = list(range(len(wells_coords)))
-    training_wells = [x for x in training_wells if x not in test_only_wells]
-    print(f"training wells: {training_wells}")
-    print(f"Orig_test_wells: {test_only_wells}")
+    test_wells_ids = config.alg["test_only_wells"]
+    all_wells_coords = config.wells["coords"]
+    train_wells_ids = list(range(len(all_wells_coords)))
+    train_wells_ids = [x for x in train_wells_ids if x not in test_wells_ids]
 
     #At the feature selection stage, there should be sampling of
     #points from the iterations considered
@@ -246,11 +244,11 @@ def worker(
         config,
         it,
         f"-r{rank}",
-        test_only_wells=test_only_wells,
+        test_wells_ids=test_wells_ids,
         should_sample_max_points=should_sample_max_points)
 
     hypercube_shape: tuple = porosity_data_h5.shape
-    n_testing_wells = len(test_only_wells)
+    n_testing_wells = len(test_wells_ids)
 
     # Create training temporary object
     cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
@@ -266,7 +264,7 @@ def worker(
         displacement_cube_shape,
         it,
         config,
-        training_wells,
+        train_wells_ids,
         cur_h5_dset,
         test_h5_dset,
         hypercube_shape,

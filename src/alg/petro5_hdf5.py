@@ -326,7 +326,7 @@ def _prepare_h5(suf_str: str,
     return (cur_h5, test_h5, sampling_max_points)
 
 
-def _config_filters(test_only_wells: list, train_data_filter: DataFilter,
+def _config_filters(test_wells_ids: list, train_data_filter: DataFilter,
                     it: int,
                     sampling_window: int) -> Tuple[DataFilter, DataFilter]:
     """
@@ -336,9 +336,9 @@ def _config_filters(test_only_wells: list, train_data_filter: DataFilter,
     window filter to the test data, at some point, the real points would
     be outside the n size sampling range.
     """
-    there_are_test_wells = True if len(test_only_wells) > 0 else False
+    there_are_test_wells = True if len(test_wells_ids) > 0 else False
     if there_are_test_wells:
-        train_data_filter.add_not_in_well_list_filter(test_only_wells)
+        train_data_filter.add_not_in_well_list_filter(test_wells_ids)
 
     # Get config parameters and configure sampling
     if sampling_window > 0:
@@ -423,24 +423,24 @@ def create_tmp_dset(
     suf_str: str = '',
     list_chunk_size: int = 1000,
     features_only: bool = False,
-    test_only_wells: list = None,
+    test_wells_ids: list = None,
     should_sample_max_points: bool = True
 ) -> Tuple[h5py.File, h5py.Dataset, h5py.File, h5py.Dataset]:
 
     assert porosity_data_h5.size > 0
-    if test_only_wells is None:
-        test_only_wells = list()
+    if test_wells_ids is None:
+        test_wells_ids = list()
 
     profiling = False
-    test_data_filter = WellsDataFilter(test_only_wells)
+    test_data_filter = WellsDataFilter(test_wells_ids)
 
     train_data_filter = _config_filters(
-        test_only_wells, train_data_filter, it,
+        test_wells_ids, train_data_filter, it,
         config.alg['sampling']['its_window_size'])
 
     t0 = time()
     (train_h5_file, test_h5_file, samp_max_points) = _prepare_h5(
-        suf_str, test_only_wells, features_only, n_features, train_data_filter,
+        suf_str, test_wells_ids, features_only, n_features, train_data_filter,
         test_data_filter, porosity_data_h5, config, should_sample_max_points)
 
     train_empty_h5_dset: h5py.Dataset = train_h5_file[TMP_DSET_NAME]
@@ -487,7 +487,7 @@ def create_tmp_dset(
 
     rng = np.random.default_rng()
 
-    n_test_only_wells = len(test_only_wells)
+    n_test_only_wells = len(test_wells_ids)
     #Go through each chunk again. Adds all test points for sure.
     for chunk_id, chunk_slice in enumerate(porosity_data_h5.iter_chunks()):
         #only reads data if necessary
@@ -716,9 +716,11 @@ def get_features_sets(
 
     data_filter = FeatSelectionTrainDataFilter()
 
-    test_only_wells = config.alg['test_only_wells']
-    training_wells = list(range(len(config.wells['coords'])))
-    training_wells = [x for x in training_wells if x not in test_only_wells]
+    test_wells_ids = config.alg['test_only_wells']
+    train_wells_ids = list(range(len(config.wells['coords'])))
+    train_wells_ids = [
+        x for x in train_wells_ids if x not in test_wells_ids
+    ]
 
     #At the feature selection stage, there should be sampling of
     #points from the iterations considered
@@ -728,13 +730,13 @@ def get_features_sets(
         exp_n_features,
         config,
         alg_it,
-        test_only_wells=test_only_wells,
+        test_wells_ids=test_wells_ids,
         should_sample_max_points=True)
 
     # Create training temporary object
     cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
     cur_h5_test_list = None
-    if len(test_only_wells) > 0:
+    if len(test_wells_ids) > 0:
         cur_h5_test_list = hdf5_util.HDFMultiColList(test_h5_dset)
 
     # Current features set with the best error
@@ -754,7 +756,7 @@ def get_features_sets(
 
         # Setup the new column to be tested
         cur_h5_train_list.add_new_col()
-        if len(test_only_wells) > 0:
+        if len(test_wells_ids) > 0:
             cur_h5_test_list.add_new_col()
 
         # Test each available feature
@@ -780,7 +782,7 @@ def get_features_sets(
             )
 
             # Also inserts the feature on the test dataset, if necessary
-            if len(test_only_wells) > 0:
+            if len(test_wells_ids) > 0:
                 insert_filtered_feature(
                     test_h5_dset,
                     cur_h5_test_list,
@@ -796,7 +798,7 @@ def get_features_sets(
 
             # Test the model with cur_feature
             rmse, mae = eval_bootstrap(cur_h5_train_list, cur_h5_test_list,
-                                       training_wells)
+                                       train_wells_ids)
             t6 = time()
             print(f"[get_features_sets][{cur_feature}] "
                   f"train_time: {t6-t5}")
@@ -833,7 +835,7 @@ def get_features_sets(
         )
 
         # Also inserts the feature on the test dataset, if necessary
-        if len(test_only_wells) > 0:
+        if len(test_wells_ids) > 0:
             insert_filtered_feature(
                 test_h5_dset,
                 cur_h5_test_list,
