@@ -219,11 +219,8 @@ class H5ApplyAlg(AbstractApplyAlg):
     ) -> lgb.Booster:
         """
         Train the regressor on all data available in the last n iterations
-        defined in self._config. There is no testing data at this point as
-        the feature selection step already did the validation. This means
-        that points associated with the testing wells are present in the
-        training data. Currently, those points are only real points as testing
-        wells shouldn't expand and, consequentely, don't propagate. 
+        defined in self._config. We must ignore the points associated with 
+        the testing wells.
         """
         t0 = time()
 
@@ -233,6 +230,9 @@ class H5ApplyAlg(AbstractApplyAlg):
         #There should be no sampling of points at this stage
         #all points from the last n iterations should be used
         #even if n == all iterations
+        # We ignore the testing dset. The cur_h5_dset does not have
+        # points associated with the testing wells
+        test_only_wells = self._config.alg['test_only_wells']
         cur_h5, cur_h5_dset, _, _ = petro5_hdf5.create_tmp_dset(
             porosity_data_h5,
             data_filter,
@@ -241,6 +241,7 @@ class H5ApplyAlg(AbstractApplyAlg):
             it,
             f'-r{rank}',
             features_only=True,
+            test_only_wells=test_only_wells,
             should_sample_max_points=False)
         cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
 
