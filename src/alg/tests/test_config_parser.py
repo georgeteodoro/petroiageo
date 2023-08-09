@@ -332,6 +332,18 @@ class TestYAMLConfig(TestCase):
         with self.assertRaises(ValueError):
             my_config = config_parser.YAMLConfig(config_str=yaml_str)
 
+    def test_can_get_train_only_wells(self):
+        yaml_str = """
+        wells:
+          coords: [[1,1], [2,2]]
+        alg:
+          test_only_wells: [1]
+        """
+        my_config = config_parser.YAMLConfig(config_str=yaml_str)
+        expected_train_only_wells_coords = [(1, 1)]
+        self.assertListEqual(expected_train_only_wells_coords,
+                             my_config.train_wells_coords)
+
     def test_raise_on_invalid_max_exec_time(self):
         yaml_str_1 = """
        wells:
