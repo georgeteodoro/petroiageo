@@ -23,8 +23,11 @@ class H5ExpandAlg(AbstractExpandAlg):
         self._using_h5 = True
 
     def expand_points(self, porosity_data_h5: h5py.Dataset, it: int):
+        """
+        Expand training wells
+        """
         # Retrieve config parameters
-        wells_coords = self._config.wells_as_simple_list
+        wells_coords = self._config.train_wells_coords
         comm = self._config.get_param('mpi_global_comm')
         rank = self._config.get_param('mpi_rank')
         should_update = self._config.get_param('mpi_should_update_local')
@@ -41,12 +44,14 @@ class H5ExpandAlg(AbstractExpandAlg):
                   f"Expanding points on ring {ring}")
             # Generate a list of points to be expanded
             total_chunk_update_time = 0
+            all_wells_coords = self._config.wells_as_simple_list
             # TODO: add progress bar later
-            for well_id, well in enumerate(wells_coords):
-                well_x_left = well[0] - ring
-                well_x_right = well[0] + ring
-                well_y_top = well[1] - ring
-                well_y_bot = well[1] + ring
+            for well_coords in wells_coords:
+                well_id = all_wells_coords.index(well_coords)
+                well_x_left = well_coords[0] - ring
+                well_x_right = well_coords[0] + ring
+                well_y_top = well_coords[1] - ring
+                well_y_bot = well_coords[1] + ring
 
                 # Conditions for points on each ring wall
                 left_wall_cond = (lambda d: (d['x'] == well_x_left)
