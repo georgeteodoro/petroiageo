@@ -128,7 +128,7 @@ class ConfigTypeCaster:
             treated_sampling_config = cls._type_cast_sampling_configs(
                 alg_configs["sampling"])
             treated_alg_configs["sampling"] = treated_sampling_config
-        
+
         if "parallel" in alg_configs:
             treated_parallel_config = cls._type_cast_parallel_configs(
                 alg_configs["parallel"])
@@ -157,7 +157,7 @@ class ConfigTypeCaster:
             treated_sampling_config["beta_dist"] = treated_beta_dist_configs
 
         return treated_sampling_config
-    
+
     @classmethod
     def _type_cast_parallel_configs(cls, parallel_configs: dict) -> dict:
         treated_parallel_config = dict()
@@ -345,8 +345,7 @@ class ConfigValidator:
 
         if alg_configs['parallel']['max_points_per_chunk'] == 0:
             raise ValueError(
-                f"alg.parallel.max_points_per_chunk: Can't be zero!"
-            )
+                f"alg.parallel.max_points_per_chunk: Can't be zero!")
 
     @staticmethod
     def _raise_if_wells_config_not_valid(config_dict: dict):
@@ -584,6 +583,18 @@ class Config:
         """
         return [(well["x"], well["y"])
                 for well in self.config["wells"]["coords"]]
+
+    @property
+    def train_wells_coords(self):
+        """
+        Return a list of tuples with only the wells not marked as test wells:
+        all wells: [(1,2), (3,4), (5,6)]
+        test_only_wells: [(3,4)]
+        returns: [(1,2), (5,6)]
+        """
+        return [(w['x'], w['y'])
+                for id, w in enumerate(self.config['wells']['coords'])
+                if id not in self.alg['test_only_wells']]
 
     @property
     def alg(self):
