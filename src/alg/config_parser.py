@@ -1,5 +1,5 @@
 import yaml
-from typing import List
+from typing import List, Tuple
 try:
     from yaml import CBaseLoader as Loader
 except ImportError:
@@ -576,25 +576,39 @@ class Config:
         raise AttributeError("wells config is read only!")
 
     @property
-    def wells_as_simple_list(self):
+    def wells_as_simple_list(self) -> List[Tuple[int, int]]:
         """
         Returns a list of tuples with the wells coords:
-        [(1,2),(3,4),(5,6)...]
+        [(1, 2),(3, 4),(5, 6)...]
         """
         return [(well["x"], well["y"])
                 for well in self.config["wells"]["coords"]]
 
     @property
-    def train_wells_coords(self):
+    def train_wells_coords(self) -> List[Tuple[int, int]]:
         """
-        Return a list of tuples with only the wells not marked as test wells:
-        all wells: [(1,2), (3,4), (5,6)]
-        test_only_wells: [(3,4)]
-        returns: [(1,2), (5,6)]
+        Return the coords of the training wells.
+        all wells: [(1, 2), (3, 4), (5, 6)]
+        test_only_wells: [1]
+        returns: [(1, 2), (5, 6)]
         """
         return [(w['x'], w['y'])
                 for id, w in enumerate(self.config['wells']['coords'])
                 if id not in self.alg['test_only_wells']]
+
+    @property
+    def train_wells_ids(self) -> List[int]:
+        """
+        Returns the training wells ids.
+        Example: 
+        all wells: [(1, 2), (3, 4), (5, 6)]
+        test_only_wells: [1]
+        returns: [0, 2]
+        """
+        return [
+            id for id, _ in enumerate(self.config['wells']['coords'])
+            if id not in self.alg['test_only_wells']
+        ]
 
     @property
     def alg(self):
