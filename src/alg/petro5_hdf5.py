@@ -249,17 +249,15 @@ def insert_filtered_feature(
 
 def _add_sampling_window_to_filters(sampling_window: int,
                                     train_data_filter: DataFilter,
-                                    test_data_filter: DataFilter,
-                                    it) -> Tuple[DataFilter, DataFilter]:
+                                    it) -> DataFilter:
     """
-    Updates the train and test filters based on sampling_window
+    Updates the train filter based on sampling_window
     """
     min_ring = max(0, it - sampling_window)
 
     train_data_filter.add_min_ring_filter(min_ring)
-    test_data_filter.add_min_ring_filter(min_ring)
 
-    return train_data_filter, test_data_filter
+    return train_data_filter
 
 
 def _limit_training_points(sampling_max_points: int,
@@ -329,11 +327,14 @@ def _prepare_h5(suf_str: str,
 
 
 def _config_filters(test_only_wells: list, train_data_filter: DataFilter,
-                    test_data_filter: DataFilter, it: int,
+                    it: int,
                     sampling_window: int) -> Tuple[DataFilter, DataFilter]:
     """
-    Updates the data filters based on the presence of testing wells
-    and a sampling window
+    Updates the train data filter based on the presence of testing wells
+    and a sampling window. The test data filter is not updated here
+    because it must have only it's real points. If we were to add the sampling
+    window filter to the test data, at some point, the real points would
+    be outside the n size sampling range.
     """
     there_are_test_wells = True if len(test_only_wells) > 0 else False
     if there_are_test_wells:
@@ -341,10 +342,10 @@ def _config_filters(test_only_wells: list, train_data_filter: DataFilter,
 
     # Get config parameters and configure sampling
     if sampling_window > 0:
-        train_data_filter, test_data_filter = _add_sampling_window_to_filters(
-            sampling_window, train_data_filter, test_data_filter, it)
+        train_data_filter = _add_sampling_window_to_filters(
+            sampling_window, train_data_filter, it)
 
-    return train_data_filter, test_data_filter
+    return train_data_filter
 
 
 def _create_files(suf_str: str, test_only_wells: list, features_only: bool,
@@ -433,8 +434,8 @@ def create_tmp_dset(
     profiling = False
     test_data_filter = WellsDataFilter(test_only_wells)
 
-    train_data_filter, test_data_filter = _config_filters(
-        test_only_wells, train_data_filter, test_data_filter, it,
+    train_data_filter = _config_filters(
+        test_only_wells, train_data_filter, it,
         config.alg['sampling']['its_window_size'])
 
     t0 = time()

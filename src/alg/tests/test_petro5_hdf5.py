@@ -240,38 +240,29 @@ class TestConfigFilters(TestCase):
     def test_can_add_filters_test_wells_and_samp_window(self):
         train_filter = FeatSelectionTrainDataFilter()
         test_only_wells = [0]
-        test_filter = WellsDataFilter(test_only_wells)
         it = 0
         sampling_window = 4
-        train_filter, test_filter = _config_filters(test_only_wells,
-                                                    train_filter, test_filter,
-                                                    it, sampling_window)
+        train_filter = _config_filters(test_only_wells, train_filter, it,
+                                       sampling_window)
         self.assertEqual(train_filter.n_filters, 3)
-        self.assertEqual(test_filter.n_filters, 3)
 
     def test_can_add_filter_for_test_well(self):
         train_filter = FeatSelectionTrainDataFilter()
         test_only_wells = [0]
-        test_filter = WellsDataFilter(test_only_wells)
         it = 0
         sampling_window = -1
-        train_filter, test_filter = _config_filters(test_only_wells,
-                                                    train_filter, test_filter,
-                                                    it, sampling_window)
+        train_filter = _config_filters(test_only_wells, train_filter, it,
+                                       sampling_window)
         self.assertEqual(train_filter.n_filters, 2)
-        self.assertEqual(test_filter.n_filters, 2)
 
     def test_can_add_filter_samp_window(self):
         train_filter = FeatSelectionTrainDataFilter()
         test_only_wells = []
-        test_filter = WellsDataFilter(test_only_wells)
         it = 0
         sampling_window = 4
-        train_filter, test_filter = _config_filters(test_only_wells,
-                                                    train_filter, test_filter,
-                                                    it, sampling_window)
+        train_filter = _config_filters(test_only_wells, train_filter, it,
+                                       sampling_window)
         self.assertEqual(train_filter.n_filters, 2)
-        self.assertEqual(test_filter.n_filters, 2)
 
 
 if __name__ == "__main__":
