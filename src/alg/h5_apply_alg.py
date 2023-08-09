@@ -217,6 +217,14 @@ class H5ApplyAlg(AbstractApplyAlg):
         rank: int,
         displacement_cube_shape: tuple,
     ) -> lgb.Booster:
+        """
+        Train the regressor on all data available in the last n iterations
+        defined in self._config. There is no testing data at this point as
+        the feature selection step already did the validation. This means
+        that points associated with the testing wells are present in the
+        training data. Currently, those points are only real points as testing
+        wells shouldn't expand and, consequentely, don't propagate. 
+        """
         t0 = time()
 
         data_filter = PredTrainDataFilter()
