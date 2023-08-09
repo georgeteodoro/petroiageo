@@ -223,7 +223,5 @@ class WellsDataFilter(DataFilter):
 
     def __init__(self, well_ids_list: list):
         super().__init__()
-        self._filter_list.append(lambda d:
-                                 ((d["real"] == RealValues.real)
-                                  | (d["real"] == RealValues.propagated)))
+        self._filter_list.append(lambda d: ((d["real"] == RealValues.real)))
         self.add_in_well_list_filter(well_ids_list)
