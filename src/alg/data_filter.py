@@ -212,10 +212,11 @@ class FeatSelectionTrainDataFilter(DataFilter):
 
 class WellsDataFilter(DataFilter):
     """
-    The Test data filter. As test data is defined based on the well id,
+    The Test data filter. As test data is defined based only the well id,
     it requires a well_ids_list. It automatically adds the  
-    add_in_well_list_filter to itself. Also, it requires that
-    points be either real or propagated 
+    add_in_well_list_filter to itself.
+    This is the only filter needed for testing data as testing wells
+    are not expanded/propagated so they always have 'real' points.
     
     Had to name it WellsDataFilter instead of TestDataFilter because of 
     clashes with unittest's naming convention.
@@ -223,5 +224,4 @@ class WellsDataFilter(DataFilter):
 
     def __init__(self, well_ids_list: list):
         super().__init__()
-        self._filter_list.append(lambda d: ((d["real"] == RealValues.real)))
         self.add_in_well_list_filter(well_ids_list)
