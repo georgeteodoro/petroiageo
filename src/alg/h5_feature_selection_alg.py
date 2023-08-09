@@ -55,6 +55,8 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
         window_size = self._config.get_param("window")
         max_tested_features = self._config.get_param("max_tested_features")
         mpi_size = self._config.get_param("mpi_size")
+        mpi_rank = self._config.get_param("mpi_rank")
+        mpi_manager_rank = self._config.get_param("mpi_manager_rank")
 
         # Calculate remaining variables
         all_features = self._generate_seismic_features_names(
@@ -65,6 +67,7 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
             window_size * 2 + 1,
         )
 
+        msg = ""
         if mpi_size == 1:
             best_features_set, best_error = petro5_hdf5.get_features_sets(
                 porosity_data_h5,
@@ -76,6 +79,7 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
                 max_tested_features,
                 self._config,
             )
+            msg += "[manager]"
         else:
             best_features_set, best_error = petro_dist4_hdf5.get_features_sets(
                 porosity_data_h5,
@@ -87,10 +91,13 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
                 max_tested_features,
                 self._config,
             )
+            if mpi_rank == mpi_manager_rank:
+                msg += "[manager]"
 
-        msg = f"[get_features_sets][it{it}][best-features-and-error]"
-        msg += f"{best_features_set} with error {best_error}"
-        print(msg)
+        if len(msg) > 0: # Is a manager
+            msg += f"[get_features_sets][it{it}][best-features-and-error]"
+            msg += f"{best_features_set} with error {best_error}"
+            print(msg)
 
         return best_features_set
 
