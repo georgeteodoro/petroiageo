@@ -231,8 +231,7 @@ def worker(
 
     test_wells_ids = config.alg["test_only_wells"]
     all_wells_coords = config.wells["coords"]
-    train_wells_ids = list(range(len(all_wells_coords)))
-    train_wells_ids = [x for x in train_wells_ids if x not in test_wells_ids]
+    train_wells_ids = config.train_wells_ids
 
     #At the feature selection stage, there should be sampling of
     #points from the iterations considered
