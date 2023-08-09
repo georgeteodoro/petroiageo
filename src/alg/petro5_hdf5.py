@@ -717,10 +717,7 @@ def get_features_sets(
     data_filter = FeatSelectionTrainDataFilter()
 
     test_wells_ids = config.alg['test_only_wells']
-    train_wells_ids = list(range(len(config.wells['coords'])))
-    train_wells_ids = [
-        x for x in train_wells_ids if x not in test_wells_ids
-    ]
+    train_wells_ids = config.train_wells_ids
 
     #At the feature selection stage, there should be sampling of
     #points from the iterations considered
