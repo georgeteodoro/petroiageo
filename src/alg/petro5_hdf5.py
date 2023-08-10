@@ -489,7 +489,7 @@ def create_tmp_dset(
         sampling_points_per_chunk = _get_n_sampling_points_per_chunk(
             train_points_per_chunk, samp_max_points)
 
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(seed=config.alg['sampling']['seed'])
 
     n_test_only_wells = len(test_wells_ids)
     #Go through each chunk again. Adds all test points for sure.
