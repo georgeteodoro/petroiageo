@@ -133,38 +133,42 @@ def _incremental_learning(
 
         X_train, y_train = cur_h5_train_list.get_data_not_in_well(
             chunk_idx, curr_well_id)
-        lgb_train_dataset = lgb.Dataset(X_train, y_train)
+        # We might be in a chunk full of data of well chunk_idx
+        if len(X_train) > 0:
+            lgb_train_dataset = lgb.Dataset(X_train, y_train)
 
-        lgb_eval_dataset = lgb.Dataset(X_val,
-                                       y_val,
-                                       reference=lgb_train_dataset)
+            lgb_eval_dataset = lgb.Dataset(X_val,
+                                           y_val,
+                                           reference=lgb_train_dataset)
 
-        if len(X_val) == 0 | len(y_val) == 0:
-            raise Exception(f"[petro5_hdf5] Bad data: well_id {curr_well_id} "\
-                             "have no points on porosity dataset.")
+            if len(X_val) == 0 | len(y_val) == 0:
+                raise Exception(f"[petro5_hdf5] Bad data: well_id {curr_well_id} "\
+                                "have no points on porosity dataset.")
 
-        t2 = time()
+            t2 = time()
+            regressor = lgb.train(
+                params,
+                lgb_train_dataset,
+                init_model=regressor,
+                num_boost_round=100,
+                valid_sets=lgb_eval_dataset,
+                keep_training_booster=True,
+                callbacks=[
+                    lgb.early_stopping(stopping_rounds=30, verbose=False)
+                ],
+            )
+            t3 = time()
 
-        regressor = lgb.train(
-            params,
-            lgb_train_dataset,
-            init_model=regressor,
-            num_boost_round=100,
-            valid_sets=lgb_eval_dataset,
-            keep_training_booster=True,
-            callbacks=[lgb.early_stopping(stopping_rounds=30, verbose=False)],
-        )
-        t3 = time()
+            setup_time += t2 - t1
+            training_time += t3 - t2
 
-        setup_time += t2 - t1
-        training_time += t3 - t2
-
-        if profiling:
-            print(f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Setup in "
-                  f"{t2 - t1}")
-            print(
-                f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Training in "
-                f"{t3 - t2}")
+            if profiling:
+                print(
+                    f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Setup in "
+                    f"{t2 - t1}")
+                print(
+                    f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Training in "
+                    f"{t3 - t2}")
 
     if profiling:
         print(f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Final setup in "
