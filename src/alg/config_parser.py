@@ -1,12 +1,13 @@
-import yaml
+import collections.abc
 from typing import List, Tuple
+import pathlib
+import enum
+
+import yaml
 try:
     from yaml import CBaseLoader as Loader
 except ImportError:
     from yaml import BaseLoader as Loader
-
-import pathlib
-import enum
 
 
 class InvalidNewParamError(Exception):
@@ -38,7 +39,7 @@ class SaveModelTypes:
         return all([element >= 0 for element in my_list])
 
     @staticmethod
-    def raise_if_not_valid(save_model_type):
+    def raise_if_invalid(save_model_type):
         if isinstance(save_model_type, list):
             if not SaveModelTypes._has_positives_only(save_model_type):
                 raise ValueError("alg.save_models_on: The list should have "
@@ -143,7 +144,11 @@ class ConfigTypeCaster:
         # So non treated/non expected keys remain in treated_sampling_config
         treated_sampling_config.update(sampling_configs)
 
-        key_func_to_apply_dict = {"its_window_size": int, "max_points": int}
+        key_func_to_apply_dict = {
+            "its_window_size": int,
+            "max_points": int,
+            "seed": int
+        }
 
         cls._apply_key_func_mapping_to_dict_and_modify_target_dict(
             key_func_map=key_func_to_apply_dict,
@@ -287,23 +292,21 @@ class ConfigValidator:
     """
 
     @classmethod
-    def raise_if_not_valid_config(cls, config_dict: dict):
-        cls._raise_if_alg_config_not_valid(config_dict)
-        cls._raise_if_wells_config_not_valid(config_dict)
+    def raise_if_invalid_config(cls, config_dict: dict):
+        cls._raise_if_alg_config_invalid(config_dict)
+        cls._raise_if_wells_config_invalid(config_dict["wells"])
 
     @classmethod
-    def _raise_if_alg_config_not_valid(cls, config_dict: dict):
+    def _raise_if_alg_config_invalid(cls, config_dict: dict):
         alg_configs = config_dict["alg"]
-
-        starting_it = alg_configs["starting_it"]
-        if starting_it < 0:
+        if alg_configs["starting_it"] < 0:
             raise ValueError(
-                f"alg.starting_it should be a positive integer but {starting_it} was given!"
+                f"alg.starting_it must be a positive integer! {alg_configs['starting_it']} was given!"
             )
 
         if alg_configs["num_its"] < 1:
             raise ValueError(
-                f"alg.num_its should be at least 1 but {alg_configs['num_its']} was given!"
+                f"alg.num_its must be at least 1! {alg_configs['num_its']} was given!"
             )
 
         if not cls._has_positives_only(alg_configs["validation_only_wells"]):
@@ -331,25 +334,24 @@ class ConfigValidator:
             FeatureSelection[alg_configs["feature_selection_type"].name]
         except:
             raise ValueError(
-                f"alg.feature_selection_type should be one of {[type for type in FeatureSelection.__members__]}!"
+                f"alg.feature_selection_type must be one of {[type for type in FeatureSelection.__members__]}!"
             )
 
-        cls._raise_if_beta_dist_params_not_valid(alg_configs["sampling"])
+        cls._raise_if_sampling_params_invalid(alg_configs["sampling"])
 
         if alg_configs["max_num_features"] < 0:
             raise ValueError(
-                f"alg.max_num_features: Should be a positive integer but {alg_configs['max_num_features']} was given!"
+                f"alg.max_num_features must be a positive integer! {alg_configs['max_num_features']} was given!"
             )
 
-        SaveModelTypes.raise_if_not_valid(alg_configs["save_models_on"])
+        SaveModelTypes.raise_if_invalid(alg_configs["save_models_on"])
 
         if alg_configs['parallel']['max_points_per_chunk'] == 0:
             raise ValueError(
                 f"alg.parallel.max_points_per_chunk: Can't be zero!")
 
     @staticmethod
-    def _raise_if_wells_config_not_valid(config_dict: dict):
-        wells_config = config_dict["wells"]
+    def _raise_if_wells_config_invalid(wells_config: dict):
 
         if len(wells_config["coords"]) == 0:
             raise ValueError(
@@ -363,8 +365,16 @@ class ConfigValidator:
                 )
 
     @staticmethod
-    def _raise_if_beta_dist_params_not_valid(config_dict: dict):
-        beta_dist_dict = config_dict["beta_dist"]
+    def _raise_if_sampling_params_invalid(samp_config_dict: dict):
+        ConfigValidator._raise_if_beta_dist_params_invalid(samp_config_dict)
+
+        if samp_config_dict['seed'] < 0:
+            raise ValueError(
+                f"alg.sampling.seed: Seed value can't be negative!")
+
+    @staticmethod
+    def _raise_if_beta_dist_params_invalid(samp_config_dict: dict):
+        beta_dist_dict = samp_config_dict["beta_dist"]
         if beta_dist_dict["beta"] < 0:
             raise ValueError(
                 f"alg.sampling.beta_dist.beta: Beta value cant be negative!")
@@ -410,9 +420,9 @@ class Config:
 
         self.config = self._base_config()
 
-        self._update_config_with_input_config(input_config)
+        self.config = self.update_recursivelly(self.config, input_config)
 
-        ConfigValidator.raise_if_not_valid_config(self.config)
+        ConfigValidator.raise_if_invalid_config(self.config)
 
     def _treat_input_config(self, config: dict) -> dict:
         config_type_caster = self._get_config_type_caster()
@@ -423,23 +433,16 @@ class Config:
         raise NotImplementedError(
             "Not implemented! This should be file type dependent!")
 
-    def _update_config_with_input_config(self, input_config: dict):
-        if "wells" in input_config:
-            self.config["wells"].update(input_config["wells"])
-
-        if "alg" in input_config:
-            self.config["alg"].update(input_config["alg"])
-
-        if "features_folder" in input_config:
-            self.config["features_folder"] = input_config["features_folder"]
-
-        if "starting_porosity_cube_path" in input_config:
-            self.config["starting_porosity_cube_path"] = input_config[
-                "starting_porosity_cube_path"]
-
-        if "porosity_cube_output_path" in input_config:
-            self.config["porosity_cube_output_path"] = input_config[
-                "porosity_cube_output_path"]
+    def update_recursivelly(self, target, input):
+        """
+        https://stackoverflow.com/a/3233356/16264901
+        """
+        for k, v in input.items():
+            if isinstance(v, collections.abc.Mapping):
+                target[k] = self.update_recursivelly(target.get(k, {}), v)
+            else:
+                target[k] = v
+        return target
 
     def _get_input_config(self,
                           config_path,
@@ -520,6 +523,7 @@ class Config:
         base_config = dict()
         base_config["its_window_size"] = -1
         base_config["max_points"] = -1
+        base_config["seed"] = 42
         base_config["beta_dist"] = self._base_penalty_sampling_func_config()
         return base_config
 

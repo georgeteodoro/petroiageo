@@ -343,7 +343,7 @@ class TestYAMLConfig(TestCase):
         expected_train_only_wells_coords = [(1, 1)]
         self.assertListEqual(expected_train_only_wells_coords,
                              my_config.train_wells_coords)
-    
+
     def test_can_get_train_only_wells_ids(self):
         yaml_str = """
         wells:
@@ -358,40 +358,40 @@ class TestYAMLConfig(TestCase):
 
     def test_raise_on_invalid_max_exec_time(self):
         yaml_str_1 = """
-       wells:
-         coords: [[1,1]]
-       alg:
-         max_exec_time: 100.3
-       """
+        wells:
+          coords: [[1,1]]
+        alg:
+          max_exec_time: 100.3
+        """
         yaml_str_2 = """
-       wells:
-         coords: [[1,1]]
-       alg:
-         max_exec_time: ab
-       """
+        wells:
+          coords: [[1,1]]
+        alg:
+          max_exec_time: ab
+        """
         for yaml_str in [yaml_str_1, yaml_str_2]:
             with self.assertRaises(ValueError):
                 my_config = config_parser.YAMLConfig(config_str=yaml_str)
 
     def test_raise_on_invalid_max_num_features(self):
         yaml_str_1 = """
-       wells:
-         coords: [[1,1]]
-       alg:
-         max_num_features: 100.3
-       """
+        wells:
+          coords: [[1,1]]
+        alg:
+          max_num_features: 100.3
+        """
         yaml_str_2 = """
-       wells:
-         coords: [[1,1]]
-       alg:
-         max_num_features: ab
-       """
+        wells:
+          coords: [[1,1]]
+        alg:
+          max_num_features: ab
+        """
         yaml_str_2 = """
-       wells:
-         coords: [[1,1]]
-       alg:
-         max_num_features: -2
-       """
+        wells:
+          coords: [[1,1]]
+        alg:
+          max_num_features: -2
+        """
         for yaml_str in [yaml_str_1, yaml_str_2]:
             with self.assertRaises(ValueError):
                 my_config = config_parser.YAMLConfig(config_str=yaml_str)
@@ -399,13 +399,13 @@ class TestYAMLConfig(TestCase):
     def test_raise_on_invalid_sampling_window_size(self):
         invalid_values = [3.2, "a"]
         yaml_str_fmt = """
-       wells:
-         coords: [[1,1]]
-       
-       alg:
-         sampling:
-           its_window_size: {}
-       """
+        wells:
+          coords: [[1,1]]
+        
+        alg:
+          sampling:
+            its_window_size: {}
+        """
         for invalid_value in invalid_values:
             with self.assertRaises(ValueError):
                 my_config = config_parser.YAMLConfig(
@@ -414,17 +414,63 @@ class TestYAMLConfig(TestCase):
     def test_raise_on_invalid_sampling_max_points(self):
         invalid_values = [3.2, "a"]
         yaml_str_fmt = """
-       wells:
-         coords: [[1,1]]
-       
-       alg:
-         sampling:
-           max_points: {}
-       """
+        wells:
+          coords: [[1,1]]
+        
+        alg:
+          sampling:
+            max_points: {}
+        """
         for invalid_value in invalid_values:
             with self.assertRaises(ValueError):
                 my_config = config_parser.YAMLConfig(
                     config_str=yaml_str_fmt.format(invalid_value))
+
+    def test_raise_on_invalid_seed(self):
+        invalid_values = [3.2, "a", -2, True]
+        yaml_str_fmt = """
+        wells:
+          coords: [[1,1]]
+        
+        alg:
+          sampling:
+            seed: {}
+        """
+        for invalid_value in invalid_values:
+            with self.assertRaises(ValueError):
+                _ = config_parser.YAMLConfig(
+                    config_str=yaml_str_fmt.format(invalid_value))
+
+    def test_can_update_seed_value(self):
+        seed_value = 1
+        yaml_str_fmt = """
+        wells:
+          coords: [[1,1]]
+        
+        alg:
+          sampling:
+            seed: {}
+        """.format(seed_value)
+        my_config = config_parser.YAMLConfig(config_str=yaml_str_fmt)
+        self.assertEqual(seed_value, my_config.alg['sampling']['seed'])
+
+    def test_can_update_beta_dist(self):
+        alpha = 2
+        beta = 3
+        yaml_str_fmt = """
+        wells:
+          coords: [[1,1]]
+        
+        alg:
+          sampling:
+            beta_dist:
+              alpha: {}
+              beta: {}
+        """.format(alpha, beta)
+        my_config = config_parser.YAMLConfig(config_str=yaml_str_fmt)
+        self.assertEqual(alpha,
+                         my_config.alg['sampling']['beta_dist']['alpha'])
+        self.assertEqual(beta, my_config.alg['sampling']['beta_dist']['beta'])
 
     def test_raise_invalid_sampling_beta_dist_params(self):
         invalid_params = [
@@ -436,15 +482,15 @@ class TestYAMLConfig(TestCase):
             ("a", -1),
         ]
         yaml_str_fmt = """
-       wells:
-         coords: [[1,1]]
-       
-       alg:
-         sampling:
-           beta_dist:
-             alpha: {}
-             beta: {}
-       """
+        wells:
+          coords: [[1,1]]
+        
+        alg:
+          sampling:
+            beta_dist:
+              alpha: {}
+              beta: {}
+        """
         for alpha, beta in invalid_params:
             with self.assertRaises(ValueError):
                 my_config = config_parser.YAMLConfig(
@@ -452,9 +498,9 @@ class TestYAMLConfig(TestCase):
 
     def test_can_add_new_attribute(self):
         yaml_str = """
-       wells:
-         coords: [[1,1],[2,2]]
-       """
+        wells:
+          coords: [[1,1],[2,2]]
+        """
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
         param_name = "new_param"
         param_value = 123
@@ -463,9 +509,9 @@ class TestYAMLConfig(TestCase):
 
     def test_raises_if_add_new_param_with_name_equals_to_base_config(self):
         yaml_str = """
-      wells:
-        coords: [[1,1],[2,2]]
-      """
+        wells:
+          coords: [[1,1],[2,2]]
+        """
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
         for base_param in config_parser.Config.TOP_LEVEL_BASE_CONFIGS:
             new_value = "new_value"
@@ -474,9 +520,9 @@ class TestYAMLConfig(TestCase):
 
     def test_can_remove_new_param(self):
         yaml_str = """
-       wells:
-         coords: [[1,1],[2,2]]
-      """
+        wells:
+          coords: [[1,1],[2,2]]
+        """
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
         param_name = "new_param"
         param_value = 123
@@ -486,9 +532,9 @@ class TestYAMLConfig(TestCase):
 
     def test_raises_if_trying_to_remove_base_param(self):
         yaml_str = """
-      wells:
-        coords: [[1,1],[2,2]]
-      """
+        wells:
+          coords: [[1,1],[2,2]]
+        """
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
         for base_param in config_parser.Config.TOP_LEVEL_BASE_CONFIGS:
             with self.assertRaises(config_parser.InvalidNewParamError):
