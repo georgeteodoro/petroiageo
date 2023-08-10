@@ -233,7 +233,7 @@ class H5ApplyAlg(AbstractApplyAlg):
         # We ignore the testing dset. The cur_h5_dset does not have
         # points associated with the testing wells
         test_only_wells = self._config.alg['test_only_wells']
-        cur_h5, cur_h5_dset, _, _ = petro5_hdf5.create_tmp_dset(
+        cur_h5, cur_h5_dset, test_h5, test_dset_h5 = petro5_hdf5.create_tmp_dset(
             porosity_data_h5,
             data_filter,
             len(best_features_set),
@@ -243,20 +243,32 @@ class H5ApplyAlg(AbstractApplyAlg):
             features_only=True,
             test_wells_ids=test_only_wells,
             should_sample_max_points=False)
+
         cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
+        cur_h5_test_list = None
+        if len(test_only_wells) > 0:
+            cur_h5_test_list = hdf5_util.HDFMultiColList(test_dset_h5)
 
         hypercube_shape = porosity_data_h5.shape
 
         t1 = time()
         profiling.prof_predict_create_time(it, t1 - t0, self._config)
 
-        # Add each feature to the TestData list (TD)
+        # Add each feature to the datasets list (TD)
         for feature in best_features_set:
             cur_h5_train_list.add_new_col()
             petro5_hdf5.insert_filtered_feature(cur_h5_dset, cur_h5_train_list,
                                                 features_dict_h5, feature,
                                                 hypercube_shape,
                                                 displacement_cube_shape)
+
+            if cur_h5_test_list is not None:
+                cur_h5_test_list.add_new_col()
+                petro5_hdf5.insert_filtered_feature(test_dset_h5,
+                                                    cur_h5_test_list,
+                                                    features_dict_h5, feature,
+                                                    hypercube_shape,
+                                                    displacement_cube_shape)
 
         t2 = time()
         profiling.prof_predict_insert_time(it, len(best_features_set), t2 - t1,
@@ -279,8 +291,25 @@ class H5ApplyAlg(AbstractApplyAlg):
                 keep_training_booster=True,
             )
 
-        cur_h5.close()
+        #evaluate on test data:
+        if cur_h5_test_list is not None:
+            rmse_list = list()
+            for c in range(cur_h5_test_list.n_chunks):
+                # Generate a test dataset for all data on chunk c
+                X_test_np, y_test_np = cur_h5_test_list.get_data_not_in_well(c)
+                pred = regressor.predict(X_test_np)
+                rmse = np.sqrt(np.mean((pred - y_test_np)**2))
+                rmse_list.append(rmse)
 
+            final_rmse = np.mean(rmse_list)
+            mpi_rank = self._config.get_param("mpi_rank")
+            mpi_manager_rank = self._config.get_param("mpi_manager_rank")
+            mpi_size = self._config.get_param("mpi_size")
+            if mpi_size == 1 or mpi_rank == mpi_manager_rank:
+                print(f"[manager][it{it}][test-error] RMSE: {final_rmse}")
+
+        cur_h5.close()
+        test_h5.close()
         profiling.prof_predict_train_times(it, time() - t2, self._config)
         return regressor
 
