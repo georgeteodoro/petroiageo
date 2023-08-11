@@ -719,7 +719,8 @@ def get_features_sets(
 
     #At the feature selection stage, there should be sampling of
     #points from the iterations considered
-    cur_h5, cur_h5_dset, test_h5, test_h5_dset = create_tmp_dset(
+    # We use the test_h5_file just to close it to make sure
+    cur_h5, cur_h5_dset, test_h5, _ = create_tmp_dset(
         porosity_data_h5,
         data_filter,
         exp_n_features,
@@ -730,9 +731,6 @@ def get_features_sets(
 
     # Create training temporary object
     cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
-    cur_h5_test_list = None
-    if len(test_wells_ids) > 0:
-        cur_h5_test_list = hdf5_util.HDFMultiColList(test_h5_dset)
 
     # Current features set with the best error
     best_feats_found = ['x', 'y', 'z']
@@ -751,8 +749,6 @@ def get_features_sets(
 
         # Setup the new column to be tested
         cur_h5_train_list.add_new_col()
-        if len(test_wells_ids) > 0:
-            cur_h5_test_list.add_new_col()
 
         # Test each available feature
         ii = 0
@@ -775,17 +771,6 @@ def get_features_sets(
                 hypercube_shape,
                 displacement_cube_shape,
             )
-
-            # Also inserts the feature on the test dataset, if necessary
-            if len(test_wells_ids) > 0:
-                insert_filtered_feature(
-                    test_h5_dset,
-                    cur_h5_test_list,
-                    features_dict_h5,
-                    cur_feature,
-                    hypercube_shape,
-                    displacement_cube_shape,
-                )
 
             t5 = time()
             print(f"[get_features_sets][{cur_feature}] "
@@ -830,17 +815,6 @@ def get_features_sets(
             hypercube_shape,
             displacement_cube_shape,
         )
-
-        # Also inserts the feature on the test dataset, if necessary
-        if len(test_wells_ids) > 0:
-            insert_filtered_feature(
-                test_h5_dset,
-                cur_h5_test_list,
-                features_dict_h5,
-                curr_best_feature,
-                hypercube_shape,
-                displacement_cube_shape,
-            )
 
         best_feats_found.append(curr_best_feature)
 
