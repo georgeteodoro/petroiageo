@@ -45,37 +45,33 @@ def get_best_features_set(
 
 def eval_bootstrap(
     cur_h5_train_list: hdf5_util.HDFMultiColList,
-    cur_h5_test_list: hdf5_util.HDFMultiColList,
     wells_id: list[int],
     num_threads=1,
 ) -> Tuple[float, float]:
     """
     Train a regressor on cur_h5_train_list using data of wells in wells_id.
-    If cur_h5_test_list == None, then test errors will be based on the
-    validation data for each Leave-one-well-out iteration.
+    The test errors will be based on the validation data for each 
+    Leave-one-well-out iteration.
+    
     Return the mean rmse and mean mae errors
     """
     params['num_threads'] = num_threads
 
     profiling = False
 
-    rmse_list, mae_list = _leave_one_well_out_training(cur_h5_train_list,
-                                                       cur_h5_test_list,
-                                                       wells_id, profiling)
+    rmse_list, mae_list = _leave_one_well_out_training(
+        cur_h5_train_list,
+        wells_id,
+        profiling)
 
     return np.mean(rmse_list), np.mean(mae_list)
 
 
 def _leave_one_well_out_training(
     cur_h5_train_list: hdf5_util.HDFMultiColList,
-    cur_h5_test_list: hdf5_util.HDFMultiColList,
     wells_id: int,
     profiling: bool,
 ) -> Tuple[list[float], list[float]]:
-    # Test data is the same for all wells if test_only_wells are
-    # active, so it's only setup once
-    if cur_h5_test_list is not None:
-        X_test, y_test = cur_h5_test_list.get_data_not_in_well()
 
     t0 = time()
     rmse_list: list[float] = []
@@ -83,18 +79,15 @@ def _leave_one_well_out_training(
 
     # Leave-One-Well-Out
     for curr_well_id in wells_id:
-        X_val, y_val, regressor = _incremental_learning(
+        X_val, y_val, trained_regressor = _incremental_learning(
             cur_h5_train_list, profiling, curr_well_id)
         t3 = time()
 
         # Calculate error metrics
-        if cur_h5_test_list == None:
-            X_test = X_val
-            y_test = y_val
 
-        pred = regressor.predict(X_test)
-        rmse = np.sqrt(np.mean((pred - y_test)**2))
-        mae = mean_absolute_error(pred, y_test)
+        pred = trained_regressor.predict(X_val)
+        rmse = np.sqrt(np.mean((pred - y_val)**2))
+        mae = mean_absolute_error(pred, y_val)
         rmse_list.append(rmse)
         mae_list.append(mae)
 
@@ -128,6 +121,7 @@ def _incremental_learning(
     regressor = None
     setup_time = 0
     training_time = 0
+    # TODO: Check train data availability on chunk without loading data
     for chunk_idx in range(cur_h5_train_list.n_chunks):
         t1 = time()
 
@@ -798,8 +792,10 @@ def get_features_sets(
                   f"insert_feature_time: {t5-t4}")
 
             # Test the model with cur_feature
-            rmse, mae = eval_bootstrap(cur_h5_train_list, cur_h5_test_list,
-                                       train_wells_ids)
+            rmse, mae = eval_bootstrap(
+                cur_h5_train_list,
+                train_wells_ids)
+            
             t6 = time()
             print(f"[get_features_sets][{cur_feature}] "
                   f"train_time: {t6-t5}")
