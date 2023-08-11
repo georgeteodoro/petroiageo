@@ -428,7 +428,6 @@ def _eval_curr_feats(
         profiling.prof_fsel_worker_insert_time(it, rank, f_it, t5 - t4, config)
 
         rmse, mae = petro5_hdf5.eval_bootstrap(cur_h5_train_list,
-                                               cur_h5_test_list,
                                                training_wells)
 
         results.append((new_feature, rmse))
