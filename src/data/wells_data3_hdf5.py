@@ -180,19 +180,19 @@ def config_arg_parser() -> argparse.ArgumentParser:
 
 
 if __name__ == '__main__':
-    # wells_coords = [(34, 97), (98, 46), (55, 30), (101, 132), (33, 184)]
-    wells_coords = [
-        (134, 227),
-        (146, 500),
-        (167, 186),
-        (174, 365),
-        (200, 102),
-        (236, 113),
-        (250, 315),
-        (287, 242),
-        (230, 194),
-        (344, 276),
-    ]
+    wells_coords = [(34, 97), (98, 46), (55, 30), (101, 132), (33, 184)]
+    #wells_coords = [
+    #    (134, 227),
+    #    (146, 500),
+    #    (167, 186),
+    #    (174, 365),
+    #    (200, 102),
+    #    (236, 113),
+    #    (250, 315),
+    #    (287, 242),
+    #    (230, 194),
+    #    (344, 276),
+    #]
 
     parser = config_arg_parser()
     args = parser.parse_args()
@@ -212,7 +212,7 @@ if __name__ == '__main__':
 
     # chunk_shape = (100, 100, 16)
     # chunk_shape = (434, 323, 251)
-    chunk_shape = (300, 200, hypercube_shape[2])
+    chunk_shape = (100, 100, hypercube_shape[2])
 
     porosity_points_py2hdf5(
         porosity_file_path,
