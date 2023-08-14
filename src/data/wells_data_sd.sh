@@ -8,7 +8,7 @@
 
 module load python/3.9.6
 
-source ../../../meu_python/bin/activate
+source ../../../../willian.barreiros/venv/bin/activate
 FEAT_FILE='../../data/ANP/features/area1/hdf5/Franco_florin_buzios_28_09-2_azimuth_area1_.h5'
 POR_FILE='../../data/ANP/processed/area_1_porsty.npy'
 TARGET_HDF5_FILE='../../data/ANP/processed/area_1/porosity_data.h5'
