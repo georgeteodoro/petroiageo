@@ -8,6 +8,7 @@ import numpy as np
 from inverted_learning_interface import AbstractApplyAlg
 import config_parser
 import common
+from h5py import File
 import profiling
 import hdf5_util
 import petro5_hdf5
@@ -222,17 +223,70 @@ class H5ApplyAlg(AbstractApplyAlg):
         defined in self._config. We must ignore the points associated with 
         the testing wells.
         """
-        t0 = time()
 
+        cur_h5, test_h5, cur_h5_train_list, cur_h5_test_list = self._get_train_test_dset_list(
+            best_features_set, features_dict_h5, porosity_data_h5, it, rank,
+            displacement_cube_shape)
+        t2 = time()
+
+        regressor = None
+        # incremental learning
+        # TODO: Change this loop to go over the chunks themselves
+        for c in range(cur_h5_train_list.n_chunks):
+            # Generate a training dataset for all data on chunk c
+            X_train_np, y_train_np = cur_h5_train_list.get_data_not_in_well(c)
+            lgb_train_dataset = lgb.Dataset(X_train_np, y_train_np)
+
+            # Perform training
+            regressor = lgb.train(
+                params,
+                lgb_train_dataset,
+                init_model=regressor,
+                num_boost_round=100,
+                keep_training_booster=True,
+            )
+
+        #evaluate on test data:
+        if cur_h5_test_list is not None:
+            rmse_list = list()
+            for c in range(cur_h5_test_list.n_chunks):
+                # Generate a test dataset for all data on chunk c
+                X_test_np, y_test_np = cur_h5_test_list.get_data_not_in_well(c)
+                pred = regressor.predict(X_test_np)
+                rmse = np.sqrt(np.mean((pred - y_test_np)**2))
+                rmse_list.append(rmse)
+
+            final_rmse = np.mean(rmse_list)
+            mpi_rank = self._config.get_param("mpi_rank")
+            mpi_manager_rank = self._config.get_param("mpi_manager_rank")
+            mpi_size = self._config.get_param("mpi_size")
+            if mpi_size == 1 or mpi_rank == mpi_manager_rank:
+                print(f"[manager][it{it}][test-error] RMSE: {final_rmse}")
+
+        cur_h5.close()
+        test_h5.close()
+        profiling.prof_predict_train_times(it, time() - t2, self._config)
+        return regressor
+
+    def _get_train_test_dset_list(
+        self, best_features_set: set, features_dict_h5: Dict[str,
+                                                             h5py.Dataset],
+        porosity_data_h5: h5py.Dataset, it: int, rank: int,
+        displacement_cube_shape: tuple
+    ) -> Tuple[File, File, hdf5_util.HDFMultiColList,
+               hdf5_util.HDFMultiColList]:
+        """
+        Creates temporary h5 train and test structures to perform the training
+        """
+        t0 = time()
         data_filter = PredTrainDataFilter()
 
-        # Creates a temporary h5 structure to perform the training
+        test_only_wells = self._config.alg['test_only_wells']
         #There should be no sampling of points at this stage
         #all points from the last n iterations should be used
         #even if n == all iterations
         # We ignore the testing dset. The cur_h5_dset does not have
         # points associated with the testing wells
-        test_only_wells = self._config.alg['test_only_wells']
         cur_h5, cur_h5_dset, test_h5, test_dset_h5 = petro5_hdf5.create_tmp_dset(
             porosity_data_h5,
             data_filter,
@@ -274,44 +328,7 @@ class H5ApplyAlg(AbstractApplyAlg):
         profiling.prof_predict_insert_time(it, len(best_features_set), t2 - t1,
                                            self._config)
 
-        regressor = None
-        # incremental learning
-        # TODO: Change this loop to go over the chunks themselves
-        for c in range(cur_h5_train_list.n_chunks):
-            # Generate a training dataset for all data on chunk c
-            X_train_np, y_train_np = cur_h5_train_list.get_data_not_in_well(c)
-            lgb_train_dataset = lgb.Dataset(X_train_np, y_train_np)
-
-            # Perform training
-            regressor = lgb.train(
-                params,
-                lgb_train_dataset,
-                init_model=regressor,
-                num_boost_round=100,
-                keep_training_booster=True,
-            )
-
-        #evaluate on test data:
-        if cur_h5_test_list is not None:
-            rmse_list = list()
-            for c in range(cur_h5_test_list.n_chunks):
-                # Generate a test dataset for all data on chunk c
-                X_test_np, y_test_np = cur_h5_test_list.get_data_not_in_well(c)
-                pred = regressor.predict(X_test_np)
-                rmse = np.sqrt(np.mean((pred - y_test_np)**2))
-                rmse_list.append(rmse)
-
-            final_rmse = np.mean(rmse_list)
-            mpi_rank = self._config.get_param("mpi_rank")
-            mpi_manager_rank = self._config.get_param("mpi_manager_rank")
-            mpi_size = self._config.get_param("mpi_size")
-            if mpi_size == 1 or mpi_rank == mpi_manager_rank:
-                print(f"[manager][it{it}][test-error] RMSE: {final_rmse}")
-
-        cur_h5.close()
-        test_h5.close()
-        profiling.prof_predict_train_times(it, time() - t2, self._config)
-        return regressor
+        return cur_h5, test_h5, cur_h5_train_list, cur_h5_test_list
 
     def _single_compatible(self, to_compare):
         # Check if to_compare have h5 support
