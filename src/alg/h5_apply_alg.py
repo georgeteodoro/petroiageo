@@ -77,14 +77,13 @@ class H5ApplyAlg(AbstractApplyAlg):
                 best_features_set, features_dict_h5, porosity_data_h5, it,
                 rank, displacement_cube_shape)
 
-            regressor = self._train_regressor(
-                it,
-                train_list,
-                test_list,
-            )
-
+            regressor = self._train_regressor(it, train_list)
             cur_h5.close()
+
+            final_rmse = self._evaluate_regressor(test_list, regressor)
+            print(f"[manager][it{it}][test-error] RMSE: {final_rmse}")
             test_h5.close()
+
             t3 = time()
 
             # Perform prediction of expanded points
@@ -168,6 +167,25 @@ class H5ApplyAlg(AbstractApplyAlg):
 
         comm.Barrier()
 
+    def _evaluate_regressor(self, test_list: hdf5_util.HDFMultiColList,
+                            regressor: lgb.Booster) -> float:
+        """
+        Evaluate the regressor on test data. Returns the RMSE error
+        """
+        final_rmse = float("inf")
+        if test_list is not None:
+            rmse_list = list()
+            for c in range(test_list.n_chunks):
+                # Generate a test dataset for all data on chunk c
+                X_test_np, y_test_np = test_list.get_data_not_in_well(c)
+                pred = regressor.predict(X_test_np)
+                rmse = np.sqrt(np.mean((pred - y_test_np)**2))
+                rmse_list.append(rmse)
+
+            final_rmse = np.mean(rmse_list)
+
+        return final_rmse
+
     def _get_data_to_predict(
         self,
         best_features_set: set,
@@ -213,11 +231,8 @@ class H5ApplyAlg(AbstractApplyAlg):
         return to_predict_np
 
     def _train_regressor(
-        self,
-        it: int,
-        cur_h5_train_list: hdf5_util.HDFMultiColList,
-        cur_h5_test_list: hdf5_util.HDFMultiColList,
-    ) -> lgb.Booster:
+            self, it: int,
+            cur_h5_train_list: hdf5_util.HDFMultiColList) -> lgb.Booster:
         """
         Train the regressor on all data available in the last n iterations
         defined in self._config. We must ignore the points associated with 
@@ -242,23 +257,6 @@ class H5ApplyAlg(AbstractApplyAlg):
                 num_boost_round=100,
                 keep_training_booster=True,
             )
-
-        #evaluate on test data:
-        if cur_h5_test_list is not None:
-            rmse_list = list()
-            for c in range(cur_h5_test_list.n_chunks):
-                # Generate a test dataset for all data on chunk c
-                X_test_np, y_test_np = cur_h5_test_list.get_data_not_in_well(c)
-                pred = regressor.predict(X_test_np)
-                rmse = np.sqrt(np.mean((pred - y_test_np)**2))
-                rmse_list.append(rmse)
-
-            final_rmse = np.mean(rmse_list)
-            mpi_rank = self._config.get_param("mpi_rank")
-            mpi_manager_rank = self._config.get_param("mpi_manager_rank")
-            mpi_size = self._config.get_param("mpi_size")
-            if mpi_size == 1 or mpi_rank == mpi_manager_rank:
-                print(f"[manager][it{it}][test-error] RMSE: {final_rmse}")
 
         profiling.prof_predict_train_times(it, time() - t2, self._config)
         return regressor
