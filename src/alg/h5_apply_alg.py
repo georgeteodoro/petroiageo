@@ -73,15 +73,18 @@ class H5ApplyAlg(AbstractApplyAlg):
             best_features_set.remove("y")
             best_features_set.remove("z")
 
+            cur_h5, test_h5, train_list, test_list = self._get_train_test_dset_list(
+                best_features_set, features_dict_h5, porosity_data_h5, it,
+                rank, displacement_cube_shape)
+
             regressor = self._train_regressor(
-                best_features_set,
-                features_dict_h5,
-                porosity_data_h5,
                 it,
-                rank,
-                displacement_cube_shape,
+                train_list,
+                test_list,
             )
 
+            cur_h5.close()
+            test_h5.close()
             t3 = time()
 
             # Perform prediction of expanded points
@@ -211,12 +214,9 @@ class H5ApplyAlg(AbstractApplyAlg):
 
     def _train_regressor(
         self,
-        best_features_set: set,
-        features_dict_h5: Dict[str, h5py.Dataset],
-        porosity_data_h5: h5py.Dataset,
         it: int,
-        rank: int,
-        displacement_cube_shape: tuple,
+        cur_h5_train_list: hdf5_util.HDFMultiColList,
+        cur_h5_test_list: hdf5_util.HDFMultiColList,
     ) -> lgb.Booster:
         """
         Train the regressor on all data available in the last n iterations
@@ -224,9 +224,6 @@ class H5ApplyAlg(AbstractApplyAlg):
         the testing wells.
         """
 
-        cur_h5, test_h5, cur_h5_train_list, cur_h5_test_list = self._get_train_test_dset_list(
-            best_features_set, features_dict_h5, porosity_data_h5, it, rank,
-            displacement_cube_shape)
         t2 = time()
 
         regressor = None
@@ -263,8 +260,6 @@ class H5ApplyAlg(AbstractApplyAlg):
             if mpi_size == 1 or mpi_rank == mpi_manager_rank:
                 print(f"[manager][it{it}][test-error] RMSE: {final_rmse}")
 
-        cur_h5.close()
-        test_h5.close()
         profiling.prof_predict_train_times(it, time() - t2, self._config)
         return regressor
 
