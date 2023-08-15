@@ -55,8 +55,8 @@ starting_porosity_cube_path: "../../data/POV/large_porosity_data.h5"
 
 alg:
   # Starting iteration. The iteration index will be used for other params.
-  # Default: 0
-  starting_it: 0 
+  # Default: 1
+  starting_it: 1
   num_its: 10 # Num of iterations to run. Default: 10
   
   # If you want to really generate the porosity cube in the end. Default is true
