@@ -39,9 +39,6 @@ class H5SeismicDataLoader(AbstractSeismicDataLoader):
         num_features = self._config.get_param("num_features")
         features_filenames = self._config.features_files_paths
         features_names = self._config.features_files_names
-        if num_features != 0:
-            features_filenames = features_filenames[:num_features]
-            features_names = features_names[:num_features]
 
         # Setup HDF5 driver configuration
         if self._config.get_param("mpi_size") > 1:
@@ -55,13 +52,17 @@ class H5SeismicDataLoader(AbstractSeismicDataLoader):
         # Generate a dictionary of feature files indexed by name
         features_dset_dict_h5 = {}
         last_dim = None
+        total_features = 0
         for feature_path, feature in zip(features_filenames, features_names):
+            if (num_features != 0) and (num_features == total_features): 
+                break
             if ".h5" not in str(feature_path):
                 continue
             self._features_files_dict_h5[feature] = h5py.File(
                 feature_path, "r", **mpi_kwargs)
             features_dset_dict_h5[feature] = self._features_files_dict_h5[
                 feature][FEAT_DSET_NAME]
+            total_features +=1
 
             # TODO: fix this assertion
             # # Assert whether the dimensions are compatible
