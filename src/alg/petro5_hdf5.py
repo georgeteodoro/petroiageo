@@ -59,10 +59,8 @@ def eval_bootstrap(
 
     profiling = False
 
-    rmse_list, mae_list = _leave_one_well_out_training(
-        cur_h5_train_list,
-        wells_id,
-        profiling)
+    rmse_list, mae_list = _leave_one_well_out_training(cur_h5_train_list,
+                                                       wells_id, profiling)
 
     return np.mean(rmse_list), np.mean(mae_list)
 
@@ -582,17 +580,19 @@ def _get_n_pts_to_sample_per_well(n_points_to_sample_chunk: int,
                                   n_pts_per_well: np.ndarray) -> np.ndarray:
     # This might give more points to sample in total than
     # n_points_to_sample_chunk because of the ceil. So it must be treated
-    n_samp_points_per_well = np.ceil((n_pts_per_well / n_pts_per_well.sum()) *
-                                     n_points_to_sample_chunk).astype(int)
-    # Treating difference
-    total_samples = n_samp_points_per_well.sum()
-    diff = total_samples - n_points_to_sample_chunk
+    n_samp_points_per_well: np.ndarray = np.ceil(
+        (n_pts_per_well / n_pts_per_well.sum()) *
+        n_points_to_sample_chunk).astype(int)
 
-    if diff > 0:
-        n_points_to_remove = np.rint(
-            (n_samp_points_per_well / total_samples) * diff).astype(int)
-
-        n_samp_points_per_well -= n_points_to_remove
+    # Treating difference to expected n_points_to_sample_chunk
+    # We remove 1 point from every well with biggest curr samp size
+    # until diff == 0. This next diff will never be < 0.
+    diff = n_samp_points_per_well.sum() - n_points_to_sample_chunk
+    
+    while diff > 0:
+        biggest_samp = n_samp_points_per_well.argmax()
+        n_samp_points_per_well[biggest_samp] -= 1
+        diff = n_samp_points_per_well.sum() - n_points_to_sample_chunk
 
     assert np.sum(n_samp_points_per_well) == n_points_to_sample_chunk
     return n_samp_points_per_well
@@ -777,10 +777,8 @@ def get_features_sets(
                   f"insert_feature_time: {t5-t4}")
 
             # Test the model with cur_feature
-            rmse, mae = eval_bootstrap(
-                cur_h5_train_list,
-                train_wells_ids)
-            
+            rmse, mae = eval_bootstrap(cur_h5_train_list, train_wells_ids)
+
             t6 = time()
             print(f"[get_features_sets][{cur_feature}] "
                   f"train_time: {t6-t5}")
