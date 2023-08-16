@@ -2,11 +2,13 @@ from unittest import TestCase, main
 from petro5_hdf5 import _get_num_chunks_of_h5data, _sample_points_from_chunk
 from petro5_hdf5 import _get_n_sampling_points_per_chunk
 from petro5_hdf5 import _count_train_test_points_per_chunk
-<<<<<<< HEAD
 from petro5_hdf5 import _limit_training_points, get_best_features_set
 from petro5_hdf5 import append_points_to_dset, _get_chunk_shape
-from petro5_hdf5 import MAX_HDF5_CHUNK_SIZE
-from data_filter import DataFilter
+from petro5_hdf5 import _get_n_pts_to_sample_per_well
+from petro5_hdf5 import MAX_HDF5_CHUNK_SIZE, _config_filters
+from data_filter import DataFilter, WellsDataFilter
+from data_filter import FeatSelectionTrainDataFilter
+from common import RealValues
 import h5py
 import tempfile
 import numpy as np
@@ -152,6 +154,18 @@ class TestSamplingWithoutData(TestCase):
             n_train_points_per_chunk, max_sampling_points)
         self.assertTrue(
             np.sum(expected_n_samp_points_p_chunks - samps_per_chunk) == 0)
+
+    def test_can_calc_n_sampling_points_per_chunk_not_simple(self):
+        n_train_points_per_well = np.array([0, 10, 10, 0, 0, 10, 0, 10, 0, 15])
+        max_sampling_points = 20
+        expected_n_samp_points_p_well = np.array(
+            [0, 4, 4, 0, 0, 4, 0, 4, 0, 4])
+
+        samps_per_well = _get_n_pts_to_sample_per_well(
+            max_sampling_points, n_train_points_per_well)
+        self.assertTrue(
+            np.array_equal(samps_per_well, expected_n_samp_points_p_well),
+            f"Expected: {expected_n_samp_points_p_well}, got {samps_per_well}")
 
     def test_can_calc_n_sampling_points_per_chunk_not_simple(self):
         n_train_points_per_well = np.array([0, 10, 10, 0, 0, 10, 0, 10, 0, 15])
