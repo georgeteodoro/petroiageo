@@ -11,8 +11,6 @@ import hdf5_util
 from config_parser import Config
 from data_filter import WellsDataFilter, DataFilter
 from data_filter import FeatSelectionTrainDataFilter
-from data_filter import WellsDataFilter, DataFilter
-from data_filter import FeatSelectionTrainDataFilter
 
 RANDOM_STATE = 1
 MAX_HDF5_CHUNK_SIZE = 4_294_967_296  #2 ** 32
@@ -61,8 +59,10 @@ def eval_bootstrap(
 
     profiling = False
 
-    rmse_list, mae_list = _leave_one_well_out_training(cur_h5_train_list,
-                                                       wells_id, profiling)
+    rmse_list, mae_list = _leave_one_well_out_training(
+        cur_h5_train_list,
+        wells_id,
+        profiling)
 
     return np.mean(rmse_list), np.mean(mae_list)
 
@@ -247,21 +247,15 @@ def insert_filtered_feature(
 
 def _add_sampling_window_to_filters(sampling_window: int,
                                     train_data_filter: DataFilter,
-                                    is_test_point_f: Callable,
-                                    porosity_data_h5,
-                                    it) -> Tuple[int, DataFilter, Callable]:
+                                    it) -> DataFilter:
     """
     Updates the train filter based on sampling_window
     """
     min_ring = max(0, it - sampling_window)
-    is_in_min_ring = lambda d: (d['ring'] >= min_ring)
-    train_data_filter.add_min_ring_filter(min_ring)
 
     train_data_filter.add_min_ring_filter(min_ring)
 
-    n_training_points = train_data_filter.filter_count_dset(porosity_data_h5)
-
-    return n_training_points, train_data_filter, is_test_point_f2
+    return train_data_filter
 
 
 def _limit_training_points(sampling_max_points: int,
@@ -281,9 +275,8 @@ def _prepare_h5(suf_str: str,
                 features_only: bool,
                 n_features: int,
                 train_data_filter: DataFilter,
-                is_test_point_f,
+                test_data_filter: DataFilter,
                 porosity_data_h5: h5py.Dataset,
-                it: int,
                 config: Config,
                 should_sample_max_points: bool = True):
     """
@@ -293,13 +286,10 @@ def _prepare_h5(suf_str: str,
     If should_sample_max_points, then considers the max_points param of the 
     sampling param in config. If not, then no sampling of max points
     is used
-    If should_sample_max_points, then considers the max_points param of the 
-    sampling param in config. If not, then no sampling of max points
-    is used
     """
 
-    # Get config parameters
-    sampling_window: int = config.alg['sampling']['its_window_size']
+    #We may not have the sampling window and still have
+    #sampling max points defined
     if should_sample_max_points:
         sampling_max_points: int = config.alg['sampling']['max_points']
     else:
@@ -403,51 +393,6 @@ def _create_files(suf_str: str, test_only_wells: list, features_only: bool,
     cur_data_type = np.dtype(cur_data_type)
     return cur_h5, test_h5, cur_data_type
 
-    # Select whether training points include all points or there are test
-    # points as well
-    if n_test_only_wells > 0:
-        train_data_filter.add_not_in_well_list_filter(test_only_wells)
-
-        is_test_point_f_count = lambda d: is_test_point_f(d).sum()
-        n_test_points = hdf5_util.fold_h5_all_clusters(
-            porosity_data_h5,
-            is_test_point_f_count,
-            0,
-        )
-
-    # Calculate the maximum number of training points
-    n_train_points = train_data_filter.filter_count_dset(porosity_data_h5)
-
-    # Configures sampling
-    if sampling_window > 0:
-        (n_train_points, train_data_filter,
-         is_test_point_f) = _add_sampling_window_to_filters(
-             sampling_window, train_data_filter, is_test_point_f,
-             porosity_data_h5, it)
-
-    #We may not have the sampling window and still have
-    #sampling max points defined
-    n_train_points = _limit_training_points(sampling_max_points,
-                                            n_train_points)
-
-    chunksize = config.alg['parallel']['max_points_per_chunk']
-    train_chunkshape = _get_chunk_shape(n_train_points, chunksize)
-
-    # Create the h5 datasets
-    cur_h5_dset = cur_h5.create_dataset('c', (n_train_points, ),
-                                        dtype=cur_data_type,
-                                        chunks=train_chunkshape)
-    test_h5_dset = None
-    if n_test_only_wells > 0:
-        test_chunkshape = _get_chunk_shape(n_test_points, chunksize)
-
-        test_h5_dset = test_h5.create_dataset('c', (n_test_points, ),
-                                              dtype=cur_data_type,
-                                              chunks=test_chunkshape)
-
-    return (cur_h5, cur_h5_dset, test_h5, test_h5_dset, n_train_points,
-            sampling_max_points, train_data_filter, is_test_point_f)
-
 
 def _get_chunk_shape(n_points: int, max_chunksize: int) -> Tuple[int]:
     """
@@ -466,32 +411,9 @@ def _get_chunk_shape(n_points: int, max_chunksize: int) -> Tuple[int]:
     chunkshape = (chunksize, )
     return chunkshape
 
-    #We may not have the sampling window and still have
-    #sampling max points defined
-    n_training_points = _limit_training_points(sampling_max_points,
-                                               n_training_points)
-
-    print("============== NEED TO AUTOMATE TMP_LIST CHUNK_SIZE")
-    # cur_chunksize = (n_training_points / 10, )
-    cur_chunksize = (n_training_points, )
-
-    # Create the h5 datasets
-    cur_h5_dset = cur_h5.create_dataset('c', (n_training_points, ),
-                                        dtype=cur_data_type,
-                                        chunks=cur_chunksize)
-    test_h5_dset = None
-    if n_test_only_wells > 0:
-        test_h5_dset = test_h5.create_dataset('c', (n_test_points, ),
-                                              dtype=cur_data_type,
-                                              chunks=(n_test_points, ))
-
-    return (cur_h5, cur_h5_dset, test_h5, test_h5_dset, n_training_points,
-            sampling_max_points, is_training_point_f, is_test_point_f)
-
 
 def create_tmp_dset(
     porosity_data_h5: h5py.Dataset,
-    train_data_filter: DataFilter,
     train_data_filter: DataFilter,
     n_features: int,
     config: Config,
@@ -499,7 +421,7 @@ def create_tmp_dset(
     suf_str: str = '',
     list_chunk_size: int = 1000,
     features_only: bool = False,
-    test_only_wells: list = None,
+    test_wells_ids: list = None,
     should_sample_max_points: bool = True
 ) -> Tuple[h5py.File, h5py.Dataset, h5py.File, h5py.Dataset]:
 
@@ -508,16 +430,22 @@ def create_tmp_dset(
         test_wells_ids = list()
 
     profiling = False
+    test_data_filter = WellsDataFilter(test_wells_ids)
 
-    is_test_point_f = lambda c: _is_well_in_list(c, test_only_wells)
+    train_data_filter = _config_filters(
+        test_wells_ids, train_data_filter, it,
+        config.alg['sampling']['its_window_size'])
 
     t0 = time()
-    (train_h5_file, train_empty_h5_dset, test_h5_file, test_empty_h5_dset,
-     n_training_points, samp_max_points, train_data_filter,
-     is_test_point_f) = _prepare_h5(suf_str, test_only_wells, features_only,
-                                    n_features, train_data_filter,
-                                    is_test_point_f, porosity_data_h5, it,
-                                    config, should_sample_max_points)
+    (train_h5_file, test_h5_file, samp_max_points) = _prepare_h5(
+        suf_str, test_wells_ids, features_only, n_features, train_data_filter,
+        test_data_filter, porosity_data_h5, config, should_sample_max_points)
+
+    train_empty_h5_dset: h5py.Dataset = train_h5_file[TMP_DSET_NAME]
+    if test_h5_file is not None:
+        test_empty_h5_dset: h5py.Dataset = test_h5_file[TMP_DSET_NAME]
+    else:
+        test_empty_h5_dset = None
 
     t1 = time()
     if profiling:
@@ -534,7 +462,7 @@ def create_tmp_dset(
 
     (train_points_per_chunk,
      test_points_per_chunk) = _count_train_test_points_per_chunk(
-         porosity_data_h5, train_data_filter, is_test_point_f)
+         porosity_data_h5, train_data_filter, test_data_filter)
 
     total_n_training_points_possible = np.sum(train_points_per_chunk)
 
@@ -582,6 +510,7 @@ def create_tmp_dset(
                 training_points = chunk_np[train_data_filter.satisfies(
                     chunk_np)]
 
+                assert np.all(training_points["well_id"] >= 0)
                 # Performs sampling on training_points
                 if must_sample:
                     n_points_to_sample_chunk = sampling_points_per_chunk[
@@ -653,19 +582,17 @@ def _get_n_pts_to_sample_per_well(n_points_to_sample_chunk: int,
                                   n_pts_per_well: np.ndarray) -> np.ndarray:
     # This might give more points to sample in total than
     # n_points_to_sample_chunk because of the ceil. So it must be treated
-    n_samp_points_per_well: np.ndarray = np.ceil(
-        (n_pts_per_well / n_pts_per_well.sum()) *
-        n_points_to_sample_chunk).astype(int)
+    n_samp_points_per_well = np.ceil((n_pts_per_well / n_pts_per_well.sum()) *
+                                     n_points_to_sample_chunk).astype(int)
+    # Treating difference
+    total_samples = n_samp_points_per_well.sum()
+    diff = total_samples - n_points_to_sample_chunk
 
-    # Treating difference to expected n_points_to_sample_chunk
-    # We remove 1 point from every well with biggest curr samp size
-    # until diff == 0. This next diff will never be < 0.
-    diff = n_samp_points_per_well.sum() - n_points_to_sample_chunk
-    
-    while diff > 0:
-        biggest_samp = n_samp_points_per_well.argmax()
-        n_samp_points_per_well[biggest_samp] -= 1
-        diff = n_samp_points_per_well.sum() - n_points_to_sample_chunk
+    if diff > 0:
+        n_points_to_remove = np.rint(
+            (n_samp_points_per_well / total_samples) * diff).astype(int)
+
+        n_samp_points_per_well -= n_points_to_remove
 
     assert np.sum(n_samp_points_per_well) == n_points_to_sample_chunk
     return n_samp_points_per_well
@@ -697,12 +624,11 @@ def _get_n_sampling_points_per_chunk(training_points_per_chunk: np.ndarray,
 
 def _count_train_test_points_per_chunk(
         porosity_data_h5: h5py.Dataset, train_data_filter: DataFilter,
-        is_test_point_f) -> Tuple[np.ndarray, np.ndarray]:
+        test_data_filter: DataFilter) -> Tuple[np.ndarray, np.ndarray]:
     """
     Counts how many training and testing points there are per chunk of 
     porosity_data_h5
     """
-    num_test_points_f = lambda c: len(c[is_test_point_f(c)])
 
     n_chunks = _get_num_chunks_of_h5data(porosity_data_h5)
 
@@ -711,9 +637,14 @@ def _count_train_test_points_per_chunk(
 
     for chunk_id, chunk_slice in enumerate(porosity_data_h5.iter_chunks()):
         chunk_np = porosity_data_h5[chunk_slice]
-        n_train_p = len(train_data_filter.filter(chunk_np))
+
+        train_filtered = train_data_filter.filter(chunk_np)
+        assert np.all((train_filtered['well_id'] >= 0))
+        n_train_p = len(train_filtered)
         training_points_per_chunk[chunk_id] = n_train_p
-        test_points_per_chunk[chunk_id] = num_test_points_f(chunk_np)
+
+        n_test_p = len(test_data_filter.filter(chunk_np))
+        test_points_per_chunk[chunk_id] = n_test_p
 
     return training_points_per_chunk, test_points_per_chunk
 
@@ -788,15 +719,15 @@ def get_features_sets(
 
     #At the feature selection stage, there should be sampling of
     #points from the iterations considered
-    should_sample_max_points = True
-    cur_h5, cur_h5_dset, test_h5, test_h5_dset = create_tmp_dset(
+    # We use the test_h5_file just to close it to make sure
+    cur_h5, cur_h5_dset, test_h5, _ = create_tmp_dset(
         porosity_data_h5,
         data_filter,
         exp_n_features,
         config,
-        it,
-        test_only_wells=test_only_wells,
-        should_sample_max_points=should_sample_max_points)
+        alg_it,
+        test_wells_ids=test_wells_ids,
+        should_sample_max_points=True)
 
     # Create training temporary object
     cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
@@ -846,8 +777,10 @@ def get_features_sets(
                   f"insert_feature_time: {t5-t4}")
 
             # Test the model with cur_feature
-            rmse, mae = eval_bootstrap(cur_h5_train_list, train_wells_ids)
-
+            rmse, mae = eval_bootstrap(
+                cur_h5_train_list,
+                train_wells_ids)
+            
             t6 = time()
             print(f"[get_features_sets][{cur_feature}] "
                   f"train_time: {t6-t5}")

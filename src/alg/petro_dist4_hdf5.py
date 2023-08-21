@@ -236,9 +236,6 @@ def worker(
     #At the feature selection stage, there should be sampling of
     #points from the iterations considered
     should_sample_max_points = True
-    #At the feature selection stage, there should be sampling of
-    #points from the iterations considered
-    should_sample_max_points = True
     cur_h5, cur_h5_dset, test_h5, test_h5_dset = petro5_hdf5.create_tmp_dset(
         porosity_data_h5,
         data_filter,
@@ -246,7 +243,7 @@ def worker(
         config,
         it,
         f"-r{rank}",
-        test_only_wells=test_only_wells,
+        test_wells_ids=test_wells_ids,
         should_sample_max_points=should_sample_max_points)
 
     hypercube_shape: tuple = porosity_data_h5.shape
