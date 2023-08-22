@@ -247,50 +247,30 @@ class TestYAMLConfig(TestCase):
         self.assertListEqual(my_config.wells_as_simple_list, expected_list)
 
     def test_raise_invalid_starting_it(self):
-        yaml_str_1 = """
+        invalid_values = [-1, 'a', 3.4]
+        yaml_str_fmt = """
         wells:
           coords: [[1, 1]]
         alg:
-          starting_it: -1
+          starting_it: {}
         """
-        yaml_str_2 = """
-        wells:
-          coords: [[1, 1]]
-        alg:
-          starting_it: a
-        """
-        yaml_str_3 = """
-        wells:
-          coords: [[1, 1]]
-        alg:
-          starting_it: 3.4
-        """
-        for yaml_str in [yaml_str_1, yaml_str_2, yaml_str_3]:
+        for invalid_value in invalid_values:
             with self.assertRaises(ValueError):
-                my_config = config_parser.YAMLConfig(config_str=yaml_str)
+                _ = config_parser.YAMLConfig(
+                    config_str=yaml_str_fmt.format(invalid_value))
 
     def test_raise_invalid_num_its(self):
-        yaml_str_1 = """
+        invalid_values = [-1, 'a', 3.4]
+        yaml_str_fmt = """
         wells:
           coords: [[1, 1]]
         alg:
-          num_its: -1
+          num_its: {}
         """
-        yaml_str_2 = """
-        wells:
-          coords: [[1, 1]]
-        alg:
-          num_its: a
-        """
-        yaml_str_3 = """
-        wells:
-          coords: [[1, 1]]
-        alg:
-          num_its: 3.4
-        """
-        for yaml_str in [yaml_str_1, yaml_str_2, yaml_str_3]:
+        for invalid_value in invalid_values:
             with self.assertRaises(ValueError):
-                my_config = config_parser.YAMLConfig(config_str=yaml_str)
+                _ = config_parser.YAMLConfig(
+                    config_str=yaml_str_fmt.format(invalid_value))
 
     def test_raises_validation_only_wells_index_out_of_bounds(self):
         yaml_str = """
@@ -356,45 +336,41 @@ class TestYAMLConfig(TestCase):
         self.assertListEqual(expected_train_only_wells_ids,
                              my_config.train_wells_ids)
 
+    def test_can_get_base_max_exec_time(self):
+        yaml_str = """
+        wells:
+          coords: [[1,1], [2,2], [3,3]]
+        """
+        my_config = config_parser.YAMLConfig(config_str=yaml_str)
+        expected_base_max_exec_time = -1
+        self.assertEqual(my_config.alg['max_exec_time'],
+                         expected_base_max_exec_time)
+
     def test_raise_on_invalid_max_exec_time(self):
-        yaml_str_1 = """
+        invalid_values = [100.3, 'ab']
+        yaml_str_fmt = """
         wells:
           coords: [[1,1]]
         alg:
-          max_exec_time: 100.3
+          max_exec_time: {}
         """
-        yaml_str_2 = """
-        wells:
-          coords: [[1,1]]
-        alg:
-          max_exec_time: ab
-        """
-        for yaml_str in [yaml_str_1, yaml_str_2]:
+        for invalid_value in invalid_values:
             with self.assertRaises(ValueError):
-                my_config = config_parser.YAMLConfig(config_str=yaml_str)
+                _ = config_parser.YAMLConfig(
+                    config_str=yaml_str_fmt.format(invalid_value))
 
     def test_raise_on_invalid_max_num_features(self):
-        yaml_str_1 = """
+        invalid_values = [100.3, 'ab', -2]
+        yaml_str_fmt = """
         wells:
           coords: [[1,1]]
         alg:
-          max_num_features: 100.3
+          max_num_features: {}
         """
-        yaml_str_2 = """
-        wells:
-          coords: [[1,1]]
-        alg:
-          max_num_features: ab
-        """
-        yaml_str_2 = """
-        wells:
-          coords: [[1,1]]
-        alg:
-          max_num_features: -2
-        """
-        for yaml_str in [yaml_str_1, yaml_str_2]:
+        for invalid_value in invalid_values:
             with self.assertRaises(ValueError):
-                my_config = config_parser.YAMLConfig(config_str=yaml_str)
+                _ = config_parser.YAMLConfig(
+                    config_str=yaml_str_fmt.format(invalid_value))
 
     def test_raise_on_invalid_sampling_window_size(self):
         invalid_values = [3.2, "a"]
