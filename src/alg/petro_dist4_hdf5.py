@@ -230,7 +230,6 @@ def worker(
     data_filter = FeatSelectionTrainDataFilter()
 
     test_wells_ids = config.alg["test_only_wells"]
-    all_wells_coords = config.wells["coords"]
     train_wells_ids = config.train_wells_ids
 
     #At the feature selection stage, there should be sampling of
