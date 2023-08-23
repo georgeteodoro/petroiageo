@@ -235,7 +235,7 @@ def worker(
     #At the feature selection stage, there should be sampling of
     #points from the iterations considered
     should_sample_max_points = True
-    cur_h5, cur_h5_dset, test_h5, test_h5_dset = petro5_hdf5.create_tmp_dset(
+    cur_h5, cur_h5_dset, test_h5, _ = petro5_hdf5.create_tmp_dset(
         porosity_data_h5,
         data_filter,
         exp_n_features,
@@ -244,15 +244,12 @@ def worker(
         f"-r{rank}",
         test_wells_ids=test_wells_ids,
         should_sample_max_points=should_sample_max_points)
+    test_h5.close()
 
     hypercube_shape: tuple = porosity_data_h5.shape
-    n_testing_wells = len(test_wells_ids)
 
     # Create training temporary object
     cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
-    cur_h5_test_list = None
-    if n_testing_wells > 0:
-        cur_h5_test_list = hdf5_util.HDFMultiColList(test_h5_dset)
 
     t1 = time()
     profiling.prof_fsel_worker_create_time(it, rank, t1 - t0, config)
@@ -264,12 +261,10 @@ def worker(
         config,
         train_wells_ids,
         cur_h5_dset,
-        test_h5_dset,
         hypercube_shape,
-        n_testing_wells,
         cur_h5_train_list,
-        cur_h5_test_list,
     )
+    cur_h5.close()
 
     profiling.prof_fsel_worker_times(it, rank, total_exec_time, t8 - t0,
                                      total_jobs, config)
@@ -286,11 +281,8 @@ def _eval_feats_requested_by_manager(
     config: Config,
     training_wells: list[int],
     cur_h5_dset: h5py.Dataset,
-    test_h5_dset: h5py.Dataset,
     hypercube_shape: tuple,
-    n_testing_wells: int,
     cur_h5_train_list: hdf5_util.HDFMultiColList,
-    cur_h5_test_list: hdf5_util.HDFMultiColList,
 ) -> Tuple[float, int, float]:
     cur_f_set = ["x", "y", "z"]
 
@@ -317,8 +309,6 @@ def _eval_feats_requested_by_manager(
 
         # Setup the new column to be tested
         cur_h5_train_list.add_new_col()
-        if n_testing_wells > 0:
-            cur_h5_test_list.add_new_col()
 
         while _there_are_feats_to_test(manager_tag):
             results, total_jobs, total_exec_time = _eval_curr_feats(
@@ -328,11 +318,8 @@ def _eval_feats_requested_by_manager(
                 config,
                 training_wells,
                 cur_h5_dset,
-                test_h5_dset,
                 hypercube_shape,
-                n_testing_wells,
                 cur_h5_train_list,
-                cur_h5_test_list,
                 total_jobs,
                 total_exec_time,
                 f_it,
@@ -364,17 +351,6 @@ def _eval_feats_requested_by_manager(
             displacement_cube_shape,
         )
 
-        # Also inserts the feature on the test dataset, if necessary
-        if n_testing_wells > 0:
-            petro5_hdf5.insert_filtered_feature(
-                test_h5_dset,
-                cur_h5_test_list,
-                features_dict_h5,
-                new_best_feature,
-                hypercube_shape,
-                displacement_cube_shape,
-            )
-
         t8 = time()
         profiling.prof_fsel_worker_sync_time(it, rank, f_it, t8 - t7, config)
 
@@ -388,11 +364,8 @@ def _eval_curr_feats(
     config: Config,
     training_wells: list[int],
     cur_h5_dset: h5py.Dataset,
-    test_h5_dset: h5py.Dataset,
     hypercube_shape: tuple,
-    n_testing_wells: int,
     cur_h5_train_list: hdf5_util.HDFMultiColList,
-    cur_h5_test_list: hdf5_util.HDFMultiColList,
     total_jobs: int,
     total_exec_time: float,
     f_it: int,
@@ -411,17 +384,6 @@ def _eval_curr_feats(
             hypercube_shape,
             displacement_cube_shape,
         )
-
-        # Also inserts the feature on the test dataset, if necessary
-        if n_testing_wells > 0:
-            petro5_hdf5.insert_filtered_feature(
-                test_h5_dset,
-                cur_h5_test_list,
-                features_dict_h5,
-                new_feature,
-                hypercube_shape,
-                displacement_cube_shape,
-            )
 
         t5 = time()
         profiling.prof_fsel_worker_insert_time(it, rank, f_it, t5 - t4, config)
