@@ -517,9 +517,6 @@ def create_tmp_dset(
                     training_points = _sample_points_from_chunk(
                         n_points_to_sample_chunk, rng, training_points)
 
-                ordered_well_ids, well_ids_count = np.unique(
-                    training_points['well_id'], return_counts=True)
-
                 train_empty_h5_dset, prev_end = append_points_to_dset(
                     features_only, train_empty_h5_dset, prev_end,
                     training_points)
