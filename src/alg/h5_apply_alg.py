@@ -1,6 +1,7 @@
 import h5py
 from typing import Dict
 import lightgbm as lgb
+from sklearn.metrics import mean_absolute_error
 from time import time
 from typing import Tuple, Dict
 import numpy as np
@@ -80,8 +81,11 @@ class H5ApplyAlg(AbstractApplyAlg):
             regressor = self._train_regressor(it, train_list)
             cur_h5.close()
 
-            final_rmse = self._evaluate_regressor(test_list, regressor)
-            print(f"[manager][it{it}][test-error] RMSE: {final_rmse}")
+            final_rmse, final_mae = self._evaluate_regressor(
+                test_list, regressor)
+            msg = f"[manager][it{it}][test-error] RMSE: {final_rmse}"
+            msg += f" MAE: {final_mae}"
+            print(msg)
             test_h5.close()
 
             t3 = time()
@@ -168,23 +172,28 @@ class H5ApplyAlg(AbstractApplyAlg):
         comm.Barrier()
 
     def _evaluate_regressor(self, test_list: hdf5_util.HDFMultiColList,
-                            regressor: lgb.Booster) -> float:
+                            regressor: lgb.Booster) -> Tuple[float, float]:
         """
-        Evaluate the regressor on test data. Returns the RMSE error
+        Evaluate the regressor on test data. Returns the RMSE and MAE error
         """
         final_rmse = float("inf")
+        final_mae = float("inf")
         if test_list is not None:
             rmse_list = list()
+            mae_list = list()
             for c in range(test_list.n_chunks):
                 # Generate a test dataset for all data on chunk c
                 X_test_np, y_test_np = test_list.get_data_not_in_well(c)
                 pred = regressor.predict(X_test_np)
                 rmse = np.sqrt(np.mean((pred - y_test_np)**2))
                 rmse_list.append(rmse)
+                mae = mean_absolute_error(pred, y_test_np)
+                mae_list.append(mae)
 
             final_rmse = np.mean(rmse_list)
+            final_mae = np.mean(mae_list)
 
-        return final_rmse
+        return final_rmse, final_mae
 
     def _get_data_to_predict(
         self,
@@ -231,47 +240,13 @@ class H5ApplyAlg(AbstractApplyAlg):
         return to_predict_np
 
     def _train_regressor(
-        self,
-        best_features_set: set,
-        features_dict_h5: Dict[str, h5py.Dataset],
-        porosity_data_h5: h5py.Dataset,
-        it: int,
-        rank: int,
-        displacement_cube_shape: tuple,
-    ) -> lgb.Booster:
-        t0 = time()
-
-        data_filter = PredTrainDataFilter()
-
-        # Creates a temporary h5 structure to perform the training
-        #There should be no sampling of points at this stage
-        #all points from the last n iterations should be used
-        #even if n == all iterations
-        should_sample_max_points = False
-        cur_h5, cur_h5_dset, _, _ = petro5_hdf5.create_tmp_dset(
-            porosity_data_h5,
-            data_filter,
-            len(best_features_set),
-            self._config,
-            it,
-            f'-r{rank}',
-            features_only=True,
-            should_sample_max_points=should_sample_max_points)
-        cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
-
-        hypercube_shape = porosity_data_h5.shape
-
-        t1 = time()
-        profiling.prof_predict_create_time(it, t1 - t0, self._config)
-
-        # Add each feature to the TestData list (TD)
-        for feature in best_features_set:
-            cur_h5_train_list.add_new_col()
-            petro5_hdf5.insert_filtered_feature(cur_h5_dset, cur_h5_train_list,
-                                                features_dict_h5, feature,
-                                                hypercube_shape,
-                                                displacement_cube_shape)
-
+            self, it: int,
+            cur_h5_train_list: hdf5_util.HDFMultiColList) -> lgb.Booster:
+        """
+        Train the regressor on all data available in the last n iterations
+        defined in self._config. We must ignore the points associated with 
+        the testing wells.
+        """
         t2 = time()
 
         regressor = None

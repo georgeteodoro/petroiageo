@@ -69,7 +69,7 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
 
         msg = ""
         if mpi_size == 1:
-            best_features_set, best_error = petro5_hdf5.get_features_sets(
+            best_features_set, rmse_err, mae_err = petro5_hdf5.get_features_sets(
                 porosity_data_h5,
                 features_dict_h5,
                 all_features,
@@ -81,7 +81,7 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
             )
             msg += "[manager]"
         else:
-            best_features_set, best_error = petro_dist4_hdf5.get_features_sets(
+            best_features_set, rmse_err, mae_err = petro_dist4_hdf5.get_features_sets(
                 porosity_data_h5,
                 features_dict_h5,
                 all_features,
@@ -96,7 +96,8 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
 
         if len(msg) > 0: # Is a manager
             msg += f"[get_features_sets][it{it}][best-features-and-error]"
-            msg += f"{best_features_set} with error {best_error}"
+            msg += f"{best_features_set} with error: RMSE {rmse_err}"
+            msg += f" MAE {mae_err}"
             print(msg)
 
         return best_features_set

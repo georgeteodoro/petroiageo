@@ -224,10 +224,11 @@ class TestSamplingWithoutData(TestCase):
 class TestFeatureSelection(TestCase):
 
     def test_can_get_best_features_set(self):
-        b_features_set = [(["f1"], 1), (["f1", "f2"], 0.2), (["f2",
-                                                              "f3"], 0.3),
-                          (["f1", "f2", "f3"], 0.1)]
-        expected = (["f1", "f2", "f3"], 0.1)
+        features = [["f1"], ["f1", "f2"], ["f2", "f3"], ["f1", "f2", "f3"]]
+        rmse = [1, 0.2, 0.3, 0.1]
+        mae = [0.9, 0.18, 0.29, 0.1]
+        b_features_set = list(zip(features, rmse, mae))
+        expected = (["f1", "f2", "f3"], 0.1, 0.1)
         best_feature = get_best_features_set(b_features_set)
         self.assertTupleEqual(expected, best_feature)
 

@@ -34,13 +34,14 @@ params = {
 
 
 def get_best_features_set(
-        features_sets: list[tuple[list, float]]) -> Tuple[list, float]:
+        features_sets: list[tuple[list, float]]) -> Tuple[list, float, float]:
     # Sort by second column (id 1)
     features_sets.sort(key=lambda tup: tup[1])
     best_features_set = features_sets[0][0]
-    best_error = features_sets[0][1]
+    rmse_error = features_sets[0][1]
+    mae_error = features_sets[0][2]
 
-    return best_features_set, best_error
+    return best_features_set, rmse_error, mae_error
 
 
 def eval_bootstrap(
@@ -134,8 +135,8 @@ def _incremental_learning(
                                            reference=lgb_train_dataset)
 
             if len(X_val) == 0 | len(y_val) == 0:
-                raise Exception(f"[petro5_hdf5] Bad data: well_id {curr_well_id} "\
-                                "have no points on porosity dataset.")
+                raise Exception(f"[petro5_hdf5] Bad data: well_id {curr_well_id}"\
+                                " have no points on porosity dataset.")
 
             t2 = time()
             regressor = lgb.train(
@@ -588,7 +589,7 @@ def _get_n_pts_to_sample_per_well(n_points_to_sample_chunk: int,
     # We remove 1 point from every well with biggest curr samp size
     # until diff == 0. This next diff will never be < 0.
     diff = n_samp_points_per_well.sum() - n_points_to_sample_chunk
-    
+
     while diff > 0:
         biggest_samp = n_samp_points_per_well.argmax()
         n_samp_points_per_well[biggest_samp] -= 1
@@ -709,7 +710,7 @@ def get_features_sets(
     exp_n_features: int,
     max_tested_features: int,
     config: Config,
-):
+) -> Tuple[list, float, float]:
     t0 = time()
 
     data_filter = FeatSelectionTrainDataFilter()
@@ -780,10 +781,8 @@ def get_features_sets(
             rmse, mae = eval_bootstrap(cur_h5_train_list, train_wells_ids)
 
             t6 = time()
-            print(f"[get_features_sets][{cur_feature}] "
-                  f"train_time: {t6-t5}")
-            print(f"[get_features_sets][{cur_feature}] "
-                  f"error: {rmse}")
+            print(f"[get_features_sets][{cur_feature}] train_time: {t6-t5}")
+            print(f"[get_features_sets][{cur_feature}] RMSE: {rmse}")
 
             results.append((best_feats_found + [cur_feature], rmse, mae))
 
@@ -794,7 +793,7 @@ def get_features_sets(
 
             msg = f"[get_features_sets][it{alg_it}][feat_sel_it{feat_sel_it}]"
             msg += f"Tested features {best_feats_found+ [cur_feature]}"
-            msg += f" with error {rmse}"
+            msg += f" with error: RMSE {rmse}; MAE {mae}"
             print(msg)
 
         # Remove the best feature from the features list

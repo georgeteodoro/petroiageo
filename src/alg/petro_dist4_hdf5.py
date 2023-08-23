@@ -398,8 +398,8 @@ def _eval_curr_feats(
     total_exec_time: float,
     f_it: int,
     new_features: list[str],
-) -> Tuple[list[Tuple[str, float]], int, float]:
-    results: list[Tuple[str, float]] = []
+) -> Tuple[list[Tuple[str, float, float]], int, float]:
+    results: list[Tuple[str, float, float]] = []
     for new_feature in new_features:
         t4 = time()
 
@@ -430,7 +430,7 @@ def _eval_curr_feats(
         rmse, mae = petro5_hdf5.eval_bootstrap(cur_h5_train_list,
                                                training_wells)
 
-        results.append((new_feature, rmse))
+        results.append((new_feature, rmse, mae))
         t6 = time()
         profiling.prof_fsel_worker_eval_times(it, rank, f_it, t6 - t5, config)
 
