@@ -277,6 +277,7 @@ def _prepare_h5(suf_str: str,
                 test_data_filter: DataFilter,
                 porosity_data_h5: h5py.Dataset,
                 config: Config,
+                generate_test_file: bool,
                 should_sample_max_points: bool = True):
     """
     Generate the h5 File and dataset objects.
@@ -306,12 +307,13 @@ def _prepare_h5(suf_str: str,
 
     # Create the h5 datasets
     cur_h5, test_h5, cur_data_type = _create_files(suf_str, test_only_wells,
-                                                   features_only, n_features)
+                                                   features_only, n_features,
+                                                   generate_test_file)
     cur_h5.create_dataset(TMP_DSET_NAME, (n_train_points, ),
                           dtype=cur_data_type,
                           chunks=train_chunkshape)
     there_are_test_wells = True if len(test_only_wells) > 0 else False
-    if there_are_test_wells:
+    if there_are_test_wells and generate_test_file:
         n_test_points = test_data_filter.filter_count_dset(porosity_data_h5)
         assert n_test_points > 0
         test_chunkshape = _get_chunk_shape(n_test_points, chunksize)
@@ -345,28 +347,31 @@ def _config_filters(test_wells_ids: list, train_data_filter: DataFilter,
     return train_data_filter
 
 
-def _create_files(suf_str: str, test_only_wells: list, features_only: bool,
-                  n_features: int) -> Tuple[h5py.File, h5py.File, np.dtype]:
+def _create_files(
+        suf_str: str, test_only_wells: list, features_only: bool,
+        n_features: int,
+        generate_test_file: bool) -> Tuple[h5py.File, h5py.File, np.dtype]:
     """
     Create the h5py files that will have the temporary datasets
     used from training and testing
     """
     filename = f'cur{suf_str}.h5'
-    filename_test = f'cur{suf_str}-test.h5'
 
     # If the cur file exists, it should be deleted
     # A new tmp file is created by iteration
     if os.path.exists(filename):
         os.remove(filename)
-    if os.path.exists(filename_test):
-        os.remove(filename_test)
 
     # Creates a temporary h5 structure to maintain the porosity and features
     # data, as well as one for the test-only data, if necessary
     cur_h5 = h5py.File(f'{filename}', 'w')
+
     test_h5 = None
     there_are_test_wells = True if len(test_only_wells) > 0 else False
-    if there_are_test_wells:
+    if there_are_test_wells and generate_test_file:
+        filename_test = f'cur{suf_str}-test.h5'
+        if os.path.exists(filename_test):
+            os.remove(filename_test)
         test_h5 = h5py.File(f'{filename_test}', 'w')
 
     # Creates the datatype for the h5 structure, with or without 'well_id'
@@ -418,10 +423,10 @@ def create_tmp_dset(
     config: Config,
     it: int,
     suf_str: str = '',
-    list_chunk_size: int = 1000,
     features_only: bool = False,
     test_wells_ids: list = None,
-    should_sample_max_points: bool = True
+    should_sample_max_points: bool = True,
+    generate_test_files: bool = False
 ) -> Tuple[h5py.File, h5py.Dataset, h5py.File, h5py.Dataset]:
 
     assert porosity_data_h5.size > 0
@@ -438,7 +443,8 @@ def create_tmp_dset(
     t0 = time()
     (train_h5_file, test_h5_file, samp_max_points) = _prepare_h5(
         suf_str, test_wells_ids, features_only, n_features, train_data_filter,
-        test_data_filter, porosity_data_h5, config, should_sample_max_points)
+        test_data_filter, porosity_data_h5, config, generate_test_files,
+        should_sample_max_points)
 
     train_empty_h5_dset: h5py.Dataset = train_h5_file[TMP_DSET_NAME]
     if test_h5_file is not None:
@@ -461,7 +467,10 @@ def create_tmp_dset(
 
     (train_points_per_chunk,
      test_points_per_chunk) = _count_train_test_points_per_chunk(
-         porosity_data_h5, train_data_filter, test_data_filter)
+         porosity_data_h5,
+         train_data_filter,
+         test_data_filter,
+         there_are_test_data=generate_test_files)
 
     total_n_training_points_possible = np.sum(train_points_per_chunk)
 
@@ -494,6 +503,8 @@ def create_tmp_dset(
             chunk_np = porosity_data_h5[chunk_slice]
 
             # Generate test-only data, if necessary
+            # There is only going to be test points in some chunk if
+            # generate_test_files is True
             if test_points_per_chunk[chunk_id] > 0 and n_test_only_wells > 0:
                 #Add test data to its unique list
                 #could be test_data_filter.filter(chunk_np) aswell
@@ -621,8 +632,10 @@ def _get_n_sampling_points_per_chunk(training_points_per_chunk: np.ndarray,
 
 
 def _count_train_test_points_per_chunk(
-        porosity_data_h5: h5py.Dataset, train_data_filter: DataFilter,
-        test_data_filter: DataFilter) -> Tuple[np.ndarray, np.ndarray]:
+        porosity_data_h5: h5py.Dataset,
+        train_data_filter: DataFilter,
+        test_data_filter: DataFilter,
+        there_are_test_data: bool = True) -> Tuple[np.ndarray, np.ndarray]:
     """
     Counts how many training and testing points there are per chunk of 
     porosity_data_h5
@@ -641,8 +654,9 @@ def _count_train_test_points_per_chunk(
         n_train_p = len(train_filtered)
         training_points_per_chunk[chunk_id] = n_train_p
 
-        n_test_p = len(test_data_filter.filter(chunk_np))
-        test_points_per_chunk[chunk_id] = n_test_p
+        if there_are_test_data:
+            n_test_p = len(test_data_filter.filter(chunk_np))
+            test_points_per_chunk[chunk_id] = n_test_p
 
     return training_points_per_chunk, test_points_per_chunk
 
@@ -718,14 +732,14 @@ def get_features_sets(
     #At the feature selection stage, there should be sampling of
     #points from the iterations considered
     # We use the test_h5_file just to close it to make sure
-    cur_h5, cur_h5_dset, test_h5, _ = create_tmp_dset(
-        porosity_data_h5,
-        data_filter,
-        exp_n_features,
-        config,
-        alg_it,
-        test_wells_ids=test_wells_ids,
-        should_sample_max_points=True)
+    cur_h5, cur_h5_dset, _, _ = create_tmp_dset(porosity_data_h5,
+                                                data_filter,
+                                                exp_n_features,
+                                                config,
+                                                alg_it,
+                                                test_wells_ids=test_wells_ids,
+                                                should_sample_max_points=True,
+                                                generate_test_files=False)
 
     # Create training temporary object
     cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)
@@ -820,6 +834,5 @@ def get_features_sets(
     print(f"[get_features_sets] full_time: {t9-t0}")
 
     cur_h5.close()
-    test_h5.close()
 
     return get_best_features_set(results)
