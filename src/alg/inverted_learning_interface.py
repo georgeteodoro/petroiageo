@@ -155,7 +155,7 @@ class BaseInvertedLearning:
 
         # Load seismic data
         features_dict = self._seismic_data_loader.load()
-        assert len(features_dict)>0, "Didn't find any feature"
+        assert len(features_dict) > 0, "Didn't find any feature"
 
         t1 = time()
         profiling.prof_seismic_load_time(t1 - t0, self._config)
