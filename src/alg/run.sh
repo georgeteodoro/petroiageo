@@ -69,11 +69,11 @@ do
     if [ $ON_LOCAL -eq 1 ]
         then
         #Get out of tmp/test
-        srun -N${SLURM_JOB_NUM_NODES} cd ../..
+        cd ../..
         # Save curr it results into the original por file
-        srun -N${SLURM_JOB_NUM_NODES} cp $TARGET_TMP_POR_FILE_NAME $ORIG_POR_DATA_PATH
+        cp $TARGET_TMP_POR_FILE_NAME $ORIG_POR_DATA_PATH
         # Get back to the right folder
-        srun -N${SLURM_JOB_NUM_NODES} cd /tmp/test
+        cd /tmp/test
     else
         echo "DONT NEED TO COPY DATA! NOT RUNNING ON LOCAL!!!!!!!!"
     fi
