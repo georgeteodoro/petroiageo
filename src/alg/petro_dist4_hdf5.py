@@ -150,14 +150,14 @@ def _find_curr_best_feature(
     remaining_features: list,
 ) -> Tuple[str, float, list[tuple[list, float]]]:
     new_best_feature = None
-    best_error = float("inf")
+    best_rmse_error = float("inf")
 
     workers_done = 0
     # Iterate through all features to be tested
     total_worker_time = 0
     while _not_all_workers_done(workers_done):
         status = MPI.Status()
-        data = comm.recv(status=status)
+        worker_results = comm.recv(status=status)
         t2 = time()
         worker_rank = status.Get_source()
 
@@ -168,17 +168,18 @@ def _find_curr_best_feature(
         n_features = 1
 
         if _worker_sent_feat_eval(status):
-            for cur_feature, cur_error in data:
+            for result in worker_results:
+                cur_feature, rmse_error, mae_error = result
                 print(f"[petro4_dist_hdf5][manager][it{it}] Tested "
                       f"feature {curr_f_set_best_err + [cur_feature]} "
-                      f"with error {cur_error}")
+                      f"with error {rmse_error}")
 
                 feats_sets_and_its_errors.append(
-                    (curr_f_set_best_err + [cur_feature], cur_error))
+                    (curr_f_set_best_err + [cur_feature], rmse_error))
 
                 # Update new best, if necessary
-                if best_error > cur_error:
-                    best_error = cur_error
+                if best_rmse_error > rmse_error:
+                    best_rmse_error = rmse_error
                     new_best_feature = cur_feature
 
         # Check if there is work to be distributed
