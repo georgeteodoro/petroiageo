@@ -7,6 +7,9 @@
 #SBATCH --exclusive		#Utilização exclusiva dos nós
 #SBATCH --no-requeue		# Não ressubmete um job se ele der erro
 
+# IMPORTANT: BEFORE RUNNING FOR THE FIRST TIME, BE AWARE TO
+# COPY THE BASELINE POROSITY TO THE ORIG_POR_DATA_PATH
+# SO OTHER IRRELEVANT RUNS DONT INTERFERE 
 set -x
 
 ORIG=$(pwd)
