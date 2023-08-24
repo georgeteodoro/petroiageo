@@ -175,7 +175,8 @@ def _find_curr_best_feature(
                       f"with error {rmse_error}")
 
                 feats_sets_and_its_errors.append(
-                    (curr_f_set_best_err + [cur_feature], rmse_error))
+                    (curr_f_set_best_err + [cur_feature], rmse_error,
+                     mae_error))
 
                 # Update new best, if necessary
                 if best_rmse_error > rmse_error:
