@@ -178,9 +178,8 @@ class BaseInvertedLearning:
         t5 = time()
 
         profiling.timestamp(f"it{it}-apply-start", self._config)
-        self._apply_alg.perform_prediction(best_features_set,
-                                            features_dict, porosity_data,
-                                            it)
+        self._apply_alg.perform_prediction(best_features_set, features_dict,
+                                           porosity_data, it)
 
         t6 = time()
 
@@ -189,8 +188,7 @@ class BaseInvertedLearning:
         profiling.prof_predict_tot_time(it, t6 - t5, self._config)
 
         profiling.timestamp(f"it{it}-done", self._config)
-        print(
-            f"[PROFILING][BaseInvertedLearning][it{it}][it-time] {t6-t3}")
+        print(f"[PROFILING][BaseInvertedLearning][it{it}][it-time] {t6-t3}")
 
         t7 = time()
         print(f"[PROFILING][BaseInvertedLearning][it{it}][total-time] {t7-t0}")
