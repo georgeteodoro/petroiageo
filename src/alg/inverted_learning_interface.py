@@ -149,10 +149,6 @@ class BaseInvertedLearning:
     def run(self):
         t0 = time()
 
-        # Retrieve config parameters
-        starting_it = self._config.alg["starting_it"]
-        max_iteration = starting_it + self._config.alg["num_its"]
-
         # Load seismic data
         features_dict = self._seismic_data_loader.load()
         assert len(features_dict) > 0, "Didn't find any feature"
@@ -166,34 +162,35 @@ class BaseInvertedLearning:
         t2 = time()
         profiling.prof_porosity_load_time(t2 - t1, self._config)
 
-        # Perform the required iterations
-        for it in range(starting_it, max_iteration):
-            t3 = time()
-            profiling.timestamp(f"it{it}-expand-start", self._config)
-            self._expand_alg.expand_points(porosity_data, it)
+        # Retrieve config parameters
+        it = self._config.alg["it"]
 
-            t4 = time()
+        t3 = time()
+        profiling.timestamp(f"it{it}-expand-start", self._config)
+        self._expand_alg.expand_points(porosity_data, it)
 
-            profiling.timestamp(f"it{it}-f-sel-start", self._config)
-            best_features_set = self._feature_selection_alg.feature_selection(
-                features_dict, porosity_data, it)
+        t4 = time()
 
-            t5 = time()
+        profiling.timestamp(f"it{it}-f-sel-start", self._config)
+        best_features_set = self._feature_selection_alg.feature_selection(
+            features_dict, porosity_data, it)
 
-            profiling.timestamp(f"it{it}-apply-start", self._config)
-            self._apply_alg.perform_prediction(best_features_set,
-                                               features_dict, porosity_data,
-                                               it)
+        t5 = time()
 
-            t6 = time()
+        profiling.timestamp(f"it{it}-apply-start", self._config)
+        self._apply_alg.perform_prediction(best_features_set,
+                                            features_dict, porosity_data,
+                                            it)
 
-            profiling.prof_expand_tot_time(it, t4 - t3, self._config)
-            profiling.prof_fsel_tot_time(it, t5 - t4, self._config)
-            profiling.prof_predict_tot_time(it, t6 - t5, self._config)
+        t6 = time()
 
-            profiling.timestamp(f"it{it}-done", self._config)
-            print(
-                f"[PROFILING][BaseInvertedLearning][it{it}][it-time] {t6-t3}")
+        profiling.prof_expand_tot_time(it, t4 - t3, self._config)
+        profiling.prof_fsel_tot_time(it, t5 - t4, self._config)
+        profiling.prof_predict_tot_time(it, t6 - t5, self._config)
+
+        profiling.timestamp(f"it{it}-done", self._config)
+        print(
+            f"[PROFILING][BaseInvertedLearning][it{it}][it-time] {t6-t3}")
 
         t7 = time()
         print(f"[PROFILING][BaseInvertedLearning][it{it}][total-time] {t7-t0}")

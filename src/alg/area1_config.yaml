@@ -17,12 +17,7 @@ porosity_cube_output_path: "./results/porosity.npy"
 # The starting porosity cube file
 starting_porosity_cube_path: "/home/daniel/Documentos/Git/petroiageo/data/ANP/processed/area1/porosity_data.h5" 
 
-alg:
-  # Starting iteration. The iteration index will be used for other params.
-  # Default: 1
-  starting_it: 1
-  num_its: 10 # Num of iterations to run. Default: 10
-  
+alg:  
   # If you want to really generate the porosity cube in the end. Default is true
   generate_porosity_cube: true
   

@@ -19,10 +19,6 @@ features_folder: "./features/" # Folder where every file will be treated as a fe
 porosity_cube_output_path: "./results/porosity.npy" 
 
 alg:
-  # Starting iteration. The iteration index will be used for other params.
-  # Default: 0
-  starting_it: 0 
-  num_its: 10 # Num of iterations to run. Default: 10
   starting_porosity_cube_path: "./results/starting_porosity.npy" # The starting porosity cube file.
   
   # If you want to really generate the porosity cube in the end. Default is true

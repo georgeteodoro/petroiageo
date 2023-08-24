@@ -11,4 +11,12 @@ TARGET_POR_FILE='/home/daniel/Documentos/Git/petroiageo/data/ANP/processed/area1
 #Create a copy of the baseline
 cp $BASELINE_POR_FILE $TARGET_POR_FILE
 
-python3 -u main.py --config  $CONFIG_FILE --nits 10 --nf 1 --nsf 3 --ntf 7 > log.log
+IT_START=1
+IT_END=5
+
+LOG_FILE_NAME=log.log
+rm -f $LOG_FILE_NAME
+for it in $(seq $IT_START $IT_END)
+do
+    python3 -u main.py --it $it --config  $CONFIG_FILE --nf 1 --nsf 3 --ntf 7 >> $LOG_FILE_NAME
+done

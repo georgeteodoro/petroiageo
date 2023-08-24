@@ -29,44 +29,47 @@ def config_arg_parser():
         dest="config_file",
         action="store",
         required=True,
+        type=str,
         help="The yaml config file path to be read",
     )
+
     parser.add_argument(
         "--it",
         dest="load_it",
         action="store",
-        required=False,
+        required=True,
+        type=int,
         help="Iteration to load",
     )
-    parser.add_argument(
-        "--nits",
-        dest="num_its",
-        action="store",
-        required=False,
-        help="Number of iterations to run",
-    )
+
     parser.add_argument(
         "--nf",
         dest="num_features",
         action="store",
         required=False,
+        type=int,
         help="Number of total features",
     )
+
     parser.add_argument(
         "--nsf",
         dest="num_select_features",
         action="store",
         required=False,
+        type=int,
         help="Number of maximum features to be selected",
     )
+
     parser.add_argument(
         "--ntf",
         dest="num_tested_features",
         action="store",
         default=0,
+        type=int,
         help="Number of features to be tested before choosing "
         "a selected feature (default=0, i.e., all).",
     )
+
     parser.add_argument(
         "--wp",
         dest="with_progress",
@@ -75,6 +78,7 @@ def config_arg_parser():
         help="Enable showing progress of iterations. "
         "This can mess the slurm output up.",
     )
+
     parser.add_argument(
         "--no-wp",
         dest="with_progress",
@@ -106,10 +110,7 @@ def update_config_file_params_with_args(config: config_parser.Config,
         config.alg["max_num_features"] = int(args.num_select_features)
 
     if args.load_it is not None:
-        config.alg["starting_it"] = int(args.load_it)
-
-    if args.num_its is not None:
-        config.alg["num_its"] = int(args.num_its)
+        config.alg["it"] = int(args.load_it)
 
     if args.num_features is not None:
         config.add_param("num_features", int(args.num_features))
