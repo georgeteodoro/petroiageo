@@ -6,12 +6,17 @@
 # Param $1: The log file path
 # Param $2: The target expected error file
 # Param $3: The target test error file
+# Param $4: The target time file
 
 grep '\[manager\]\[get_features_sets\]' $1 | tr -d "()[':" | cut -d ']' -f 1,2,4 --complement \
 | tr ']' ',' | cut -d ',' -f 2-4 --complement - | sed -e 's/ with error//g' -e 's/,/;/1' \
 -e 's/\(.*\),/\1;/' -e 's/, \(-\?[0-9]\)/ \1/g' -e 's/it//1' -e 's/ RMSE //' -e 's/ MAE /;/' - \
 | awk -v OFS=';' -v FS=';' 'BEGIN{print "iteration", "RMSE", "MAE", "features"} {print $1, $3, $4, $2}' > $2
 
- grep '\[test-error\]' $1 | tr -d "()[':" | cut -d ']' -f 2,4 \
+grep '\[test-error\]' $1 | tr -d "()[':" | cut -d ']' -f 2,4 \
  | sed -e 's/it//g' -e 's/] RMSE /,/g' -e 's/ MAE /,/' | awk -v FS="," -v OFS="," \
- 'BEGIN{print "iteration", "RMSE", "MAE"} {print $0}' > $3  
+ 'BEGIN{print "iteration", "RMSE", "MAE"} {print $0}' > $3 
+
+grep 'BaseInvertedLearning' $1 | grep '\[total-time\]' | tr -d "[ " \
+| cut -d "]" -f 3,5 | tr "]" "," | tr -d "it" \
+| awk -v OFS=',' 'BEGIN{print "iteration", "seconds"} {print $0}' > $4 

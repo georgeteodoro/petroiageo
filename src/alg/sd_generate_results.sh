@@ -6,6 +6,7 @@
 # 1: SD log file path
 # 2: The target expected error file
 # 3: The target test error file
+# 4: The target time file
 TMP_FILE=manager_only.log
 grep '\[manager\]\[get_features_sets\]' $1 | cut --d ":" -f 1 --complement > $TMP_FILE
 grep "\[1,0\]" $1 | cut --d ":" -f 1 --complement >> $TMP_FILE
@@ -18,3 +19,8 @@ grep '\[manager\]\[get_features_sets\]' $TMP_FILE | tr -d "()[':" | cut -d ']' -
  grep '\[test-error\]' $TMP_FILE | tr -d "()[':" | cut -d ']' -f 2,4 \
  | sed -e 's/it//g' -e 's/] RMSE /,/g' -e 's/ MAE /,/' | awk -v FS="," -v OFS="," \
  'BEGIN{print "iteration", "RMSE", "MAE"} {print $0}' > $3  
+
+rm $TMP_FILE
+
+grep '\[1,0\]' $1 | grep 'BaseInvertedLearning' | grep '\[total-time\]' | tr -d "[ " \
+| cut -d "]" -f 4,6 | tr "]" "," | tr -d "it" | awk -v OFS=',' 'BEGIN{print "iteration", "seconds"} {print $0}' > $4
