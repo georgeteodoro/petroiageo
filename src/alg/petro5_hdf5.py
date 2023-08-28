@@ -708,10 +708,6 @@ def append_points_to_dset(features_only: bool, target_dset: h5py.Dataset,
     return target_dset, new_prev
 
 
-# exp_n_features: number of features to be selected
-# max_tested_features: number of features to be compared
-#   default=0 means all features.
-#   Used for debugging and reducing computing cost
 def get_features_sets(
     porosity_data_h5: h5py.Dataset,
     features_dict_h5: Dict[str, h5py.Dataset],
@@ -722,6 +718,24 @@ def get_features_sets(
     max_tested_features: int,
     config: Config,
 ) -> Tuple[list, float, float]:
+    """
+    This method evals all feature combinations on train data and return the
+    best one with its errors
+    Args:
+        porosity_data_h5: The dataset
+        features_dict_h5: A dict with the features data
+        all_features: The features names to test
+        displacement_cube_shape: 
+        alg_it: The current algorithm total iteration
+        exp_n_features: number of features to be selected
+        max_tested_features: number of features to be compared
+            default=0 means all features.
+            Used for debugging and reducing computing cost
+        config: The Config dict
+
+    Returns: 
+        Tuple (best_feats_combination, rmse_error, mae_error)
+    """
     t0 = time()
 
     data_filter = FeatSelectionTrainDataFilter()
