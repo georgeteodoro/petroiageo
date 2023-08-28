@@ -748,6 +748,7 @@ def get_features_sets(
     best_feats_found = ['x', 'y', 'z']
 
     # List of features sets and their error metric
+    # We must save EVERY combination
     results = []
 
     hypercube_shape = porosity_data_h5.shape
@@ -763,16 +764,15 @@ def get_features_sets(
         cur_h5_train_list.add_new_col()
 
         # Test each available feature
-        ii = 0
-        for cur_feature in all_features:
-            t4 = time()
+        for feat_idx, cur_feature in enumerate(all_features):
+    
             if cur_feature in best_feats_found:
                 continue
 
+            t4 = time()
             # Early termination for debugging
-            if max_tested_features != 0 and ii == max_tested_features:
+            if max_tested_features != 0 and feat_idx == max_tested_features:
                 break
-            ii = ii + 1
 
             # Insert a temporary feature
             insert_filtered_feature(
@@ -811,7 +811,7 @@ def get_features_sets(
         all_features.remove(curr_best_feature)
 
         t7 = time()
-        print(f"[get_features_sets]it{alg_it}][feat_sel_it{feat_sel_it}] "
+        print(f"[get_features_sets][it{alg_it}][feat_sel_it{feat_sel_it}] "
               f"full_it_time: {t7-t3}")
 
         # Update the last column of the sequence object to the best feature
