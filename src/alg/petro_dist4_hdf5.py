@@ -309,7 +309,7 @@ def _eval_feats_requested_by_manager(
         cur_h5_train_list.add_new_col()
 
         while _there_are_feats_to_test(manager_tag):
-            results, total_jobs, total_exec_time = _eval_curr_feats(
+            results, total_jobs, curr_total_time = _eval_curr_feats(
                 features_dict_h5,
                 displacement_cube_shape,
                 it,
@@ -318,10 +318,10 @@ def _eval_feats_requested_by_manager(
                 hypercube_shape,
                 cur_h5_train_list,
                 total_jobs,
-                total_exec_time,
                 f_it,
                 new_features,
             )
+            total_exec_time += curr_total_time
 
             t6 = time()
 
@@ -363,12 +363,12 @@ def _eval_curr_feats(
     hypercube_shape: tuple,
     cur_h5_train_list: hdf5_util.HDFMultiColList,
     total_jobs: int,
-    total_exec_time: float,
     f_it: int,
     new_features: list[str],
 ) -> Tuple[list[Tuple[str, float, float]], int, float]:
     results: list[Tuple[str, float, float]] = []
     train_wells_ids = config.train_wells_ids
+    total_time = 0
     for new_feature in new_features:
         t4 = time()
 
@@ -393,9 +393,9 @@ def _eval_curr_feats(
         profiling.prof_fsel_worker_eval_times(it, rank, f_it, t6 - t5, config)
 
         total_jobs += 1
-        total_exec_time += t6 - t4
+        total_time += t6 - t4
 
-    return results, total_jobs, total_exec_time
+    return results, total_jobs, total_time
 
 
 def _there_are_feats_to_test(manager_tag) -> bool:
