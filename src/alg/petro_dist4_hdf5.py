@@ -232,7 +232,6 @@ def worker(
     data_filter = FeatSelectionTrainDataFilter()
 
     test_wells_ids = config.alg["test_only_wells"]
-    train_wells_ids = config.train_wells_ids
 
     #At the feature selection stage, there should be sampling of
     #points from the iterations considered
@@ -260,7 +259,6 @@ def worker(
         displacement_cube_shape,
         it,
         config,
-        train_wells_ids,
         cur_h5_dset,
         hypercube_shape,
         cur_h5_train_list,
@@ -280,7 +278,6 @@ def _eval_feats_requested_by_manager(
     displacement_cube_shape: tuple,
     it: int,
     config: Config,
-    training_wells: list[int],
     cur_h5_dset: h5py.Dataset,
     hypercube_shape: tuple,
     cur_h5_train_list: hdf5_util.HDFMultiColList,
@@ -317,7 +314,6 @@ def _eval_feats_requested_by_manager(
                 displacement_cube_shape,
                 it,
                 config,
-                training_wells,
                 cur_h5_dset,
                 hypercube_shape,
                 cur_h5_train_list,
@@ -363,7 +359,6 @@ def _eval_curr_feats(
     displacement_cube_shape: tuple,
     it: int,
     config: Config,
-    training_wells: list[int],
     cur_h5_dset: h5py.Dataset,
     hypercube_shape: tuple,
     cur_h5_train_list: hdf5_util.HDFMultiColList,
@@ -373,6 +368,7 @@ def _eval_curr_feats(
     new_features: list[str],
 ) -> Tuple[list[Tuple[str, float, float]], int, float]:
     results: list[Tuple[str, float, float]] = []
+    train_wells_ids = config.train_wells_ids
     for new_feature in new_features:
         t4 = time()
 
@@ -390,7 +386,7 @@ def _eval_curr_feats(
         profiling.prof_fsel_worker_insert_time(it, rank, f_it, t5 - t4, config)
 
         rmse, mae = petro5_hdf5.eval_bootstrap(cur_h5_train_list,
-                                               training_wells)
+                                               train_wells_ids)
 
         results.append((new_feature, rmse, mae))
         t6 = time()
