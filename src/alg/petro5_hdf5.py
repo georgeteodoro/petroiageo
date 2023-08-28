@@ -807,9 +807,6 @@ def get_features_sets(
             msg += f" with error: RMSE {rmse}; MAE {mae}"
             print(msg)
 
-        # Remove the best feature from the features list
-        all_features.remove(curr_best_feature)
-
         t7 = time()
         print(f"[get_features_sets][it{alg_it}][feat_sel_it{feat_sel_it}] "
               f"full_it_time: {t7-t3}")
@@ -824,6 +821,7 @@ def get_features_sets(
             displacement_cube_shape,
         )
 
+        # Mark feature as already selected
         best_feats_found.append(curr_best_feature)
 
         t8 = time()
