@@ -110,13 +110,14 @@ def _find_feats_set(
         (
             new_best_feature,
             total_worker_time,
-            feats_sets_and_its_errors,
+            curr_feats_sets
         ) = _find_curr_best_feature(
             it,
             curr_f_set_best_err,
-            feats_sets_and_its_errors,
             remaining_features,
         )
+
+        feats_sets_and_its_errors.extend(curr_feats_sets)
 
         f_it_req_time += total_worker_time
         t3 = time()
@@ -146,7 +147,6 @@ def _bcast_done_msg_to_workers():
 def _find_curr_best_feature(
     it: int,
     curr_f_set_best_err: list[str],
-    feats_sets_and_its_errors: list[tuple[list, float]],
     remaining_features: list,
 ) -> Tuple[str, float, list[tuple[list, float]]]:
     new_best_feature = None
@@ -155,6 +155,7 @@ def _find_curr_best_feature(
     workers_done = 0
     # Iterate through all features to be tested
     total_worker_time = 0
+    curr_feats_sets = list()
     while _not_all_workers_done(workers_done):
         status = MPI.Status()
         worker_results = comm.recv(status=status)
@@ -174,7 +175,7 @@ def _find_curr_best_feature(
                       f"feature {curr_f_set_best_err + [cur_feature]} "
                       f"with error {rmse_error}")
 
-                feats_sets_and_its_errors.append(
+                curr_feats_sets.append(
                     (curr_f_set_best_err + [cur_feature], rmse_error,
                      mae_error))
 
@@ -198,7 +199,7 @@ def _find_curr_best_feature(
 
         total_worker_time += time() - t2
 
-    return new_best_feature, total_worker_time, feats_sets_and_its_errors
+    return new_best_feature, total_worker_time, curr_feats_sets
 
 
 def _worker_sent_feat_eval(status: MPI.Status) -> bool:
