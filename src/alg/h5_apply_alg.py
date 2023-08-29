@@ -55,13 +55,13 @@ class H5ApplyAlg(AbstractApplyAlg):
         it: int,
     ):
         # Retrieve self._config parameters
-        window_size = self._config.get_param("window")
         rank = self._config.get_param("mpi_rank")
         comm = self._config.get_param("mpi_global_comm")
         should_update = self._config.get_param("mpi_should_update_local")
 
         # Only one process per node is required to update
         if should_update:
+            window_size = self._config.get_param("window")
             # Calculate remaining variables
             displacement_cube_shape = (
                 window_size * 2 + 1,
