@@ -739,7 +739,6 @@ def get_features_sets(
 
     #At the feature selection stage, there should be sampling of
     #points from the iterations considered
-    # We use the test_h5_file just to close it to make sure
     exp_n_features = config.alg["max_num_features"]
     cur_h5, cur_h5_dset, _, _ = create_tmp_dset(porosity_data_h5,
                                                 data_filter,
