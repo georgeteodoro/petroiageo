@@ -44,7 +44,6 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
         it: int,
     ):
         # Retrieve config parameters
-        max_num_features = self._config.alg["max_num_features"]
         num_features = self._config.get_param("num_features")
         base_features = self._config.features_files_names
         assert len(base_features) > 0
@@ -53,7 +52,6 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
         if num_features != 0:
             base_features = base_features[:num_features]
         window_size = self._config.get_param("window")
-        max_tested_features = self._config.get_param("max_tested_features")
         mpi_size = self._config.get_param("mpi_size")
         mpi_rank = self._config.get_param("mpi_rank")
         mpi_manager_rank = self._config.get_param("mpi_manager_rank")
@@ -85,8 +83,6 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
                 all_features,
                 displacement_cube_shape,
                 it,
-                max_num_features,
-                max_tested_features,
                 self._config,
             )
             if mpi_rank == mpi_manager_rank:

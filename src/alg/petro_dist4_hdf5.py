@@ -34,13 +34,14 @@ def get_features_sets(
     all_features: list,
     displacement_cube_shape: tuple,
     it: int,
-    max_feats_to_select: int,
-    max_feats_to_test: int,
     config: Config,
 ):
     if mpi_size < 2:
         print("[petro4_dist_hdf5] 2 minimum processes required")
         return None
+    
+    max_feats_to_select = config.alg["max_num_features"]
+    max_feats_to_test = config.get_param("max_tested_features")
 
     if rank == manager_rank:
         return manager(all_features, max_feats_to_select, max_feats_to_test,
