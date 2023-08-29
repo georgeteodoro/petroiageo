@@ -55,8 +55,6 @@ class H5ApplyAlg(AbstractApplyAlg):
         it: int,
     ):
         # Retrieve self._config parameters
-        rank = self._config.get_param("mpi_rank")
-        comm = self._config.get_param("mpi_global_comm")
         should_update = self._config.get_param("mpi_should_update_local")
 
         # Only one process per node is required to update
@@ -76,7 +74,7 @@ class H5ApplyAlg(AbstractApplyAlg):
 
             cur_h5, test_h5, train_list, test_list = self._get_train_test_dset_list(
                 best_features_set, features_dict_h5, porosity_data_h5, it,
-                rank, displacement_cube_shape)
+                displacement_cube_shape)
 
             regressor = self._train_regressor(it, train_list)
             cur_h5.close()
@@ -165,9 +163,10 @@ class H5ApplyAlg(AbstractApplyAlg):
             t8 = time()
             profiling.prof_predict_pred_times(it, t8 - t3, self._config)
         else:
-            my_rank = rank
+            my_rank = self._config.get_param("mpi_rank")
             print(f"[main][{it}][R{my_rank}] waiting points propagation")
 
+        comm = self._config.get_param("mpi_global_comm")
         comm.Barrier()
 
     def _evaluate_regressor(self, test_list: hdf5_util.HDFMultiColList,
@@ -271,13 +270,13 @@ class H5ApplyAlg(AbstractApplyAlg):
     def _get_train_test_dset_list(
         self, best_features_set: set, features_dict_h5: Dict[str,
                                                              h5py.Dataset],
-        porosity_data_h5: h5py.Dataset, it: int, rank: int,
-        displacement_cube_shape: tuple
+        porosity_data_h5: h5py.Dataset, it: int, displacement_cube_shape: tuple
     ) -> Tuple[File, File, hdf5_util.HDFMultiColList,
                hdf5_util.HDFMultiColList]:
         """
         Creates temporary h5 train and test structures to perform the training
         """
+        rank = self._config.get_param("mpi_rank")
         t0 = time()
         data_filter = PredTrainDataFilter()
 
