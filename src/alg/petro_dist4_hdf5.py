@@ -24,10 +24,6 @@ class MPI_TAGS(Enum):
     MANAGER_FINISH = auto()  # Signals done execution of current iteration
 
 
-# # exp_n_features: number of features to be selected
-# f_width: number of features to be compared
-#   default=0 means all features.
-#   Used for debugging and reducing computing cost
 def get_features_sets(
     porosity_data_h5: h5py.Dataset,
     features_dict_h5: Dict[str, h5py.Dataset],
