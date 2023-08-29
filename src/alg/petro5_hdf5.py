@@ -714,8 +714,6 @@ def get_features_sets(
     all_features: list,
     displacement_cube_shape: tuple,
     alg_it: int,
-    exp_n_features: int,
-    max_tested_features: int,
     config: Config,
 ) -> Tuple[list, float, float]:
     """
@@ -727,10 +725,6 @@ def get_features_sets(
         all_features: The features names to test
         displacement_cube_shape: 
         alg_it: The current algorithm total iteration
-        exp_n_features: number of features to be selected
-        max_tested_features: number of features to be compared
-            default=0 means all features.
-            Used for debugging and reducing computing cost
         config: The Config dict
 
     Returns: 
@@ -746,6 +740,7 @@ def get_features_sets(
     #At the feature selection stage, there should be sampling of
     #points from the iterations considered
     # We use the test_h5_file just to close it to make sure
+    exp_n_features = config.alg["max_num_features"]
     cur_h5, cur_h5_dset, _, _ = create_tmp_dset(porosity_data_h5,
                                                 data_filter,
                                                 exp_n_features,
@@ -766,6 +761,7 @@ def get_features_sets(
     results = []
 
     hypercube_shape = porosity_data_h5.shape
+    max_tested_features = config.get_param("max_tested_features")
 
     # Find a feature set with exp_n_features features
     for feat_sel_it in range(exp_n_features):

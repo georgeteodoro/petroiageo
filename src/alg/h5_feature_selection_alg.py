@@ -75,8 +75,6 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
                 all_features,
                 displacement_cube_shape,
                 it,
-                max_num_features,
-                max_tested_features,
                 self._config,
             )
             msg += "[manager]"
