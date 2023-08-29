@@ -81,10 +81,11 @@ class H5ApplyAlg(AbstractApplyAlg):
 
             final_rmse, final_mae = self._evaluate_regressor(
                 test_list, regressor)
+            test_h5.close()
+
             msg = f"[manager][it{it}][test-error] RMSE: {final_rmse}"
             msg += f" MAE: {final_mae}"
             print(msg)
-            test_h5.close()
 
             t3 = time()
 
