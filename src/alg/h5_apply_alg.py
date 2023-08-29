@@ -97,10 +97,9 @@ class H5ApplyAlg(AbstractApplyAlg):
                 (d["real"] == common.RealValues.canal_expanded)
                 | (d["real"] == common.RealValues.expanded))
             p_sum = 0
-            chunk_n = -1
-            for cur_slice in porosity_data_h5.iter_chunks():
+            for chunk_n, cur_slice in enumerate(
+                    porosity_data_h5.iter_chunks()):
                 t4 = time()
-                chunk_n += 1
 
                 cur_chunk_np = porosity_data_h5[cur_slice]
 
