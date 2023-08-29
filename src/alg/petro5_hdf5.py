@@ -774,7 +774,7 @@ def get_features_sets(
 
         # Test each available feature
         for feat_idx, cur_feature in enumerate(all_features):
-    
+
             if cur_feature in best_feats_found:
                 continue
 

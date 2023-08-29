@@ -88,7 +88,7 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
             if mpi_rank == mpi_manager_rank:
                 msg += "[manager]"
 
-        if len(msg) > 0: # Is a manager
+        if len(msg) > 0:  # Is a manager
             msg += f"[get_features_sets][it{it}][best-features-and-error]"
             msg += f"{best_features_set} with error: RMSE {rmse_err}"
             msg += f" MAE {mae_err}"

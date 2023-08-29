@@ -35,7 +35,7 @@ def get_features_sets(
     if mpi_size < 2:
         print("[petro4_dist_hdf5] 2 minimum processes required")
         return None
-    
+
     max_feats_to_select = config.alg["max_num_features"]
     max_feats_to_test = config.get_param("max_tested_features")
 
@@ -104,15 +104,12 @@ def _find_feats_set(
 
         f_it_req_time += time() - t1
 
-        (
-            new_best_feature,
-            total_worker_time,
-            curr_feats_sets
-        ) = _find_curr_best_feature(
-            it,
-            curr_f_set_best_err,
-            remaining_features,
-        )
+        (new_best_feature, total_worker_time,
+         curr_feats_sets) = _find_curr_best_feature(
+             it,
+             curr_f_set_best_err,
+             remaining_features,
+         )
 
         feats_sets_and_its_errors.extend(curr_feats_sets)
 
@@ -172,9 +169,8 @@ def _find_curr_best_feature(
                       f"feature {curr_f_set_best_err + [cur_feature]} "
                       f"with error {rmse_error}")
 
-                curr_feats_sets.append(
-                    (curr_f_set_best_err + [cur_feature], rmse_error,
-                     mae_error))
+                curr_feats_sets.append((curr_f_set_best_err + [cur_feature],
+                                        rmse_error, mae_error))
 
                 # Update new best, if necessary
                 if best_rmse_error > rmse_error:
