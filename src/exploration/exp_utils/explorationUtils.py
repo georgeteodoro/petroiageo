@@ -6,7 +6,8 @@ import numpy as np
 class NonNegativeIntegerSingleCoordinate:
     """
     This is a single coordinate that can't be a negative number.
-    For exemple, a 2-dimensional space would have two NonNegativeIntegerSingleCoordinates as a point, one per
+    For exemple, a 2-dimensional space would have two 
+    NonNegativeIntegerSingleCoordinates as a point, one per
     dimension
     """
 
@@ -149,9 +150,8 @@ class Well:
 
     @coords.setter
     def coords(self, new_coords: tuple):
-        self._coords = NonNegativeInteger2DPoint(
-            x=new_coords[0], y=new_coords[1]
-        )
+        self._coords = NonNegativeInteger2DPoint(x=new_coords[0],
+                                                 y=new_coords[1])
 
     def __getitem__(self, key: int) -> int:
         if key == 0:
@@ -201,9 +201,8 @@ class Well:
             abs(target_point[1] - self._coords.y),
         )
 
-    def overlap_with_well_at_it(
-        self, other: "Well", it: int, max_x: int, max_y: int
-    ) -> bool:
+    def overlap_with_well_at_it(self, other: "Well", it: int, max_x: int,
+                                max_y: int) -> bool:
         """
         Returns if at iteration 'it' this well overlaps with 'other' well
 
@@ -220,27 +219,26 @@ class Well:
             other_well_bot_right,
         ) = other.extremity_points_at_it(it, max_x, max_y)
         my_well_top_left, my_well_bot_right = self.extremity_points_at_it(
-            it, max_x, max_y
-        )
+            it, max_x, max_y)
 
-        if self._has_area_zero(
-            my_well_top_left, my_well_bot_right
-        ) or self._has_area_zero(other_well_top_left, other_well_bot_right):
+        if self._has_area_zero(my_well_top_left,
+                               my_well_bot_right) or self._has_area_zero(
+                                   other_well_top_left, other_well_bot_right):
             return False
 
         if self._some_is_on_left_side_of_other(
-            my_well_top_left,
-            my_well_bot_right,
-            other_well_top_left,
-            other_well_bot_right,
+                my_well_top_left,
+                my_well_bot_right,
+                other_well_top_left,
+                other_well_bot_right,
         ):
             return False
 
         if self._some_is_above_other(
-            my_well_top_left,
-            my_well_bot_right,
-            other_well_top_left,
-            other_well_bot_right,
+                my_well_top_left,
+                my_well_bot_right,
+                other_well_top_left,
+                other_well_bot_right,
         ):
             return False
 
@@ -249,29 +247,26 @@ class Well:
     def _has_area_zero(self, top_left: tuple, bottom_right: tuple) -> bool:
         return top_left[0] == bottom_right[0] or top_left[1] == bottom_right[1]
 
-    def _some_is_on_left_side_of_other(
-        self, first_top_left, first_bot_right, second_top_left, second_bot_right
-    ) -> bool:
-        return (
-            first_top_left[0] > second_bot_right[0]
-            or second_top_left[0] > first_bot_right[0]
-        )
+    def _some_is_on_left_side_of_other(self, first_top_left, first_bot_right,
+                                       second_top_left,
+                                       second_bot_right) -> bool:
+        return (first_top_left[0] > second_bot_right[0]
+                or second_top_left[0] > first_bot_right[0])
 
-    def _some_is_above_other(
-        self, first_top_left, first_bot_right, second_top_left, second_bot_right
-    ) -> bool:
-        # As the y axis begins at the top with 0 and increases the y downwards, we should use the '<' sign
-        return (
-            first_bot_right[1] < second_top_left[1]
-            or second_bot_right[1] < first_top_left[1]
-        )
+    def _some_is_above_other(self, first_top_left, first_bot_right,
+                             second_top_left, second_bot_right) -> bool:
+        # As the y axis begins at the top with 0 and increases the y downwards,
+        # we should use the '<' sign
+        return (first_bot_right[1] < second_top_left[1]
+                or second_bot_right[1] < first_top_left[1])
 
-    def overlap_volume_at_it(
-        self, other: "Well", it: int, max_x: int, max_y: int, depth: int
-    ) -> int:
+    def overlap_volume_at_it(self, other: "Well", it: int, max_x: int,
+                             max_y: int, depth: int) -> int:
         """
-        Returns the num of points overlapping for this well with other well at iteration it.
-        Based on: https://www.geeksforgeeks.org/total-area-two-overlapping-rectangles/
+        Returns the num of points overlapping for this well with other well at 
+        iteration it.
+        Based on: 
+        https://www.geeksforgeeks.org/total-area-two-overlapping-rectangles/
 
         it: The iteration
         max_x: The max x value starting at 0
@@ -282,24 +277,16 @@ class Well:
         area_well2 = other.num_predicted(max_x, max_y, depth, it)
 
         my_top_left, my_bot_right = self.extremity_points_at_it(
-            it, max_x, max_y
-        )
+            it, max_x, max_y)
 
         other_top_left, other_bot_right = other.extremity_points_at_it(
-            it, max_x, max_y
-        )
+            it, max_x, max_y)
 
-        x_dist = (
-            min(my_bot_right[0], other_bot_right[0])
-            - max(my_top_left[0], other_top_left[0])
-            + 1
-        )
+        x_dist = (min(my_bot_right[0], other_bot_right[0]) -
+                  max(my_top_left[0], other_top_left[0]) + 1)
 
-        y_dist = (
-            min(my_bot_right[1], other_bot_right[1])
-            - max(my_top_left[1], other_top_left[1])
-            + 1
-        )
+        y_dist = (min(my_bot_right[1], other_bot_right[1]) -
+                  max(my_top_left[1], other_top_left[1]) + 1)
 
         intersection_volume = 0
         if x_dist > 0 and y_dist > 0:
@@ -311,7 +298,8 @@ class Well:
 
     def extremity_points_at_it(self, it: int, max_x: int, max_y: int) -> tuple:
         """
-        Returns the top_left and bottom_right x, y coordinates of the predicted layer at iteration it
+        Returns the top_left and bottom_right x, y coordinates of the predicted 
+        layer at iteration it
         for this well
         """
         if not type(max_x) == int or max_x < 1:
@@ -330,14 +318,13 @@ class Well:
         bottom_right = (self._coords.x + it, self._coords.y + it)
 
         top_left, bottom_right = self._resolve_extremities_with_range(
-            top_left, bottom_right, max_x, max_y
-        )
+            top_left, bottom_right, max_x, max_y)
 
         return (top_left, bottom_right)
 
-    def _resolve_extremities_with_range(
-        self, top_left: tuple, bot_right: tuple, max_x: int, max_y: int
-    ):
+    def _resolve_extremities_with_range(self, top_left: tuple,
+                                        bot_right: tuple, max_x: int,
+                                        max_y: int):
         top_left_copy = list(top_left)
         bot_right_copy = list(bot_right)
 
@@ -355,9 +342,11 @@ class Well:
 
         return tuple(top_left_copy), tuple(bot_right_copy)
 
-    def num_predicted(self, max_x: int, max_y: int, depth: int, it: int) -> int:
+    def num_predicted(self, max_x: int, max_y: int, depth: int,
+                      it: int) -> int:
         """
-        Returns the num of points this well predicts at some it. Dont consider the points the well is already in.
+        Returns the num of points this well predicts at some it. Dont consider
+          the points the well is already in.
 
         max_x: The max x value starting at 0
         max_y: The max y value starting at 0
@@ -410,7 +399,8 @@ class WellSet:
         """
         Adds wells for each tuple inside the coords
 
-        coords: Should be an iterable of tuples. Each tuple should be of (x, y) coordinates
+        coords: Should be an iterable of tuples. Each tuple should be 
+        of (x, y) coordinates
         """
         for coord in coords:
             self.add_well_at(coord[0], coord[1])
@@ -448,7 +438,8 @@ class WellSet:
 
     def get_well_at(self, x: int, y: int) -> Well:
         """
-        Returns the Well with the specified position if it is present. Otherwise, it returns None
+        Returns the Well with the specified position if it is present. 
+        Otherwise, it returns None
 
         x: The x coordinate
         y: The y coordinate
@@ -479,15 +470,17 @@ class WellSet:
 
         return min_its
 
-    def wells_in_point_at_it(self, target_point: tuple, it: int) -> List[tuple]:
+    def wells_in_point_at_it(self, target_point: tuple,
+                             it: int) -> List[tuple]:
         """
-        Returns a list of wells that get to the target_point at iteration it. The wells are
-        ordered by arrival it.
+        Returns a list of wells that get to the target_point at iteration it. 
+        The wells are ordered by arrival it.
         target_point: Should be a (x, y) tuple
         it: The iteration (int) to check arrival
 
         returns:
-        A list of tuples with the pattern: [(x, y)] where (x, y) are the well's coordinates.
+        A list of tuples with the pattern: [(x, y)] where (x, y) are 
+            the well's coordinates.
         This list is in ascending order by its arrival it.
         """
         if not type(it) == int:
@@ -501,8 +494,7 @@ class WellSet:
             well_its_to_point = well.its_to_point(target_point)
             if well_its_to_point <= it:
                 wells_and_num_its_till_point.append(
-                    (well.coords, well_its_to_point)
-                )
+                    (well.coords, well_its_to_point))
 
         sorted_list = sorted(wells_and_num_its_till_point, key=lambda t: t[1])
 
@@ -526,16 +518,18 @@ class WellSet:
 
         return first_well
 
-    def num_overlap_points_at_it(
-        self, it: int, max_x: int, max_y: int, depth: int
-    ) -> int:
+    def num_overlap_points_at_it(self, it: int, max_x: int, max_y: int,
+                                 depth: int) -> int:
         """
-        Returns the number of overlap points predicted at some iteration considering all wells.
+        Returns the number of overlap points predicted at some iteration 
+        considering all wells.
         Based on: https://stackoverflow.com/a/25355331/16264901
 
         it: The iteration
-        max_x, max_y: The sizes of the area considered. If The area has a x range of 10, the max_x should be 9. Same for max_y
-        depth: The cube depth. It assumes that every Well can predict along all this depth
+        max_x, max_y: The sizes of the area considered. If The area has a 
+            x range of 10, the max_x should be 9. Same for max_y
+        depth: The cube depth. It assumes that every Well can predict along 
+            all this depth
         """
         total_area = self.get_prediction_area(it, max_x, max_y)
 
@@ -543,9 +537,8 @@ class WellSet:
 
         return area_of_intersect * depth
 
-    def get_prediction_area(
-        self, it: int, max_x: int, max_y: int
-    ) -> np.ndarray:
+    def get_prediction_area(self, it: int, max_x: int,
+                            max_y: int) -> np.ndarray:
         wells_extremities = list()
 
         max_well_x_coord = -1
@@ -565,9 +558,8 @@ class WellSet:
 
         for well_extremities in wells_extremities:
             top_left, bot_right = well_extremities
-            total_area[
-                top_left[0] : bot_right[0] + 1, top_left[1] : bot_right[1] + 1
-            ] += 1
+            total_area[top_left[0]:bot_right[0] + 1,
+                       top_left[1]:bot_right[1] + 1] += 1
 
         # Zeroes the wells coordinates as one well can't predict there
         for well in self._wells:
@@ -576,16 +568,18 @@ class WellSet:
 
         return total_area
 
-    def num_predicted_points_at_it(
-        self, it: int, max_x: int, max_y: int, depth: int
-    ) -> int:
+    def num_predicted_points_at_it(self, it: int, max_x: int, max_y: int,
+                                   depth: int) -> int:
         """
-        Returns the number of predicted points at some iteration considering all wells and overlaps.
+        Returns the number of predicted points at some iteration considering 
+        all wells and overlaps.
         Based on: https://stackoverflow.com/a/25355331/16264901
 
         it: The iteration
-        max_x, max_y: The sizes of the area considered. If The area has a x range of 10, the max_x should be 9. Same for max_y
-        depth: The cube depth. It assumes that every Well can predict along all this depth
+        max_x, max_y: The sizes of the area considered. If The area has a x 
+            range of 10, the max_x should be 9. Same for max_y
+        depth: The cube depth. It assumes that every Well can predict along 
+            all this depth
         """
         total_area = self.get_prediction_area(it, max_x, max_y)
 
@@ -602,9 +596,8 @@ class ExplorationCube:
     This represents an Exploration Cube.
     """
 
-    def __init__(
-        self, top_left_point: tuple, bottom_right_point: tuple, depth: int
-    ):
+    def __init__(self, top_left_point: tuple, bottom_right_point: tuple,
+                 depth: int):
         self.depth = depth
         self._wells = WellSet()
         self._set_extremity_points(top_left_point, bottom_right_point)
@@ -701,28 +694,25 @@ class ExplorationCube:
         """
         return self.top_left[1]
 
-    def _set_extremity_points(
-        self, new_top_left: tuple, new_bottom_right: tuple
-    ):
+    def _set_extremity_points(self, new_top_left: tuple,
+                              new_bottom_right: tuple):
         if not any([new_top_left, new_bottom_right]):
             raise TypeError("A point should not be NoneType")
 
-        new_top_left = self._return_point_or_raise(new_top_left, "new_top_left")
-        new_bottom_right = self._return_point_or_raise(
-            new_bottom_right, "new_bottom_right"
-        )
+        new_top_left = self._return_point_or_raise(new_top_left,
+                                                   "new_top_left")
+        new_bottom_right = self._return_point_or_raise(new_bottom_right,
+                                                       "new_bottom_right")
 
-        if self._is_top_left_before_bottom_right(
-            new_top_left, new_bottom_right
-        ):
+        if self._is_top_left_before_bottom_right(new_top_left,
+                                                 new_bottom_right):
             self._top_left_point = new_top_left
             self._bottom_right_point = new_bottom_right
         else:
             raise ValueError("This configuration of points is invalid!")
 
-    def _return_point_or_raise(
-        self, my_tuple: tuple, name: str
-    ) -> NonNegativeInteger2DPoint:
+    def _return_point_or_raise(self, my_tuple: tuple,
+                               name: str) -> NonNegativeInteger2DPoint:
         self._raise_if_invalid_tuple(my_tuple, name)
         return NonNegativeInteger2DPoint(my_tuple[0], my_tuple[1])
 
@@ -751,7 +741,8 @@ class ExplorationCube:
 
     def add_well_at(self, x: int, y: int):
         """
-        Adds a Well at the x and y positions. Raises ValueError if Well isn't inside the cube.
+        Adds a Well at the x and y positions. Raises ValueError if Well 
+        isn't inside the cube.
         """
         if not type(x) == int:
             raise TypeError("x should be an int!")
@@ -828,7 +819,8 @@ class ExplorationCube:
             raise TypeError("n_points should be an int!")
 
         if n_points < 0 or n_points > self.max_predictable_points_possible():
-            raiseMsg = "n_points should be a non negative integer and less-equal than the maximum number of "
+            raiseMsg = "n_points should be a non negative integer and less-equal "
+            raiseMsg += "than the maximum number of "
             raiseMsg += (
                 f"predictable points ({self.max_predictable_points_possible()})"
             )
@@ -836,8 +828,7 @@ class ExplorationCube:
 
         if len(self._wells) < 1:
             raise ValueError(
-                f"{self.__class__.__name__} doesnt have any wells!"
-            )
+                f"{self.__class__.__name__} doesnt have any wells!")
 
         if n_points == 0:
             return 0
@@ -845,8 +836,7 @@ class ExplorationCube:
         it_count = 0
         while True:
             n_predicted = self._wells.num_predicted_points_at_it(
-                it_count, self.max_x, self.max_y, self.depth
-            )
+                it_count, self.max_x, self.max_y, self.depth)
             if n_predicted < n_points:
                 it_count += 10
             else:
@@ -855,27 +845,24 @@ class ExplorationCube:
         # passou dos pontos
         while True:
             n_predicted = self._wells.num_predicted_points_at_it(
-                it_count, self.max_x, self.max_y, self.depth
-            )
+                it_count, self.max_x, self.max_y, self.depth)
             if n_predicted >= n_points:
                 it_count -= 1
             else:
                 if it_count < 0:
                     return 0
 
-                if (
-                    self._wells.num_predicted_points_at_it(
-                        it_count + 1, self.max_x, self.max_y, self.depth
-                    )
-                    >= n_points
-                ):
+                if (self._wells.num_predicted_points_at_it(
+                        it_count + 1, self.max_x, self.max_y, self.depth)
+                        >= n_points):
                     return it_count + 1
                 else:
                     return it_count
 
     def max_predictable_points_possible(self) -> int:
         """
-        Returns the total number of points inside this cube minus the amount of points that wells occupy
+        Returns the total number of points inside this cube minus
+          the amount of points that wells occupy
         """
         area_points = self.x_range * self.y_range
         return (area_points - len(self._wells)) * self.depth
@@ -893,9 +880,8 @@ class ExplorationCube:
         if it < 1:
             raise ValueError("it should be a positive integer!")
 
-        return self._wells.num_predicted_points_at_it(
-            it, self.max_x, self.max_y, self.depth
-        )
+        return self._wells.num_predicted_points_at_it(it, self.max_x,
+                                                      self.max_y, self.depth)
 
     def num_overlaps_at_it(self, it: int) -> int:
         if not type(it) == int:
@@ -904,13 +890,13 @@ class ExplorationCube:
         if it < 1:
             raise ValueError("it should be a positive integer!")
 
-        return self._wells.num_overlap_points_at_it(
-            it, self.max_x, self.max_y, self.depth
-        )
+        return self._wells.num_overlap_points_at_it(it, self.max_x, self.max_y,
+                                                    self.depth)
 
     def pred_config_at_it(self, it: int) -> np.ndarray:
         """
-        Returns the num of wells that predicted some point at some it as a numpy.ndarray
+        Returns the num of wells that predicted some point at some it
+          as a numpy.ndarray
         """
         if not type(it) == int:
             raise TypeError("it should be an integer!")
@@ -920,17 +906,17 @@ class ExplorationCube:
 
         return self._wells.get_prediction_area(it, self.max_x, self.max_y)
 
-    def wells_influencing_point_at_it(
-        self, point: tuple, it: int
-    ) -> List[tuple]:
+    def wells_influencing_point_at_it(self, point: tuple,
+                                      it: int) -> List[tuple]:
         """
-        Returns a list of wells that get to the target_point at iteration it. The wells are
-        ordered by arrival it.
+        Returns a list of wells that get to the target_point at iteration it. 
+        The wells are ordered by arrival it.
         target_point: Should be a (x, y) tuple
         it: The iteration (int) to check arrival
 
         returns:
-        A list of tuples with the pattern: [(x, y)] where (x, y) are the well's coordinates.
+        A list of tuples with the pattern: [(x, y)] where (x, y) are the 
+        well's coordinates.
         This list is in ascending order by its arrival it.
         """
         if not type(it) == int:
@@ -955,11 +941,12 @@ class ExplorationCube:
     def __hash__(self):
         return sum(
             hash(value)
-            for value in [self.top_left, self.bottom_right, self.depth]
-        )
+            for value in [self.top_left, self.bottom_right, self.depth])
 
     def __repr__(self):
-        return f"ExplorationCube(top_left={self.top_left}, bottom_right={self.bottom_right}, depth={self.depth})"
+        fmt_str = "ExplorationCube(top_left={}, bottom_right={}, depth={})"
+        return fmt_str.format(self.top_left, self.bottom_right, self.depth)
 
     def __str__(self):
-        return f"ExplorationCube(top_left={self.top_left}, bottom_right={self.bottom_right}, depth={self.depth})"
+        fmt_str = "ExplorationCube(top_left={}, bottom_right={}, depth={})"
+        return fmt_str.format(self.top_left, self.bottom_right, self.depth)
