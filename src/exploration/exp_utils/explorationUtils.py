@@ -884,6 +884,9 @@ class ExplorationCube:
         return self.its_to_predict_n(self.max_predictable_points_possible())
 
     def num_predicted_at_it(self, it: int) -> int:
+        """
+        Returns the total number of points predicted until iteration it
+        """
         if not type(it) == int:
             raise TypeError("it should be an integer!")
 
