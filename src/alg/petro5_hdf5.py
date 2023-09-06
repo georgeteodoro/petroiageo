@@ -603,8 +603,8 @@ def _get_n_pts_to_sample_per_well(n_points_to_sample_chunk: int,
         n_samp_points_per_well[biggest_samp] -= 1
         diff = n_samp_points_per_well.sum() - n_points_to_sample_chunk
 
-    assert np.sum(n_samp_points_per_well) == n_points_to_sample_chunk
-    return n_samp_points_per_well
+    # This garantees that every well has at least one training point at the end
+    return np.where(n_samp_points_per_well <= 0, 1, n_samp_points_per_well)
 
 
 def _get_n_sampling_points_per_chunk(training_points_per_chunk: np.ndarray,
