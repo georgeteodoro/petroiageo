@@ -80,22 +80,24 @@ def _leave_one_well_out_training(
     for curr_well_id in wells_id:
         X_val, y_val, trained_regressor = _incremental_learning(
             cur_h5_train_list, profiling, curr_well_id)
-        t3 = time()
 
-        # Calculate error metrics
+        if X_val is not None:
+            t3 = time()
 
-        pred = trained_regressor.predict(X_val)
-        rmse = np.sqrt(np.mean((pred - y_val)**2))
-        mae = mean_absolute_error(pred, y_val)
-        rmse_list.append(rmse)
-        mae_list.append(mae)
+            # Calculate error metrics
 
-        if profiling:
-            t4 = time()
-            print(f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] "\
-                  f"Evaluating in {t4-t3}")
-            print(f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] "\
-                  f"Total time {t4-t0}")
+            pred = trained_regressor.predict(X_val)
+            rmse = np.sqrt(np.mean((pred - y_val)**2))
+            mae = mean_absolute_error(pred, y_val)
+            rmse_list.append(rmse)
+            mae_list.append(mae)
+
+            if profiling:
+                t4 = time()
+                print(f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] "\
+                    f"Evaluating in {t4-t3}")
+                print(f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] "\
+                    f"Total time {t4-t0}")
 
     return rmse_list, mae_list
 
@@ -116,6 +118,14 @@ def _incremental_learning(
     # memory
     X_val, y_val = cur_h5_train_list.get_data_from_well(curr_well_id)
 
+    # When using its_window_size in the config, there will, probably,
+    # be some iteration where there were no points sampled from some
+    # well because it stopped having new points propagated its_window_size
+    # iterations ago. For example, when a well is totally
+    # surrounded by other wells. So we ignore this validation
+    if len(X_val) == 0 | len(y_val) == 0:
+        return None, None, None
+
     # Incremental training on all cur_h5_train_list chunks
     regressor = None
     setup_time = 0
@@ -133,10 +143,6 @@ def _incremental_learning(
             lgb_eval_dataset = lgb.Dataset(X_val,
                                            y_val,
                                            reference=lgb_train_dataset)
-
-            if len(X_val) == 0 | len(y_val) == 0:
-                raise Exception(f"[petro5_hdf5] Bad data: well_id {curr_well_id}"\
-                                " have no points on porosity dataset.")
 
             t2 = time()
             regressor = lgb.train(
