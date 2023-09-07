@@ -564,6 +564,11 @@ def _sample_points_from_chunk(n_points_to_sample_chunk: int,
     n_samp_points_per_well = _get_n_pts_to_sample_per_well(
         n_points_to_sample_chunk, well_ids_count)
 
+    assert_msg = "Num of sampled points of some well was bellow 1!"
+    assert_msg += f" {n_samp_points_per_well}"
+    assert len(
+        n_samp_points_per_well[n_samp_points_per_well <= 0]) == 0, assert_msg
+
     sampled_training_points = None
     for well_idx, well_id in enumerate(ordered_well_ids):
         n_samp_points_well = n_samp_points_per_well[well_idx]
@@ -604,7 +609,10 @@ def _get_n_pts_to_sample_per_well(n_points_to_sample_chunk: int,
         diff = n_samp_points_per_well.sum() - n_points_to_sample_chunk
 
     # This garantees that every well has at least one training point at the end
-    return np.where(n_samp_points_per_well <= 0, 1, n_samp_points_per_well)
+    n_samp_points_per_well = np.where(n_samp_points_per_well <= 0, 1,
+                                      n_samp_points_per_well)
+
+    return n_samp_points_per_well
 
 
 def _get_n_sampling_points_per_chunk(training_points_per_chunk: np.ndarray,
