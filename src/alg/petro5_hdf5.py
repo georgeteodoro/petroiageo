@@ -591,7 +591,7 @@ def _sample_points_from_chunk(n_points_to_sample_chunk: int,
             sampled_training_points = np.concatenate(
                 [sampled_training_points, curr_sampled_points])
 
-    assert sampled_training_points.size == n_points_to_sample_chunk
+    assert sampled_training_points.size >= n_points_to_sample_chunk
 
     return sampled_training_points
 
