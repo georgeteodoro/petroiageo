@@ -34,7 +34,7 @@ def get_features_sets(
     displacement_cube_shape: tuple,
     it: int,
     config: Config,
-):
+) -> Tuple[list, float, float]:
     if mpi_size < 2:
         print("[petro4_dist_hdf5] 2 minimum processes required")
         return None
@@ -46,7 +46,7 @@ def get_features_sets(
         return manager(all_features, max_feats_to_select, max_feats_to_test,
                        it, config)
 
-    elif rank != manager_rank:
+    else:
         return worker(
             porosity_data_h5,
             features_dict_h5,
@@ -63,14 +63,19 @@ def manager(
     max_feats_to_test: int,
     it: int,
     config: Config,
-):
+) -> Tuple[list, float, float]:
     t0 = time()
 
     total_req_time, feats_sets_and_its_errors, t4 = _find_feats_set(
         all_features, max_feats_to_select, max_feats_to_test, it, config)
 
+    if len(feats_sets_and_its_errors) == 0:
+        best_result = None
+    else:
+        best_result = petro5_hdf5.get_best_features_set(
+            feats_sets_and_its_errors)
+
     # Broadcast resulting features and errors
-    best_result = petro5_hdf5.get_best_features_set(feats_sets_and_its_errors)
     comm.bcast(best_result, root=manager_rank)
 
     t5 = time()
@@ -114,12 +119,12 @@ def _find_feats_set(
              remaining_features,
          )
 
-        feats_sets_and_its_errors.extend(curr_feats_sets)
-
         f_it_req_time += total_worker_time
         t3 = time()
 
         comm.bcast(new_best_feature, root=manager_rank)
+
+        feats_sets_and_its_errors.extend(curr_feats_sets)
         curr_f_set_best_err.append(new_best_feature)
 
         t4 = time()
@@ -127,6 +132,11 @@ def _find_feats_set(
         total_req_time += f_it_req_time
         profiling.prof_fsel_manager_sync_time(it, f_it, t4 - t3, config)
         profiling.prof_fsel_manager_req_time(it, f_it, f_it_req_time, config)
+
+        # Means forced stop
+        if new_best_feature is None:
+            feats_sets_and_its_errors = []
+            break
 
     _bcast_done_msg_to_workers()
 
@@ -153,6 +163,7 @@ def _find_curr_best_feature(
     # Iterate through all features to be tested
     total_worker_time = 0
     curr_feats_sets = list()
+    forced_stop = False
     while _not_all_workers_done(workers_done):
         status = MPI.Status()
         worker_results = comm.recv(status=status)
@@ -198,6 +209,10 @@ def _find_curr_best_feature(
 
         total_worker_time += time() - t2
 
+    if forced_stop:
+        new_best_feature = None
+        curr_feats_sets = []
+
     return new_best_feature, total_worker_time, curr_feats_sets
 
 
@@ -230,7 +245,7 @@ def worker(
     exp_n_features: int,
     it: int,
     config: Config,
-):
+) -> Tuple[list, float, float]:
     t0 = time()
 
     data_filter = FeatSelectionTrainDataFilter()
@@ -394,16 +409,10 @@ def _eval_curr_feats(
 
         t5 = time()
         profiling.prof_fsel_worker_insert_time(it, rank, f_it, t5 - t4, config)
+        rmse, mae = petro5_hdf5.eval_bootstrap(cur_h5_train_list,
+                                               train_wells_ids)
 
-        try:
-            rmse, mae = petro5_hdf5.eval_bootstrap(cur_h5_train_list,
-                                                   train_wells_ids)
-
-            assert_msg = "RMSE and MAE was None!"
-            assert_msg += f" This means that we should stop the training!"
-            assert rmse is not None and mae is not None, assert_msg
-        except Exception as e:
-            print(e)
+        if (rmse, mae) == (None, None):
             results = None
             return results, total_jobs, total_time
         else:

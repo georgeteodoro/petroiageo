@@ -54,7 +54,7 @@ def eval_bootstrap(
     The test errors will be based on the validation data for each 
     Leave-one-well-out iteration.
     
-    Return the mean rmse and mean mae errors
+    Return the mean rmse and mean mae errors. May return None, None
     """
     params['num_threads'] = num_threads
 
@@ -833,9 +833,10 @@ def get_features_sets(
             t6 = time()
             print(f"[get_features_sets][{cur_feature}] train_time: {t6-t5}")
 
-            assert_msg = f"[it{alg_it}][feat-sel]RMSE and MAE was None!"
-            assert_msg += f" This means that we should stop the training!"
-            assert rmse is not None and mae is not None, assert_msg
+            if (rmse, mae) == (None, None):
+                results = None
+                curr_best_feature = None
+                break
 
             print(f"[get_features_sets][{cur_feature}] RMSE: {rmse}")
 
@@ -854,6 +855,9 @@ def get_features_sets(
         t7 = time()
         print(f"[get_features_sets][it{alg_it}][feat_sel_it{feat_sel_it}] "
               f"full_it_time: {t7-t3}")
+
+        if curr_best_feature is None:
+            break
 
         # Update the last column of the sequence object to the best feature
         insert_filtered_feature(
@@ -877,4 +881,4 @@ def get_features_sets(
 
     cur_h5.close()
 
-    return get_best_features_set(results)
+    return None if results is None else get_best_features_set(results)

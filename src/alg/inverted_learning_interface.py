@@ -177,6 +177,12 @@ class BaseInvertedLearning:
 
         t5 = time()
 
+        if best_features_set is None:
+            end_msg = "There were no features selected!"
+            end_msg += f" This means that we should stop the training!"
+            print(end_msg)
+            return
+
         profiling.timestamp(f"it{it}-apply-start", self._config)
         self._apply_alg.perform_prediction(best_features_set, features_dict,
                                            porosity_data, it)
