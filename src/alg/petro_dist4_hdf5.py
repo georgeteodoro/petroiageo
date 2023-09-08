@@ -83,7 +83,7 @@ def manager(
     profiling.prof_fsel_manager_time(it, total_req_time + t5 - t4, t5 - t0,
                                      config)
 
-    return best_result
+    return best_result, None, None
 
 
 def _find_feats_set(
@@ -267,7 +267,7 @@ def worker(
 
     if (cur_h5, cur_h5_dset) == (None, None):
         comm.send(None, dest=manager_rank, tag=MPI_TAGS.WORKER_STOP_MSG.value)
-        return None
+        return None, None, None
 
     hypercube_shape: tuple = porosity_data_h5.shape
 
