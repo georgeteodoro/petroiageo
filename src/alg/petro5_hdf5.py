@@ -323,7 +323,9 @@ def _prepare_h5(suf_str: str,
     n_train_points = train_data_filter.filter_count_dset(porosity_data_h5)
     n_train_points = _limit_training_points(sampling_max_points,
                                             n_train_points)
-    assert n_train_points > 0
+    if not n_train_points > 0:
+        return None, None, None
+
     chunksize = config.alg['parallel']['max_points_per_chunk']
     train_chunkshape = _get_chunk_shape(n_train_points, chunksize)
 
@@ -467,6 +469,9 @@ def create_tmp_dset(
         suf_str, test_wells_ids, features_only, n_features, train_data_filter,
         test_data_filter, porosity_data_h5, config, generate_test_files,
         should_sample_max_points)
+
+    if train_h5_file is None:
+        return None, None, None, None
 
     train_empty_h5_dset: h5py.Dataset = train_h5_file[TMP_DSET_NAME]
     if test_h5_file is not None:
@@ -778,6 +783,9 @@ def get_features_sets(
                                                 test_wells_ids=test_wells_ids,
                                                 should_sample_max_points=True,
                                                 generate_test_files=False)
+
+    if cur_h5 is None or cur_h5_dset is None:
+        return None
 
     # Create training temporary object
     cur_h5_train_list = hdf5_util.HDFMultiColList(cur_h5_dset)

@@ -265,6 +265,10 @@ def worker(
         should_sample_max_points=True,
         generate_test_files=False)
 
+    if (cur_h5, cur_h5_dset) == (None, None):
+        comm.send(None, dest=manager_rank, tag=MPI_TAGS.WORKER_STOP_MSG.value)
+        return None
+
     hypercube_shape: tuple = porosity_data_h5.shape
 
     # Create training temporary object
