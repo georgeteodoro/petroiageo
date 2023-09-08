@@ -363,15 +363,16 @@ def _eval_feats_requested_by_manager(
         new_best_feature = comm.bcast(None, root=manager_rank)
         cur_f_set.append(new_best_feature)
 
-        # Insert best selected feature
-        petro5_hdf5.insert_filtered_feature(
-            cur_h5_dset,
-            cur_h5_train_list,
-            features_dict_h5,
-            new_best_feature,
-            hypercube_shape,
-            displacement_cube_shape,
-        )
+        if new_best_feature is not None:
+            # Insert best selected feature
+            petro5_hdf5.insert_filtered_feature(
+                cur_h5_dset,
+                cur_h5_train_list,
+                features_dict_h5,
+                new_best_feature,
+                hypercube_shape,
+                displacement_cube_shape,
+            )
 
         t8 = time()
         profiling.prof_fsel_worker_sync_time(it, rank, f_it, t8 - t7, config)
