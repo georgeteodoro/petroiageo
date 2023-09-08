@@ -22,6 +22,9 @@ class MPI_TAGS(Enum):
     WORKER_EMPTY_RESULT = auto()  # Signals first ask from worker
     MANAGER_FEATURE_DONE = auto()  # Signals done finding new feature
     MANAGER_FINISH = auto()  # Signals done execution of current iteration
+    # Signals this it should not be done anymore
+    # See petro5_hdf5.eval_bootstrap comments for more
+    WORKER_STOP_MSG = auto()
 
 
 def get_features_sets(
@@ -162,23 +165,26 @@ def _find_curr_best_feature(
         # will be sent.
         n_features = 1
 
-        if _worker_sent_feat_eval(status):
-            for result in worker_results:
-                cur_feature, rmse_error, mae_error = result
-                print(f"[petro4_dist_hdf5][manager][it{it}] Tested "
-                      f"feature {curr_f_set_best_err + [cur_feature]} "
-                      f"with error {rmse_error}")
+        forced_stop = _worker_forced_stop(status)
+        if not forced_stop:
+            if _worker_sent_feat_eval(status):
+                for result in worker_results:
+                    cur_feature, rmse_error, mae_error = result
+                    print(f"[petro4_dist_hdf5][manager][it{it}] Tested "
+                          f"feature {curr_f_set_best_err + [cur_feature]} "
+                          f"with error {rmse_error}")
 
-                curr_feats_sets.append((curr_f_set_best_err + [cur_feature],
-                                        rmse_error, mae_error))
+                    curr_feats_sets.append(
+                        (curr_f_set_best_err + [cur_feature], rmse_error,
+                         mae_error))
 
-                # Update new best, if necessary
-                if best_rmse_error > rmse_error:
-                    best_rmse_error = rmse_error
-                    new_best_feature = cur_feature
+                    # Update new best, if necessary
+                    if best_rmse_error > rmse_error:
+                        best_rmse_error = rmse_error
+                        new_best_feature = cur_feature
 
-        # Check if there is work to be distributed
-        if len(remaining_features) > 0:
+        # Check if should and there is work to be distributed
+        if not forced_stop and len(remaining_features) > 0:
             # Send new tasks
             new_features = remaining_features[:n_features]
             remaining_features = remaining_features[n_features:]
@@ -197,6 +203,10 @@ def _find_curr_best_feature(
 
 def _worker_sent_feat_eval(status: MPI.Status) -> bool:
     return status.Get_tag() != MPI_TAGS.WORKER_EMPTY_RESULT.value
+
+
+def _worker_forced_stop(status: MPI.Status) -> bool:
+    return status.Get_tag() == MPI_TAGS.WORKER_STOP_MSG.value
 
 
 def _not_all_workers_done(workers_done):
@@ -320,7 +330,13 @@ def _eval_feats_requested_by_manager(
             t6 = time()
 
             # Return results to manager
-            comm.send(results, dest=manager_rank)
+            if results is None:
+                comm.send(results,
+                          dest=manager_rank,
+                          status=MPI_TAGS.WORKER_STOP_MSG.value)
+            else:
+                comm.send(results, dest=manager_rank)
+
             new_features, manager_tag = _get_new_feats_from_manager(status)
 
             t7 = time()
@@ -379,15 +395,25 @@ def _eval_curr_feats(
         t5 = time()
         profiling.prof_fsel_worker_insert_time(it, rank, f_it, t5 - t4, config)
 
-        rmse, mae = petro5_hdf5.eval_bootstrap(cur_h5_train_list,
-                                               train_wells_ids)
+        try:
+            rmse, mae = petro5_hdf5.eval_bootstrap(cur_h5_train_list,
+                                                   train_wells_ids)
 
-        results.append((new_feature, rmse, mae))
-        t6 = time()
-        profiling.prof_fsel_worker_eval_times(it, rank, f_it, t6 - t5, config)
+            assert_msg = "RMSE and MAE was None!"
+            assert_msg += f" This means that we should stop the training!"
+            assert rmse is not None and mae is not None, assert_msg
+        except Exception as e:
+            print(e)
+            results = None
+            return results, total_jobs, total_time
+        else:
+            results.append((new_feature, rmse, mae))
+            t6 = time()
+            profiling.prof_fsel_worker_eval_times(it, rank, f_it, t6 - t5,
+                                                  config)
 
-        total_jobs += 1
-        total_time += t6 - t4
+            total_jobs += 1
+            total_time += t6 - t4
 
     return results, total_jobs, total_time
 

@@ -63,6 +63,10 @@ def eval_bootstrap(
     rmse_list, mae_list = _leave_one_well_out_training(cur_h5_train_list,
                                                        wells_id, profiling)
 
+    # See _leave_one_well_out_training comments to understand when this happens
+    if len(rmse_list) == 0 or len(mae_list) == 0:
+        return None, None
+
     return np.mean(rmse_list), np.mean(mae_list)
 
 
@@ -76,12 +80,24 @@ def _leave_one_well_out_training(
     rmse_list: list[float] = []
     mae_list: list[float] = []
 
-    # Leave-One-Well-Out
+    # Leave-One-Well-Out (LOWO)
     for curr_well_id in wells_id:
         X_val, y_val, trained_regressor = _incremental_learning(
             cur_h5_train_list, profiling, curr_well_id)
 
+        # This happens when there are no points associated
+        # with well_id in the last its_window_size iterations
+        #  as said in _incremental_learning. So we just ignore
         if X_val is not None:
+            # This happens when all points in the last its_window_size
+            # iterations are associated with only one well.
+            # As X_val is not None, that well is the validation well
+            # at this it of LOWO and there were no remaining training points
+            # so the regressor was None. At this point, there is no need
+            # to continue to try the training so we return
+            if trained_regressor is None:
+                return [], []
+
             t3 = time()
 
             # Calculate error metrics
@@ -816,6 +832,11 @@ def get_features_sets(
 
             t6 = time()
             print(f"[get_features_sets][{cur_feature}] train_time: {t6-t5}")
+
+            assert_msg = f"[it{alg_it}][feat-sel]RMSE and MAE was None!"
+            assert_msg += f" This means that we should stop the training!"
+            assert rmse is not None and mae is not None, assert_msg
+
             print(f"[get_features_sets][{cur_feature}] RMSE: {rmse}")
 
             results.append((best_feats_found + [cur_feature], rmse, mae))
