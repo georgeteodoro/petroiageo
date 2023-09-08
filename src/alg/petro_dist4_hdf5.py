@@ -37,7 +37,7 @@ def get_features_sets(
 ) -> Tuple[list, float, float]:
     if mpi_size < 2:
         print("[petro4_dist_hdf5] 2 minimum processes required")
-        return None
+        return None, None, None
 
     max_feats_to_select = config.alg["max_num_features"]
     max_feats_to_test = config.get_param("max_tested_features")
@@ -70,7 +70,7 @@ def manager(
         all_features, max_feats_to_select, max_feats_to_test, it, config)
 
     if len(feats_sets_and_its_errors) == 0:
-        best_result = None
+        best_result = None, None, None
     else:
         best_result = petro5_hdf5.get_best_features_set(
             feats_sets_and_its_errors)
@@ -83,7 +83,7 @@ def manager(
     profiling.prof_fsel_manager_time(it, total_req_time + t5 - t4, t5 - t0,
                                      config)
 
-    return best_result, None, None
+    return best_result
 
 
 def _find_feats_set(
@@ -267,6 +267,13 @@ def worker(
 
     if (cur_h5, cur_h5_dset) == (None, None):
         comm.send(None, dest=manager_rank, tag=MPI_TAGS.WORKER_STOP_MSG.value)
+        status = MPI.Status()
+        # Recv new best feat it
+        _ = comm.recv(source=manager_rank, status=status)
+        # Recv done msg by manager
+        _ = comm.recv(source=manager_rank, status=status)
+        # Recv best features run
+        _ = comm.bcast(None, root=manager_rank)
         return None, None, None
 
     hypercube_shape: tuple = porosity_data_h5.shape
