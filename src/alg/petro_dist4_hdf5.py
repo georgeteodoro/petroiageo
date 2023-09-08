@@ -348,7 +348,7 @@ def _eval_feats_requested_by_manager(
             if results is None:
                 comm.send(results,
                           dest=manager_rank,
-                          status=MPI_TAGS.WORKER_STOP_MSG.value)
+                          tag=MPI_TAGS.WORKER_STOP_MSG.value)
             else:
                 comm.send(results, dest=manager_rank)
 
