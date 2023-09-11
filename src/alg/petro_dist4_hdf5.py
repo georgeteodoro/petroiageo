@@ -177,22 +177,20 @@ def _find_curr_best_feature(
         n_features = 1
 
         forced_stop = _worker_forced_stop(status)
-        if not forced_stop:
-            if _worker_sent_feat_eval(status):
-                for result in worker_results:
-                    cur_feature, rmse_error, mae_error = result
-                    print(f"[petro4_dist_hdf5][manager][it{it}] Tested "
-                          f"feature {curr_f_set_best_err + [cur_feature]} "
-                          f"with error {rmse_error}")
+        if not forced_stop and _worker_sent_feat_eval(status):
+            for result in worker_results:
+                cur_feature, rmse_error, mae_error = result
+                print(f"[petro4_dist_hdf5][manager][it{it}] Tested "
+                      f"feature {curr_f_set_best_err + [cur_feature]} "
+                      f"with error {rmse_error}")
 
-                    curr_feats_sets.append(
-                        (curr_f_set_best_err + [cur_feature], rmse_error,
-                         mae_error))
+                curr_feats_sets.append((curr_f_set_best_err + [cur_feature],
+                                        rmse_error, mae_error))
 
-                    # Update new best, if necessary
-                    if best_rmse_error > rmse_error:
-                        best_rmse_error = rmse_error
-                        new_best_feature = cur_feature
+                # Update new best, if necessary
+                if best_rmse_error > rmse_error:
+                    best_rmse_error = rmse_error
+                    new_best_feature = cur_feature
 
         # Check if should and there is work to be distributed
         if not forced_stop and len(remaining_features) > 0:
@@ -265,12 +263,19 @@ def worker(
         should_sample_max_points=True,
         generate_test_files=False)
 
+    # There are no training points at this it for some reason
     if (cur_h5, cur_h5_dset) == (None, None):
         comm.send(None, dest=manager_rank, tag=MPI_TAGS.WORKER_STOP_MSG.value)
         status = MPI.Status()
-        # Recv new best feat it
+        # Recv feat done
         _ = comm.recv(source=manager_rank, status=status)
-        # Recv done msg by manager
+        # Recv new best feat it
+        _ = comm.bcast(None, root=manager_rank)
+        # Send worker empty
+        comm.send(None,
+                  dest=manager_rank,
+                  tag=MPI_TAGS.WORKER_EMPTY_RESULT.value)
+        # Recv feat finish msg by manager
         _ = comm.recv(source=manager_rank, status=status)
         # Recv best features run
         _ = comm.bcast(None, root=manager_rank)
