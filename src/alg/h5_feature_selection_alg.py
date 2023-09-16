@@ -51,7 +51,7 @@ class H5FeatureSelectionAlg(AbstractFeatureSelectionAlg):
         base_features = [f for f in base_features if f != ".gitkeep"]
         if num_features != 0:
             base_features = base_features[:num_features]
-        window_size = self._config.get_param("window")
+        window_size = self._config.alg['window']
         mpi_size = self._config.get_param("mpi_size")
         mpi_rank = self._config.get_param("mpi_rank")
         mpi_manager_rank = self._config.get_param("mpi_manager_rank")

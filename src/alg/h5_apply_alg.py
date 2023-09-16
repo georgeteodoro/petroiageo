@@ -59,7 +59,7 @@ class H5ApplyAlg(AbstractApplyAlg):
 
         # Only one process per node is required to update
         if should_update:
-            window_size = self._config.get_param("window")
+            window_size = self._config.alg["window"]
             # Calculate remaining variables
             displacement_cube_shape = (
                 window_size * 2 + 1,
