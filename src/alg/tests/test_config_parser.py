@@ -371,6 +371,41 @@ class TestYAMLConfig(TestCase):
             with self.assertRaises(ValueError):
                 _ = config_parser.YAMLConfig(
                     config_str=yaml_str_fmt.format(invalid_value))
+    
+    def test_raise_on_invalid_window(self):
+        invalid_values = [100.3, 'ab', -2]
+        yaml_str_fmt = """
+        wells:
+          coords: [[1,1]]
+        alg:
+          window: {}
+        """
+        for invalid_value in invalid_values:
+            with self.assertRaises(ValueError):
+                _ = config_parser.YAMLConfig(
+                    config_str=yaml_str_fmt.format(invalid_value))
+    
+    def test_can_set_window(self):
+        window = 2
+        yaml_str_fmt = """
+        wells:
+          coords: [[1,1]]
+        alg:
+          window: {}
+        """
+        config = config_parser.YAMLConfig(
+                    config_str=yaml_str_fmt.format(window))
+        self.assertEqual(config.alg['window'], window)
+    
+    def test_can_get_base_window(self):
+        expected_base_window = 3
+        yaml_str_fmt = """
+        wells:
+          coords: [[1,1]]
+        """
+        config = config_parser.YAMLConfig(
+                    config_str=yaml_str_fmt)
+        self.assertEqual(config.alg['window'], expected_base_window)
 
     def test_raise_on_invalid_sampling_window_size(self):
         invalid_values = [3.2, "a"]

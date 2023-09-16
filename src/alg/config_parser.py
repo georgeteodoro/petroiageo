@@ -113,6 +113,7 @@ class ConfigTypeCaster:
             "validation_only_wells": list_func_applier_decorator(int),
             "test_only_wells": list_func_applier_decorator(int),
             "max_num_features": int,
+            "window": int,
             "max_exec_time": int,
             "generate_porosity_cube": cls._which_python_bool_value,
             "metrics_by_it": cls._which_python_bool_value,
@@ -339,9 +340,14 @@ class ConfigValidator:
 
         cls._raise_if_sampling_params_invalid(alg_configs["sampling"])
 
-        if alg_configs["max_num_features"] < 0:
+        if alg_configs["max_num_features"] <= 0:
             raise ValueError(
                 f"alg.max_num_features must be a positive integer! {alg_configs['max_num_features']} was given!"
+            )
+        
+        if alg_configs["window"] < 0:
+            raise ValueError(
+                f"alg.window must be a non negative integer! {alg_configs['window']} was given!"
             )
 
         SaveModelTypes.raise_if_invalid(alg_configs["save_models_on"])
@@ -514,6 +520,7 @@ class Config:
         base_config["parallel"] = self._base_parallel_config()
         base_config["feature_selection_type"] = FeatureSelection["FORWARD"]
         base_config["max_num_features"] = 1
+        base_config["window"] = 3
         base_config["max_exec_time"] = -1
         base_config["metrics_by_it"] = True
         base_config["save_models_on"] = "last"
