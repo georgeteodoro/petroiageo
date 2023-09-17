@@ -186,7 +186,7 @@ class H5ApplyAlg(AbstractApplyAlg):
                 pred = regressor.predict(X_test_np)
                 rmse = np.sqrt(np.mean((pred - y_test_np)**2))
                 rmse_list.append(rmse)
-                mae = mean_absolute_error(pred, y_test_np)
+                mae = mean_absolute_error(y_test_np, pred)
                 mae_list.append(mae)
 
             final_rmse = np.mean(rmse_list)

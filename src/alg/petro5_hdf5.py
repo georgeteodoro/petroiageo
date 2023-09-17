@@ -104,7 +104,7 @@ def _leave_one_well_out_training(
 
             pred = trained_regressor.predict(X_val)
             rmse = np.sqrt(np.mean((pred - y_val)**2))
-            mae = mean_absolute_error(pred, y_val)
+            mae = mean_absolute_error(y_val, pred)
             rmse_list.append(rmse)
             mae_list.append(mae)
 
@@ -121,7 +121,7 @@ def _leave_one_well_out_training(
 def _incremental_learning(
     cur_h5_train_list: hdf5_util.HDFMultiColList,
     profiling: bool,
-    curr_well_id: int,
+    val_well_id: int,
 ) -> Tuple[np.ndarray, np.ndarray, lgb.Booster]:
     """
     See discussion for incremental learning:
@@ -132,7 +132,7 @@ def _incremental_learning(
     # Since the same validation data is supposed to be used for
     # all incremental trainings and is small enough to fit in
     # memory
-    X_val, y_val = cur_h5_train_list.get_data_from_well(curr_well_id)
+    X_val, y_val = cur_h5_train_list.get_data_from_well(val_well_id)
 
     # When using its_window_size in the config, there will, probably,
     # be some iteration where there were no points sampled from some
@@ -151,8 +151,8 @@ def _incremental_learning(
         t1 = time()
 
         X_train, y_train = cur_h5_train_list.get_data_not_in_well(
-            chunk_idx, curr_well_id)
-        # We might be in a chunk full of data of well chunk_idx
+            chunk_idx, val_well_id)
+        # We might be in a chunk full of data of well val_well_id
         if len(X_train) > 0:
             lgb_train_dataset = lgb.Dataset(X_train, y_train)
 
@@ -179,17 +179,17 @@ def _incremental_learning(
 
             if profiling:
                 print(
-                    f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Setup in "
+                    f"[petro5_hdf5][eval_bootstrap][w{val_well_id}] Setup in "
                     f"{t2 - t1}")
                 print(
-                    f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Training in "
+                    f"[petro5_hdf5][eval_bootstrap][w{val_well_id}] Training in "
                     f"{t3 - t2}")
 
     if profiling:
-        print(f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Final setup in "
+        print(f"[petro5_hdf5][eval_bootstrap][w{val_well_id}] Final setup in "
               f"{setup_time}")
         print(
-            f"[petro5_hdf5][eval_bootstrap][w{curr_well_id}] Final training in "
+            f"[petro5_hdf5][eval_bootstrap][w{val_well_id}] Final training in "
             f"{training_time}")
 
     return X_val, y_val, regressor
@@ -336,8 +336,8 @@ def _prepare_h5(suf_str: str,
     cur_h5.create_dataset(TMP_DSET_NAME, (n_train_points, ),
                           dtype=cur_data_type,
                           chunks=train_chunkshape)
-    there_are_test_wells = True if len(test_only_wells) > 0 else False
-    if there_are_test_wells and generate_test_file:
+     
+    if len(test_only_wells) > 0 and generate_test_file:
         n_test_points = test_data_filter.filter_count_dset(porosity_data_h5)
         assert n_test_points > 0
         test_chunkshape = _get_chunk_shape(n_test_points, chunksize)
@@ -359,8 +359,7 @@ def _config_filters(test_wells_ids: list, train_data_filter: DataFilter,
     window filter to the test data, at some point, the real points would
     be outside the n size sampling range.
     """
-    there_are_test_wells = True if len(test_wells_ids) > 0 else False
-    if there_are_test_wells:
+    if len(test_wells_ids) > 0:
         train_data_filter.add_not_in_well_list_filter(test_wells_ids)
 
     # Get config parameters and configure sampling
