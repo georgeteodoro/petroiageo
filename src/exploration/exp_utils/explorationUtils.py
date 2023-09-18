@@ -930,6 +930,13 @@ class ExplorationCube:
 
         return self.wells.wells_in_point_at_it(cube_point.as_tuple(), it)
 
+    def its_until_point(self, point:tuple) -> int:
+        """
+        Returns the number of its until the current wells config
+        reach the target point. Returns float("inf") if the point is unreachable
+        """
+        return self._wells.its_until_point(point)
+
     def __eq__(self, other):
         if isinstance(other, ExplorationCube):
             my_values = [self.top_left, self.bottom_right, self.depth]
