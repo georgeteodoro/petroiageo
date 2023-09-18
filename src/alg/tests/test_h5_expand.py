@@ -109,8 +109,10 @@ class TestH5Expand(TestCase):
                             full_depth_chunks=True)
         
         # This is expected for 2 expansions
+        # and as we didnt propagated, we never marked
+        # any expanded points as propagated
         expected_exp_points_per_well = np.array(
-            [16*self.z_size, 13*self.z_size, 12*self.z_size])
+            [24*self.z_size, 22*self.z_size, 24*self.z_size])
 
         expanded_points = self.dset[self.dset['real'] == RealValues.expanded]
         _, exp_points_per_well = np.unique(expanded_points['well_id'],
