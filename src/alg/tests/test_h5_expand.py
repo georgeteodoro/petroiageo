@@ -83,6 +83,20 @@ class TestH5Expand(TestCase):
                                            return_counts=True)
         self.assertTrue(
             np.array_equal(exp_points_per_well, expected_n_points_per_well))
+    
+    def test_dont_expand_test_well(self):
+        expander = H5ExpandAlg(self.config_one_test_well)
+        expander._expand(porosity_data_h5=self.dset,
+                         it=1,
+                         wells_coords=self.config_one_test_well.train_wells_coords,
+                         full_depth_chunks=True)
+
+        expanded_points = self.dset[self.dset['real'] == RealValues.expanded]
+        wells_expanded = np.unique(expanded_points['well_id'])
+
+        test_well = self.config_one_test_well.alg["test_only_wells"][0]
+
+        self.assertNotIn(test_well, wells_expanded)
 
     def tearDown(self):
         #this order matters
