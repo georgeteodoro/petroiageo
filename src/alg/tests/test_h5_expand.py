@@ -121,6 +121,22 @@ class TestH5Expand(TestCase):
         print(exp_points_per_well)
         self.assertTrue(
             np.array_equal(exp_points_per_well, expected_exp_points_per_well))
+    
+    def test_can_expand_many_times_with_test_well(self):
+        expander = H5ExpandAlg(self.config_one_test_well)
+        
+        num_expansions = 2
+        for it in range(1, num_expansions+1):
+            expander._expand(porosity_data_h5=self.dset,
+                            it=it,
+                            wells_coords=self.config_one_test_well.train_wells_coords,
+                            full_depth_chunks=True)
+        
+        expanded_points = self.dset[self.dset['real'] == RealValues.expanded]
+        wells_expanded = np.unique(expanded_points['well_id'])
+        test_well = self.config_one_test_well.alg["test_only_wells"][0]
+
+        self.assertNotIn(test_well, wells_expanded)
 
     def tearDown(self):
         #this order matters
