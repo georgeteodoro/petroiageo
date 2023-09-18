@@ -10,3 +10,6 @@ test_data_filter:
 
 test_petro5_hdf5:
 	python3 -m unittest tests.test_petro5_hdf5
+
+test_h5_expand:
+	python3 -m unittest tests.test_h5_expand
