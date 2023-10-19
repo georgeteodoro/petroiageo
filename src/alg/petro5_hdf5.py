@@ -4,6 +4,7 @@ from typing import Tuple, Dict
 import h5py
 import os
 
+from scipy.stats import beta
 from sklearn.metrics import mean_absolute_error
 import lightgbm as lgb
 
@@ -15,6 +16,8 @@ from data_filter import FeatSelectionTrainDataFilter
 RANDOM_STATE = 1
 MAX_HDF5_CHUNK_SIZE = 4_294_967_296  #2 ** 32
 TMP_DSET_NAME = 'c'
+
+BETA_DIST_RING_START = 0
 
 params = {
     'max_bin': 128,
@@ -336,7 +339,7 @@ def _prepare_h5(suf_str: str,
     cur_h5.create_dataset(TMP_DSET_NAME, (n_train_points, ),
                           dtype=cur_data_type,
                           chunks=train_chunkshape)
-     
+
     if len(test_only_wells) > 0 and generate_test_file:
         n_test_points = test_data_filter.filter_count_dset(porosity_data_h5)
         assert n_test_points > 0
@@ -552,7 +555,8 @@ def create_tmp_dset(
                     n_points_to_sample_chunk = sampling_points_per_chunk[
                         chunk_id]
                     training_points = _sample_points_from_chunk(
-                        n_points_to_sample_chunk, rng, training_points)
+                        n_points_to_sample_chunk, rng, training_points, config,
+                        it)
 
                 train_empty_h5_dset, prev_end = append_points_to_dset(
                     features_only, train_empty_h5_dset, prev_end,
@@ -573,7 +577,8 @@ def create_tmp_dset(
 
 def _sample_points_from_chunk(n_points_to_sample_chunk: int,
                               rng: np.random.Generator,
-                              training_points: np.ndarray) -> np.ndarray:
+                              training_points: np.ndarray, config: Config,
+                              it: int) -> np.ndarray:
     """
     Sample n_points_to_sample_chunk points from training_points with the rng. 
     It sample points from every well in the chunk proportionally.
@@ -600,10 +605,20 @@ def _sample_points_from_chunk(n_points_to_sample_chunk: int,
         n_samp_points_well = n_samp_points_per_well[well_idx]
         well_points = training_points[training_points['well_id'] == well_id]
         assert np.all(well_points['well_id'] == well_id)
-        #This accepts probabilities
+
+        probs = beta.pdf(well_points['ring'],
+                         config.alg['sampling']['beta_dist']['alpha'],
+                         config.alg['sampling']['beta_dist']['beta'],
+                         loc=BETA_DIST_RING_START,
+                         scale=it)
+
+        # Scaling so it sums to 1
+        probs = probs / np.sum(probs)
+
         curr_sampled_points = rng.choice(well_points,
                                          n_samp_points_well,
-                                         replace=False)
+                                         replace=False,
+                                         p=probs)
 
         if sampled_training_points is None:
             sampled_training_points = curr_sampled_points
