@@ -601,6 +601,16 @@ def _sample_points_from_chunk(n_points_to_sample_chunk: int,
         n_samp_points_per_well[n_samp_points_per_well <= 0]) == 0, assert_msg
 
     sampled_training_points = None
+
+    # Iteration with the maximun probability
+    if config.alg['sampling']['its_window_size'] > 0:
+        beta_dist_start_it = max(
+            [BETA_DIST_RING_START, it - config.alg['sampling']['its_window_size']])
+    else:
+        beta_dist_start_it = BETA_DIST_RING_START
+
+    assert beta_dist_start_it >= 0
+
     for well_idx, well_id in enumerate(ordered_well_ids):
         n_samp_points_well = n_samp_points_per_well[well_idx]
         well_points = training_points[training_points['well_id'] == well_id]
@@ -609,7 +619,7 @@ def _sample_points_from_chunk(n_points_to_sample_chunk: int,
         probs = beta.pdf(well_points['ring'],
                          config.alg['sampling']['beta_dist']['alpha'],
                          config.alg['sampling']['beta_dist']['beta'],
-                         loc=BETA_DIST_RING_START,
+                         loc=beta_dist_start_it,
                          scale=it)
 
         # Scaling so it sums to 1
