@@ -70,7 +70,7 @@ alg:
 
   # Num of layers to predict at the prediction step. Must be a positive
   # integer. Default: 1
-  layers_to_predict: 1
+  layers_to_predict: 2
   
   # Max exec time in seconds. If negative there is no limit. Default: -1
   max_exec_time: 1000

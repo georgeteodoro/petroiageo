@@ -11,12 +11,25 @@ class TestH5Expand(TestCase):
 
     def setUp(self):
         # SetUp h5 dset
+        # The area setup with well coords is:
+        #                       y
+        #   . . . . . . . . . . 0
+        #   . . . . . . . . . . 1
+        #   . . . . 0 . . . . . 2
+        #   . . . . . . . . . . 3
+        #   . . . . . . . . . . 4
+        #   . . . . . . . . . . 5
+        #   . . . . . . . 1 . . 6
+        #   . . 2 . . . . . . . 7
+        #   . . . . . . . . . . 8
+        #   . . . . . . . . . . 9
+        # x 0 1 2 3 4 5 6 7 8 9
         self.tmp_file = tempfile.TemporaryFile()
         self.h5_file = h5py.File(self.tmp_file, 'a')
 
         self.cur_data_type = [('x', np.int64), ('y', np.int64),
                               ('z', np.int64), ('well_id', np.int64),
-                              ('real', np.int64)]
+                              ('real', np.int64), ('ring', np.int64)]
 
         x_size = 10
         y_size = 10
@@ -41,7 +54,9 @@ class TestH5Expand(TestCase):
                 elif i == 2 and j == 7:
                     well_id = 2
                 data[i, j]['well_id'] = np.array(well_id)
-                data[i, j]['real'] = RealValues.real if well_id != -1 else RealValues.empty
+                data[i, j][
+                    'real'] = RealValues.real if well_id != -1 else RealValues.empty
+                data[i, j]['ring'] = -1
 
         self.dset = self.h5_file.create_dataset("default",
                                                 dtype=self.cur_data_type,
@@ -69,6 +84,17 @@ class TestH5Expand(TestCase):
         """
         self.config_one_test_well = YAMLConfig(config_str=yaml_str)
 
+        yaml_str = """
+        wells:
+          coords:
+          - [4,2]
+          - [7,6]
+          - [2,7]
+        alg:
+          layers_to_predict: 2
+        """
+        self.config_n_layers_to_predict = YAMLConfig(config_str=yaml_str)
+
     def test_can_expand_all_train(self):
         expander = H5ExpandAlg(self.config_all_train)
         expander._expand(porosity_data_h5=self.dset,
@@ -83,13 +109,14 @@ class TestH5Expand(TestCase):
                                            return_counts=True)
         self.assertTrue(
             np.array_equal(exp_points_per_well, expected_n_points_per_well))
-    
+
     def test_dont_expand_test_well(self):
         expander = H5ExpandAlg(self.config_one_test_well)
-        expander._expand(porosity_data_h5=self.dset,
-                         it=1,
-                         wells_coords=self.config_one_test_well.train_wells_coords,
-                         full_depth_chunks=True)
+        expander._expand(
+            porosity_data_h5=self.dset,
+            it=1,
+            wells_coords=self.config_one_test_well.train_wells_coords,
+            full_depth_chunks=True)
 
         expanded_points = self.dset[self.dset['real'] == RealValues.expanded]
         wells_expanded = np.unique(expanded_points['well_id'])
@@ -97,51 +124,102 @@ class TestH5Expand(TestCase):
         test_well = self.config_one_test_well.alg["test_only_wells"][0]
 
         self.assertNotIn(test_well, wells_expanded)
-    
+
     def test_can_expand_many_times_without_test_well(self):
         expander = H5ExpandAlg(self.config_all_train)
-        
+
         num_expansions = 2
-        for it in range(1, num_expansions+1):
-            expander._expand(porosity_data_h5=self.dset,
-                            it=it,
-                            wells_coords=self.config_all_train.train_wells_coords,
-                            full_depth_chunks=True)
-        
+        for it in range(1, num_expansions + 1):
+            expander._expand(
+                porosity_data_h5=self.dset,
+                it=it,
+                wells_coords=self.config_all_train.train_wells_coords,
+                full_depth_chunks=True)
+
         # This is expected for 2 expansions
-        # and as we didnt propagated, we never marked
+        # and as we didnt propagate, we never marked
         # any expanded points as propagated
         expected_exp_points_per_well = np.array(
-            [24*self.z_size, 22*self.z_size, 24*self.z_size])
+            [24 * self.z_size, 22 * self.z_size, 24 * self.z_size])
 
         expanded_points = self.dset[self.dset['real'] == RealValues.expanded]
         _, exp_points_per_well = np.unique(expanded_points['well_id'],
                                            return_counts=True)
-        print(expected_exp_points_per_well)
-        print(exp_points_per_well)
         self.assertTrue(
             np.array_equal(exp_points_per_well, expected_exp_points_per_well))
-    
+
     def test_can_expand_many_times_with_test_well(self):
         expander = H5ExpandAlg(self.config_one_test_well)
-        
+
         num_expansions = 2
-        for it in range(1, num_expansions+1):
-            expander._expand(porosity_data_h5=self.dset,
-                            it=it,
-                            wells_coords=self.config_one_test_well.train_wells_coords,
-                            full_depth_chunks=True)
-        
+        for it in range(1, num_expansions + 1):
+            expander._expand(
+                porosity_data_h5=self.dset,
+                it=it,
+                wells_coords=self.config_one_test_well.train_wells_coords,
+                full_depth_chunks=True)
+
         expanded_points = self.dset[self.dset['real'] == RealValues.expanded]
         wells_expanded = np.unique(expanded_points['well_id'])
         test_well = self.config_one_test_well.alg["test_only_wells"][0]
 
         self.assertNotIn(test_well, wells_expanded)
+
+    def test_can_expand_n_times_one_call(self):
+        expander = H5ExpandAlg(self.config_n_layers_to_predict)
+
+        expander._expand(
+            porosity_data_h5=self.dset,
+            it=1,
+            wells_coords=self.config_n_layers_to_predict.train_wells_coords,
+            full_depth_chunks=True)
+
+        # This is expected for 2 expansions
+        # and as we didnt propagate, we never marked
+        # any expanded points as propagated
+        expected_exp_points_per_well = np.array(
+            [24 * self.z_size, 22 * self.z_size, 24 * self.z_size])
+
+        expanded_points = self.dset[self.dset['real'] == RealValues.expanded]
+        _, exp_points_per_well = np.unique(expanded_points['well_id'],
+                                           return_counts=True)
+        self.assertTrue(
+            np.array_equal(exp_points_per_well, expected_exp_points_per_well))
 
     def tearDown(self):
         #this order matters
         self.h5_file.close()
         self.tmp_file.close()
+
+
+class TestH5ExpandNoData(TestCase):
+
+    def test_can_get_rings_range(self):
+        yaml_str = """
+        wells:
+          coords:
+          - [4,2]
+          - [7,6]
+          - [2,7]
+        
+        alg:
+          layers_to_predict: {}
+        """
+        layers_to_predict = [1, 2, 5]
+        curr_it = [1, 3, 7]
+
+        expected_start_ring = [1, 5, 31]
+        expected_end_ring = [1, 6, 35]
+
+        for test_idx, (layer, it) in enumerate(zip(layers_to_predict,
+                                                   curr_it)):
+            config = YAMLConfig(config_str=yaml_str.format(layer))
+            expander = H5ExpandAlg(config)
+
+            ring_range = expander._get_ring_range_to_predict(it)
+            result_expected = (expected_start_ring[test_idx],
+                               expected_end_ring[test_idx])
+            self.assertTupleEqual(ring_range, result_expected)
 
 
 if __name__ == "__main__":

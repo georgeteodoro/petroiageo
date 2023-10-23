@@ -46,125 +46,142 @@ class H5ExpandAlg(AbstractExpandAlg):
 
     def _expand(self, porosity_data_h5: h5py.Dataset, it: int,
                 wells_coords: List[Tuple[int, int]], full_depth_chunks: bool):
-        ring = it
+        all_wells_coords = self._config.wells_as_simple_list
 
         print(f"[gen_expanded_points][it{it}] "\
                   f"Hypercube shape: {porosity_data_h5.shape}")
 
-        print(f"[gen_expanded_points][it{it}] "\
-                  f"Expanding points on ring {ring}")
-        # Generate a list of points to be expanded
+        # ring start at 1
+        start_ring, end_ring = self._get_ring_range_to_predict(it)
+
         total_chunk_update_time = 0
-        all_wells_coords = self._config.wells_as_simple_list
-        # TODO: add progress bar later
-        for well_coords in wells_coords:
-            well_id = all_wells_coords.index(well_coords)
-            well_x_left = well_coords[0] - ring
-            well_x_right = well_coords[0] + ring
-            well_y_top = well_coords[1] - ring
-            well_y_bot = well_coords[1] + ring
+        # Used only for profiling
+        n_chunk = -1
+        ran_chunks = 0
+        total_chunks = 0
 
-            # Conditions for points on each ring wall
-            left_wall_cond = (lambda d: (d['x'] == well_x_left)
-                              & (d['y'] <= well_y_bot)
-                              & (d['y'] >= well_y_top))
-            right_wall_cond = (lambda d: (d['x'] == well_x_right)
-                               & (d['y'] <= well_y_bot)
-                               & (d['y'] >= well_y_top))
-            top_wall_cond = (lambda d: (d['y'] == well_y_top)
-                             & (d['x'] <= well_x_right)
-                             & (d['x'] >= well_x_left))
-            bot_wall_cond = (lambda d: (d['y'] == well_y_bot)
-                             & (d['x'] <= well_x_right)
-                             & (d['x'] >= well_x_left))
+        # We expand ring by ring so we dont mark many points belonging
+        # to a well right away and influence the expansion of other
+        # wells
+        for ring in range(start_ring, end_ring + 1):
+            print(f"[gen_expanded_points][it{it}] "\
+                    f"Expanding points on ring {ring}")
 
-            # Used only for profiling
-            n_chunk = -1
-            ran_chunks = 0
-            total_chunks = 0
+            # Generate a list of points to be expanded
 
-            # Iterate on all chunks
-            for chunk_slice in porosity_data_h5.iter_chunks():
-                n_chunk += 1
-                total_chunks += 1
-                t2 = time()
+            # TODO: add progress bar later
+            for well_coords in wells_coords:
+                well_id = all_wells_coords.index(well_coords)
+                well_x_left = well_coords[0] - ring
+                well_x_right = well_coords[0] + ring
+                well_y_top = well_coords[1] - ring
+                well_y_bot = well_coords[1] + ring
 
-                # Calculate whether the current chunk has any points to
-                # update/expand
+                # Conditions for points on each ring wall
+                left_wall_cond = (lambda d: (d['x'] == well_x_left)
+                                  & (d['y'] <= well_y_bot)
+                                  & (d['y'] >= well_y_top))
+                right_wall_cond = (lambda d: (d['x'] == well_x_right)
+                                   & (d['y'] <= well_y_bot)
+                                   & (d['y'] >= well_y_top))
+                top_wall_cond = (lambda d: (d['y'] == well_y_top)
+                                 & (d['x'] <= well_x_right)
+                                 & (d['x'] >= well_x_left))
+                bot_wall_cond = (lambda d: (d['y'] == well_y_bot)
+                                 & (d['x'] <= well_x_right)
+                                 & (d['x'] >= well_x_left))
 
-                # Given the two rectangular regions: chunk and well,
-                # chunk have points to be updated whenever chunk
-                # and well overlaps.
+                # Iterate on all chunks
+                for chunk_slice in porosity_data_h5.iter_chunks():
+                    n_chunk += 1
+                    total_chunks += 1
+                    t2 = time()
 
-                chunk_x_left = chunk_slice[0].start
-                chunk_x_right = chunk_slice[0].stop - 1
-                chunk_y_top = chunk_slice[1].start
-                chunk_y_bot = chunk_slice[1].stop - 1
+                    # Calculate whether the current chunk has any points to
+                    # update/expand
 
-                # chunk is used as a base to compare
-                no_ovlp_x = (chunk_x_right < well_x_left) | (chunk_x_left
-                                                             > well_x_right)
-                no_ovlp_y = (chunk_y_bot < well_y_top) | (chunk_y_top
-                                                          > well_y_bot)
+                    # Given the two rectangular regions: chunk and well,
+                    # chunk have points to be updated whenever chunk
+                    # and well overlaps.
 
-                # full_depth_chunks: whether the chunks for
-                # porosity_data_h5 includes the full depth, i.e.,
-                # there are no 2 chunks which are stacked upon each other.
-                # This allows faster checking for well/chunk overlaps
-                if full_depth_chunks:
-                    # Ignore the current chunk if no overlapping is found
-                    if no_ovlp_x | no_ovlp_y:
-                        continue
-                else:
-                    print("[expand4_hdf5] Not using full_depth_chunks=True")
-                    raise NotImplementedError
+                    chunk_x_left = chunk_slice[0].start
+                    chunk_x_right = chunk_slice[0].stop - 1
+                    chunk_y_top = chunk_slice[1].start
+                    chunk_y_bot = chunk_slice[1].stop - 1
 
-                ran_chunks += 1  # Used only for profiling
+                    # chunk is used as a base to compare
+                    no_ovlp_x = (chunk_x_right
+                                 < well_x_left) | (chunk_x_left > well_x_right)
+                    no_ovlp_y = (chunk_y_bot < well_y_top) | (chunk_y_top
+                                                              > well_y_bot)
 
-                within_chunk_cond = (lambda d: (d['x'] >= chunk_x_left) &
-                                     (d['x'] <= chunk_x_right) &
-                                     (d['y'] >= chunk_y_top) &
-                                     (d['y'] <= chunk_y_bot))
+                    # full_depth_chunks: whether the chunks for
+                    # porosity_data_h5 includes the full depth, i.e.,
+                    # there are no 2 chunks which are stacked upon each other.
+                    # This allows faster checking for well/chunk overlaps
+                    if full_depth_chunks:
+                        # Ignore the current chunk if no overlapping is found
+                        if no_ovlp_x | no_ovlp_y:
+                            continue
+                    else:
+                        print(
+                            "[expand4_hdf5] Not using full_depth_chunks=True")
+                        raise NotImplementedError
 
-                # Update 'empty' values to 'expanded' if point is
-                # on any ring border and if they are present on
-                # this chunk
-                local_cond = lambda d: within_chunk_cond(d) & (
-                    left_wall_cond(d)
-                    | right_wall_cond(d)
-                    | top_wall_cond(d)
-                    | bot_wall_cond(d))
+                    ran_chunks += 1  # Used only for profiling
 
-                hdf5_util.conditional_map_h5_chunk(
-                    porosity_data_h5,
-                    lambda d:
-                    (d['real'] == common.RealValues.empty) & local_cond(d),
-                    [
-                        ('well_id', well_id),
-                        ('real', common.RealValues.expanded),
-                    ],
-                    chunk_slice,
-                )
+                    within_chunk_cond = (lambda d: (d['x'] >= chunk_x_left) &
+                                         (d['x'] <= chunk_x_right) &
+                                         (d['y'] >= chunk_y_top) &
+                                         (d['y'] <= chunk_y_bot))
 
-                hdf5_util.conditional_map_h5_chunk(
-                    porosity_data_h5,
-                    lambda d: (d['real'] == common.RealValues.canal)
-                    & local_cond(d),
-                    [
-                        ('well_id', well_id),
-                        ('real', common.RealValues.expanded),
-                    ],
-                    chunk_slice,
-                )
+                    # Update 'empty' values to 'expanded' if point is
+                    # on any ring border and if they are present on
+                    # this chunk
+                    local_cond = lambda d: within_chunk_cond(d) & (
+                        left_wall_cond(d)
+                        | right_wall_cond(d)
+                        | top_wall_cond(d)
+                        | bot_wall_cond(d))
 
-                t3 = time()
-                total_chunk_update_time += t3 - t2
-                profiling.prof_expand_chunk_time(it, well_id, n_chunk, t3 - t2)
+                    hdf5_util.conditional_map_h5_chunk(
+                        porosity_data_h5,
+                        lambda d:
+                        (d['real'] == common.RealValues.empty) & local_cond(d),
+                        [('well_id', well_id),
+                         ('real', common.RealValues.expanded), ('ring', ring)],
+                        chunk_slice,
+                    )
+
+                    hdf5_util.conditional_map_h5_chunk(
+                        porosity_data_h5,
+                        lambda d: (d['real'] == common.RealValues.canal)
+                        & local_cond(d),
+                        [('well_id', well_id),
+                         ('real', common.RealValues.expanded), ('ring', ring)],
+                        chunk_slice,
+                    )
+
+                    t3 = time()
+                    total_chunk_update_time += t3 - t2
+                    profiling.prof_expand_chunk_time(it, well_id, n_chunk,
+                                                     t3 - t2)
 
         profiling.prof_expand_chunks_time(it, total_chunk_update_time,
                                           self._config)
+
         profiling.prof_expand_chunks_ran(it, ran_chunks, total_chunks,
                                          self._config)
+
+    def _get_ring_range_to_predict(self, it: int) -> Tuple[int, int]:
+        """"
+        Returns the exact ring range [start, end] to expand/predict based on
+        the current it and the num of layers we must
+        expand/predict on each iteration
+        """
+        start_ring = ((it - 1) * self._config.alg['layers_to_predict']) + 1
+        end_ring = start_ring + self._config.alg['layers_to_predict'] - 1
+        return start_ring, end_ring
 
     def expand_points_improved_locality(self, porosity_data_h5: h5py.Dataset,
                                         it: int):
