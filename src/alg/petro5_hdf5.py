@@ -89,10 +89,10 @@ def _leave_one_well_out_training(
             cur_h5_train_list, profiling, curr_well_id)
 
         # This happens when there are no points associated
-        # with well_id in the last its_window_size iterations
+        # with well_id in the last layers_window_size iterations
         #  as said in _incremental_learning. So we just ignore
         if X_val is not None:
-            # This happens when all points in the last its_window_size
+            # This happens when all points in the last layers_window_size
             # iterations are associated with only one well.
             # As X_val is not None, that well is the validation well
             # at this it of LOWO and there were no remaining training points
@@ -137,9 +137,9 @@ def _incremental_learning(
     # memory
     X_val, y_val = cur_h5_train_list.get_data_from_well(val_well_id)
 
-    # When using its_window_size in the config, there will, probably,
+    # When using layers_window_size in the config, there will, probably,
     # be some iteration where there were no points sampled from some
-    # well because it stopped having new points propagated its_window_size
+    # well because it stopped having new points propagated layers_window_size
     # iterations ago. For example, when a well is totally
     # surrounded by other wells. So we ignore this validation
     if len(X_val) == 0 | len(y_val) == 0:
@@ -464,7 +464,7 @@ def create_tmp_dset(
 
     train_data_filter = _config_filters(
         test_wells_ids, train_data_filter, it,
-        config.alg['sampling']['its_window_size'])
+        config.alg['sampling']['layers_window_size'])
 
     t0 = time()
     (train_h5_file, test_h5_file, samp_max_points) = _prepare_h5(
@@ -602,10 +602,14 @@ def _sample_points_from_chunk(n_points_to_sample_chunk: int,
 
     sampled_training_points = None
 
+    curr_starting_layer, _ = config.ring_range_to_expand(it)
+
     # Iteration with the maximun probability
-    if config.alg['sampling']['its_window_size'] > 0:
-        beta_dist_start_it = max(
-            [BETA_DIST_RING_START, it - config.alg['sampling']['its_window_size']])
+    if config.alg['sampling']['layers_window_size'] > 0:
+        beta_dist_start_it = max([
+            BETA_DIST_RING_START,
+            curr_starting_layer - config.alg['sampling']['layers_window_size']
+        ])
     else:
         beta_dist_start_it = BETA_DIST_RING_START
 
@@ -620,11 +624,10 @@ def _sample_points_from_chunk(n_points_to_sample_chunk: int,
                          config.alg['sampling']['beta_dist']['alpha'],
                          config.alg['sampling']['beta_dist']['beta'],
                          loc=beta_dist_start_it,
-                         scale=it)
+                         scale=curr_starting_layer)
 
         # Scaling so it sums to 1
         probs = probs / np.sum(probs)
-
         curr_sampled_points = rng.choice(well_points,
                                          n_samp_points_well,
                                          replace=False,

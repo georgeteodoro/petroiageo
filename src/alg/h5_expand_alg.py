@@ -52,7 +52,7 @@ class H5ExpandAlg(AbstractExpandAlg):
                   f"Hypercube shape: {porosity_data_h5.shape}")
 
         # ring start at 1
-        start_ring, end_ring = self._get_ring_range_to_predict(it)
+        start_ring, end_ring = self._config.ring_range_to_expand(it)
 
         total_chunk_update_time = 0
         # Used only for profiling
@@ -172,16 +172,6 @@ class H5ExpandAlg(AbstractExpandAlg):
 
         profiling.prof_expand_chunks_ran(it, ran_chunks, total_chunks,
                                          self._config)
-
-    def _get_ring_range_to_predict(self, it: int) -> Tuple[int, int]:
-        """"
-        Returns the exact ring range [start, end] to expand/predict based on
-        the current it and the num of layers we must
-        expand/predict on each iteration
-        """
-        start_ring = ((it - 1) * self._config.alg['layers_to_predict']) + 1
-        end_ring = start_ring + self._config.alg['layers_to_predict'] - 1
-        return start_ring, end_ring
 
     def expand_points_improved_locality(self, porosity_data_h5: h5py.Dataset,
                                         it: int):

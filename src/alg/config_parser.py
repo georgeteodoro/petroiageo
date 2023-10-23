@@ -147,7 +147,7 @@ class ConfigTypeCaster:
         treated_sampling_config.update(sampling_configs)
 
         key_func_to_apply_dict = {
-            "its_window_size": int,
+            "layers_window_size": int,
             "max_points": int,
             "seed": int
         }
@@ -345,12 +345,12 @@ class ConfigValidator:
             raise ValueError(
                 f"alg.max_num_features must be a positive integer! {alg_configs['max_num_features']} was given!"
             )
-        
+
         if alg_configs["window"] < 0:
             raise ValueError(
                 f"alg.window must be a non negative integer! {alg_configs['window']} was given!"
             )
-        
+
         if alg_configs["layers_to_predict"] < 1:
             raise ValueError(
                 f"alg.layers_to_predict must be a positive integer! {alg_configs['layers_to_predict']} was given!"
@@ -535,7 +535,7 @@ class Config:
 
     def _base_sampling_config(self) -> dict:
         base_config = dict()
-        base_config["its_window_size"] = -1
+        base_config["layers_window_size"] = -1
         base_config["max_points"] = -1
         base_config["seed"] = 42
         base_config["beta_dist"] = self._base_penalty_sampling_func_config()
@@ -584,6 +584,16 @@ class Config:
         Returns None if the param is not found
         """
         return self.config.get(param_name, None)
+
+    def ring_range_to_expand(self, it: int) -> Tuple[int, int]:
+        """"
+        Returns the exact ring range [start, end] to expand/predict based on
+        the it and the num of layers we must expand/predict on each iteration
+        """
+        start_ring = (
+            (it - 1) * self.get_param('alg')['layers_to_predict']) + 1
+        end_ring = start_ring + self.get_param('alg')['layers_to_predict'] - 1
+        return start_ring, end_ring
 
     @property
     def wells(self):

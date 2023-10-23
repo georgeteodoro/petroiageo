@@ -59,4 +59,5 @@ class H5PorosityDataLoader(AbstractPorosityDataLoader):
         return compatible
 
     def __del__(self):
-        self._porosity_cube_file.close()
+        if self._porosity_cube_file is not None:
+            self._porosity_cube_file.close()

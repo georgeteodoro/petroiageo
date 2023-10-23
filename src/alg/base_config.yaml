@@ -40,9 +40,9 @@ alg:
   test_only_wells: [5]
 
   sampling: # Sampling strategy stuff
-    # Num of iterations as window size. If negative, use max num of 
-    # iterations possible. Default: -1
-    its_window_size: 4
+    # Num of layers as window size. If negative, use max num of 
+    # layers possible. Default: -1
+    layers_window_size: -1
     # Max num of points for the sampling. If negative, use all data 
     # available. Default: -1
     max_points: 10000

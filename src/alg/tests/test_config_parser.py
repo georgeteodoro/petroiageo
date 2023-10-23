@@ -406,6 +406,16 @@ class TestYAMLConfig(TestCase):
         config = config_parser.YAMLConfig(config_str=yaml_str_fmt)
         self.assertEqual(config.alg['window'], expected_base_window)
 
+    def test_can_get_base_layer_w_size(self):
+        expected_layer_w_size = -1
+        yaml_str_fmt = """
+        wells:
+          coords: [[1,1]]
+        """
+        config = config_parser.YAMLConfig(config_str=yaml_str_fmt)
+        self.assertEqual(config.alg['sampling']['layers_window_size'],
+                         expected_layer_w_size)
+
     def test_raise_on_invalid_sampling_window_size(self):
         invalid_values = [3.2, "a"]
         yaml_str_fmt = """
@@ -414,7 +424,7 @@ class TestYAMLConfig(TestCase):
         
         alg:
           sampling:
-            its_window_size: {}
+            layers_window_size: {}
         """
         for invalid_value in invalid_values:
             with self.assertRaises(ValueError):
@@ -613,6 +623,33 @@ class TestYAMLConfig(TestCase):
             with self.assertRaises(ValueError):
                 _ = config_parser.YAMLConfig(
                     config_str=yaml_str.format(invalid_param))
+
+    def test_can_get_rings_range(self):
+        yaml_str = """
+        wells:
+          coords:
+          - [4,2]
+          - [7,6]
+          - [2,7]
+        
+        alg:
+          layers_to_predict: {}
+        """
+        layers_to_predict = [1, 2, 5]
+        curr_it = [1, 3, 7]
+
+        expected_start_ring = [1, 5, 31]
+        expected_end_ring = [1, 6, 35]
+
+        for test_idx, (layer, it) in enumerate(zip(layers_to_predict,
+                                                   curr_it)):
+            config = config_parser.YAMLConfig(
+                config_str=yaml_str.format(layer))
+            ring_range = config.ring_range_to_expand(it)
+            result_expected = (expected_start_ring[test_idx],
+                               expected_end_ring[test_idx])
+            self.assertTupleEqual(ring_range, result_expected)
+
 
 if __name__ == "__main__":
     main()

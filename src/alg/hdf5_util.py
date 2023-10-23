@@ -107,7 +107,7 @@ class HDFMultiColList:
         self.n_chunks = int(np.ceil(cur_h5_dset.size / self.chunk_size))
 
         # if sampling_config is not None:
-        #     self.sampling_window = sampling_config['its_window_size']
+        #     self.sampling_window = sampling_config['layers_window_size']
         #     self.sampling_max_points = sampling_config['max_points']
         # else:
         #     self.sampling_window = None

@@ -79,7 +79,7 @@ alg:
   sampling: # Sampling strategy stuff
     # Num of iterations as window size. If negative, use max num of 
     # iterations possible. Default: -1
-    its_window_size: 0
+    layers_window_size: 0
     # Max num of points for the sampling. If negative, use all data available. 
     # Default: -1
     max_points: 0
