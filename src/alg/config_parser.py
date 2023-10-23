@@ -114,6 +114,7 @@ class ConfigTypeCaster:
             "test_only_wells": list_func_applier_decorator(int),
             "max_num_features": int,
             "window": int,
+            "layers_to_predict": int,
             "max_exec_time": int,
             "generate_porosity_cube": cls._which_python_bool_value,
             "metrics_by_it": cls._which_python_bool_value,
@@ -349,6 +350,11 @@ class ConfigValidator:
             raise ValueError(
                 f"alg.window must be a non negative integer! {alg_configs['window']} was given!"
             )
+        
+        if alg_configs["layers_to_predict"] < 1:
+            raise ValueError(
+                f"alg.layers_to_predict must be a positive integer! {alg_configs['layers_to_predict']} was given!"
+            )
 
         SaveModelTypes.raise_if_invalid(alg_configs["save_models_on"])
 
@@ -521,6 +527,7 @@ class Config:
         base_config["feature_selection_type"] = FeatureSelection["FORWARD"]
         base_config["max_num_features"] = 1
         base_config["window"] = 3
+        base_config["layers_to_predict"] = 1
         base_config["max_exec_time"] = -1
         base_config["metrics_by_it"] = True
         base_config["save_models_on"] = "last"

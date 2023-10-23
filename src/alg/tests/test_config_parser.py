@@ -371,7 +371,7 @@ class TestYAMLConfig(TestCase):
             with self.assertRaises(ValueError):
                 _ = config_parser.YAMLConfig(
                     config_str=yaml_str_fmt.format(invalid_value))
-    
+
     def test_raise_on_invalid_window(self):
         invalid_values = [100.3, 'ab', -2]
         yaml_str_fmt = """
@@ -384,7 +384,7 @@ class TestYAMLConfig(TestCase):
             with self.assertRaises(ValueError):
                 _ = config_parser.YAMLConfig(
                     config_str=yaml_str_fmt.format(invalid_value))
-    
+
     def test_can_set_window(self):
         window = 2
         yaml_str_fmt = """
@@ -394,17 +394,16 @@ class TestYAMLConfig(TestCase):
           window: {}
         """
         config = config_parser.YAMLConfig(
-                    config_str=yaml_str_fmt.format(window))
+            config_str=yaml_str_fmt.format(window))
         self.assertEqual(config.alg['window'], window)
-    
+
     def test_can_get_base_window(self):
         expected_base_window = 3
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
         """
-        config = config_parser.YAMLConfig(
-                    config_str=yaml_str_fmt)
+        config = config_parser.YAMLConfig(config_str=yaml_str_fmt)
         self.assertEqual(config.alg['window'], expected_base_window)
 
     def test_raise_on_invalid_sampling_window_size(self):
@@ -578,6 +577,42 @@ class TestYAMLConfig(TestCase):
                 _ = config_parser.YAMLConfig(
                     config_str=yaml_str.format(invalid_param))
 
+    def test_can_get_base_layers_to_predict(self):
+        yaml_str = """
+        wells:
+          coords: [[1,1],[2,2]]
+        """
+        my_config = config_parser.YAMLConfig(config_str=yaml_str)
+        expected_layers_to_predict = 1
+        self.assertEqual(my_config.alg['layers_to_predict'],
+                         expected_layers_to_predict)
+
+    def test_can_set_layers_to_predict(self):
+        yaml_str = """
+        wells:
+          coords: [[1,1],[2,2]]
+        alg:
+          layers_to_predict: {}
+        """
+        expected_layers_to_predict = 2
+        my_config = config_parser.YAMLConfig(
+            config_str=yaml_str.format(expected_layers_to_predict))
+        self.assertEqual(my_config.alg['layers_to_predict'],
+                         expected_layers_to_predict)
+
+    def test_raise_invalid_layers_to_predict(self):
+        invalid_params = [0, 'a', 1.3, 0.5]
+        yaml_str = """
+        wells:
+          coords: [[1,1],[2,2]]
+        
+        alg:
+          layers_to_predict: {}
+        """
+        for invalid_param in invalid_params:
+            with self.assertRaises(ValueError):
+                _ = config_parser.YAMLConfig(
+                    config_str=yaml_str.format(invalid_param))
 
 if __name__ == "__main__":
     main()
