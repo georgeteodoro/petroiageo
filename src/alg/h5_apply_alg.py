@@ -175,18 +175,18 @@ class H5ApplyAlg(AbstractApplyAlg):
         final_rmse = float("inf")
         final_mae = float("inf")
         if test_list is not None:
-            rmse_list = list()
+            squared_errors = np.array([])
             mae_list = list()
             for c in range(test_list.n_chunks):
                 # Generate a test dataset for all data on chunk c
                 X_test_np, y_test_np = test_list.get_data_not_in_well(c)
                 pred = regressor.predict(X_test_np)
-                rmse = np.sqrt(np.mean((pred - y_test_np)**2))
-                rmse_list.append(rmse)
+                squared_errors = np.concatenate(
+                    [squared_errors, (pred - y_test_np)**2])
                 mae = mean_absolute_error(y_test_np, pred)
                 mae_list.append(mae)
 
-            final_rmse = np.mean(rmse_list)
+            final_rmse = np.sqrt(np.mean(squared_errors))
             final_mae = np.mean(mae_list)
 
         return final_rmse, final_mae
