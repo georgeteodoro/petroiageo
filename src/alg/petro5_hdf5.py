@@ -4,7 +4,7 @@ from typing import Tuple, Dict
 import h5py
 import os
 
-from scipy.stats import beta
+from scipy import stats
 from sklearn.metrics import mean_absolute_error
 import lightgbm as lgb
 
@@ -271,11 +271,11 @@ def insert_filtered_feature(
 
 def _add_sampling_window_to_filters(sampling_window: int,
                                     train_data_filter: DataFilter,
-                                    it) -> DataFilter:
+                                    curr_layer) -> DataFilter:
     """
     Updates the train filter based on sampling_window
     """
-    min_ring = max(0, it - sampling_window)
+    min_ring = max(0, curr_layer - sampling_window)
 
     train_data_filter.add_min_ring_filter(min_ring)
 
@@ -353,7 +353,7 @@ def _prepare_h5(suf_str: str,
 
 
 def _config_filters(test_wells_ids: list, train_data_filter: DataFilter,
-                    it: int,
+                    curr_layer: int,
                     sampling_window: int) -> Tuple[DataFilter, DataFilter]:
     """
     Updates the train data filter based on the presence of testing wells
@@ -368,7 +368,7 @@ def _config_filters(test_wells_ids: list, train_data_filter: DataFilter,
     # Get config parameters and configure sampling
     if sampling_window > 0:
         train_data_filter = _add_sampling_window_to_filters(
-            sampling_window, train_data_filter, it)
+            sampling_window, train_data_filter, curr_layer)
 
     return train_data_filter
 
@@ -463,7 +463,8 @@ def create_tmp_dset(
     test_data_filter = WellsDataFilter(test_wells_ids)
 
     train_data_filter = _config_filters(
-        test_wells_ids, train_data_filter, it,
+        test_wells_ids, train_data_filter,
+        config.ring_range_to_expand(it)[0],
         config.alg['sampling']['layers_window_size'])
 
     t0 = time()
@@ -523,6 +524,10 @@ def create_tmp_dset(
     rng = np.random.default_rng(seed=config.alg['sampling']['seed'])
 
     n_test_only_wells = len(test_wells_ids)
+    curr_starting_layer = config.ring_range_to_expand(it)[0]
+    layers_window_size = config.alg['sampling']['layers_window_size']
+    alpha = config.alg['sampling']['beta_dist']['alpha']
+    beta = config.alg['sampling']['beta_dist']['beta']
     #Go through each chunk again. Adds all test points for sure.
     for chunk_id, chunk_slice in enumerate(porosity_data_h5.iter_chunks()):
         #only reads data if necessary
@@ -555,8 +560,8 @@ def create_tmp_dset(
                     n_points_to_sample_chunk = sampling_points_per_chunk[
                         chunk_id]
                     training_points = _sample_points_from_chunk(
-                        n_points_to_sample_chunk, rng, training_points, config,
-                        it)
+                        n_points_to_sample_chunk, rng, training_points,
+                        curr_starting_layer, alpha, beta, layers_window_size)
 
                 train_empty_h5_dset, prev_end = append_points_to_dset(
                     features_only, train_empty_h5_dset, prev_end,
@@ -577,8 +582,11 @@ def create_tmp_dset(
 
 def _sample_points_from_chunk(n_points_to_sample_chunk: int,
                               rng: np.random.Generator,
-                              training_points: np.ndarray, config: Config,
-                              it: int) -> np.ndarray:
+                              training_points: np.ndarray,
+                              curr_starting_layer: int,
+                              alpha: int = 1,
+                              beta: int = 1,
+                              layers_window_size: int = -1) -> np.ndarray:
     """
     Sample n_points_to_sample_chunk points from training_points with the rng. 
     It sample points from every well in the chunk proportionally.
@@ -602,14 +610,10 @@ def _sample_points_from_chunk(n_points_to_sample_chunk: int,
 
     sampled_training_points = None
 
-    curr_starting_layer, _ = config.ring_range_to_expand(it)
-
     # Iteration with the maximun probability
-    if config.alg['sampling']['layers_window_size'] > 0:
-        beta_dist_start_it = max([
-            BETA_DIST_RING_START,
-            curr_starting_layer - config.alg['sampling']['layers_window_size']
-        ])
+    if layers_window_size > 0:
+        beta_dist_start_it = max(
+            [BETA_DIST_RING_START, curr_starting_layer - layers_window_size])
     else:
         beta_dist_start_it = BETA_DIST_RING_START
 
@@ -620,11 +624,11 @@ def _sample_points_from_chunk(n_points_to_sample_chunk: int,
         well_points = training_points[training_points['well_id'] == well_id]
         assert np.all(well_points['well_id'] == well_id)
 
-        probs = beta.pdf(well_points['ring'],
-                         config.alg['sampling']['beta_dist']['alpha'],
-                         config.alg['sampling']['beta_dist']['beta'],
-                         loc=beta_dist_start_it,
-                         scale=curr_starting_layer)
+        probs = stats.beta.pdf(well_points['ring'],
+                               alpha,
+                               beta,
+                               loc=beta_dist_start_it,
+                               scale=curr_starting_layer)
 
         # Scaling so it sums to 1
         probs = probs / np.sum(probs)
@@ -734,7 +738,7 @@ def append_points_to_dset(features_only: bool, target_dset: h5py.Dataset,
                           prev_end: int,
                           points: np.ndarray) -> Tuple[h5py.Dataset, int]:
     """
-    Append points to the  target_dset. 
+    Append points to the target_dset. 
     Return the target_dset and the new prev_end
     """
     n_points = len(points)

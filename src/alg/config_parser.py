@@ -586,9 +586,13 @@ class Config:
         return self.config.get(param_name, None)
 
     def ring_range_to_expand(self, it: int) -> Tuple[int, int]:
-        """"
+        """
         Returns the exact ring range [start, end] to expand/predict based on
-        the it and the num of layers we must expand/predict on each iteration
+        the it and the num of layers we must expand/predict on each iteration.
+        Example:
+        it: 3
+        layers_to_predict: 3
+        return (7, 9)
         """
         start_ring = (
             (it - 1) * self.get_param('alg')['layers_to_predict']) + 1

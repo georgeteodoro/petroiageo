@@ -21,7 +21,8 @@ class TestSamplingWithData(TestCase):
 
         self.cur_data_type = [('x', np.int64), ('y', np.int64),
                               ('z', np.int64), ('phi', np.float64),
-                              ('well_id', np.int64), ('real', np.int64)]
+                              ('well_id', np.int64), ('real', np.int64),
+                              ('ring', np.int64)]
 
         x_size = 100
         y_size = 100
@@ -29,28 +30,35 @@ class TestSamplingWithData(TestCase):
         phi_size = 20
         well_id_size = 10
         real_size = 1
+        ring_size = 1
         self.cur_data_type = np.dtype(self.cur_data_type)
-        data = np.empty(
-            (x_size, y_size, z_size, phi_size, well_id_size, real_size),
-            dtype=self.cur_data_type)
+        data = np.empty((x_size, y_size, z_size, phi_size, well_id_size,
+                         real_size, ring_size),
+                        dtype=self.cur_data_type)
 
         for i in range(x_size):
             for j in range(y_size):
                 data[i, j]['x'] = i
                 data[i, j]['y'] = j
-                data[i, j]['z'] = np.arange(10)[:, np.newaxis]
-                data[i, j]['phi'] = np.random.rand(z_size, phi_size,
-                                                   well_id_size, real_size)
+                data[i, j]['z'] = np.arange(10)[:, np.newaxis, np.newaxis]
+                data[i,
+                     j]['phi'] = np.random.rand(z_size, phi_size, well_id_size,
+                                                real_size, ring_size)
                 #The cube has x ranges associated with a well
                 #example: if x in [0, 10], well = 0,
                 #example: if x in [40, 50], well = 4
-                data[i, j]['well_id'] = np.array([i // 10] * 10)[:, np.newaxis]
+                data[i, j]['well_id'] = np.array([i // 10] * 10)[:, np.newaxis,
+                                                                 np.newaxis]
                 data[i, j]['real'] = RealValues.real
+                data[i, j]['ring'] = 1
 
         self.dset = self.h5_file.create_dataset("default",
                                                 dtype=self.cur_data_type,
                                                 data=data,
-                                                chunks=(10, 10, 10, 20, 10, 1))
+                                                chunks=(10, 10, 10, 20, 10, 1,
+                                                        1))
+
+        self.append_target_cols = ['x', 'y', 'z', 'phi','well_id']
 
     def test_can_get_correct_n_chunks(self):
         expected_n_chunks = 200
@@ -62,7 +70,9 @@ class TestSamplingWithData(TestCase):
         data = self.dset[chunk_slice]
         n_points_to_sample_chunk = 10
         rng = np.random.default_rng()
-        sample = _sample_points_from_chunk(n_points_to_sample_chunk, rng, data)
+        curr_starting_layer = 1
+        sample = _sample_points_from_chunk(n_points_to_sample_chunk, rng, data,
+                                           curr_starting_layer)
 
         self.assertTrue(n_points_to_sample_chunk, len(sample))
 
@@ -100,15 +110,17 @@ class TestSamplingWithData(TestCase):
         points_to_append = self.dset[:n_points_to_append]
         empty_dset = self.h5_file.create_dataset("empty",
                                                  shape=(10, 100, 20, 20,
-                                                        n_points_to_append, 1),
+                                                        n_points_to_append, 1,
+                                                        1),
                                                  dtype=self.cur_data_type)
         features_only = False
         prev_end = 0
-        empty_dset, new_prev = append_points_to_dset(features_only, empty_dset,
-                                                     prev_end,
-                                                     points_to_append)
+        empty_dset, _ = append_points_to_dset(features_only, empty_dset,
+                                              prev_end, points_to_append)
 
-        self.assertTrue(np.array_equal(points_to_append, empty_dset[:]))
+        self.assertTrue(
+            np.array_equal(points_to_append[:][self.append_target_cols],
+                           empty_dset[:][self.append_target_cols]))
 
     def test_append_points_to_not_empty_dset(self):
         n_starting_points = 20
@@ -116,7 +128,8 @@ class TestSamplingWithData(TestCase):
         n_points_to_append = 10
         not_empty_dset = self.h5_file.create_dataset(
             "not_empty",
-            shape=(n_starting_points + n_points_to_append, 100, 20, 20, 10, 1),
+            shape=(n_starting_points + n_points_to_append, 100, 20, 20, 10, 1,
+                   1),
             dtype=self.cur_data_type)
 
         features_only = False
@@ -131,7 +144,10 @@ class TestSamplingWithData(TestCase):
 
         expected_points = self.dset[:n_starting_points + n_points_to_append]
         expected_new_prev = n_starting_points + n_points_to_append
-        self.assertTrue(np.array_equal(expected_points, not_empty_dset[:]))
+
+        self.assertTrue(
+            np.array_equal(expected_points[:][self.append_target_cols],
+                           not_empty_dset[:][self.append_target_cols]))
         self.assertEqual(curr_prev_end, expected_new_prev)
 
     def tearDown(self):
