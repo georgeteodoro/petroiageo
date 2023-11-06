@@ -649,6 +649,42 @@ class TestYAMLConfig(TestCase):
             result_expected = (expected_start_ring[test_idx],
                                expected_end_ring[test_idx])
             self.assertTupleEqual(ring_range, result_expected)
+    
+    def test_can_get_base_use_base_model(self):
+        yaml_str = """
+        wells:
+          coords: [[1,1], [2,2]]
+        """
+        my_config = config_parser.YAMLConfig(config_str=yaml_str)
+        expected_use_base_model = False
+        self.assertEqual(expected_use_base_model, 
+                         my_config.alg['use_base_model'])
+    
+    def test_can_set_use_base_model(self):
+        yaml_str = """
+        wells:
+          coords: [[1,1], [2,2]]
+        alg:
+          use_base_model: {}
+        """
+        expected_value = True
+        my_config = config_parser.YAMLConfig(
+            config_str=yaml_str.format(expected_value))
+        self.assertEqual(expected_value, 
+                         my_config.alg['use_base_model'])
+    
+    def test_raise_on_invalid_base_use_base_model(self):
+        invalid_params = [0, 'a', 1.3, 0.5]
+        yaml_str = """
+        wells:
+          coords: [[1,1], [2,2]]
+        alg:
+          use_base_model: {}
+        """
+        for param in invalid_params:
+          with self.assertRaises(ValueError):
+            _ = config_parser.YAMLConfig(
+                config_str=yaml_str.format(param))
 
 
 if __name__ == "__main__":
