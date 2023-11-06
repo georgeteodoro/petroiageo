@@ -685,7 +685,29 @@ class TestYAMLConfig(TestCase):
           with self.assertRaises(ValueError):
             _ = config_parser.YAMLConfig(
                 config_str=yaml_str.format(param))
-
+    
+    def test_can_get_base_model_path(self):
+        yaml_str = """
+        wells:
+          coords: [[1,1], [2,2]]
+        """
+        my_config = config_parser.YAMLConfig(config_str=yaml_str)
+        expected_base_model_path = ""
+        self.assertEqual(expected_base_model_path, 
+                         my_config.alg['base_model_path'])
+    
+    def test_can_set_base_model_path(self):
+        yaml_str = """
+        wells:
+          coords: [[1,1], [2,2]]
+        alg:
+          base_model_path: {}
+        """
+        expected_value = "my_path/model_path.model"
+        my_config = config_parser.YAMLConfig(
+            config_str=yaml_str.format(expected_value))
+        self.assertEqual(expected_value, 
+                         my_config.alg['base_model_path'])
 
 if __name__ == "__main__":
     main()
