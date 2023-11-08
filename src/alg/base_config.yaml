@@ -89,11 +89,3 @@ alg:
   # a list [1,2,3,...] indicating the iterations.
   # Default: 'last'
   save_models_on: "last"
-
-   # If should use a base model at every iteration. See alg.base_model_path.
-  # Accepted: [true, false]. Default: false.
-  use_base_model: false
-
-  # The base model path. This model will be finetunned for every iteration
-  # and will not be modified inplace. Only used if alg.use_base_model is true
-  base_model_path: ""

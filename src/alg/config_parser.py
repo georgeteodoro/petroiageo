@@ -119,7 +119,6 @@ class ConfigTypeCaster:
             "generate_porosity_cube": cls._which_python_bool_value,
             "metrics_by_it": cls._which_python_bool_value,
             "feature_selection_type": FeatureSelection.new_from_key,
-            "use_base_model": cls._which_python_bool_value
         }
 
         cls._apply_key_func_mapping_to_dict_and_modify_target_dict(
@@ -532,9 +531,6 @@ class Config:
         base_config["max_exec_time"] = -1
         base_config["metrics_by_it"] = True
         base_config["save_models_on"] = "last"
-        base_config["use_base_model"] = False
-        base_config["base_model_path"] = ""
-
         return base_config
 
     def _base_sampling_config(self) -> dict:
