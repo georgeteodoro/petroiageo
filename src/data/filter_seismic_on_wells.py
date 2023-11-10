@@ -38,13 +38,13 @@ if __name__ == "__main__":
         print(f"Filtrou np com shape: {filtered_np.shape}")
         # Create x,y,z,seismic numpy array, i.e., 
         # a (4, filtered_np.shape[-1]) shaped array
-
-        xs = np.array([x]*filtered_np.shape[-1])
-        ys = np.array([y]*filtered_np.shape[-1])
-        zs = np.arange(0, filtered_np.shape[-1], 1)
+        n_values = filtered_np.shape[-1]
+        xs = np.array([x]*n_values).reshape(n_values, 1)
+        ys = np.array([y]*filtered_np.shape[-1]).reshape(n_values, 1)
+        zs = np.arange(0, filtered_np.shape[-1], 1).reshape(n_values, 1)
         # Goes from (shape, ) to (shape, 1)
-        filtered_np = filtered_np.reshape((filtered_np.shape[-1],1))
-        curr_np = np.concatenate([xs, ys, filtered_np], axis=1)
+        filtered_np = filtered_np.reshape(n_values, 1)
+        curr_np = np.concatenate([xs, ys, zs, filtered_np], axis=1)
 
         if resulting_np is None:
             resulting_np = curr_np
