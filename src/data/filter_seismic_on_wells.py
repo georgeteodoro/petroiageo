@@ -42,6 +42,8 @@ if __name__ == "__main__":
         xs = np.array([x]*filtered_np.shape[-1])
         ys = np.array([y]*filtered_np.shape[-1])
         zs = np.arange(0, filtered_np.shape[-1], 1)
+        # Goes from (shape, ) to (shape, 1)
+        filtered_np = filtered_np.reshape((filtered_np.shape[-1],1))
         curr_np = np.concatenate([xs, ys, filtered_np], axis=1)
 
         if resulting_np is None:
