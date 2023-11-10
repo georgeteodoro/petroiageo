@@ -24,7 +24,12 @@ if __name__ == "__main__":
         "/petrobr/parceirosbr/petrobrasiageo/dados/Franco_florin_buzios_wells_filtered.npy"
         )
 
-    target_x_y_coords = [[], [], [], [], []]
+    target_x_y_coords = [
+        [855, 1230], 
+        [834, 1297], 
+        [833, 1384], 
+        [898, 1246], 
+        [901, 1332]]
 
     resulting_np = None
 
