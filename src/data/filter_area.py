@@ -17,8 +17,12 @@ if __name__ == "__main__":
     larger_area_path = pathlib.Path("")
     filtered_area_target_path = pathlib.Path("")
 
-    print(f"Loading and filtering data from {larger_area_path}")
-    filtered_area = np.load(larger_area_path)[x_start:x_end+1, y_start:y_end+1]
+    print(f"Loading data from {larger_area_path}")
+    larger_area = np.load(larger_area_path)
+    print(f"Larger area shape: {larger_area.shape}")
+
+    print(f"Filtering data")
+    filtered_area = larger_area[x_start:x_end+1, y_start:y_end+1]
     print(f"Filtered area shape: {filtered_area.shape}")
 
     print(f"Saving filtered data at {filtered_area_target_path}")
