@@ -4,6 +4,7 @@ segyio
 scipy
 scikit-learn
 lightgbm
+graphviz
 numba
 mpi4py
 lasio
