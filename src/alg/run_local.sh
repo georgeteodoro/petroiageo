@@ -12,11 +12,11 @@ TARGET_POR_FILE='/home/daniel/Documentos/Git/petroiageo/data/ANP/processed/area1
 cp $BASELINE_POR_FILE $TARGET_POR_FILE
 
 IT_START=1
-IT_END=5
+IT_END=3
 
 LOG_FILE_NAME=log.log
 rm -f $LOG_FILE_NAME
 for it in $(seq $IT_START $IT_END)
 do
-    python3 -u main.py --it $it --config  $CONFIG_FILE --nf 1 --nsf 3 --ntf 7 >> $LOG_FILE_NAME
+    python3 -u main.py --it $it --config  $CONFIG_FILE --nf 1 --nsf 2 --ntf 3 >> $LOG_FILE_NAME
 done
