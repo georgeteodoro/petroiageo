@@ -56,7 +56,7 @@ def eval_bootstrap(
     Train a regressor on cur_h5_train_list using data of wells in wells_id.
     The test errors will be based on the validation data for each 
     Leave-one-well-out iteration.
-    
+
     Return the mean rmse and mean mae errors. May return None, None
     """
     params['num_threads'] = num_threads
@@ -237,7 +237,6 @@ def insert_filtered_feature(
         # data into a ndarray variable, to later copy it to the cur_h5_seq
         # object.
         def _feature_generator(feature_dset, coord_3d_np, chunk_start):
-
             def _gen_list_features(feature_dset, coord_3d_np):
                 for coord in coord_3d_np:
                     yield feature_dset[tuple(coord)]
@@ -623,6 +622,9 @@ def _sample_points_from_chunk(n_points_to_sample_chunk: int,
         n_samp_points_well = n_samp_points_per_well[well_idx]
         well_points = training_points[training_points['well_id'] == well_id]
         assert np.all(well_points['well_id'] == well_id)
+        m = np.max(well_points['ring'])
+        assert m < curr_starting_layer, f"Start iteration "\
+            f"{curr_starting_layer} should be after latest iteration {m}."
 
         probs = stats.beta.pdf(well_points['ring'],
                                alpha,
@@ -754,22 +756,13 @@ def append_points_to_dset(features_only: bool, target_dset: h5py.Dataset,
         points = points[:-diff]
 
     if features_only:
-        target_dset[
-            'x',
-            'y',
-            'z',
-            'phi',
-            prev_end:new_prev,
-        ] = points[['x', 'y', 'z', 'phi']]
+        target_dset['x', 'y', 'z', 'phi',
+                    prev_end:new_prev, ] = points[['x', 'y', 'z', 'phi']]
     else:
-        target_dset[
-            'x',
-            'y',
-            'z',
-            'phi',
-            'well_id',
-            prev_end:new_prev,
-        ] = points[['x', 'y', 'z', 'phi', 'well_id']]
+        target_dset['x', 'y', 'z', 'phi', 'well_id',
+                    prev_end:new_prev, ] = points[[
+                        'x', 'y', 'z', 'phi', 'well_id'
+                    ]]
 
     return target_dset, new_prev
 
