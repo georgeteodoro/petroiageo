@@ -148,16 +148,26 @@ def main():
     # Initialized values and other objects are inserted into config
     mpi_module.initialize(config)
 
-    # Run base algorithm
-    alg = BaseInvertedLearning(
-        H5SeismicDataLoader(config),
-        H5PorosityDataLoader(config),
-        H5ExpandAlg(config),
-        H5FeatureSelectionAlg(config),
-        H5ApplyAlg(config),
-        config,
-    )
-    alg.run()
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    mpi_size = comm.Get_size()
+    manager_rank = mpi_size - 1
+
+    if rank == manager_rank:
+        manager.run(config)
+    else:
+        worker.run(config)
+
+    # # Run base algorithm
+    # alg = BaseInvertedLearning(
+    #     H5SeismicDataLoader(config),
+    #     H5PorosityDataLoader(config),
+    #     H5ExpandAlg(config),
+    #     H5FeatureSelectionAlg(config),
+    #     H5ApplyAlg(config),
+    #     config,
+    # )
+    # alg.run()
 
 
 if __name__ == "__main__":
