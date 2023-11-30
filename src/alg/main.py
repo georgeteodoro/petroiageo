@@ -1,9 +1,13 @@
 import argparse
 import pathlib
-from tqdm import tqdm
+from mpi4py import MPI
 
 import config_parser
 import mpi_module
+
+import manager
+import worker
+
 from inverted_learning_interface import BaseInvertedLearning
 from h5_porosity_data_loader import H5PorosityDataLoader
 from h5_seismic_data_loader import H5SeismicDataLoader
@@ -22,7 +26,8 @@ def print_progress(with_progress, r):
 
 
 def config_arg_parser():
-    parser = argparse.ArgumentParser(description="POV")
+    parser = argparse.ArgumentParser(description="Modelagem de "
+                                     "Aprendizado Invertido")
 
     parser.add_argument(
         "--config",
@@ -37,9 +42,22 @@ def config_arg_parser():
         "--it",
         dest="load_it",
         action="store",
-        required=True,
+        required=False,
+        default=1,
         type=int,
-        help="Iteration to load",
+        help="Iteration to start. E.g., if value is 3, it is assumed "
+        "that propagation went through iteration 2. First iteration is "
+        "1 (default=1)",
+    )
+
+    parser.add_argument(
+        "--nits",
+        dest="num_its",
+        action="store",
+        required=False,
+        type=int,
+        default=1,
+        help="Number of iterations to run (default=1).",
     )
 
     parser.add_argument(
@@ -48,7 +66,8 @@ def config_arg_parser():
         action="store",
         required=False,
         type=int,
-        help="Number of total features",
+        default=0,
+        help="Number of total features (default=0, i.e., all)",
     )
 
     parser.add_argument(
@@ -56,8 +75,9 @@ def config_arg_parser():
         dest="num_select_features",
         action="store",
         required=False,
+        default=10,
         type=int,
-        help="Number of maximum features to be selected",
+        help="Number of maximum features to be selected (default=10)",
     )
 
     parser.add_argument(
@@ -65,6 +85,7 @@ def config_arg_parser():
         dest="num_tested_features",
         action="store",
         default=0,
+        required=False,
         type=int,
         help="Number of features to be tested before choosing "
         "a selected feature (default=0, i.e., all).",
@@ -87,49 +108,52 @@ def config_arg_parser():
     )
 
     parser.add_argument(
-        "--local",
-        dest="local_files",
-        action="store_true",
-        help="Read files from main.py root folder.",
+        "-w",
+        dest="window",
+        action="store",
+        required=False,
+        type=int,
+        help="Size of the displacement window. This value is for one side "
+             "only. I.e., a window of 3 would result in a minicube of "
+             "7x7x7, with intervals between [-3,3].",
     )
 
-    parser.add_argument(
-        "--sp",
-        dest="is_sampling",
-        action="store_true",
-        help="Whether sampling should be used "
-        "for feature selection (default=False).",
-    )
+    # parser.add_argument(
+    #     "--sp",
+    #     dest="is_sampling",
+    #     action="store_true",
+    #     help="Whether sampling should be used "
+    #     "for feature selection (default=False).",
+    # )
 
     return parser
 
 
 def update_config_file_params_with_args(config: config_parser.Config,
                                         args) -> config_parser.Config:
-    if args.num_select_features is not None:
-        config.alg["max_num_features"] = int(args.num_select_features)
 
-    if args.load_it is not None:
-        config.alg["it"] = int(args.load_it)
+    config.alg["it"] = int(args.load_it)
+    config.alg["num_its"] = int(args.num_its)
 
-    if args.num_features is not None:
-        config.add_param("num_features", int(args.num_features))
-    else:
-        config.add_param("num_features", 0)
+    config.alg["max_num_features"] = int(args.num_select_features)
+    config.add_param("num_features", int(args.num_features))
+    
+    if args.with_progress is not None:
+        window_size = config.alg['window'] = int(args.window)
 
     if args.with_progress is not None:
         config.add_param("with_progress", args.with_progress)
 
-    if (args.local_files is not None) and args.local_files:
-        spcp = f"./{pathlib.Path(config.starting_porosity_cube_path).name}"
-        config.starting_porosity_cube_path = spcp
-        config.features_folder = "./features/"
+    # if (args.local_files is not None) and args.local_files:
+    #     spcp = f"./{pathlib.Path(config.starting_porosity_cube_path).name}"
+    #     config.starting_porosity_cube_path = spcp
+    #     config.features_folder = "./features/"
 
     config.add_param("full_depth_chunks", True)
 
     config.add_param("max_tested_features", int(args.num_tested_features))
 
-    config.add_param("is_sampling", bool(args.is_sampling))
+    # config.add_param("is_sampling", bool(args.is_sampling))
 
     return config
 
@@ -152,6 +176,9 @@ def main():
     rank = comm.Get_rank()
     mpi_size = comm.Get_size()
     manager_rank = mpi_size - 1
+
+    assert mpi_size > 1, "Two or more processes required to run "\
+                         "(mpirun -np 2 python3 main.py)."
 
     if rank == manager_rank:
         manager.run(config)

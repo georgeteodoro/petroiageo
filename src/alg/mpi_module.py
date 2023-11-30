@@ -1,4 +1,5 @@
 from mpi4py import MPI
+from enum import Enum, auto
 
 import config_parser
 
@@ -61,7 +62,7 @@ def _should_update_local(mpi_size, rank, comm):
 
     ret = False
     assigned_nodes = []
-    for r in range(mpi_size-1):
+    for r in range(mpi_size - 1):
         # Get node name of rank r
         if r == rank:
             cur_node = MPI.Get_processor_name()
