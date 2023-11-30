@@ -24,6 +24,15 @@ class MPI_TAGS(Enum):
     # selection stage is done for the current iteration.
     MANAGER_BEST_FEATURES = auto()
 
+    # These two messages are related to the case on which propagation reached
+    # a point that only one well is currently propagating. This means that 
+    # leave-one-well-out cross-validation won't work. On this case, the whole
+    # execution should be halted. 
+    # A worker that identifies this case sends WORKER_ABORT_PROP. The manager
+    # then replies all remaining workers with MANAGER_ABORT_PROP.
+    WORKER_ABORT_PROP = auto()
+    MANAGER_ABORT_PROP = auto()
+
 
 def _get_local_node_comm(comm):
     """

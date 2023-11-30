@@ -5,6 +5,7 @@ from mpi_module import MPI_TAGS
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 mpi_size = comm.Get_size()
+workers_size = mpi_size - 1
 manager_rank = mpi_size - 1
 
 beg_str = "[manager] "
@@ -82,6 +83,10 @@ def run(config):
     # remaining_features.
     done_workers = 0
 
+    # Count aborted workers. If any worker aborts, all workers should
+    # abort.
+    aborted_workers = 0
+
     cur_best_feature = None
     cur_best_metric = float('inf')
 
@@ -96,7 +101,6 @@ def run(config):
             # Parse response from worker
             if msg_tag == MPI_TAGS.WORKER_JOB_RESULT.value:
                 # Update best feature, if new best was found
-                print(msg)
                 for (feature, rmse, mae) in msg:
                     if rmse < cur_best_metric:
                         cur_best_metric = rmse
@@ -104,8 +108,36 @@ def run(config):
             elif msg_tag == MPI_TAGS.WORKER_FIRST_JOB.value:
                 # Currently nothing to do on this case
                 pass
+
+            elif msg_tag == MPI_TAGS.WORKER_ABORT_PROP.value:
+                print(beg_str + f"Received abort from {worker_rank}.")
+
+                # After first abort signal, there is nothing else to do
+                # with the current worker.
+                aborted_workers += 1
+                if aborted_workers == workers_size:
+                    return
+
+                continue
+
             else:
                 raise Exception(f"{beg_str} Bad MPI tag: {msg_tag}")
+
+            # If one worker has aborted, there is nothing else to do besides
+            # sending an abort signal to the current worker and wait for
+            if aborted_workers > 0:
+                print(beg_str + f"Sending abort to w{worker_rank}.")
+
+                aborted_workers += 1
+                comm.send(None,
+                          dest=worker_rank,
+                          tag=MPI_TAGS.MANAGER_ABORT_PROP.value)
+
+                # If all workers have aborted, then manager can abort too
+                if aborted_workers == workers_size:
+                    return
+
+                continue
 
             if len(remaining_features) > 0:
                 # There are still features to test on this f_it
@@ -114,7 +146,7 @@ def run(config):
                 done_workers += 1
                 # If all workers are done, then this is the end of a f_it
                 # or a full iteration
-                if done_workers == mpi_size - 1:
+                if done_workers == workers_size:
                     best_features.append(cur_best_feature)
 
                     # Check if this is the final f_it from the current it,
@@ -123,7 +155,7 @@ def run(config):
                         # End the current f_it
 
                         # Send best current feature to all workers
-                        for worker_rank in range(mpi_size - 1):
+                        for worker_rank in range(workers_size):
                             print(beg_str +
                                   f"New best feature {cur_best_feature}")
                             comm.send(
@@ -145,7 +177,7 @@ def run(config):
                         # End the current it
 
                         # Send best features set to all workers
-                        for worker_rank in range(mpi_size - 1):
+                        for worker_rank in range(workers_size):
                             print(
                                 beg_str +
                                 f"Sending final best features {best_features}")

@@ -9,6 +9,9 @@ manager_rank = mpi_size - 1
 
 beg_str = f"[worker{rank}] "
 
+def _test_new_feature(test_data, config):
+    return (2, 1)
+
 
 def run(config):
     seismic_on_mem = config.alg['seismic_on_memory']
@@ -47,6 +50,18 @@ def run(config):
                 for feature in new_features:
                     # test_data.update_feature(new_feature)
                     # ret = _test_new_feature(test_data, config)
+                    ret = _test_new_feature(None, config)
+
+                    # None is returned upon only 1 well propagating.
+                    # If so, propagation is halted.
+                    if not ret:
+                        print(beg_str + "Only one remaining well. Aborting.")
+                        comm.send(results,
+                                  dest=manager_rank,
+                                  tag=MPI_TAGS.WORKER_ABORT_PROP.value)
+
+                        return
+
                     ret = (2, 1)
                     results.append((feature, *ret))
 
@@ -79,6 +94,11 @@ def run(config):
                 # test_data.update_feature(best_features[-1])
 
                 break
+
+            elif msg_tag == MPI_TAGS.MANAGER_ABORT_PROP.value:
+                print(beg_str + "Received abort.")
+
+                return
 
             else:
                 raise Exception(f"[manager] Bad MPI tag: {msg_tag}")
