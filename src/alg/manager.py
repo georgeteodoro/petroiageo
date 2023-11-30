@@ -1,41 +1,13 @@
-from tqdm import tqdm
-
-# Manager only works on feature selection. It does not performs propagation
+from mpi_module import MPI_TAGS
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 mpi_size = comm.Get_size()
 manager_rank = mpi_size - 1
 
+beg_str = "[manager]"
 
-class MPI_TAGS(Enum):
-    # First job request from a worker. Can be issued at the beginning of
-    # the iteration or after a best feature is found and received.
-    WORKER_FIRST_JOB = auto()
-
-    # Training results sent by a worker, also requesting a new job.
-    WORKER_JOB_RESULT = auto()
-
-    # New feature to be evaluated by a worker, send by the manager
-    MANAGER_NEW_JOB = auto()
-
-    # Best feature from the current f_it, sent by the manager. This message
-    # implies that more features should be tested, thus, should be followed
-    # by a WORKER_FIRST_JOB message from all workers.
-    MANAGER_SELECTED_FEATURE = auto()
-
-    # Best features set of the current iteration. This means that the feature
-    # selection stage is done for the current iteration.
-    MANAGER_BEST_FEATURES = auto()
-
-
-def _update_best_feature(cur_best_feature, cur_best_metric, msg, config):
-    '''
-    This is the place for adjusting the selection of error metrics 
-    for features.
-    '''
-
-    
+# Manager only works on feature selection. It does not performs propagation
 
 
 def _send_new_features(remaining_features, worker_rank, config):
@@ -66,6 +38,8 @@ def run(config):
     remaining_features = all_features.copy()
     best_features = []
     n_features_to_select = config.get()
+    
+    status = MPI.Status()
 
     # Count of how many workers are just waiting the end of
     # the current f_it. It only changes when there are no more
@@ -78,7 +52,6 @@ def run(config):
     for it in range(its):
         # Main loop on which a whole iteration is run
         while True:
-            status = MPI.Status()
             msg = comm.recv(status=status)
             msg_tag = status.Get_tag()
             worker_rank = status.Get_source()
@@ -94,7 +67,7 @@ def run(config):
                 # Currently nothing to do on this case
                 pass
             else:
-                raise Exception(f"[manager] Bad MPI tag: {msg_tag}")
+                raise Exception(f"{beg_str} Bad MPI tag: {msg_tag}")
 
             if len(remaining_features) > 0:
                 # There are still features to test on this f_it

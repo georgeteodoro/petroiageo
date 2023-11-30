@@ -3,6 +3,27 @@ from mpi4py import MPI
 import config_parser
 
 
+class MPI_TAGS(Enum):
+    # First job request from a worker. Can be issued at the beginning of
+    # the iteration or after a best feature is found and received.
+    WORKER_FIRST_JOB = auto()
+
+    # Training results sent by a worker, also requesting a new job.
+    WORKER_JOB_RESULT = auto()
+
+    # New feature to be evaluated by a worker, send by the manager
+    MANAGER_NEW_JOB = auto()
+
+    # Best feature from the current f_it, sent by the manager. This message
+    # implies that more features should be tested, thus, should be followed
+    # by a WORKER_FIRST_JOB message from all workers.
+    MANAGER_SELECTED_FEATURE = auto()
+
+    # Best features set of the current iteration. This means that the feature
+    # selection stage is done for the current iteration.
+    MANAGER_BEST_FEATURES = auto()
+
+
 def _get_local_node_comm(comm):
     """
     Return a split communicator for processes within the same node.
@@ -35,11 +56,12 @@ def _should_update_local(mpi_size, rank, comm):
     h5 porosity file.
     Only one process per node should do this.
     Although multiple updates works on h5, it is inefficient.
+    Manager process don't perform propagation.
     """
 
     ret = False
     assigned_nodes = []
-    for r in range(mpi_size):
+    for r in range(mpi_size-1):
         # Get node name of rank r
         if r == rank:
             cur_node = MPI.Get_processor_name()
