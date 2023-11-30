@@ -1,6 +1,7 @@
 from mpi4py import MPI
 
 from mpi_module import MPI_TAGS
+from feature_sel import test_new_feature
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -50,7 +51,7 @@ def run(config):
                 for feature in new_features:
                     # test_data.update_feature(new_feature)
                     # ret = _test_new_feature(test_data, config)
-                    ret = _test_new_feature(None, config)
+                    ret = test_new_feature(None, config)
 
                     # None is returned upon only 1 well propagating.
                     # If so, propagation is halted.
@@ -62,7 +63,6 @@ def run(config):
 
                         return
 
-                    ret = (2, 1)
                     results.append((feature, *ret))
 
                 # Send response back

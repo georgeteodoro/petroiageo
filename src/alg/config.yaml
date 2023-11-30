@@ -28,6 +28,10 @@ alg:
   seismic_on_memory: True
   fsel_only: True
   TD_on_memory: True
+
+  parallel:
+    # max_points_per_chunk: 1000
+    n_training_chunks: 1
   
   # If you want to really generate the porosity cube in the end. Default is true
   generate_porosity_cube: true
