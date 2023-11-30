@@ -35,7 +35,7 @@ def test_new_feature(test_data, config):
     n_training_chunks = config.alg['parallel']['n_training_chunks']
     train_wells_ids = config.train_wells_ids
 
-    return (2,1)
+    return (2, 1)
 
     # Configure test_data for out-of-core execution, if needed
     test_data.set_num_training_chunks(n_training_chunks)
@@ -69,7 +69,8 @@ def test_new_feature(test_data, config):
         # Performs incremental learning on all chunks
         for chunk_id in range(n_training_chunks):
             # Setup training data
-            test_data.get_train_values(curr_well_id, X_train, y_train)
+            test_data.get_train_values(curr_well_id, chunk_id, X_train,
+                                       y_train)
 
             lgb_train_dataset = lgb.Dataset(X_train, y_train)
             lgb_eval_dataset = lgb.Dataset(

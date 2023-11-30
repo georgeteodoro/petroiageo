@@ -24,6 +24,7 @@ def run(config):
     # Prep data
     # seismic_dict = _load_seismic()
     # test_data = _pepare_test_data()
+    test_data = None
 
     status = MPI.Status()
 
@@ -49,9 +50,8 @@ def run(config):
                 new_features = msg
                 results = []
                 for feature in new_features:
-                    # test_data.update_feature(new_feature)
-                    # ret = _test_new_feature(test_data, config)
-                    ret = test_new_feature(None, config)
+                    test_data.update_feature(new_feature)
+                    ret = test_new_feature(test_data, config)
 
                     # None is returned upon only 1 well propagating.
                     # If so, propagation is halted.
@@ -75,8 +75,8 @@ def run(config):
                 # Got the best feature for a f_it
                 new_feature = msg
                 best_features.append(new_feature)
-                # test_data.update_feature(new_feature)
-                # test_data.commit_feature()
+                test_data.update_feature(new_feature)
+                test_data.commit_feature()
 
                 # Send response back requesting new job
                 comm.send(results,
@@ -91,7 +91,7 @@ def run(config):
                 best_features += msg
 
                 # Add the last column to test_data
-                # test_data.update_feature(best_features[-1])
+                test_data.update_feature(best_features[-1])
 
                 break
 
