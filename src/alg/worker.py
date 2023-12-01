@@ -33,7 +33,7 @@ def run(config):
 
         # Update test data: set test_data size and update coordinates,
         # porosity, and other columns
-        # test_data.prepare_porosity(it)
+        test_data.prepare_porosity(it)
 
         # feature selection
         comm.send(None, dest=manager_rank, tag=MPI_TAGS.WORKER_FIRST_JOB.value)

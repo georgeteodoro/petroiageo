@@ -44,13 +44,6 @@ def test_new_feature(test_data, config):
     rmse_list = []
     mae_list = []
 
-    # Allocate train data memory. This is done to save on allocation time
-    # while also certifying that memory footprint remains tractable.
-    train_size = test_data.get_train_expected_size()
-    train_type = test_data.get_train_type()
-    X_train = np.empty((train_size), dtype=train_type)
-    y_train = np.empty((train_size), dtype=np.float64)
-
     # Leave-one-well-out
     for curr_well_id in train_wells_ids:
 
@@ -69,8 +62,8 @@ def test_new_feature(test_data, config):
         # Performs incremental learning on all chunks
         for chunk_id in range(n_training_chunks):
             # Setup training data
-            test_data.get_train_values(curr_well_id, chunk_id, X_train,
-                                       y_train)
+            X_train, y_train = test_data.get_train_values(
+                curr_well_id, chunk_id)
 
             lgb_train_dataset = lgb.Dataset(X_train, y_train)
             lgb_eval_dataset = lgb.Dataset(
