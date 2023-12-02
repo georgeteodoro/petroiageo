@@ -1,7 +1,8 @@
 import numpy as np
+from abc import ABC
 
 
-class TestDataBase(object):
+class TestDataBase(ABC):
     '''
     Abstract test_data class, which implements filtering and sampling. 
     All test_data should be an array of the following columns, on this order:
@@ -58,32 +59,68 @@ class TestDataBase(object):
 
         self._wells_list = list(enumerate(wells_list))
 
-    def _append_ring(ring, data):
-        '''
-        Add data to a test_data ring, updating internally its size
-        '''
-        size = len(data)
-        beg = self._test_data_size[ring]
-        end = beg + size
-        self._test_data_size[ring] += size
+    # === Interface for subclasses ============================================
 
-        if self._features_only:
-            self._test_data_dict[ring][
-                'x',
-                'y',
-                'z',
-                'phi',
-                beg:end,
-            ] = data[['x', 'y', 'z', 'phi']]
-        else:
-            self._test_data_dict[ring][
-                'x',
-                'y',
-                'z',
-                'phi',
-                'well_id',
-                beg:end,
-            ] = data[['x', 'y', 'z', 'phi', 'well_id']]
+    @abstractmethod
+    def _create_new_ring_hook(self):
+        '''
+        Should instantiate a new empty concrete data object to hold test_data
+        values of a single ring and return it.
+        '''
+        raise Exception("[TestDataBase][_create_new_ring_hook] "
+                        "Abstract method not implemented.")
+
+    @abstractmethod
+    def _append_ring_hook(self, ring, data):
+        '''
+        Should add data to a test_data ring, updating internally its size.
+        This method is called once per porosity chunk, for all rings.
+        '''
+        raise Exception("[TestDataBase][_append_ring_hook] "
+                        "Abstract method not implemented.")
+
+    @abstractmethod
+    def _update_col_from_ring_hook(self, r, feature_data):
+        '''
+        Should update the last column of ring r.
+        It is assumed that feature_data if already filtered for points on
+        ring r. Thus, feature_data should have the correct size of the 
+        internal test_data for ring r.
+        '''
+        raise Exception("[TestDataBase][_update_col_from_ring_hook] "
+                        "Abstract method not implemented.")
+
+    @abstractmethod
+    def _get_ring_filtered_values_hook(self, r, well_filter):
+        '''
+        Should return a set of points for ring r, filtered by a well_filter.
+        '''
+        raise Exception("[TestDataBase][_get_ring_filtered_values_hook] "
+                        "Abstract method not implemented.")
+
+    @abstractmethod
+    def _in_well_filter_hook(self, well_id):
+        '''
+        Should return a function f(data) which filters data based on
+        well_id and returns only the subset of data for which 
+        data['well_id'] == well_id.
+        '''
+        raise Exception("[TestDataBase][_in_well_filter_hook] "
+                        "Abstract method not implemented.")
+
+    @abstractmethod
+    def _not_in_well_filter_hook(self, well_id):
+        '''
+        Should return a function f(data) which filters data based on
+        well_id and returns only the subset of data for which 
+        data['well_id'] != well_id. If well_id<0, should return the
+        Whole data.
+        '''
+        raise Exception("[TestDataBase][_not_in_well_filter_hook] "
+                        "Abstract method not implemented.")
+
+
+    # =========================================================================
 
     def prepare_poroisity(self, it):
         '''
@@ -102,8 +139,7 @@ class TestDataBase(object):
         # This should be done if sampling is required
 
         # Create new ring data
-        self._test_data_dict[it] = np.empty((_ring_size(it, depth)),
-                                            dtype=self._cur_data_type)
+        self._test_data_dict[it] = _create_new_ring_hook()
         self._test_data_size[it] = 0
 
         # Iterate on all porosity chunks to fill test_data
@@ -117,8 +153,7 @@ class TestDataBase(object):
 
             # Fill ring dict
             self._f_sel_filter.set_ring(it)
-            filt_list = self._f_sel_filter.satisfies(chunk_np)
-            self._append_ring(it, chunk_np[filt_list])
+            self._append_ring_hook(it, chunk_np)
 
         # Update size and chunking info
         self._chunk_size = 0
@@ -137,19 +172,15 @@ class TestDataBase(object):
         self._current_feature_id += 1
         self._current_features.append(f'f{self._current_feature_id}')
 
-    def update_feature(self, data):
+    def update_feature(self, feature_data):
         '''
         Adds data to the last feature. Data is related to all rings.
         '''
 
-        f_str = f'f{self._current_feature_id}'
-
         # Fill data, one ring at a time
         for r in self._test_data_dict.keys():
-            data_from_ring = data[data['ring'] == r]
-
-            # THIS IS BACKEND-SPECIFIC!!!!!!
-            self._test_data_dict[r][f_str] = data_from_ring
+            filtered_feature_data = ... # filter feature_data by coordinates of _test_data_dict[r] coordinates
+            self._update_col_from_ring_hook(r, filtered_feature_data)
 
     def _get_values(self, well_filter, chunk_id):
         '''
@@ -170,9 +201,7 @@ class TestDataBase(object):
                 raise Exception("[TestDataBase][get_train_values] Chunking "
                                 "not implemented for incremental learning.")
 
-            # Get all points from current ring, filtered by well_id
-            new_points = self._test_data_dict[r]
-            new_points = well_filter(new_points_X)
+            new_points = self._get_ring_filtered_values_hook(r, well_filter)
 
             # Split X from y
             new_points_X = self._test_data_dict[r][self._current_features]
@@ -201,28 +230,14 @@ class TestDataBase(object):
         If no out-of-core is used internally, then chunk_id=0 and all
         test_data is returned (filtered by well_id obviously).
         '''
-    
-        if not well_id or well_id < 0:
-            # If well_id=-1 then no filtering is required
-            well_filter = lambda data: data
-        else:
-            # Otherwise, returns all points outside well_id
-            well_filter = lambda data: data[data['well_id'] != well_id]
 
+        well_filter = self._not_in_well_filter_hook(well_id)
         return self._get_values(well_filter, chunk_id)
 
     def get_val_values(well_id):
-        well_filter = lambda data: data[data['well_id'] == well_id]
+        well_filter = self._in_well_filter_hook(well_id)
         # chunk_id=0 to return all data
         return self._get_values(well_filter, chunk_id=0)
 
-        return None, None
-
     def set_num_training_chunks(self, n_training_chunks):
         self._n_training_chunks = n_training_chunks
-
-    # def get_train_max_size(self):
-    #     return self._chunk_size
-
-    # def get_X_train_shape(self):
-    #     return (self.get_train_expected_size(), self._current_feature_id)
