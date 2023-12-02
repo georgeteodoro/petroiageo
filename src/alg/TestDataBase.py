@@ -1,5 +1,5 @@
 import numpy as np
-from abc import ABC
+from abc import ABC, abstractmethod
 
 
 class TestDataBase(ABC):
@@ -12,7 +12,7 @@ class TestDataBase(ABC):
      - features (multiple columns)
     '''
 
-    def __init__(self, n_features, features_only, wells_list):
+    def __init__(self, n_features, features_only, wells_list, porosity_data):
         # Set the datatype for points
         self._n_features = n_features
         self._features_only = features_only
@@ -58,17 +58,18 @@ class TestDataBase(ABC):
         self._data_len = -1
 
         self._wells_list = list(enumerate(wells_list))
+        self._porosity_data = porosity_data
 
     # === Interface for subclasses ============================================
 
-    @abstractmethod
-    def _create_new_ring_hook(self):
-        '''
-        Should instantiate a new empty concrete data object to hold test_data
-        values of a single ring and return it.
-        '''
-        raise Exception("[TestDataBase][_create_new_ring_hook] "
-                        "Abstract method not implemented.")
+    # @abstractmethod
+    # def _create_new_ring_hook(self):
+    #     '''
+    #     Should instantiate a new empty concrete data object to hold test_data
+    #     values of a single ring and return it.
+    #     '''
+    #     raise Exception("[TestDataBase][_create_new_ring_hook] "
+    #                     "Abstract method not implemented.")
 
     @abstractmethod
     def _append_ring_hook(self, ring, data):
@@ -119,13 +120,11 @@ class TestDataBase(ABC):
         raise Exception("[TestDataBase][_not_in_well_filter_hook] "
                         "Abstract method not implemented.")
 
-
     # =========================================================================
 
-    def prepare_poroisity(self, it):
+    def prepare_porosity(self, it):
         '''
-        Allocate data required for the current iteration it. If data was 
-        already allocated, then perform a reallocation.
+        Allocate data required for the current iteration it.
         Fill coordinates, phi and well_id (when necessary).
         It also resets the internal current column.
         '''
@@ -137,19 +136,20 @@ class TestDataBase(ABC):
 
         # Remove, if necessary, old data from previous rings
         # This should be done if sampling is required
+        pass
 
         # Create new ring data
-        self._test_data_dict[it] = _create_new_ring_hook()
+        self._test_data_dict[it] = []
         self._test_data_size[it] = 0
 
         # Iterate on all porosity chunks to fill test_data
-        for chunk_slice in porosity_data_h5.iter_chunks():
+        for chunk_slice in self._porosity_data.iter_chunks():
             # Skip this chunk if there are not any points withing it
             if not chunk_has_points:
                 continue
 
             # Load porosity data chunk
-            chunk_np = porosity_data_h5[chunk_slice]
+            chunk_np = self._porosity_data[chunk_slice]
 
             # Fill ring dict
             self._f_sel_filter.set_ring(it)
@@ -179,7 +179,7 @@ class TestDataBase(ABC):
 
         # Fill data, one ring at a time
         for r in self._test_data_dict.keys():
-            filtered_feature_data = ... # filter feature_data by coordinates of _test_data_dict[r] coordinates
+            filtered_feature_data = ...  # filter feature_data by coordinates of _test_data_dict[r] coordinates
             self._update_col_from_ring_hook(r, filtered_feature_data)
 
     def _get_values(self, well_filter, chunk_id):

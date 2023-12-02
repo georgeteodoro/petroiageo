@@ -1,19 +1,25 @@
-from TestDataBase import TestDataBase 
+from TestDataBase import TestDataBase
+import numpy as np
+
 
 class TestDataNumpy(TestDataBase):
-	'''
-	'''
+    '''
+    In-memory implementation of TestDataBase using numpy as the
+    concrete type for data storage.
+    '''
 
-	def __init__(self, arg):
-		super(TestDataNumpy, self).__init__()
-		self.arg = arg
+    def __init__(self, n_features, features_only, wells_list, porosity_data):
+        # Currently no initialization is needed
+        super(TestDataNumpy, self).__init__(n_features, features_only,
+                                            wells_list, porosity_data)
 
-    def _create_new_ring_hook(self):
-        return np.empty((_ring_size(it, depth)), dtype=self._cur_data_type)
+    # def _create_new_ring_hook(self):
+    #     return np.empty((self._ring_size(it, depth)), dtype=self._cur_data_type)
 
     def _append_ring_hook(self, ring, data):
         '''
-        Add data to a test_data ring, updating internally its size
+        Add porosity and other info (coordinates and well_ifd) to a test_data 
+        ring, updating internally its size
         '''
         filt_list = self._f_sel_filter.satisfies(data)
         filt_data = data[filt_list]
@@ -53,7 +59,6 @@ class TestDataNumpy(TestDataBase):
 
     def _in_well_filter_hook(self, well_id):
         return lambda p: data[data['well_id'] == well_id]
-
 
     def _not_in_well_filter_hook(self, well_id):
         if not well_id or well_id < 0:
