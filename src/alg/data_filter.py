@@ -217,7 +217,7 @@ class WellsDataFilter(DataFilter):
     add_in_well_list_filter to itself.
     This is the only filter needed for testing data as testing wells
     are not expanded/propagated so they always have 'real' points.
-    
+
     Had to name it WellsDataFilter instead of TestDataFilter because of 
     clashes with unittest's naming convention.
     """
@@ -225,3 +225,30 @@ class WellsDataFilter(DataFilter):
     def __init__(self, well_ids_list: list):
         super().__init__()
         self.add_in_well_list_filter(well_ids_list)
+
+
+class WellsSingleRingDataFilter(DataFilter):
+    """
+    The Test data filter. As test data is defined based only the well id,
+    it requires a well_ids_list. It automatically adds the  
+    add_in_well_list_filter to itself.
+    This is the only filter needed for testing data as testing wells
+    are not expanded/propagated so they always have 'real' points.
+    Also adds a ring filter, which is configurable after initialization.
+    """
+
+    def __init__(self, well_ids_list: list):
+        super().__init__()
+        self.add_in_well_list_filter(well_ids_list)
+
+        # Add an empty ring filter
+        # This Filter can only be used after setting a ring
+        self._filter_list.append(None)
+
+    def set_ring(self, ring):
+        """
+        Removes the existing filter for the ring and adds a filter of a 
+        new ring.
+        """
+        self._filter_list.pop()
+        self._filter_list.append(lambda d: (d['ring'] == ring))

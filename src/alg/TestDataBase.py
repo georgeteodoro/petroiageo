@@ -12,27 +12,29 @@ class TestDataBase(ABC):
      - features (multiple columns)
     '''
 
-    def __init__(self, n_features, features_only, wells_list, porosity_data):
+    def __init__(self, n_features, features_only, wells_list, f_sel_filter,
+                 porosity_data):
         # Set the datatype for points
         self._n_features = n_features
         self._features_only = features_only
         if features_only:
-            self._cur_data_type = [
+            self._base_data_type = [
                 ('x', np.int64),
                 ('y', np.int64),
                 ('z', np.int64),
                 ('phi', np.float64),
             ]
         else:
-            self._cur_data_type = [
+            self._base_data_type = [
                 ('x', np.int64),
                 ('y', np.int64),
                 ('z', np.int64),
                 ('phi', np.float64),
                 ('well_id', np.int64),
             ]
-        self._cur_data_type += [(f'f{f}', np.float64)
-                                for f in range(n_features)]
+        self._cur_data_type = self._base_data_type + [
+            (f'f{f}', np.float64) for f in range(n_features)
+        ]
         self._cur_data_type = np.dtype(self._cur_data_type)
 
         # Attributes for internal chunking, if necessary
@@ -50,32 +52,30 @@ class TestDataBase(ABC):
         # easier to sample, reshape and add more points.
         self._test_data_dict = dict()
 
-        # Current actual size of each ring. This size increases due to
-        # out-of-core porosity_data, which is ran through one chunk at a time
-        self._test_data_size = dict()
+        # # Current actual size of each ring. This size increases due to
+        # # out-of-core porosity_data, which is ran through one chunk at a time
+        # self._test_data_size = dict()
 
         # Number of points within test_data
         self._data_len = -1
 
+        # This is the list of real wells coordinates
         self._wells_list = list(enumerate(wells_list))
+
         self._porosity_data = porosity_data
+        self._f_sel_filter = f_sel_filter
 
+    # =========================================================================
     # === Interface for subclasses ============================================
+    # =========================================================================
 
-    # @abstractmethod
-    # def _create_new_ring_hook(self):
-    #     '''
-    #     Should instantiate a new empty concrete data object to hold test_data
-    #     values of a single ring and return it.
-    #     '''
-    #     raise Exception("[TestDataBase][_create_new_ring_hook] "
-    #                     "Abstract method not implemented.")
 
     @abstractmethod
-    def _append_ring_hook(self, ring, data):
+    def _set_ring_hook(self, ring, data):
         '''
         Should add data to a test_data ring, updating internally its size.
-        This method is called once per porosity chunk, for all rings.
+        This method is called only once to add all points of a ring, for 
+        all rings.
         '''
         raise Exception("[TestDataBase][_append_ring_hook] "
                         "Abstract method not implemented.")
@@ -121,6 +121,8 @@ class TestDataBase(ABC):
                         "Abstract method not implemented.")
 
     # =========================================================================
+    # === Public interface ====================================================
+    # =========================================================================
 
     def prepare_porosity(self, it):
         '''
@@ -128,6 +130,9 @@ class TestDataBase(ABC):
         Fill coordinates, phi and well_id (when necessary).
         It also resets the internal current column.
         '''
+
+        # Set ring to be filtered
+        self._f_sel_filter.set_ring(it)
 
         # Reset internal state
         self._current_it = it
@@ -140,20 +145,34 @@ class TestDataBase(ABC):
 
         # Create new ring data
         self._test_data_dict[it] = []
-        self._test_data_size[it] = 0
+        # self._test_data_size[it] = 0
 
         # Iterate on all porosity chunks to fill test_data
+        points_list = []
         for chunk_slice in self._porosity_data.iter_chunks():
             # Skip this chunk if there are not any points withing it
-            if not chunk_has_points:
+            if not self._has_points_within_chunk(it, chunk_slice):
                 continue
 
             # Load porosity data chunk
             chunk_np = self._porosity_data[chunk_slice]
 
-            # Fill ring dict
-            self._f_sel_filter.set_ring(it)
-            self._append_ring_hook(it, chunk_np)
+            # Add points to temporary points_list
+            filt_list = self._f_sel_filter.satisfies(chunk_np)
+            filt_data = chunk_np[filt_list]
+            if self._features_only:
+                points_list.extend(filt_data[['x', 'y', 'z', 'phi']].tolist())
+            else:
+                points_list.extend(filt_data[[
+                    'x',
+                    'y',
+                    'z',
+                    'phi',
+                    'well_id',
+                ]].tolist())
+
+        # Fill ring dict
+        self._set_ring_hook(it, points_list)
 
         # Update size and chunking info
         self._chunk_size = 0
@@ -181,6 +200,31 @@ class TestDataBase(ABC):
         for r in self._test_data_dict.keys():
             filtered_feature_data = ...  # filter feature_data by coordinates of _test_data_dict[r] coordinates
             self._update_col_from_ring_hook(r, filtered_feature_data)
+
+    def get_train_values(self, well_id, chunk_id):
+        '''
+        Leave-one-well-out validation function. Returns all data that
+        is NOT on well_id. If well_id=-1, then all data is returned.
+        Generates the training data inplace. X_train and y_train are
+        generated inplace to avoid reallocation for them.
+        If no out-of-core is used internally, then chunk_id=0 and all
+        test_data is returned (filtered by well_id obviously).
+        '''
+
+        well_filter = self._not_in_well_filter_hook(well_id)
+        return self._get_values(well_filter, chunk_id)
+
+    def get_val_values(well_id):
+        well_filter = self._in_well_filter_hook(well_id)
+        # chunk_id=0 to return all data
+        return self._get_values(well_filter, chunk_id=0)
+
+    def set_num_training_chunks(self, n_training_chunks):
+        self._n_training_chunks = n_training_chunks
+
+    # =========================================================================
+    # === Helper functions ====================================================
+    # =========================================================================
 
     def _get_values(self, well_filter, chunk_id):
         '''
@@ -221,23 +265,47 @@ class TestDataBase(ABC):
 
         return X, y
 
-    def get_train_values(self, well_id, chunk_id):
+    def _has_points_within_chunk(self, ring, chunk_slice):
         '''
-        Leave-one-well-out validation function. Returns all data that
-        is NOT on well_id. If well_id=-1, then all data is returned.
-        Generates the training data inplace. X_train and y_train are
-        generated inplace to avoid reallocation for them.
-        If no out-of-core is used internally, then chunk_id=0 and all
-        test_data is returned (filtered by well_id obviously).
+        Calculates whether any points of the input 'ring' should be found
+        within the given 'chunk_slice'.
+        For a ring point to be within the chunk, there should be some 
+        overlapping between the bounded box of the chunk and the ring.
+        However, it is simpler to check if there is no overlap and return
+        the negation of it. The only exception is the case on which chunk_slice
+        fits within the ring. This should return false and is checked 
+        explicitly.
+        This is checked for each well.
         '''
 
-        well_filter = self._not_in_well_filter_hook(well_id)
-        return self._get_values(well_filter, chunk_id)
+        # Check if there are points for each well
+        for (_, (w_x, w_y)) in self._wells_list:
+            c_x_i = chunk_slice[0].start
+            c_x_o = chunk_slice[0].stop - 1
+            c_y_i = chunk_slice[1].start
+            c_y_o = chunk_slice[1].stop - 1
+            r_x_i = w_x - ring
+            r_x_o = w_x + ring
+            r_y_i = w_y - ring
+            r_y_o = w_y + ring
 
-    def get_val_values(well_id):
-        well_filter = self._in_well_filter_hook(well_id)
-        # chunk_id=0 to return all data
-        return self._get_values(well_filter, chunk_id=0)
+            # Check if chunk_slice fits within the ring (border non-included)
+            # If so, this chunk has no points for the ring
+            if ((c_x_i > r_x_i) and (c_x_o < r_x_o) and (c_y_i > r_y_i)
+                    and (c_y_o < r_y_o)):
+                continue
 
-    def set_num_training_chunks(self, n_training_chunks):
-        self._n_training_chunks = n_training_chunks
+            # Check if there is no overlapping between the ring and the chunk
+            # bounding box
+            no_ovlp_x = (c_x_o < r_x_i) | (c_x_i > r_x_o)
+            no_ovlp_y = (c_y_o < r_y_i) | (c_y_i > r_y_o)
+
+            # If there is at least one no-overlapping, then there is no
+            # overlapping. If both no-overlapping are false, then there
+            # should be overlapping
+            if not (no_ovlp_x or no_ovlp_y):
+                # If there is at least one overlapping, then return true
+                return True
+
+        # No overlapping was found on any well
+        return False

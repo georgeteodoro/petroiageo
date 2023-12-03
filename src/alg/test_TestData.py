@@ -6,6 +6,7 @@ import numpy as np
 from ddt import ddt, data
 
 from TestDataNumpy import TestDataNumpy
+from data_filter import WellsSingleRingDataFilter
 
 concrete_classes = (TestDataNumpy)
 
@@ -57,6 +58,10 @@ class Test_TestDataAll(unittest.TestCase):
         # Fill wells
         for (well_id, (w_x, w_y)) in enumerate(cls.wells_list):
             for k in range(cls.hypercube_test_shape[2]):
+                # Well 1 would not have points throughout the whole depth
+                if well_id == 1 and (k == 1 or k == 4):
+                    continue
+
                 mock_porosity = w_x * w_y * k
                 cls.porosity_h5_dset[w_x, w_y,
                                      k] = (w_x, w_y, k, mock_porosity,
@@ -77,15 +82,19 @@ class Test_TestDataAll(unittest.TestCase):
         porosity_dset = self.__class__.porosity_h5_dset
         wells_list = self.__class__.wells_list
 
+        f_sel_filter = WellsSingleRingDataFilter(wells_list)
+
         td1 = test_cls(n_features=5,
                        features_only=True,
                        wells_list=wells_list,
-                       porosity_data=porosity_dset)
+                       porosity_data=porosity_dset,
+                       f_sel_filter=f_sel_filter)
         self.assertTrue(True)
         td2 = test_cls(n_features=5,
                        features_only=False,
                        wells_list=wells_list,
-                       porosity_data=porosity_dset)
+                       porosity_data=porosity_dset,
+                       f_sel_filter=f_sel_filter)
         self.assertTrue(True)
 
     @data(concrete_classes)
@@ -94,18 +103,25 @@ class Test_TestDataAll(unittest.TestCase):
         porosity_dset = self.__class__.porosity_h5_dset
         wells_list = self.__class__.wells_list
         n_features = 5
+        f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
 
         # Create TestData object
         td1 = test_cls(n_features=n_features,
-                       features_only=True,
+                       features_only=False,
                        wells_list=wells_list,
-                       porosity_data=porosity_dset)
+                       porosity_data=porosity_dset,
+                       f_sel_filter=f_sel_filter)
 
         # Prepare first porosity
         td1.prepare_porosity(0)
 
-        # Check if data was inserted
-        self.assertTrue(td1._test_data_dict)
+        # Only one ring exists
+        self.assertEqual(len(td1._test_data_dict), 1)
+
+        # Check if all points were added
+        # Total of 2 full depths, minus 2 non-added points
+        # = 2*5-2 = 8
+        self.assertEqual(len(td1._test_data_dict[0]), 8)
 
 
 if __name__ == '__main__':

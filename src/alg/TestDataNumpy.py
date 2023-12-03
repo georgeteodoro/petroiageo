@@ -8,44 +8,24 @@ class TestDataNumpy(TestDataBase):
     concrete type for data storage.
     '''
 
-    def __init__(self, n_features, features_only, wells_list, porosity_data):
+    def __init__(self, n_features, features_only, wells_list, f_sel_filter,
+                 porosity_data):
         # Currently no initialization is needed
-        super(TestDataNumpy, self).__init__(n_features, features_only,
-                                            wells_list, porosity_data)
+        super(TestDataNumpy,
+              self).__init__(n_features, features_only, wells_list,
+                             f_sel_filter, porosity_data)
 
-    # def _create_new_ring_hook(self):
-    #     return np.empty((self._ring_size(it, depth)), dtype=self._cur_data_type)
-
-    def _append_ring_hook(self, ring, data):
+    def _set_ring_hook(self, ring, data):
         '''
         Add porosity and other info (coordinates and well_ifd) to a test_data 
         ring, updating internally its size
         '''
-        filt_list = self._f_sel_filter.satisfies(data)
-        filt_data = data[filt_list]
 
-        size = len(filt_data)
-        beg = self._test_data_size[ring]
-        end = beg + size
-        self._test_data_size[ring] += size
-
-        if self._features_only:
-            self._test_data_dict[ring][
-                'x',
-                'y',
-                'z',
-                'phi',
-                beg:end,
-            ] = filt_data[['x', 'y', 'z', 'phi']]
-        else:
-            self._test_data_dict[ring][
-                'x',
-                'y',
-                'z',
-                'phi',
-                'well_id',
-                beg:end,
-            ] = filt_data[['x', 'y', 'z', 'phi', 'well_id']]
+        print(data)
+        self._test_data_dict[ring] = np.zeros((len(data)),
+                                              dtype=self._base_data_type)
+        print(self._test_data_dict[ring])
+        self._test_data_dict[ring][:] = data
 
     def _update_col_from_ring_hook(self, r, feature_data):
         f_str = f'f{self._current_feature_id}'
