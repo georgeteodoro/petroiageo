@@ -1,6 +1,7 @@
 from mpi4py import MPI
 
 from mpi_module import MPI_TAGS
+import FeatureDataBase
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -11,30 +12,6 @@ manager_rank = mpi_size - 1
 beg_str = "[manager] "
 
 # Manager only works on feature selection. It does not performs propagation
-
-
-def _gen_features_list(config):
-    num_features = config.get_param('num_features')
-    base_features = config.features_files_names
-    window_size = config.alg['window']
-
-    # Ignore any other file which is not an .h5 file.
-    base_features = [f for f in base_features if f != ".gitkeep"]
-    assert len(base_features) > 0, "No features found."
-
-    # Limit features list to the maximum size
-    if num_features > 0:
-        base_features = base_features[:num_features]
-
-    # Expand features for all displacements
-    all_features = []
-    for f in base_features:
-        for i in range(-window_size, window_size + 1):
-            for j in range(-window_size, window_size + 1):
-                for k in range(-window_size, window_size + 1):
-                    all_features.append((f, i, j, k))
-
-    return all_features
 
 
 def _send_new_features(remaining_features, worker_rank, config):
@@ -70,7 +47,7 @@ def run(config):
     start_it = config.alg['it']
 
     # Prepare features lists
-    all_features = _gen_features_list(config)
+    all_features = FeatureDataBase.gen_features_list(config)
     remaining_features = all_features.copy()
     if max_feats_to_test > 0:
         remaining_features = remaining_features[:max_feats_to_test]

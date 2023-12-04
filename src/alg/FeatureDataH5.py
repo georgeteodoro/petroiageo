@@ -12,11 +12,9 @@ class FeatureDataH5(FeatureDataBase):
     '''
     def __init__(self, feature_path, mpi_local_comm):
         super(FeatureDataH5, self).__init__(feature_path)
+        self._feature_file = None
         feature_file_name = feature_path[feature_path.rfind('/') + 1:]
         feature_name = feature_file_name[:feature_file_name.find('.')]
-
-        # note to self below... delete later
-        # mpi_local_comm = config.get_param("mpi_local_comm")
 
         if mpi_local_comm is not None:
             # Arguments to open the parallel accessible h5 file on the correct
@@ -25,12 +23,12 @@ class FeatureDataH5(FeatureDataBase):
                 'driver': 'mpio',
                 'comm': mpi_local_comm,
             }
-            self._feature_file = h5py.File(feature_path, "r", **mpi_kwargs)
         else:
             # This is only used for testing
             print(f"[FeatureDataH5] WARNING: initializing FeatureDataH5 "
                   f"{feature_name} without mpio. Ignore if unittesting.")
-            self._feature_file = h5py.File(feature_path, "r")
+            mpi_kwargs = {}
+        self._feature_file = h5py.File(feature_path, "r", **mpi_kwargs)
 
 
         assert self._feature_file is not None, "[FeatureDataH5] "\

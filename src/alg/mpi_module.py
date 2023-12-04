@@ -25,9 +25,9 @@ class MPI_TAGS(Enum):
     MANAGER_BEST_FEATURES = auto()
 
     # These two messages are related to the case on which propagation reached
-    # a point that only one well is currently propagating. This means that 
+    # a point that only one well is currently propagating. This means that
     # leave-one-well-out cross-validation won't work. On this case, the whole
-    # execution should be halted. 
+    # execution should be halted.
     # A worker that identifies this case sends WORKER_ABORT_PROP. The manager
     # then replies all remaining workers with MANAGER_ABORT_PROP.
     WORKER_ABORT_PROP = auto()
@@ -53,8 +53,17 @@ def _get_local_node_comm(comm):
     node_names = list(set(node_names))
     node_names.sort()
 
+    rank = comm.Get_rank()
+    mpi_size = comm.Get_size()
+    manager_rank = mpi_size - 1
+
     # Perform split
-    local_color = node_names.index(local_host_name)
+    if rank == manager_rank:
+        # Manager should be at a separate communicator since it won't be
+        # opening any h5 file.
+        local_color = len(local_host_name)
+    else:
+        local_color = node_names.index(local_host_name)
     local_comm = comm.Split(local_color)
 
     return local_comm

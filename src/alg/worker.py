@@ -1,7 +1,13 @@
 from mpi4py import MPI
+import h5py
 
 from mpi_module import MPI_TAGS
 from feature_sel import test_new_feature
+import FeatureDataBase
+from datasets_names import POROSITY_DSET_NAME
+from TestDataNumpy import TestDataNumpy
+from FeatureDataH5 import FeatureDataH5
+from data_filter import WellsSingleRingDataFilter
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -10,8 +16,25 @@ manager_rank = mpi_size - 1
 
 beg_str = f"[worker{rank}] "
 
-def _test_new_feature(test_data, config):
-    return (2, 1)
+
+def _load_porosity(config):
+    # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
+    # with the same access/mode: existing file with write permission
+    # However, only one process should update this porosity_data_h5
+    # structure.
+    write_str = "r+"
+
+    # Setup HDF5 driver configuration
+    mpi_kwargs = {
+        "driver": "mpio",
+        "comm": config.get_param("mpi_local_comm"),
+    }
+
+    porosity_cube_file = h5py.File(config.starting_porosity_cube_path,
+                                   write_str, **mpi_kwargs)
+    porosity_cube_dset = porosity_cube_file[POROSITY_DSET_NAME]
+
+    return porosity_cube_file, porosity_cube_dset
 
 
 def run(config):
@@ -20,13 +43,31 @@ def run(config):
     fsel_only = config.alg['fsel_only']
     should_update = config.get_param("mpi_should_update_local")
     num_its = config.alg['num_its']
+    max_feats_to_select = config.alg["max_num_features"]
+    wells_coords = config.train_wells_coords
+    test_wells_ids = config.alg["test_only_wells"]
+    
+    num_features = config.get_param("num_features")
+    num_features = num_features if num_features!=0 else 'all'
 
-    # Prep data
-    # seismic_dict = _load_seismic()
-    # test_data = _pepare_test_data()
-    test_data = None
+    # Generate the dict of all features
+    print(beg_str + f"Loading {num_features} features.")
+    all_features_dict = FeatureDataBase.load_all_features(config, FeatureDataH5)
 
-    status = MPI.Status()
+    # Load porosity data
+    print(beg_str + f"Loading porosity.")
+    porosity_h5_f, porosity_h5_dset = _load_porosity(config)
+
+    # Prepare test_data
+    print(beg_str + f"Preparing test_data.")
+    f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_coords))))
+    test_data = TestDataNumpy(n_features=max_feats_to_select,
+                              features_only=False,
+                              wells_list=wells_coords,
+                              porosity_data=porosity_h5_dset,
+                              f_sel_filter=f_sel_filter)
+
+    print(beg_str + f"Beginning iterations.")
 
     for it in range(num_its):
         best_features = ['x', 'y', 'z']
@@ -39,6 +80,7 @@ def run(config):
         comm.send(None, dest=manager_rank, tag=MPI_TAGS.WORKER_FIRST_JOB.value)
 
         while True:
+            status = MPI.Status()
             msg = comm.recv(status=status)
             msg_tag = status.Get_tag()
 
