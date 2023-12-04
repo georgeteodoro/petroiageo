@@ -191,7 +191,7 @@ class TestDataBase(ABC):
         self._current_feature_id += 1
         self._current_features.append(f'f{self._current_feature_id}')
 
-    def update_feature(self, feature_data):
+    def update_feature(self, feature):
         '''
         Adds data to the last feature. Data is related to all rings.
         '''

@@ -98,7 +98,7 @@ class Test_TestDataAll(unittest.TestCase):
         self.assertTrue(True)
 
     @data(concrete_classes)
-    def test_prepare_porosity(self, test_cls):
+    def test_prepare_porosity_r0(self, test_cls):
         # Load class data
         porosity_dset = self.__class__.porosity_h5_dset
         wells_list = self.__class__.wells_list
@@ -122,6 +122,31 @@ class Test_TestDataAll(unittest.TestCase):
         # Total of 2 full depths, minus 2 non-added points
         # = 2*5-2 = 8
         self.assertEqual(len(td1._test_data_dict[0]), 8)
+
+    @data(concrete_classes)
+    def test_update_feature_r0(self, test_cls):
+        # Load class data
+        porosity_dset = self.__class__.porosity_h5_dset
+        wells_list = self.__class__.wells_list
+        n_features = 5
+        f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
+
+        # Create TestData object
+        td1 = test_cls(n_features=n_features,
+                       features_only=False,
+                       wells_list=wells_list,
+                       porosity_data=porosity_dset,
+                       f_sel_filter=f_sel_filter)
+
+        # Prepare first porosity
+        td1.prepare_porosity(0)
+
+        # Add first feature
+
+        # Update feature
+
+        pass
+
 
 
 if __name__ == '__main__':
