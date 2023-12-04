@@ -83,7 +83,7 @@ def run(config):
 
         # Update test data: set test_data size and update coordinates,
         # porosity, and other columns
-        print(beg_str + f"it[{it}] Preparing test_data.")
+        print(beg_str + f"[it{it}] Preparing test_data.")
         test_data.prepare_porosity(it)
 
         # feature selection
@@ -101,7 +101,7 @@ def run(config):
             if msg_tag == MPI_TAGS.MANAGER_NEW_JOB.value:
                 print(
                     beg_str +
-                    f"it[{it}]f_it[{f_it}] Got new feature list to test {msg}")
+                    f"[it{it}][f_it{f_it}] Got new feature list to test {msg}")
 
                 # Got new feature to analyze
                 new_features = msg
@@ -114,7 +114,7 @@ def run(config):
                     # None is returned upon only 1 well propagating.
                     # If so, propagation is halted.
                     if not ret:
-                        print(beg_str + f"it[{it}]f_it[{f_it}] "
+                        print(beg_str + f"[it{it}][f_it{f_it}] "
                               "Only one remaining well. Aborting.")
                         comm.send(results,
                                   dest=manager_rank,
@@ -131,7 +131,7 @@ def run(config):
 
             elif msg_tag == MPI_TAGS.MANAGER_SELECTED_FEATURE.value:
                 print(beg_str +
-                      f"it[{it}]f_it[{f_it}] Got new best feature {msg}")
+                      f"[it{it}][f_it{f_it}] Got new best feature {msg}")
                 # Got the best feature for a f_it
                 new_feature = msg
                 (feature, disp) = new_feature
@@ -147,7 +147,7 @@ def run(config):
 
             elif msg_tag == MPI_TAGS.MANAGER_BEST_FEATURES.value:
                 print(beg_str +
-                      f"it[{it}]f_it[{f_it}] Got final best features {msg}")
+                      f"[it{it}][f_it{f_it}] Got final best features {msg}")
                 # Generate the best features list
                 # best_features = ['x', 'y', 'z']
                 best_features = []
@@ -161,7 +161,7 @@ def run(config):
                 break
 
             elif msg_tag == MPI_TAGS.MANAGER_ABORT_PROP.value:
-                print(beg_str + f"it[{it}]f_it[{f_it}] Received abort.")
+                print(beg_str + f"[it{it}][f_it{f_it}] Received abort.")
 
                 return
 

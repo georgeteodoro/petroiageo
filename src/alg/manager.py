@@ -9,7 +9,7 @@ mpi_size = comm.Get_size()
 workers_size = mpi_size - 1
 manager_rank = mpi_size - 1
 
-beg_str = "[manager] "
+beg_str = "[manager]"
 
 # Manager only works on feature selection. It does not performs propagation
 
@@ -68,7 +68,7 @@ def run(config):
     cur_best_metric = float('inf')
 
     for it in range(start_it, num_its + start_it):
-        print(beg_str + f"Running it[{it}]")
+        print(beg_str + f" Running [it{it}]")
         # Main loop on which a whole iteration is run
         while True:
             msg = comm.recv(status=status)
@@ -87,7 +87,7 @@ def run(config):
                 pass
 
             elif msg_tag == MPI_TAGS.WORKER_ABORT_PROP.value:
-                print(beg_str + f"Received abort from {worker_rank}.")
+                print(beg_str + f"[it{it}] Received abort from {worker_rank}.")
 
                 # After first abort signal, there is nothing else to do
                 # with the current worker.
@@ -98,12 +98,12 @@ def run(config):
                 continue
 
             else:
-                raise Exception(f"{beg_str} Bad MPI tag: {msg_tag}")
+                raise Exception(f"{beg_str}[it{it}] Bad MPI tag: {msg_tag}")
 
             # If one worker has aborted, there is nothing else to do besides
             # sending an abort signal to the current worker and wait for
             if aborted_workers > 0:
-                print(beg_str + f"Sending abort to w{worker_rank}.")
+                print(beg_str + f"[it{it}] Sending abort to w{worker_rank}.")
 
                 aborted_workers += 1
                 comm.send(None,
@@ -133,8 +133,9 @@ def run(config):
 
                         # Send best current feature to all workers
                         for worker_rank in range(workers_size):
-                            print(beg_str +
-                                  f"New best feature {cur_best_feature}")
+                            print(
+                                beg_str +
+                                f"[it{it}] New best feature {cur_best_feature}")
                             comm.send(
                                 cur_best_feature,
                                 dest=worker_rank,
@@ -155,9 +156,8 @@ def run(config):
 
                         # Send best features set to all workers
                         for worker_rank in range(workers_size):
-                            print(
-                                beg_str +
-                                f"Sending final best features {best_features}")
+                            print(beg_str + f"[it{it}] Sending final "
+                                  f"best features {best_features}")
                             comm.send(best_features,
                                       dest=worker_rank,
                                       tag=MPI_TAGS.MANAGER_BEST_FEATURES.value)
