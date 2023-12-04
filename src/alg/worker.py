@@ -43,6 +43,7 @@ def run(config):
     fsel_only = config.alg['fsel_only']
     should_update = config.get_param("mpi_should_update_local")
     num_its = config.alg['num_its']
+    start_it = config.alg['it']
     max_feats_to_select = config.alg["max_num_features"]
     wells_coords = config.train_wells_coords
     test_wells_ids = config.alg["test_only_wells"]
@@ -77,11 +78,12 @@ def run(config):
 
     print(beg_str + f"Beginning iterations.")
 
-    for it in range(num_its):
+    for it in range(start_it, num_its + start_it):
         best_features = ['x', 'y', 'z']
 
         # Update test data: set test_data size and update coordinates,
         # porosity, and other columns
+        print(beg_str + f"it[{it}] Preparing test_data.")
         test_data.prepare_porosity(it)
 
         # feature selection
@@ -152,7 +154,9 @@ def run(config):
                 best_features += msg
 
                 # Add the last column to test_data
-                test_data.update_feature(best_features[-1])
+                (last_feature, disp) = best_features[-1]
+                test_data.update_feature(all_features_dict[last_feature], disp,
+                                         disp_cube_shape)
 
                 break
 
