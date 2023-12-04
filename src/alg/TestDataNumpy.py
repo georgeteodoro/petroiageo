@@ -1,5 +1,6 @@
-from TestDataBase import TestDataBase
 import numpy as np
+
+from TestDataBase import TestDataBase
 
 
 class TestDataNumpy(TestDataBase):
@@ -7,13 +8,11 @@ class TestDataNumpy(TestDataBase):
     In-memory implementation of TestDataBase using numpy as the
     concrete type for data storage.
     '''
-
     def __init__(self, n_features, features_only, wells_list, f_sel_filter,
                  porosity_data):
         # Currently no initialization is needed
-        super(TestDataNumpy,
-              self).__init__(n_features, features_only, wells_list,
-                             f_sel_filter, porosity_data)
+        super(TestDataNumpy, self).__init__(
+            n_features, features_only, wells_list, f_sel_filter, porosity_data)
 
     def _set_ring_hook(self, ring, data):
         '''
@@ -21,10 +20,8 @@ class TestDataNumpy(TestDataBase):
         ring, updating internally its size
         '''
 
-        print(data)
         self._test_data_dict[ring] = np.zeros((len(data)),
                                               dtype=self._base_data_type)
-        print(self._test_data_dict[ring])
         self._test_data_dict[ring][:] = data
 
     def _update_col_from_ring_hook(self, r, feature_data):
@@ -49,3 +46,6 @@ class TestDataNumpy(TestDataBase):
             well_filter = lambda data: data[data['well_id'] != well_id]
 
         return well_filter
+
+    def _get_ring_np_values(self, ring):
+        return self._test_data_dict[ring]

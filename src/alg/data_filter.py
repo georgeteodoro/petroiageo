@@ -227,7 +227,7 @@ class WellsDataFilter(DataFilter):
         self.add_in_well_list_filter(well_ids_list)
 
 
-class WellsSingleRingDataFilter(DataFilter):
+class WellsSingleRingDataFilter(WellsDataFilter):
     """
     The Test data filter. As test data is defined based only the well id,
     it requires a well_ids_list. It automatically adds the  
@@ -238,8 +238,7 @@ class WellsSingleRingDataFilter(DataFilter):
     """
 
     def __init__(self, well_ids_list: list):
-        super().__init__()
-        self.add_in_well_list_filter(well_ids_list)
+        super().__init__(well_ids_list)
 
         # Add an empty ring filter
         # This Filter can only be used after setting a ring

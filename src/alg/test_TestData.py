@@ -142,6 +142,7 @@ class Test_TestDataAll(unittest.TestCase):
         td1.prepare_porosity(0)
 
         # Add first feature
+        td1.update_feature(f1)
 
         # Update feature
 

@@ -11,7 +11,6 @@ class TestDataBase(ABC):
      - well_id (only required for feature selection, not propagation)
      - features (multiple columns)
     '''
-
     def __init__(self, n_features, features_only, wells_list, f_sel_filter,
                  porosity_data):
         # Set the datatype for points
@@ -69,7 +68,6 @@ class TestDataBase(ABC):
     # === Interface for subclasses ============================================
     # =========================================================================
 
-
     @abstractmethod
     def _set_ring_hook(self, ring, data):
         '''
@@ -118,6 +116,15 @@ class TestDataBase(ABC):
         Whole data.
         '''
         raise Exception("[TestDataBase][_not_in_well_filter_hook] "
+                        "Abstract method not implemented.")
+
+    @abstractmethod
+    def _get_ring_np_values(self, ring):
+        '''
+        Should return an nparray with all data from a given ring. It is ok
+        do do such, since this method should only be used internally.
+        '''
+        raise Exception("[TestDataBase][_get_ring_np_values] "
                         "Abstract method not implemented.")
 
     # =========================================================================
@@ -198,7 +205,10 @@ class TestDataBase(ABC):
 
         # Fill data, one ring at a time
         for r in self._test_data_dict.keys():
-            filtered_feature_data = ...  # filter feature_data by coordinates of _test_data_dict[r] coordinates
+            # filter feature_data by coordinates of _test_data_dict[r] coordinates
+            ring_coords = self._get_ring_np_values(r)['x','y','z']
+            filtered_feature_data = feature.filter_coords(
+                ring_coords)
             self._update_col_from_ring_hook(r, filtered_feature_data)
 
     def get_train_values(self, well_id, chunk_id):
@@ -291,8 +301,8 @@ class TestDataBase(ABC):
 
             # Check if chunk_slice fits within the ring (border non-included)
             # If so, this chunk has no points for the ring
-            if ((c_x_i > r_x_i) and (c_x_o < r_x_o) and (c_y_i > r_y_i)
-                    and (c_y_o < r_y_o)):
+            if ((c_x_i > r_x_i) and (c_x_o < r_x_o) and (c_y_i > r_y_i) and
+                (c_y_o < r_y_o)):
                 continue
 
             # Check if there is no overlapping between the ring and the chunk
