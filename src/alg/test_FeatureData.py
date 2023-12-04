@@ -72,12 +72,10 @@ class Test_FeatureDataAll(unittest.TestCase):
         feature = test_cls(f_filename, None)
 
         # Prepare test case
-        coords = np.array([(1,1,1), (2,3,4), (2,1,2), (0,0,0)])
+        coords = np.array([(1, 1, 1), (2, 3, 4), (2, 1, 2), (0, 0, 0)])
         f_vals = [prod(c) for c in coords]
 
         self.assertTrue((feature.filter_coords(coords) == f_vals).all())
-        
-
 
 
 if __name__ == '__main__':

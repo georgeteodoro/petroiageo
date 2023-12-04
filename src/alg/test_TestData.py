@@ -4,9 +4,12 @@ import common
 import os
 import numpy as np
 from ddt import ddt, data
+from math import prod
 
 from TestDataNumpy import TestDataNumpy
 from data_filter import WellsSingleRingDataFilter
+from datasets_names import FEAT_DSET_NAME
+from FeatureDataH5 import FeatureDataH5
 
 concrete_classes = (TestDataNumpy)
 
@@ -14,16 +17,24 @@ concrete_classes = (TestDataNumpy)
 @ddt
 class Test_TestDataAll(unittest.TestCase):
 
-    # Porosity data info
+    # All data info
     hypercube_test_shape = (3, 4, 5)
     chunk_test_shape = (3, 2, 5)
     POROSITY_DSET_NAME = 't'
     wells_list = [(0, 2), (2, 3)]
     POROSITY_FILENAME = 'test_porosity.h5'
+    FEATURE_FILENAME1 = 'test_feature1.h5'
+    FEATURE_FILENAME2 = 'test_feature2.h5'
 
     # Porosity data structures
     porosity_h5_f = None
     porosity_h5_dset = None
+
+    # Feature data structures
+    feature1_h5_f = None
+    feature1_h5_dset = None
+    feature2_h5_f = None
+    feature2_h5_dset = None
 
     @classmethod
     def setUpClass(cls):
@@ -67,11 +78,47 @@ class Test_TestDataAll(unittest.TestCase):
                                      k] = (w_x, w_y, k, mock_porosity,
                                            common.RealValues.real, 0, well_id)
 
+        # Create the feature h5 file
+        cls.feature1_h5_f = h5py.File(cls.FEATURE_FILENAME1, 'w')
+
+        # Create the dataset within the h5
+        cls.feature1_h5_dset = cls.feature1_h5_f.create_dataset(
+            FEAT_DSET_NAME,
+            cls.hypercube_test_shape,
+            dtype=np.float64,
+        )
+
+        # Initialize feature data
+        for i in range(cls.hypercube_test_shape[0]):
+            for j in range(cls.hypercube_test_shape[1]):
+                for k in range(cls.hypercube_test_shape[2]):
+                    cls.feature1_h5_dset[i, j, k] = i * j * k + 1
+
+        # Create the feature h5 file
+        cls.feature2_h5_f = h5py.File(cls.FEATURE_FILENAME2, 'w')
+
+        # Create the dataset within the h5
+        cls.feature2_h5_dset = cls.feature2_h5_f.create_dataset(
+            FEAT_DSET_NAME,
+            cls.hypercube_test_shape,
+            dtype=np.float64,
+        )
+
+        # Initialize feature data
+        for i in range(cls.hypercube_test_shape[0]):
+            for j in range(cls.hypercube_test_shape[1]):
+                for k in range(cls.hypercube_test_shape[2]):
+                    cls.feature2_h5_dset[i, j, k] = i * j * k + 10
+
     @classmethod
     def tearDownClass(cls):
         # Delete any old file
         cls.porosity_h5_f.close()
         os.remove(cls.POROSITY_FILENAME)
+        cls.feature1_h5_f.close()
+        os.remove(cls.FEATURE_FILENAME1)
+        cls.feature2_h5_f.close()
+        os.remove(cls.FEATURE_FILENAME2)
 
     @data(concrete_classes)
     def test_list_init(self, test_cls):
@@ -102,6 +149,7 @@ class Test_TestDataAll(unittest.TestCase):
         # Load class data
         porosity_dset = self.__class__.porosity_h5_dset
         wells_list = self.__class__.wells_list
+
         n_features = 5
         f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
 
@@ -128,6 +176,9 @@ class Test_TestDataAll(unittest.TestCase):
         # Load class data
         porosity_dset = self.__class__.porosity_h5_dset
         wells_list = self.__class__.wells_list
+        f1_filename = self.__class__.FEATURE_FILENAME1
+        f2_filename = self.__class__.FEATURE_FILENAME2
+
         n_features = 5
         f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
 
@@ -141,13 +192,101 @@ class Test_TestDataAll(unittest.TestCase):
         # Prepare first porosity
         td1.prepare_porosity(0)
 
-        # Add first feature
+        # =====================================================================
+        # === Test first feature
+        # =====================================================================
+        f1 = FeatureDataH5(f1_filename, None)
         td1.update_feature(f1)
 
-        # Update feature
+        cur_points = td1._test_data_dict[0]
 
-        pass
+        for (well_id, well) in enumerate(wells_list):
+            # Get data through public interface
+            # chunk_id=0 to return all data
+            train_X, train_y = td1.get_train_values(well_id, chunk_id=0)
+            val_X, val_y = td1.get_val_values(well_id)
 
+            # Generate expected values
+            expected_train_coordinates = cur_points[
+                cur_points['well_id'] != well_id][['x', 'y', 'z']]
+            expected_val_coordinates = cur_points[cur_points['well_id'] ==
+                                                  well_id][['x', 'y', 'z']]
+            expected_train_X = [(prod(c) + 1, )
+                                for c in expected_train_coordinates]
+            expected_train_y = [prod(c) for c in expected_train_coordinates]
+
+            expected_val_X = [(prod(c) + 1, )
+                              for c in expected_val_coordinates]
+            expected_val_y = [prod(c) for c in expected_val_coordinates]
+
+            self.assertTrue(expected_train_X == train_X.tolist())
+            self.assertTrue(expected_train_y == train_y.tolist())
+            self.assertTrue(expected_val_X == val_X.tolist())
+            self.assertTrue(expected_val_y == val_y.tolist())
+
+        # =====================================================================
+        # === Test updating first feature to feature2
+        # =====================================================================
+        f2 = FeatureDataH5(f2_filename, None)
+        td1.update_feature(f2)
+
+        for (well_id, well) in enumerate(wells_list):
+            # Get data through public interface
+            # chunk_id=0 to return all data
+            train_X, train_y = td1.get_train_values(well_id, chunk_id=0)
+            val_X, val_y = td1.get_val_values(well_id)
+
+            # Generate expected values
+            expected_train_coordinates = cur_points[
+                cur_points['well_id'] != well_id][['x', 'y', 'z']]
+            expected_val_coordinates = cur_points[cur_points['well_id'] ==
+                                                  well_id][['x', 'y', 'z']]
+            expected_train_X = [(prod(c) + 10, )
+                                for c in expected_train_coordinates]
+            expected_train_y = [prod(c) for c in expected_train_coordinates]
+
+            expected_val_X = [(prod(c) + 10, )
+                              for c in expected_val_coordinates]
+            expected_val_y = [prod(c) for c in expected_val_coordinates]
+
+            self.assertTrue(expected_train_X == train_X.tolist())
+            self.assertTrue(expected_train_y == train_y.tolist())
+            self.assertTrue(expected_val_X == val_X.tolist())
+            self.assertTrue(expected_val_y == val_y.tolist())
+
+        # =====================================================================
+        # === Test committing feature2 and adding feature1 to col2
+        # =====================================================================
+        td1.commit_feature()
+        td1.update_feature(f1)
+
+        for (well_id, well) in enumerate(wells_list):
+            # Get data through public interface
+            # chunk_id=0 to return all data
+            train_X, train_y = td1.get_train_values(well_id, chunk_id=0)
+            val_X, val_y = td1.get_val_values(well_id)
+
+            # Generate expected values
+            expected_train_coordinates = cur_points[
+                cur_points['well_id'] != well_id][['x', 'y', 'z']]
+            expected_val_coordinates = cur_points[cur_points['well_id'] ==
+                                                  well_id][['x', 'y', 'z']]
+            expected_train_X = [(
+                prod(c) + 10,
+                prod(c) + 1,
+            ) for c in expected_train_coordinates]
+            expected_train_y = [prod(c) for c in expected_train_coordinates]
+
+            expected_val_X = [(
+                prod(c) + 10,
+                prod(c) + 1,
+            ) for c in expected_val_coordinates]
+            expected_val_y = [prod(c) for c in expected_val_coordinates]
+
+            self.assertTrue(expected_train_X == train_X.tolist())
+            self.assertTrue(expected_train_y == train_y.tolist())
+            self.assertTrue(expected_val_X == val_X.tolist())
+            self.assertTrue(expected_val_y == val_y.tolist())
 
 
 if __name__ == '__main__':

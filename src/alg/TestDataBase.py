@@ -119,12 +119,12 @@ class TestDataBase(ABC):
                         "Abstract method not implemented.")
 
     @abstractmethod
-    def _get_ring_np_values(self, ring):
+    def _get_ring_np_values_hook(self, ring):
         '''
         Should return an nparray with all data from a given ring. It is ok
         do do such, since this method should only be used internally.
         '''
-        raise Exception("[TestDataBase][_get_ring_np_values] "
+        raise Exception("[TestDataBase][_get_ring_np_values_hook] "
                         "Abstract method not implemented.")
 
     # =========================================================================
@@ -145,6 +145,9 @@ class TestDataBase(ABC):
         self._current_it = it
         self._current_feature_id = 0
         self._current_features = []
+
+        # Set the first feature, even if it's empty
+        self._current_features.append(f'f{self._current_feature_id}')
 
         # Remove, if necessary, old data from previous rings
         # This should be done if sampling is required
@@ -205,10 +208,8 @@ class TestDataBase(ABC):
 
         # Fill data, one ring at a time
         for r in self._test_data_dict.keys():
-            # filter feature_data by coordinates of _test_data_dict[r] coordinates
-            ring_coords = self._get_ring_np_values(r)['x','y','z']
-            filtered_feature_data = feature.filter_coords(
-                ring_coords)
+            ring_coords = self._get_ring_np_values_hook(r)[['x', 'y', 'z']]
+            filtered_feature_data = feature.filter_coords(ring_coords)
             self._update_col_from_ring_hook(r, filtered_feature_data)
 
     def get_train_values(self, well_id, chunk_id):
@@ -224,7 +225,7 @@ class TestDataBase(ABC):
         well_filter = self._not_in_well_filter_hook(well_id)
         return self._get_values(well_filter, chunk_id)
 
-    def get_val_values(well_id):
+    def get_val_values(self, well_id):
         well_filter = self._in_well_filter_hook(well_id)
         # chunk_id=0 to return all data
         return self._get_values(well_filter, chunk_id=0)
@@ -252,26 +253,23 @@ class TestDataBase(ABC):
             # for each ring, return the ratio of |ring|/|test_data|
             # with the proper range
             if chunk_id > 0:
-                raise Exception("[TestDataBase][get_train_values] Chunking "
+                raise Exception("[TestDataBase][_get_values] Chunking "
                                 "not implemented for incremental learning.")
 
             new_points = self._get_ring_filtered_values_hook(r, well_filter)
 
             # Split X from y
-            new_points_X = self._test_data_dict[r][self._current_features]
-            new_points_y = self._test_data_dict[r]['phi']
+            new_points_X = new_points[self._current_features]
+            new_points_y = new_points['phi']
 
             # Add them to output arrays
-            X.append(new_points_X)
-            y.append(new_points_y)
-
-        X = np.concatenate(X_val_list).reshape(-1)
-        y = np.concatenate(y_val_list).reshape(-1)
+            X.extend(new_points_X)
+            y.extend(new_points_y)
 
         # Convert from structured array to simple array
         # This conversion from array->list->array may be inefficient...
-        X = np.array(X.tolist())
-        y = np.array(y.tolist())
+        X = np.array(X)
+        y = np.array(y)
 
         return X, y
 
