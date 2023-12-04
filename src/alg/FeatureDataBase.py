@@ -2,19 +2,6 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 
-def apply_displ(coord_3d_np, disp, disp_cube_shape):
-    '''
-    Apply a displacement 'disp=(dx,dy,dz)'' on all coordinates of 'coords'.
-    Displacement is applied in-place.
-    '''
-
-    # This algorithm applies the displacement at the whole array, allowing
-    # improved data access times
-    for coord_s, d_id in [('x', 0), ('y', 1), ('z', 2)]:
-        coord_3d_np[coord_s] = (coord_3d_np[coord_s] + disp[d_id] +
-                                ((disp_cube_shape[d_id] - 1) / 2))
-
-
 def gen_features_list(config):
     '''
     Generates the list of available features with all possible displacements.
@@ -37,7 +24,7 @@ def gen_features_list(config):
         for i in range(-window_size, window_size + 1):
             for j in range(-window_size, window_size + 1):
                 for k in range(-window_size, window_size + 1):
-                    all_features.append((f, i, j, k))
+                    all_features.append((f, (i, j, k)))
 
     return all_features
 

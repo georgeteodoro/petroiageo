@@ -46,13 +46,21 @@ def run(config):
     max_feats_to_select = config.alg["max_num_features"]
     wells_coords = config.train_wells_coords
     test_wells_ids = config.alg["test_only_wells"]
-    
+
     num_features = config.get_param("num_features")
-    num_features = num_features if num_features!=0 else 'all'
+    num_features = num_features if num_features != 0 else 'all'
+
+    window_size = config.alg['window']
+    disp_cube_shape = (
+        window_size * 2 + 1,
+        window_size * 2 + 1,
+        window_size * 2 + 1,
+    )
 
     # Generate the dict of all features
     print(beg_str + f"Loading {num_features} features.")
-    all_features_dict = FeatureDataBase.load_all_features(config, FeatureDataH5)
+    all_features_dict = FeatureDataBase.load_all_features(
+        config, FeatureDataH5)
 
     # Load porosity data
     print(beg_str + f"Loading porosity.")
@@ -86,13 +94,14 @@ def run(config):
 
             # Respond the received job
             if msg_tag == MPI_TAGS.MANAGER_NEW_JOB.value:
-                print(beg_str + f"Got new feature to test {msg}")
+                print(beg_str + f"Got new feature list to test {msg}")
 
                 # Got new feature to analyze
                 new_features = msg
                 results = []
-                for feature in new_features:
-                    test_data.update_feature(new_feature)
+                for (feature, disp) in new_features:
+                    test_data.update_feature(all_features_dict[feature], disp,
+                                             disp_cube_shape)
                     ret = test_new_feature(test_data, config)
 
                     # None is returned upon only 1 well propagating.

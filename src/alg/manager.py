@@ -77,6 +77,7 @@ def run(config):
 
             # Parse response from worker
             if msg_tag == MPI_TAGS.WORKER_JOB_RESULT.value:
+                print(beg_str + f"Got reply {msg}.")
                 # Update best feature, if new best was found
                 for (feature, rmse, mae) in msg:
                     if rmse < cur_best_metric:

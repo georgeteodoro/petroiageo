@@ -201,14 +201,24 @@ class TestDataBase(ABC):
         self._current_feature_id += 1
         self._current_features.append(f'f{self._current_feature_id}')
 
-    def update_feature(self, feature):
+    def update_feature(self, feature, disp, disp_cube_shape):
         '''
         Adds data to the last feature. Data is related to all rings.
+        Receives a FeatureDataBase object and a displacement to apply on
+        the input feature.
         '''
 
         # Fill data, one ring at a time
         for r in self._test_data_dict.keys():
+            # Retrieve the coordinate list and apply the feature displacement
             ring_coords = self._get_ring_np_values_hook(r)[['x', 'y', 'z']]
+            # This algorithm applies the displacement at the whole array, 
+            # allowing improved data access times
+            for coord_s, d_id in [('x', 0), ('y', 1), ('z', 2)]:
+                ring_coords[coord_s] = (ring_coords[coord_s] + disp[d_id] +
+                                        ((disp_cube_shape[d_id] - 1) / 2))
+            
+            # Extract displaced feature data and assign it to the last col
             filtered_feature_data = feature.filter_coords(ring_coords)
             self._update_col_from_ring_hook(r, filtered_feature_data)
 
