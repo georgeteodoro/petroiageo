@@ -14,7 +14,7 @@ rank = comm.Get_rank()
 mpi_size = comm.Get_size()
 manager_rank = mpi_size - 1
 
-beg_str = f"[worker{rank}] "
+beg_str = f"[worker{rank}]"
 
 
 def _load_porosity(config):
@@ -92,9 +92,14 @@ def run(config):
             msg = comm.recv(status=status)
             msg_tag = status.Get_tag()
 
+            # Don't count the original [x,y,z] features
+            f_it = len(best_features) - 3
+
             # Respond the received job
             if msg_tag == MPI_TAGS.MANAGER_NEW_JOB.value:
-                print(beg_str + f"Got new feature list to test {msg}")
+                print(
+                    beg_str +
+                    f"it[{it}]f_it[{f_it}] Got new feature list to test {msg}")
 
                 # Got new feature to analyze
                 new_features = msg
@@ -107,14 +112,15 @@ def run(config):
                     # None is returned upon only 1 well propagating.
                     # If so, propagation is halted.
                     if not ret:
-                        print(beg_str + "Only one remaining well. Aborting.")
+                        print(beg_str + f"it[{it}]f_it[{f_it}] "
+                              "Only one remaining well. Aborting.")
                         comm.send(results,
                                   dest=manager_rank,
                                   tag=MPI_TAGS.WORKER_ABORT_PROP.value)
 
                         return
 
-                    results.append((feature, *ret))
+                    results.append(((feature, disp), *ret))
 
                 # Send response back
                 comm.send(results,
@@ -122,11 +128,14 @@ def run(config):
                           tag=MPI_TAGS.WORKER_JOB_RESULT.value)
 
             elif msg_tag == MPI_TAGS.MANAGER_SELECTED_FEATURE.value:
-                print(beg_str + f"Got new best feature {msg}")
+                print(beg_str +
+                      f"it[{it}]f_it[{f_it}] Got new best feature {msg}")
                 # Got the best feature for a f_it
                 new_feature = msg
+                (feature, disp) = new_feature
                 best_features.append(new_feature)
-                test_data.update_feature(new_feature)
+                test_data.update_feature(all_features_dict[feature], disp,
+                                         disp_cube_shape)
                 test_data.commit_feature()
 
                 # Send response back requesting new job
@@ -135,7 +144,8 @@ def run(config):
                           tag=MPI_TAGS.WORKER_FIRST_JOB.value)
 
             elif msg_tag == MPI_TAGS.MANAGER_BEST_FEATURES.value:
-                print(beg_str + f"Got final best features {msg}")
+                print(beg_str +
+                      f"it[{it}]f_it[{f_it}] Got final best features {msg}")
                 # Generate the best features list
                 # best_features = ['x', 'y', 'z']
                 best_features = []
@@ -147,7 +157,7 @@ def run(config):
                 break
 
             elif msg_tag == MPI_TAGS.MANAGER_ABORT_PROP.value:
-                print(beg_str + "Received abort.")
+                print(beg_str + f"it[{it}]f_it[{f_it}] Received abort.")
 
                 return
 

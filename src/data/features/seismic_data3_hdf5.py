@@ -400,7 +400,7 @@ if __name__ == '__main__':
         # 'NEAR_gersztenkorn_5-5-11.npy', 'NEAR_gst_5-5-7.npy',
         # 'NEAR_most-positive-curvature_.npy', 'NEAR_dip-curvature_.npy',
         # 'NEAR_gersztenkorn_5-5-7.npy', 'NEAR_gst_5-5-9.npy',
-        'NEAR.npy',
+        'FAR.npy',
         # 'all'
     ]
     if target_features_files_names_with_extension[0] == "all":

@@ -211,13 +211,14 @@ class TestDataBase(ABC):
         # Fill data, one ring at a time
         for r in self._test_data_dict.keys():
             # Retrieve the coordinate list and apply the feature displacement
-            ring_coords = self._get_ring_np_values_hook(r)[['x', 'y', 'z']]
-            # This algorithm applies the displacement at the whole array, 
+            ring_coords = self._get_ring_np_values_hook(r)[['x', 'y',
+                                                            'z']].copy()
+            # This algorithm applies the displacement at the whole array,
             # allowing improved data access times
             for coord_s, d_id in [('x', 0), ('y', 1), ('z', 2)]:
                 ring_coords[coord_s] = (ring_coords[coord_s] + disp[d_id] +
                                         ((disp_cube_shape[d_id] - 1) / 2))
-            
+
             # Extract displaced feature data and assign it to the last col
             filtered_feature_data = feature.filter_coords(ring_coords)
             self._update_col_from_ring_hook(r, filtered_feature_data)
