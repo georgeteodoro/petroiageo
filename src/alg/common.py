@@ -23,10 +23,12 @@ RealValues = enum("real", "propagated", "canal", "canal_expanded", "expanded",
                   "empty")
 
 
-def has_points_within_chunk(wells_list, ring, chunk_slice):
+def has_points_within_chunk(wells_list, ring, chunk_slice, return_list=False):
     '''
     Calculates whether any points of the input 'ring' should be found
     within the given 'chunk_slice'.
+    Input 'wells_list' should be a list of tuples (x,y), one for 
+    each well coordinate.
     For a ring point to be within the chunk, there should be some 
     overlapping between the bounded box of the chunk and the ring.
     However, it is simpler to check if there is no overlap and return
@@ -36,8 +38,10 @@ def has_points_within_chunk(wells_list, ring, chunk_slice):
     This is checked for each well.
     '''
 
+    wells_to_update = []
+
     # Check if there are points for each well
-    for (_, (w_x, w_y)) in wells_list:
+    for (w_x, w_y) in wells_list:
         c_x_i = chunk_slice[0].start
         c_x_o = chunk_slice[0].stop - 1
         c_y_i = chunk_slice[1].start
@@ -62,8 +66,16 @@ def has_points_within_chunk(wells_list, ring, chunk_slice):
         # overlapping. If both no-overlapping are false, then there
         # should be overlapping
         if not (no_ovlp_x or no_ovlp_y):
-            # If there is at least one overlapping, then return true
-            return True
+            if return_list:
+                # If there is at least one overlapping,
+                # then add the current well
+                wells_to_update.append((w_x, w_y))
+            else:
+                # If there is at least one overlapping, then return true
+                return True
 
-    # No overlapping was found on any well
-    return False
+    if return_list:
+        return wells_to_update
+    else:
+        # No overlapping was found on any well
+        return False

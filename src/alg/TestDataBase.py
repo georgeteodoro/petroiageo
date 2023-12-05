@@ -61,7 +61,7 @@ class TestDataBase(ABC):
         self._data_len = -1
 
         # This is the list of real wells coordinates
-        self._wells_list = list(enumerate(wells_list))
+        self._wells_list = wells_list
 
         self._porosity_data = porosity_data
         self._f_sel_filter = f_sel_filter
