@@ -46,19 +46,7 @@ def run(config):
     num_its = config.alg['num_its']
     start_it = config.alg['it']
 
-    # Prepare features lists
-    all_features = FeatureDataBase.gen_features_list(config)
-    remaining_features = all_features.copy()
-    if max_feats_to_test > 0:
-        remaining_features = remaining_features[:max_feats_to_test]
-    best_features = []
-
     status = MPI.Status()
-
-    # Count of how many workers are just waiting the end of
-    # the current f_it. It only changes when there are no more
-    # remaining_features.
-    done_workers = 0
 
     # Count aborted workers. If any worker aborts, all workers should
     # abort.
@@ -69,6 +57,19 @@ def run(config):
 
     for it in range(start_it, num_its + start_it):
         print(beg_str + f" Running [it{it}]")
+
+        # Prepare features lists
+        all_features = FeatureDataBase.gen_features_list(config)
+        remaining_features = all_features.copy()
+        if max_feats_to_test > 0:
+            remaining_features = remaining_features[:max_feats_to_test]
+        best_features = []
+
+        # Count of how many workers are just waiting the end of
+        # the current f_it. It only changes when there are no more
+        # remaining_features.
+        done_workers = 0
+
         # Main loop on which a whole iteration is run
         while True:
             msg = comm.recv(status=status)
@@ -141,7 +142,8 @@ def run(config):
                                 dest=worker_rank,
                                 tag=MPI_TAGS.MANAGER_SELECTED_FEATURE.value)
 
-                        # Reload new remaining features
+                        # Reload new remaining features without the
+                        # chosen feature
                         all_features.remove(cur_best_feature)
                         remaining_features = all_features.copy()
                         if max_feats_to_test > 0:
