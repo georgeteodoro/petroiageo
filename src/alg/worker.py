@@ -8,6 +8,7 @@ from datasets_names import POROSITY_DSET_NAME
 from TestDataNumpy import TestDataNumpy
 from FeatureDataH5 import FeatureDataH5
 from data_filter import WellsSingleRingDataFilter
+from propagate import propagate
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -167,11 +168,10 @@ def run(config):
                 return
 
             else:
-                raise Exception(f"[manager] Bad MPI tag: {msg_tag}")
+                raise Exception(beg_str + f" Bad MPI tag: {msg_tag}")
 
         # propagation
         if should_update:
-            # propagate(it, best_features, config)
-            print('------------propagating')
+            propagate(it, best_features, config)
 
     porosity_h5_f.close()

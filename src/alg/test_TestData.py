@@ -161,7 +161,7 @@ class Test_TestDataAll(unittest.TestCase):
                        f_sel_filter=f_sel_filter)
 
         # Prepare first porosity
-        td1.prepare_porosity(0)
+        td1.prepare_porosity(1)
 
         # Only one ring exists
         self.assertEqual(len(td1._test_data_dict), 1)
@@ -192,7 +192,7 @@ class Test_TestDataAll(unittest.TestCase):
                        f_sel_filter=f_sel_filter)
 
         # Prepare first porosity
-        td1.prepare_porosity(0)
+        td1.prepare_porosity(1)
 
         # =====================================================================
         # === Test first feature
