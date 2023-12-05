@@ -19,6 +19,7 @@ def _send_new_features(remaining_features, worker_rank, config):
     Send a batch of features to a worker.
     Currently this is somewhat empty, but later scheduling code will
     be put here.
+    New features are returned just for debugging purposes.
     '''
 
     # Number of features to be sent to the worker.
@@ -33,10 +34,11 @@ def _send_new_features(remaining_features, worker_rank, config):
         remaining_features.pop() for i in range(batch_features_size)
     ]
 
-    print(beg_str + f"Sending features {new_features}")
     comm.send(new_features,
               dest=worker_rank,
               tag=MPI_TAGS.MANAGER_NEW_JOB.value)
+
+    return new_features
 
 
 def run(config):
@@ -119,7 +121,9 @@ def run(config):
 
             if len(remaining_features) > 0:
                 # There are still features to test on this f_it
-                _send_new_features(remaining_features, worker_rank, config)
+                new_features = _send_new_features(remaining_features,
+                                                  worker_rank, config)
+                print(beg_str + f"[it{it}] Sending features {new_features}")
             else:
                 done_workers += 1
                 # If all workers are done, then this is the end of a f_it

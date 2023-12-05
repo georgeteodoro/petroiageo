@@ -1,4 +1,7 @@
 import numpy as np
+import lightgbm as lgb
+from sklearn.metrics import mean_absolute_error
+
 from data_filter import FeatSelectionTrainDataFilter
 
 RANDOM_STATE = 15
@@ -32,10 +35,8 @@ def test_new_feature(test_data, config):
     '''
 
     test_wells_ids = config.alg['test_only_wells']
-    n_training_chunks = config.alg['parallel']['n_training_chunks']
+    n_training_chunks = int(config.alg['parallel']['n_training_chunks'])
     train_wells_ids = config.train_wells_ids
-
-    return (2, 1)
 
     # Configure test_data for out-of-core execution, if needed
     test_data.set_num_training_chunks(n_training_chunks)
@@ -46,7 +47,6 @@ def test_new_feature(test_data, config):
 
     # Leave-one-well-out
     for curr_well_id in train_wells_ids:
-
         # Reset model for incremental learning
         regressor = None
 
@@ -56,7 +56,7 @@ def test_new_feature(test_data, config):
 
         # X_val=None if there are no validation points available. This can
         # only happen if there is only 1 well being propagated.
-        if not X_val:
+        if X_val is None:
             return None
 
         # Performs incremental learning on all chunks
@@ -85,7 +85,7 @@ def test_new_feature(test_data, config):
             )
 
         # Calculate error metrics
-        pred = trained_regressor.predict(X_val)
+        pred = regressor.predict(X_val)
         rmse = np.sqrt(np.mean((pred - y_val)**2))
         mae = mean_absolute_error(y_val, pred)
         rmse_list.append(rmse)

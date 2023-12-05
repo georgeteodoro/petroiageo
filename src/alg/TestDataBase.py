@@ -42,7 +42,7 @@ class TestDataBase(ABC):
 
         # Internal state
         self._current_feature_id = -1
-        self._current_it = -1
+        self._current_ring = -1
         self._current_features = []
 
         # Location of concrete test_data. This should be initialize, accessed
@@ -138,13 +138,13 @@ class TestDataBase(ABC):
         It also resets the internal current column.
         '''
 
-        # Set ring to be filtered
-        self._f_sel_filter.set_ring(it)
-
         # Reset internal state
-        self._current_it = it
+        self._current_ring = it - 1
         self._current_feature_id = 0
         self._current_features = []
+
+        # Set ring to be filtered
+        self._f_sel_filter.set_ring(self._current_ring)
 
         # Set the first feature, even if it's empty
         self._current_features.append(f'f{self._current_feature_id}')
@@ -154,14 +154,15 @@ class TestDataBase(ABC):
         pass
 
         # Create new ring data
-        self._test_data_dict[it] = []
+        self._test_data_dict[self._current_ring] = []
         # self._test_data_size[it] = 0
 
         # Iterate on all porosity chunks to fill test_data
         points_list = []
         for chunk_slice in self._porosity_data.iter_chunks():
             # Skip this chunk if there are not any points withing it
-            if not self._has_points_within_chunk(it, chunk_slice):
+            if not self._has_points_within_chunk(self._current_ring,
+                                                 chunk_slice):
                 continue
 
             # Load porosity data chunk
@@ -170,6 +171,7 @@ class TestDataBase(ABC):
             # Add points to temporary points_list
             filt_list = self._f_sel_filter.satisfies(chunk_np)
             filt_data = chunk_np[filt_list]
+
             if self._features_only:
                 points_list.extend(filt_data[['x', 'y', 'z', 'phi']].tolist())
             else:
@@ -182,7 +184,7 @@ class TestDataBase(ABC):
                 ]].tolist())
 
         # Fill ring dict
-        self._set_ring_hook(it, points_list)
+        self._set_ring_hook(self._current_ring, points_list)
 
         # Update size and chunking info
         self._chunk_size = 0
@@ -243,6 +245,9 @@ class TestDataBase(ABC):
 
     def set_num_training_chunks(self, n_training_chunks):
         self._n_training_chunks = n_training_chunks
+
+    def get_num_wells(self):
+        return len(self._wells_list)
 
     # =========================================================================
     # === Helper functions ====================================================

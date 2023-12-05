@@ -46,6 +46,7 @@ def run(config):
     start_it = config.alg['it']
     max_feats_to_select = config.alg["max_num_features"]
     wells_coords = config.train_wells_coords
+    train_wells_ids = config.train_wells_ids
     test_wells_ids = config.alg["test_only_wells"]
 
     num_features = config.get_param("num_features")
@@ -69,7 +70,7 @@ def run(config):
 
     # Prepare test_data
     print(beg_str + f"Preparing test_data.")
-    f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_coords))))
+    f_sel_filter = WellsSingleRingDataFilter(train_wells_ids)
     test_data = TestDataNumpy(n_features=max_feats_to_select,
                               features_only=False,
                               wells_list=wells_coords,
