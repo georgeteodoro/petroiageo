@@ -279,8 +279,8 @@ class TestDataBase(ABC):
 
         # Convert from structured array to simple array
         # This conversion from array->list->array may be inefficient...
-        X = np.array(X)
-        y = np.array(y)
+        X = np.array(np.array(X).tolist())
+        y = np.array(np.array(y).tolist())
 
         return X, y
 

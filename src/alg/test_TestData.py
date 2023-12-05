@@ -178,6 +178,8 @@ class Test_TestDataAll(unittest.TestCase):
         wells_list = self.__class__.wells_list
         f1_filename = self.__class__.FEATURE_FILENAME1
         f2_filename = self.__class__.FEATURE_FILENAME2
+        disp = (0, 0, 0)
+        disp_cube_shape = (1, 1, 1)
 
         n_features = 5
         f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
@@ -196,7 +198,7 @@ class Test_TestDataAll(unittest.TestCase):
         # === Test first feature
         # =====================================================================
         f1 = FeatureDataH5(f1_filename, None)
-        td1.update_feature(f1)
+        td1.update_feature(f1, disp, disp_cube_shape)
 
         cur_points = td1._test_data_dict[0]
 
@@ -211,24 +213,26 @@ class Test_TestDataAll(unittest.TestCase):
                 cur_points['well_id'] != well_id][['x', 'y', 'z']]
             expected_val_coordinates = cur_points[cur_points['well_id'] ==
                                                   well_id][['x', 'y', 'z']]
-            expected_train_X = [(prod(c) + 1, )
-                                for c in expected_train_coordinates]
+            expected_train_X = [[
+                prod(c) + 1,
+            ] for c in expected_train_coordinates]
             expected_train_y = [prod(c) for c in expected_train_coordinates]
 
-            expected_val_X = [(prod(c) + 1, )
-                              for c in expected_val_coordinates]
+            expected_val_X = [[
+                prod(c) + 1,
+            ] for c in expected_val_coordinates]
             expected_val_y = [prod(c) for c in expected_val_coordinates]
 
-            self.assertTrue(expected_train_X == train_X.tolist())
-            self.assertTrue(expected_train_y == train_y.tolist())
-            self.assertTrue(expected_val_X == val_X.tolist())
-            self.assertTrue(expected_val_y == val_y.tolist())
+            self.assertTrue((expected_train_X == train_X).all())
+            self.assertTrue((expected_train_y == train_y).all())
+            self.assertTrue((expected_val_X == val_X).all())
+            self.assertTrue((expected_val_y == val_y).all())
 
         # =====================================================================
         # === Test updating first feature to feature2
         # =====================================================================
         f2 = FeatureDataH5(f2_filename, None)
-        td1.update_feature(f2)
+        td1.update_feature(f2, disp, disp_cube_shape)
 
         for (well_id, well) in enumerate(wells_list):
             # Get data through public interface
@@ -241,24 +245,26 @@ class Test_TestDataAll(unittest.TestCase):
                 cur_points['well_id'] != well_id][['x', 'y', 'z']]
             expected_val_coordinates = cur_points[cur_points['well_id'] ==
                                                   well_id][['x', 'y', 'z']]
-            expected_train_X = [(prod(c) + 10, )
-                                for c in expected_train_coordinates]
+            expected_train_X = [[
+                prod(c) + 10,
+            ] for c in expected_train_coordinates]
             expected_train_y = [prod(c) for c in expected_train_coordinates]
 
-            expected_val_X = [(prod(c) + 10, )
-                              for c in expected_val_coordinates]
+            expected_val_X = [[
+                prod(c) + 10,
+            ] for c in expected_val_coordinates]
             expected_val_y = [prod(c) for c in expected_val_coordinates]
 
-            self.assertTrue(expected_train_X == train_X.tolist())
-            self.assertTrue(expected_train_y == train_y.tolist())
-            self.assertTrue(expected_val_X == val_X.tolist())
-            self.assertTrue(expected_val_y == val_y.tolist())
+            self.assertTrue((expected_train_X == train_X).all())
+            self.assertTrue((expected_train_y == train_y).all())
+            self.assertTrue((expected_val_X == val_X).all())
+            self.assertTrue((expected_val_y == val_y).all())
 
         # =====================================================================
         # === Test committing feature2 and adding feature1 to col2
         # =====================================================================
         td1.commit_feature()
-        td1.update_feature(f1)
+        td1.update_feature(f1, disp, disp_cube_shape)
 
         for (well_id, well) in enumerate(wells_list):
             # Get data through public interface
@@ -283,10 +289,10 @@ class Test_TestDataAll(unittest.TestCase):
             ) for c in expected_val_coordinates]
             expected_val_y = [prod(c) for c in expected_val_coordinates]
 
-            self.assertTrue(expected_train_X == train_X.tolist())
-            self.assertTrue(expected_train_y == train_y.tolist())
-            self.assertTrue(expected_val_X == val_X.tolist())
-            self.assertTrue(expected_val_y == val_y.tolist())
+            self.assertTrue((expected_train_X == train_X).all())
+            self.assertTrue((expected_train_y == train_y).all())
+            self.assertTrue((expected_val_X == val_X).all())
+            self.assertTrue((expected_val_y == val_y).all())
 
 
 if __name__ == '__main__':
