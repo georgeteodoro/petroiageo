@@ -172,3 +172,5 @@ def run(config):
         if should_update:
             # propagate(it, best_features, config)
             print('------------propagating')
+
+    porosity_h5_f.close()
