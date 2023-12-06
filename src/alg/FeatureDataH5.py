@@ -42,10 +42,19 @@ class FeatureDataH5(FeatureDataBase):
     def __del__(self):
         self._feature_file.close()
 
+    # # Generator function to filter features with a given coords list
+    # # A generator is used to avoid iterating point by point on a given feature.
+    # # For H5, each individual access has high overhead. But by giving a
+    # # generator to it, all operations are performed with reduced overhead.
+    # def _gen_list_features(feature_dset, coords_3d_np):
+    #     for coord in coords_3d_np:
+    #         yield feature_dset[coord]
+
     def filter_coords(self, coords):
         '''
         Filter points, one by one. No performance guarantee was made with this
         simple implementation.
+        Do we need a generator???
         '''
 
         # Allocate output array

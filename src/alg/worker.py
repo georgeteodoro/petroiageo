@@ -172,7 +172,9 @@ def run(config):
 
         # propagation
         if should_update:
-            propagate(porosity_h5_dset, all_features_dict, best_features, it,
-                      config)
+            n_propagated_points = propagate(porosity_h5_dset, test_data,
+                                            all_features_dict, best_features,
+                                            it, config)
+            print(beg_str + f"[it{it}] Propagated {n_propagated_points} points.")
 
     porosity_h5_f.close()

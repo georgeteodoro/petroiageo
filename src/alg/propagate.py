@@ -1,6 +1,35 @@
 import numpy as np
+import lightgbm as lgb
 
 import common
+
+
+def _train_model(test_data):
+    '''
+    Generate a model for estimating porosity.
+    '''
+    model = None
+    chunk_id = -1  # No incremental learning yet
+
+    # Generate a training dataset for all data
+    X_train_np, y_train_np = test_data.get_train_values(well_id=-1,
+                                                        chunk_id=chunk_id)
+    lgb_train_dataset = lgb.Dataset(X_train_np, y_train_np)
+
+    # Perform training
+    model = lgb.train(
+        common.training_params,
+        lgb_train_dataset,
+        init_model=model,
+        num_boost_round=100,
+        keep_training_booster=True,
+    )
+
+    return model
+
+
+def _eval_model(model):
+    return 0, 1
 
 
 def _predict_data(model, features_dict, best_features, coords_to_update,
@@ -18,47 +47,46 @@ def _predict_data(model, features_dict, best_features, coords_to_update,
 
     # Create an ndarray for keeping all features
     n_points_to_propagate = len(coords_to_update[0])
-    predict_features_type = [(f"f{f}", np.float64)
-                             for f in range(len(best_features_set))]
-    to_predict_np = np.empty(n_points_to_propagate,
-                             dtype=predict_features_type)
-
-    # Generator function to filter features with a given coords list
-    # A generator is used to avoid iterating point by point on a given feature.
-    # For H5, each individual access has high overhead. But by giving a
-    # generator to it, all operations are performed with reduced overhead.
-    def _gen_list_features(feature_dset, coords_3d_np):
-        for coord in coords_3d_np:
-            yield feature_dset[coord]
+    # predict_features_type = [(f'{f_id}', np.float64)
+    #                          for f_id in range(len(best_features))]
+    to_predict_np = np.empty((n_points_to_propagate, len(best_features)),
+                             dtype=np.float64)
 
     # Fill the values of each feature
-    for (feature, disp) in best_features_set:
+    for f_id, (feature, disp) in enumerate(best_features):
         # Apply the displacement one coord at a time
-        feature_coords = coords_to_update.copy()
-        for d_id, coord_s in enumerate(["x", "y", "z"]):
-            feature_coords[coord_s] = (feature_coords[coord_s] + disp[d_id] +
-                                       ((disp_cube_shape[d_id] - 1) / 2))
+        # feature_coords = coords_to_update.copy()
+        feature_coords = []
+        for d_id, coords in enumerate(coords_to_update):
+            feature_coords.append(coords + disp[d_id] +
+                                  ((disp_cube_shape[d_id] - 1) / 2))
 
         # Zip the coords, from a tuple of 3 arrays, one for each coord,
         # to an array of (x,y,z) tuples.
-        feature_coords = np.array(zip(*feature_coords))
+        feature_coords_np = np.array(list(zip(*feature_coords)),
+                                     dtype=np.int64)
 
         # Filter features values for current chunk coords
-        feature_values = _gen_list_features(features_dict_h5[feature],
-                                            feature_coords)
+        to_predict_np[:, f_id] = features_dict[feature].filter_coords(
+            feature_coords_np)
+
+    # Perform porosity estimation
+    estimated_phi = model.predict(to_predict_np)
+
+    return estimated_phi
 
 
-        ##############:
-        # move _gen_list_features to FeatureBase
-        # add a new method to return the features' values given feature_coords
-
-
-def propagate(porosity_data_h5, features_dict, best_features, it, config):
+def propagate(porosity_data_h5, test_data, features_dict, best_features, it,
+              config):
     '''
     Propagates the wavefront a single ring. Initial data have no 
     'expanded' data.
     Currently, porosity_data has no encapsulation, thus it is operated upon
     directly. If encapsulating class is created, it must begin here.
+    The 'test_data' input if from the feature selection process, and thus have 
+    all the features and porosity already set up. It is then used to generate
+    the model for porosity estimation.
+    Returns the number of propagated points.
     '''
 
     # Only train coords should be propagated, test wells shouldn't
@@ -71,9 +99,12 @@ def propagate(porosity_data_h5, features_dict, best_features, it, config):
     ring = it
 
     # Prepare the model and evaluate its performance metrics
-    # model = _train_model()
-    # rmse, mae = _eval_model(model)
-    # print(f"[propagation][it{it}] RMSE: {rmse}, MAE: {mae}")
+    model = _train_model(test_data)
+    rmse, mae = _eval_model(model)
+    print(f"[propagation][it{it}] RMSE: {rmse}, MAE: {mae}")
+
+    # Count of propagated points for checking if it was correct
+    n_propagated_points = 0
 
     # Propagate on all chunks from porosity_data
     for chunk_n, cur_slice in enumerate(porosity_data_h5.iter_chunks()):
@@ -123,8 +154,7 @@ def propagate(porosity_data_h5, features_dict, best_features, it, config):
                                   | bot_wall_cond(d))
             coords_to_update = np.where(filter_fun(cur_chunk_np))
 
-            print(coords_to_update)
-            0 / 0
+            n_propagated_points += len(coords_to_update)
 
             # Update the filtered values on the tmp nparray
             cur_chunk_np['real'][coords_to_update] = common.RealValues.propagated
@@ -143,3 +173,5 @@ def propagate(porosity_data_h5, features_dict, best_features, it, config):
                              cur_slice[2]] = cur_chunk_np["well_id"]
             porosity_data_h5["phi", cur_slice[0], cur_slice[1],
                              cur_slice[2]] = cur_chunk_np["phi"]
+
+    return n_propagated_points

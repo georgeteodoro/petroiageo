@@ -2,6 +2,25 @@
 # MAIN_DF_INDEX_NAMES = ["X_IDX", "Y_IDX", 'Z_IDX']
 
 
+RANDOM_STATE = 15
+
+training_params = {
+    'max_bin': 128,
+    'max_depth': 10,
+    'learning_rate': 0.1,
+    'boosting_type': 'gbdt',
+    'objective': 'regression',
+    'metric': 'mae',
+    'num_leaves': 20,
+    'verbose': -1,
+    'min_data': 10,
+    'boost_from_average': True,
+    'bagging_freq': 1,
+    'random_state': RANDOM_STATE,
+    'num_threads': 1
+    # 'tree_learner': 'data',
+}
+
 # Convert the feature tuple (e.g., ('NEAR', -3, 1, 2)) to
 # string (e.g., 'NEAR/-3,1,2')
 def f2str(f_tuple):

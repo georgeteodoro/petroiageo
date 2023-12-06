@@ -3,25 +3,7 @@ import lightgbm as lgb
 from sklearn.metrics import mean_absolute_error
 
 from data_filter import FeatSelectionTrainDataFilter
-
-RANDOM_STATE = 15
-
-params = {
-    'max_bin': 128,
-    'max_depth': 10,
-    'learning_rate': 0.1,
-    'boosting_type': 'gbdt',
-    'objective': 'regression',
-    'metric': 'mae',
-    'num_leaves': 20,
-    'verbose': -1,
-    'min_data': 10,
-    'boost_from_average': True,
-    'bagging_freq': 1,
-    'random_state': RANDOM_STATE,
-    'num_threads': 1
-    # 'tree_learner': 'data',
-}
+import common
 
 
 def test_new_feature(test_data, config):
@@ -73,7 +55,7 @@ def test_new_feature(test_data, config):
             )
 
             regressor = lgb.train(
-                params,
+                common.training_params,
                 lgb_train_dataset,
                 init_model=regressor,
                 num_boost_round=100,
