@@ -1,10 +1,9 @@
-import config_parser
-
 from unittest import TestCase, main
+
+import config_parser
 
 
 class TestYAMLConfig(TestCase):
-
     def test_can_update_base_conf_from_str(self):
         starting_it = 10
         num_its = 20
@@ -28,7 +27,7 @@ class TestYAMLConfig(TestCase):
           num_its: {num_its}
           generate_porosity_cube: {generate_porosity_cube}
           feature_selection_type: {feature_selection_type}
-        
+
         wells:
           coords: {str(coords)}
         """
@@ -421,7 +420,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
-        
+
         alg:
           sampling:
             layers_window_size: {}
@@ -436,7 +435,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
-        
+
         alg:
           sampling:
             max_points: {}
@@ -451,7 +450,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
-        
+
         alg:
           sampling:
             seed: {}
@@ -466,7 +465,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
-        
+
         alg:
           sampling:
             seed: {}
@@ -480,7 +479,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
-        
+
         alg:
           sampling:
             beta_dist:
@@ -504,7 +503,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
-        
+
         alg:
           sampling:
             beta_dist:
@@ -577,7 +576,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[1,1],[2,2]]
-        
+
         alg:
           parallel:
             max_points_per_chunk: {}
@@ -615,7 +614,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[1,1],[2,2]]
-        
+
         alg:
           layers_to_predict: {}
         """
@@ -631,7 +630,7 @@ class TestYAMLConfig(TestCase):
           - [4,2]
           - [7,6]
           - [2,7]
-        
+
         alg:
           layers_to_predict: {}
         """

@@ -42,8 +42,8 @@ def load_all_features(config, feature_class):
 
     # Load each seismic file
     all_features_dict = dict()
-    for total_features, (feature_path, feature) in enumerate(
-            zip(features_filenames, features_names)):
+    total_features = 0
+    for (feature_path, feature) in zip(features_filenames, features_names):
         if (num_features != 0) and (num_features == total_features):
             break
         if ".h5" not in str(feature_path):
@@ -51,6 +51,7 @@ def load_all_features(config, feature_class):
 
         all_features_dict[feature] = feature_class(str(feature_path),
                                                    mpi_local_comm)
+        total_features += 1
 
     return all_features_dict
 

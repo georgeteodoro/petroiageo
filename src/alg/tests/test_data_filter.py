@@ -8,7 +8,6 @@ import numpy as np
 
 
 class TestDataFilter(TestCase):
-
     def setUp(self) -> None:
         self.tmp_file = tempfile.TemporaryFile()
         self.h5_file = h5py.File(self.tmp_file, 'a')
@@ -117,7 +116,6 @@ class TestDataFilterWithoutData(TestCase):
     """
     This is so these tests run faster
     """
-
     def setUp(self) -> None:
         self.data_filter = DataFilter()
 
@@ -174,7 +172,6 @@ class TestDataFilterWithoutData(TestCase):
 
 
 class TestTrainDataFilters(TestCase):
-
     def setUp(self) -> None:
         self.tmp_file = tempfile.TemporaryFile()
         self.h5_file = h5py.File(self.tmp_file, 'a')
@@ -208,9 +205,8 @@ class TestTrainDataFilters(TestCase):
                 data[i, j]['y'] = j
                 data[i, j]['z'] = np.arange(well_id_size)[:, np.newaxis,
                                                           np.newaxis]
-                data[i,
-                     j]['phi'] = np.random.rand(z_size, phi_size, well_id_size,
-                                                ring_size, real_size)
+                data[i, j]['phi'] = np.random.rand(
+                    z_size, phi_size, well_id_size, ring_size, real_size)
                 #The cube has x ranges associated with a well
                 #example: if x in [0, 10], well = 0,
                 #example: if x in [40, 50], well = 4
@@ -224,11 +220,11 @@ class TestTrainDataFilters(TestCase):
                 data[i, j]['real'] = RealValues.real if (
                     i + j) % 2 == 0 else RealValues.expanded
 
-        self.dset = self.h5_file.create_dataset("default",
-                                                dtype=cur_data_type,
-                                                data=data,
-                                                chunks=(10, 10, 10, 10, 5, 1,
-                                                        1))
+        self.dset = self.h5_file.create_dataset(
+            "default",
+            dtype=cur_data_type,
+            data=data,
+            chunks=(10, 10, 10, 10, 5, 1, 1))
 
         self.pred_data_filter = PredTrainDataFilter()
         self.feat_sel_data_filter = FeatSelectionTrainDataFilter()
@@ -248,7 +244,6 @@ class TestTrainDataFilters(TestCase):
 
 
 class TestFeatSelTrainDataFilterWithoutData(TestCase):
-
     def setUp(self) -> None:
         self.data_filter = FeatSelectionTrainDataFilter()
 
@@ -261,7 +256,6 @@ class TestFeatSelTrainDataFilterWithoutData(TestCase):
 
 
 class TestPredTrainDataFilterWithoutData(TestCase):
-
     def setUp(self) -> None:
         self.data_filter = PredTrainDataFilter()
 
@@ -274,7 +268,6 @@ class TestPredTrainDataFilterWithoutData(TestCase):
 
 
 class TestWellsDataFilter(TestCase):
-
     def setUp(self) -> None:
         self.tmp_file = tempfile.TemporaryFile()
         self.h5_file = h5py.File(self.tmp_file, 'a')
@@ -302,23 +295,24 @@ class TestWellsDataFilter(TestCase):
                 data[i, j]['x'] = i
                 data[i, j]['y'] = j
                 data[i, j]['z'] = np.arange(10)[:, np.newaxis, np.newaxis]
-                data[i,
-                     j]['phi'] = np.random.rand(z_size, phi_size, well_id_size,
-                                                ring_size, real_size)
+                data[i, j]['phi'] = np.random.rand(
+                    z_size, phi_size, well_id_size, ring_size, real_size)
                 #The cube has x ranges associated with a well
                 #example: if x in [0, 10], well = 0,
                 #example: if x in [40, 50], well = 4
                 #There is going to be x_size//10 wells
-                data[i, j]['well_id'] = np.array([i // 10] * 10)[:, np.newaxis, np.newaxis]
+                data[i, j]['well_id'] = np.array([i // 10] * 10)[:, np.newaxis,
+                                                                 np.newaxis]
 
                 #The ring num is based from the middle y
                 data[i, j]['ring'] = abs(middle_y - j)
                 data[i, j]['real'] = RealValues.real
 
-        self.dset = self.h5_file.create_dataset("default",
-                                                dtype=self.cur_data_type,
-                                                data=data,
-                                                chunks=(10, 10, 10, 10, 10, 1, 1))
+        self.dset = self.h5_file.create_dataset(
+            "default",
+            dtype=self.cur_data_type,
+            data=data,
+            chunks=(10, 10, 10, 10, 10, 1, 1))
 
         #There are 3 wells in total, 2 of them are test wells
         target_wells = [0, 1]
@@ -335,7 +329,6 @@ class TestWellsDataFilter(TestCase):
 
 
 class TestWellsDataFilterWithoutData(TestCase):
-
     def setUp(self) -> None:
         self.data_filter = WellsDataFilter([4, 5])
 
@@ -348,7 +341,6 @@ class TestWellsDataFilterWithoutData(TestCase):
 
 
 class TestIt0DataFilters(TestCase):
-
     def _is_well_coord(self, x: int, y: int) -> bool:
         return x == y and (x + y) % 4 == 0
 
@@ -385,9 +377,8 @@ class TestIt0DataFilters(TestCase):
                 data[i, j]['y'] = j
                 data[i, j]['z'] = np.arange(well_id_size)[:, np.newaxis,
                                                           np.newaxis]
-                data[i,
-                     j]['phi'] = np.random.rand(z_size, phi_size, well_id_size,
-                                                ring_size, real_size)
+                data[i, j]['phi'] = np.random.rand(
+                    z_size, phi_size, well_id_size, ring_size, real_size)
                 #Wells at positions:
                 # (2,2), (4,4), (6,6), (8,8) ...
                 well_id = well_count if self._is_well_coord(i, j) else -1
@@ -402,11 +393,11 @@ class TestIt0DataFilters(TestCase):
                 data[i, j]['real'] = RealValues.real if self._is_well_coord(
                     i, j) else RealValues.canal
 
-        self.dset = self.h5_file.create_dataset("default",
-                                                dtype=cur_data_type,
-                                                data=data,
-                                                chunks=(10, 10, 10, 10, 5, 1,
-                                                        1))
+        self.dset = self.h5_file.create_dataset(
+            "default",
+            dtype=cur_data_type,
+            data=data,
+            chunks=(10, 10, 10, 10, 5, 1, 1))
 
     def test_can_filter_test_data(self):
         data_filter = WellsDataFilter([0])

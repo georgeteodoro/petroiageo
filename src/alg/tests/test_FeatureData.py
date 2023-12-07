@@ -6,7 +6,7 @@ from ddt import ddt, data
 from math import prod
 
 from FeatureDataH5 import FeatureDataH5
-from datasets_names import FEAT_DSET_NAME
+import common
 
 concrete_classes = (FeatureDataH5)
 
@@ -32,7 +32,7 @@ class Test_FeatureDataAll(unittest.TestCase):
 
         # Create the dataset within the h5
         cls.feature_h5_dset = cls.feature_h5_f.create_dataset(
-            FEAT_DSET_NAME,
+            common.FEAT_DSET_NAME,
             cls.hypercube_test_shape,
             dtype=np.float64,
         )

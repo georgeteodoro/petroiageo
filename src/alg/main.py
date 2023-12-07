@@ -136,9 +136,12 @@ def update_config_file_params_with_args(config: config_parser.Config,
     return config
 
 
-def main():
+def main(args_str=None):
     # Retrieve CLI arguments
-    args = config_arg_parser().parse_args()
+    if args_str is None:
+        args = config_arg_parser().parse_args()
+    else:
+        args = config_arg_parser().parse_args(args_str.split(' '))
 
     # Retrieve config file parameters
     config = config_parser.YAMLConfig(args.config_file)
@@ -159,6 +162,10 @@ def main():
                          "(mpirun -np 2 python3 main.py)."
 
     if rank == manager_rank:
+        # print(f'rrrrrrrrrank2222222222: {rank}')
+        # print('heresddddddddddddddddddd')
+        # comm.barrier()
+        # assert False
         manager.run(config)
     else:
         worker.run(config)

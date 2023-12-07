@@ -32,18 +32,10 @@ def _eval_model(model):
     return 0, 1
 
 
-def _predict_data(model, features_dict, best_features, coords_to_update,
-                  config):
+def _predict_data(model, features_dict, best_features, coords_to_update):
     '''
     Generate the porosity values of 'coords_to_update'.
     '''
-
-    window_size = config.alg["window"]
-    disp_cube_shape = (
-        window_size * 2 + 1,
-        window_size * 2 + 1,
-        window_size * 2 + 1,
-    )
 
     # Create an ndarray for keeping all features
     n_points_to_propagate = len(coords_to_update[0])
@@ -58,8 +50,7 @@ def _predict_data(model, features_dict, best_features, coords_to_update,
         # feature_coords = coords_to_update.copy()
         feature_coords = []
         for d_id, coords in enumerate(coords_to_update):
-            feature_coords.append(coords + disp[d_id] +
-                                  ((disp_cube_shape[d_id] - 1) / 2))
+            feature_coords.append(coords + disp[d_id])
 
         # Zip the coords, from a tuple of 3 arrays, one for each coord,
         # to an array of (x,y,z) tuples.
@@ -88,6 +79,14 @@ def propagate(porosity_data_h5, test_data, features_dict, best_features, it,
     the model for porosity estimation.
     Returns the number of propagated points.
     '''
+
+    window_size = config.alg["window"]
+    disp_cube_shape = (
+        window_size * 2 + 1,
+        window_size * 2 + 1,
+        window_size * 2 + 1,
+    )
+    hypercube_shape = porosity_data_h5.shape
 
     # Only train coords should be propagated, test wells shouldn't
     wells_coords = config.train_wells_coords
@@ -146,12 +145,18 @@ def propagate(porosity_data_h5, test_data, features_dict, best_features, it,
                              & (d['x'] <= well_ring_x_right)
                              & (d['x'] >= well_ring_x_left))
 
+            # Condition to avoid padding region since the displacement
+            # may result in out of bounds access.
+            not_on_padding = (lambda d: (d['z'] >= window_size) &
+                              (d['z'] < hypercube_shape[2] - window_size))
+
             # Only empty points can be propagated
             filter_fun = lambda d: (d['real'] == common.RealValues.empty) \
                                  & (left_wall_cond(d) \
                                   | right_wall_cond(d) \
                                   | top_wall_cond(d) \
-                                  | bot_wall_cond(d))
+                                  | bot_wall_cond(d)) \
+                                 & not_on_padding(d)
             coords_to_update = np.where(filter_fun(cur_chunk_np))
 
             n_propagated_points += len(coords_to_update)
@@ -162,7 +167,7 @@ def propagate(porosity_data_h5, test_data, features_dict, best_features, it,
             cur_chunk_np['well_id'][coords_to_update] = train_wells_ids[
                 wells_coords.index((w_x, w_y))]
             cur_chunk_np['phi'][coords_to_update] = _predict_data(
-                model, features_dict, best_features, coords_to_update, config)
+                model, features_dict, best_features, coords_to_update)
 
             # Commit update to the h5 file
             porosity_data_h5["real", cur_slice[0], cur_slice[1],

@@ -17,3 +17,5 @@ coverage
 yapf
 parameterized
 ddt
+pytest
+pytest-mpi

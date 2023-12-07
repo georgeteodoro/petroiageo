@@ -1,6 +1,5 @@
 import unittest
 import h5py
-import common
 import os
 import numpy as np
 from ddt import ddt, data
@@ -8,8 +7,8 @@ from math import prod
 
 from TrialDataNumpy import TrialDataNumpy
 from data_filter import WellsSingleRingDataFilter
-from datasets_names import FEAT_DSET_NAME
 from FeatureDataH5 import FeatureDataH5
+import common
 
 concrete_classes = (TrialDataNumpy)
 
@@ -20,7 +19,6 @@ class Test_TrialDataAll(unittest.TestCase):
     # All data info
     hypercube_test_shape = (3, 4, 5)
     chunk_test_shape = (3, 2, 5)
-    POROSITY_DSET_NAME = 't'
     wells_list = [(0, 2), (2, 3)]
     POROSITY_FILENAME = 'test_porosity.h5'
     FEATURE_FILENAME1 = 'test_feature1.h5'
@@ -52,7 +50,7 @@ class Test_TrialDataAll(unittest.TestCase):
             ('well_id', np.int64),
         ])
         cls.porosity_h5_dset = cls.porosity_h5_f.create_dataset(
-            cls.POROSITY_DSET_NAME,
+            common.POROSITY_DSET_NAME,
             cls.hypercube_test_shape,
             dtype=porosity_data_type,
             chunks=cls.chunk_test_shape,
@@ -83,7 +81,7 @@ class Test_TrialDataAll(unittest.TestCase):
 
         # Create the dataset within the h5
         cls.feature1_h5_dset = cls.feature1_h5_f.create_dataset(
-            FEAT_DSET_NAME,
+            common.FEAT_DSET_NAME,
             cls.hypercube_test_shape,
             dtype=np.float64,
         )
@@ -99,7 +97,7 @@ class Test_TrialDataAll(unittest.TestCase):
 
         # Create the dataset within the h5
         cls.feature2_h5_dset = cls.feature2_h5_f.create_dataset(
-            FEAT_DSET_NAME,
+            common.FEAT_DSET_NAME,
             cls.hypercube_test_shape,
             dtype=np.float64,
         )
