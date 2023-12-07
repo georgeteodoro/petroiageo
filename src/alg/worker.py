@@ -4,11 +4,11 @@ import h5py
 from mpi_module import MPI_TAGS
 from feature_sel import test_new_feature
 import FeatureDataBase
-from datasets_names import POROSITY_DSET_NAME
-from TestDataNumpy import TestDataNumpy
+from TrialDataNumpy import TrialDataNumpy
 from FeatureDataH5 import FeatureDataH5
 from data_filter import WellsSingleRingDataFilter
 from propagate import propagate
+import common
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -33,7 +33,7 @@ def _load_porosity(config):
 
     porosity_cube_file = h5py.File(config.starting_porosity_cube_path,
                                    write_str, **mpi_kwargs)
-    porosity_cube_dset = porosity_cube_file[POROSITY_DSET_NAME]
+    porosity_cube_dset = porosity_cube_file[common.POROSITY_DSET_NAME]
 
     return porosity_cube_file, porosity_cube_dset
 
@@ -68,7 +68,7 @@ def run(config):
     # Prepare test_data
     print(beg_str + f"Preparing test_data.")
     f_sel_filter = WellsSingleRingDataFilter(train_wells_ids)
-    test_data = TestDataNumpy(n_features=max_feats_to_select,
+    test_data = TrialDataNumpy(n_features=max_feats_to_select,
                               features_only=False,
                               wells_list=wells_coords,
                               porosity_data=porosity_h5_dset,

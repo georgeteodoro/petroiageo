@@ -6,16 +6,16 @@ import numpy as np
 from ddt import ddt, data
 from math import prod
 
-from TestDataNumpy import TestDataNumpy
+from TrialDataNumpy import TrialDataNumpy
 from data_filter import WellsSingleRingDataFilter
 from datasets_names import FEAT_DSET_NAME
 from FeatureDataH5 import FeatureDataH5
 
-concrete_classes = (TestDataNumpy)
+concrete_classes = (TrialDataNumpy)
 
 
 @ddt
-class Test_TestDataAll(unittest.TestCase):
+class Test_TrialDataAll(unittest.TestCase):
 
     # All data info
     hypercube_test_shape = (3, 4, 5)
@@ -164,12 +164,12 @@ class Test_TestDataAll(unittest.TestCase):
         td1.prepare_porosity(1)
 
         # Only one ring exists
-        self.assertEqual(len(td1._test_data_dict), 1)
+        self.assertEqual(len(td1._trial_data_dict), 1)
 
         # Check if all points were added
         # Total of 2 full depths, minus 2 non-added points
         # = 2*5-2 = 8
-        self.assertEqual(len(td1._test_data_dict[0]), 8)
+        self.assertEqual(len(td1._trial_data_dict[0]), 8)
 
     @data(concrete_classes)
     def test_update_feature_r0(self, test_cls):
@@ -200,7 +200,7 @@ class Test_TestDataAll(unittest.TestCase):
         f1 = FeatureDataH5(f1_filename, None)
         td1.update_feature(f1, disp, disp_cube_shape)
 
-        cur_points = td1._test_data_dict[0]
+        cur_points = td1._trial_data_dict[0]
 
         for (well_id, well) in enumerate(wells_list):
             # Get data through public interface

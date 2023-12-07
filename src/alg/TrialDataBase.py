@@ -4,10 +4,10 @@ from abc import ABC, abstractmethod
 import common
 
 
-class TestDataBase(ABC):
+class TrialDataBase(ABC):
     '''
-    Abstract test_data class, which implements filtering and sampling. 
-    All test_data should be an array of the following columns, on this order:
+    Abstract trial_data class, which implements filtering and sampling. 
+    All trial_data should be an array of the following columns, on this order:
      - x, y, z (point coordinates)
      - phi (porosity)
      - well_id (only required for feature selection, not propagation)
@@ -47,17 +47,17 @@ class TestDataBase(ABC):
         self._current_ring = -1
         self._current_features = []
 
-        # Location of concrete test_data. This should be initialize, accessed
+        # Location of concrete trial_data. This should be initialize, accessed
         # and read through concrete backend subclass hooks. On the current
-        # implementation, test_data is a map of points per ring. Thus it is
+        # implementation, trial_data is a map of points per ring. Thus it is
         # easier to sample, reshape and add more points.
-        self._test_data_dict = dict()
+        self._trial_data_dict = dict()
 
         # # Current actual size of each ring. This size increases due to
         # # out-of-core porosity_data, which is ran through one chunk at a time
-        # self._test_data_size = dict()
+        # self._trial_data_size = dict()
 
-        # Number of points within test_data
+        # Number of points within trial_data
         self._data_len = -1
 
         # This is the list of real wells coordinates
@@ -73,11 +73,11 @@ class TestDataBase(ABC):
     @abstractmethod
     def _set_ring_hook(self, ring, data):
         '''
-        Should add data to a test_data ring, updating internally its size.
+        Should add data to a trial_data ring, updating internally its size.
         This method is called only once to add all points of a ring, for 
         all rings.
         '''
-        raise Exception("[TestDataBase][_append_ring_hook] "
+        raise Exception("[TrialDataBase][_append_ring_hook] "
                         "Abstract method not implemented.")
 
     @abstractmethod
@@ -86,9 +86,9 @@ class TestDataBase(ABC):
         Should update the last column of ring r.
         It is assumed that feature_data if already filtered for points on
         ring r. Thus, feature_data should have the correct size of the 
-        internal test_data for ring r.
+        internal trial_data for ring r.
         '''
-        raise Exception("[TestDataBase][_update_col_from_ring_hook] "
+        raise Exception("[TrialDataBase][_update_col_from_ring_hook] "
                         "Abstract method not implemented.")
 
     @abstractmethod
@@ -96,7 +96,7 @@ class TestDataBase(ABC):
         '''
         Should return a set of points for ring r, filtered by a well_filter.
         '''
-        raise Exception("[TestDataBase][_get_ring_filtered_values_hook] "
+        raise Exception("[TrialDataBase][_get_ring_filtered_values_hook] "
                         "Abstract method not implemented.")
 
     @abstractmethod
@@ -106,7 +106,7 @@ class TestDataBase(ABC):
         well_id and returns only the subset of data for which 
         data['well_id'] == well_id.
         '''
-        raise Exception("[TestDataBase][_in_well_filter_hook] "
+        raise Exception("[TrialDataBase][_in_well_filter_hook] "
                         "Abstract method not implemented.")
 
     @abstractmethod
@@ -117,7 +117,7 @@ class TestDataBase(ABC):
         data['well_id'] != well_id. If well_id<0, should return the
         Whole data.
         '''
-        raise Exception("[TestDataBase][_not_in_well_filter_hook] "
+        raise Exception("[TrialDataBase][_not_in_well_filter_hook] "
                         "Abstract method not implemented.")
 
     @abstractmethod
@@ -126,7 +126,7 @@ class TestDataBase(ABC):
         Should return an nparray with all data from a given ring. It is ok
         do do such, since this method should only be used internally.
         '''
-        raise Exception("[TestDataBase][_get_ring_np_values_hook] "
+        raise Exception("[TrialDataBase][_get_ring_np_values_hook] "
                         "Abstract method not implemented.")
 
     # =========================================================================
@@ -142,7 +142,7 @@ class TestDataBase(ABC):
         '''
 
         # Reset internal state
-        assert it>0, f"[TestDataBase][prepare_porosity] "\
+        assert it>0, f"[TrialDataBase][prepare_porosity] "\
             f"First iteration is 1, but received current iteration {it}."
         self._current_ring = it - 1
         self._current_feature_id = 0
@@ -159,9 +159,9 @@ class TestDataBase(ABC):
         pass
 
         # Create new ring data
-        self._test_data_dict[self._current_ring] = []
+        self._trial_data_dict[self._current_ring] = []
 
-        # Iterate on all porosity chunks to fill test_data
+        # Iterate on all porosity chunks to fill trial_data
         points_list = []
         for chunk_slice in self._porosity_data.iter_chunks():
             # Skip this chunk if there are not any points withing it
@@ -192,17 +192,17 @@ class TestDataBase(ABC):
 
         # Update size and chunking info
         self._chunk_size = 0
-        for r in self._test_data_dict.keys():
-            self._chunk_size += len(self._test_data_dict[r])
+        for r in self._trial_data_dict.keys():
+            self._chunk_size += len(self._trial_data_dict[r])
 
     def commit_feature(self):
         '''
         Commits the current feature, then setting up the next feature.
         '''
-        assert self._current_feature_id >= 0, "[TestDataBase][commit_feature] "\
+        assert self._current_feature_id >= 0, "[TrialDataBase][commit_feature] "\
             "Committing feature before prepare_poroisity."
         assert self._current_feature_id < self._n_features, \
-            "[TestDataBase][commit_feature] Committing beyond last feature."
+            "[TrialDataBase][commit_feature] Committing beyond last feature."
 
         self._current_feature_id += 1
         self._current_features.append(f'f{self._current_feature_id}')
@@ -215,7 +215,7 @@ class TestDataBase(ABC):
         '''
 
         # Fill data, one ring at a time
-        for r in self._test_data_dict.keys():
+        for r in self._trial_data_dict.keys():
             # Retrieve the coordinate list and apply the feature displacement
             ring_coords = self._get_ring_np_values_hook(r)[['x', 'y',
                                                             'z']].copy()
@@ -236,7 +236,7 @@ class TestDataBase(ABC):
         Generates the training data inplace. X_train and y_train are
         generated inplace to avoid reallocation for them.
         If no out-of-core is used internally, then chunk_id=0 and all
-        test_data is returned (filtered by well_id obviously).
+        trial_data is returned (filtered by well_id obviously).
         '''
 
         well_filter = self._not_in_well_filter_hook(well_id)
@@ -259,21 +259,21 @@ class TestDataBase(ABC):
 
     def _get_values(self, well_filter, chunk_id):
         '''
-        Helper function for filtering test_data.
+        Helper function for filtering trial_data.
         Returns the number of filtered points.
         '''
 
         # Fill training data, one ring at a time
         X = []
         y = []
-        for r in self._test_data_dict.keys():
+        for r in self._trial_data_dict.keys():
 
             # CHUNKING NOT IMPLEMENTED
             # Should be something like:
-            # for each ring, return the ratio of |ring|/|test_data|
+            # for each ring, return the ratio of |ring|/|trial_data|
             # with the proper range
             if chunk_id > 0:
-                raise Exception("[TestDataBase][_get_values] Chunking "
+                raise Exception("[TrialDataBase][_get_values] Chunking "
                                 "not implemented for incremental learning.")
 
             new_points = self._get_ring_filtered_values_hook(r, well_filter)

@@ -2,8 +2,8 @@ import numpy as np
 from abc import ABC, abstractmethod
 import h5py
 
-from datasets_names import FEAT_DSET_NAME
 from FeatureDataBase import FeatureDataBase
+import common
 
 
 class FeatureDataH5(FeatureDataBase):
@@ -34,7 +34,7 @@ class FeatureDataH5(FeatureDataBase):
         assert self._feature_file is not None, "[FeatureDataH5] "\
             f"Could not open file {feature_path}"
 
-        self._feature = self._feature_file[FEAT_DSET_NAME]
+        self._feature = self._feature_file[common.FEAT_DSET_NAME]
 
         assert self._feature_file is not None, "[FeatureDataH5] "\
             f"Could not get dataset {FEAT_DSET_NAME} of file {feature_path}"

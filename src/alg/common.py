@@ -1,7 +1,6 @@
 # Should be different than 'x', 'y' and 'z'
 # MAIN_DF_INDEX_NAMES = ["X_IDX", "Y_IDX", 'Z_IDX']
 
-
 RANDOM_STATE = 15
 
 training_params = {
@@ -20,6 +19,10 @@ training_params = {
     'num_threads': 1
     # 'tree_learner': 'data',
 }
+
+POROSITY_DSET_NAME = "p"
+FEAT_DSET_NAME = "f"
+
 
 # Convert the feature tuple (e.g., ('NEAR', -3, 1, 2)) to
 # string (e.g., 'NEAR/-3,1,2')

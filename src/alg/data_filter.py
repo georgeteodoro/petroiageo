@@ -4,14 +4,12 @@ from typing import Callable
 import numpy as np
 from common import RealValues
 import h5py
-from hdf5_util import fold_h5_all_clusters
 
 
 class DataFilter():
     """
     Custom data filter to be used on np.ndarray or h5py:Dataset data
     """
-
     def __init__(self):
         self._filter_list = list()
         self._min_ring = None
@@ -55,7 +53,6 @@ class DataFilter():
         function that uses the well_list internally.
         The returned function expects a ndarray as parameter.
         """
-
         def _is_well_not_in_list(d: np.ndarray) -> np.ndarray:
             ret = np.full((d.shape), True, dtype=bool)
             for x in well_ids_list:
@@ -88,7 +85,6 @@ class DataFilter():
         function that uses the well_list internally.
         The returned function expects a ndarray as parameter.
         """
-
         def _is_well_in_list(d: np.ndarray) -> np.ndarray:
             ret = np.full((d.shape), False, dtype=bool)
             for x in well_ids_list:
@@ -125,12 +121,6 @@ class DataFilter():
         if not isinstance(dset, h5py.Dataset):
             raise TypeError(
                 f"dset should be a h5py.Dataset but was {type(dset)}")
-
-        # return fold_h5_all_clusters(
-        #     dset,
-        #     lambda a: self.satisfies(a).sum(),
-        #     0,
-        # )
 
         count = 0
         for chunk_slice in dset.iter_chunks():
@@ -184,7 +174,6 @@ class PredTrainDataFilter(DataFilter):
     add_not_in_well_list_filter method with the well_ids_list
     of the Test Data.
     """
-
     def __init__(self):
         super().__init__()
         self._filter_list.append(lambda d:
@@ -201,7 +190,6 @@ class FeatSelectionTrainDataFilter(DataFilter):
     add_not_in_well_list_filter method with the well_ids_list
     of the Test Data.
     """
-
     def __init__(self):
         super().__init__()
         self._filter_list.append(lambda d:
@@ -221,7 +209,6 @@ class WellsDataFilter(DataFilter):
     Had to name it WellsDataFilter instead of TestDataFilter because of 
     clashes with unittest's naming convention.
     """
-
     def __init__(self, well_ids_list: list):
         super().__init__()
         self.add_in_well_list_filter(well_ids_list)
@@ -236,7 +223,6 @@ class WellsSingleRingDataFilter(WellsDataFilter):
     are not expanded/propagated so they always have 'real' points.
     Also adds a ring filter, which is configurable after initialization.
     """
-
     def __init__(self, well_ids_list: list):
         super().__init__(well_ids_list)
 

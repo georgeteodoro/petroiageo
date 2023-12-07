@@ -1,5 +1,4 @@
 import argparse
-import pathlib
 from mpi4py import MPI
 
 import config_parser
@@ -7,22 +6,6 @@ import mpi_module
 
 import manager
 import worker
-
-from inverted_learning_interface import BaseInvertedLearning
-from h5_porosity_data_loader import H5PorosityDataLoader
-from h5_seismic_data_loader import H5SeismicDataLoader
-from h5_expand_alg import H5ExpandAlg
-from h5_feature_selection_alg import H5FeatureSelectionAlg
-from h5_apply_alg import H5ApplyAlg
-
-
-# DEPRECATED
-# Still need to figure out logging
-def print_progress(with_progress, r):
-    if with_progress:
-        return tqdm(r)
-    else:
-        return r
 
 
 def config_arg_parser():
@@ -114,8 +97,8 @@ def config_arg_parser():
         required=False,
         type=int,
         help="Size of the displacement window. This value is for one side "
-             "only. I.e., a window of 3 would result in a minicube of "
-             "7x7x7, with intervals between [-3,3].",
+        "only. I.e., a window of 3 would result in a minicube of "
+        "7x7x7, with intervals between [-3,3].",
     )
 
     # parser.add_argument(
@@ -137,17 +120,12 @@ def update_config_file_params_with_args(config: config_parser.Config,
 
     config.alg["max_num_features"] = int(args.num_select_features)
     config.add_param("num_features", int(args.num_features))
-    
+
     if args.with_progress is not None:
         window_size = config.alg['window'] = int(args.window)
 
     if args.with_progress is not None:
         config.add_param("with_progress", args.with_progress)
-
-    # if (args.local_files is not None) and args.local_files:
-    #     spcp = f"./{pathlib.Path(config.starting_porosity_cube_path).name}"
-    #     config.starting_porosity_cube_path = spcp
-    #     config.features_folder = "./features/"
 
     config.add_param("full_depth_chunks", True)
 
@@ -184,17 +162,6 @@ def main():
         manager.run(config)
     else:
         worker.run(config)
-
-    # # Run base algorithm
-    # alg = BaseInvertedLearning(
-    #     H5SeismicDataLoader(config),
-    #     H5PorosityDataLoader(config),
-    #     H5ExpandAlg(config),
-    #     H5FeatureSelectionAlg(config),
-    #     H5ApplyAlg(config),
-    #     config,
-    # )
-    # alg.run()
 
 
 if __name__ == "__main__":

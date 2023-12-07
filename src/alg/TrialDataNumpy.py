@@ -1,37 +1,37 @@
 import numpy as np
 
-from TestDataBase import TestDataBase
+from TrialDataBase import TrialDataBase
 
 
-class TestDataNumpy(TestDataBase):
+class TrialDataNumpy(TrialDataBase):
     '''
-    In-memory implementation of TestDataBase using numpy as the
+    In-memory implementation of TrialDataBase using numpy as the
     concrete type for data storage.
     '''
     def __init__(self, n_features, features_only, wells_list, f_sel_filter,
                  porosity_data):
         # Currently no initialization is needed
-        super(TestDataNumpy, self).__init__(
+        super(TrialDataNumpy, self).__init__(
             n_features, features_only, wells_list, f_sel_filter, porosity_data)
 
     def _set_ring_hook(self, ring, data):
         '''
-        Add porosity and other info (coordinates and well_ifd) to a test_data 
+        Add porosity and other info (coordinates and well_ifd) to a trial_data 
         ring, updating internally its size
         '''
 
-        self._test_data_dict[ring] = np.zeros((len(data)),
+        self._trial_data_dict[ring] = np.zeros((len(data)),
                                               dtype=self._cur_data_type)
         fields = [i for i, j in self._base_data_type]
-        self._test_data_dict[ring][fields] = data
+        self._trial_data_dict[ring][fields] = data
 
     def _update_col_from_ring_hook(self, r, feature_data):
         f_str = f'f{self._current_feature_id}'
-        self._test_data_dict[r][f_str][:] = feature_data
+        self._trial_data_dict[r][f_str][:] = feature_data
 
     def _get_ring_filtered_values_hook(self, r, well_filter):
         # Get all points from current ring, filtered by well_id
-        ring_points = self._test_data_dict[r]
+        ring_points = self._trial_data_dict[r]
         new_points = well_filter(ring_points)
         return new_points
 
@@ -49,4 +49,4 @@ class TestDataNumpy(TestDataBase):
         return well_filter
 
     def _get_ring_np_values_hook(self, ring):
-        return self._test_data_dict[ring]
+        return self._trial_data_dict[ring]
