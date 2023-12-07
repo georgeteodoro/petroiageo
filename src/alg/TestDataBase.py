@@ -143,7 +143,7 @@ class TestDataBase(ABC):
 
         # Reset internal state
         assert it>0, f"[TestDataBase][prepare_porosity] "\
-            "First iteration is 1, but received current iteration {it}."
+            f"First iteration is 1, but received current iteration {it}."
         self._current_ring = it - 1
         self._current_feature_id = 0
         self._current_features = []

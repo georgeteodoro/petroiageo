@@ -39,16 +39,12 @@ def _load_porosity(config):
 
 
 def run(config):
-    seismic_on_mem = config.alg['seismic_on_memory']
-    td_on_mem = config.alg['TD_on_memory']
-    fsel_only = config.alg['fsel_only']
-    should_update = config.get_param("mpi_should_update_local")
+    should_propagate = config.get_param("mpi_should_update_local")
     num_its = config.alg['num_its']
     start_it = config.alg['it']
     max_feats_to_select = config.alg["max_num_features"]
     wells_coords = config.train_wells_coords
     train_wells_ids = config.train_wells_ids
-    test_wells_ids = config.alg["test_only_wells"]
 
     num_features = config.get_param("num_features")
     num_features = num_features if num_features != 0 else 'all'
@@ -171,7 +167,7 @@ def run(config):
                 raise Exception(beg_str + f" Bad MPI tag: {msg_tag}")
 
         # propagation
-        if should_update:
+        if should_propagate:
             n_propagated_points = propagate(porosity_h5_dset, test_data,
                                             all_features_dict, best_features,
                                             it, config)
