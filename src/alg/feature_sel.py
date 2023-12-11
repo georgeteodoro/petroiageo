@@ -6,9 +6,9 @@ from data_filter import FeatSelectionTrainDataFilter
 import common
 
 
-def test_new_feature(test_data, config):
+def test_new_feature(trial_data, config):
     '''
-    Trains a model with test_data, returning the metric values for the
+    Trains a model with trial_data, returning the metric values for the
     trained model.
     Abstracts any low-level assumptions about where data is located.
     Out-of-core training through incremental learning is supported, however
@@ -20,8 +20,8 @@ def test_new_feature(test_data, config):
     n_training_chunks = int(config.alg['parallel']['n_training_chunks'])
     train_wells_ids = config.train_wells_ids
 
-    # Configure test_data for out-of-core execution, if needed
-    test_data.set_num_training_chunks(n_training_chunks)
+    # Configure trial_data for out-of-core execution, if needed
+    trial_data.set_num_training_chunks(n_training_chunks)
 
     # Initialize metrics lists
     rmse_list = []
@@ -34,7 +34,7 @@ def test_new_feature(test_data, config):
 
         # Validation data is not chunked, thus it only needs to be
         # retrieved once with all data
-        X_val, y_val = test_data.get_val_values(curr_well_id)
+        X_val, y_val = trial_data.get_val_values(curr_well_id)
 
         # X_val=None if there are no validation points available. This can
         # only happen if there is only 1 well being propagated.
@@ -44,7 +44,7 @@ def test_new_feature(test_data, config):
         # Performs incremental learning on all chunks
         for chunk_id in range(n_training_chunks):
             # Setup training data
-            X_train, y_train = test_data.get_train_values(
+            X_train, y_train = trial_data.get_train_values(
                 curr_well_id, chunk_id)
 
             lgb_train_dataset = lgb.Dataset(X_train, y_train)

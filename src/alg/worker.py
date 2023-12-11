@@ -46,7 +46,9 @@ def run(config):
     wells_coords = config.train_wells_coords
     train_wells_ids = config.train_wells_ids
 
-    num_features = config.get_param("num_features")
+    print(f'wells_coords: {wells_coords}')
+
+    num_features = config.get_param('num_features')
     num_features = num_features if num_features != 0 else 'all'
 
     window_size = config.alg['window']

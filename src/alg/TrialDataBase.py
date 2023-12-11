@@ -12,6 +12,8 @@ class TrialDataBase(ABC):
      - phi (porosity)
      - well_id (only required for feature selection, not propagation)
      - features (multiple columns)
+    Due to the use of padding, all coordinates are the padded coordinates. 
+    Thus, it is expected of the wells_list to have padded coordinates as well.
     '''
     def __init__(self, n_features, features_only, wells_list, f_sel_filter,
                  porosity_data):
@@ -220,10 +222,10 @@ class TrialDataBase(ABC):
             ring_coords = self._get_ring_np_values_hook(r)[['x', 'y',
                                                             'z']].copy()
             # This algorithm applies the displacement at the whole array,
-            # allowing improved data access times
+            # allowing improved data access times.
+            # All coordinates are already padded
             for coord_s, d_id in [('x', 0), ('y', 1), ('z', 2)]:
-                ring_coords[coord_s] = (ring_coords[coord_s] + disp[d_id] +
-                                        ((disp_cube_shape[d_id] - 1) / 2))
+                ring_coords[coord_s] = (ring_coords[coord_s] + disp[d_id])
 
             # Extract displaced feature data and assign it to the last col
             filtered_feature_data = feature.filter_coords(ring_coords)

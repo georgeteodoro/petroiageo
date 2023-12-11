@@ -30,6 +30,7 @@ class TestYAMLConfig(TestCase):
 
         wells:
           coords: {str(coords)}
+          window: 0
         """
 
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
@@ -51,6 +52,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = f"""
         wells:
           coords: [[1, 1]]
+          window: 0
         alg:
           feature_selection_type: {feature_selection}
         """
@@ -62,6 +64,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1, 1]]
+          window: 0
         alg:
           feature_selection_type: {}
         """
@@ -84,6 +87,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1, 1]]
+          window: 0
         alg:
           save_models_on: {}
         """
@@ -103,6 +107,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1, 1]]
+          window: 0
         alg:
           save_models_on: {}
         """
@@ -121,6 +126,7 @@ class TestYAMLConfig(TestCase):
             y: 2
           - x: 3
             y: 3
+          window: 0
         """
         expected_wells_coords_dicts = [
             {
@@ -144,6 +150,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[1,1],[2,2],[3,3]]
+          window: 0
         """
         expected_wells_coords_dicts = [
             {
@@ -170,6 +177,7 @@ class TestYAMLConfig(TestCase):
           - [1,1]
           - [2,2]
           - [3,3]
+          window: 0
         """
         expected_wells_coords_dicts = [
             {
@@ -197,6 +205,7 @@ class TestYAMLConfig(TestCase):
           - x: 2
             y: 2
           - [3, 3]
+          window: 0
         """
         expected_wells_coords_dicts = [
             {
@@ -220,6 +229,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[-1, 1]]
+          window: 0
         """
         with self.assertRaises(ValueError):
             my_config = config_parser.YAMLConfig(config_str=yaml_str)
@@ -228,6 +238,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
        wells:
          coords:
+         window: 0
 
        """
         with self.assertRaises(ValueError):
@@ -240,6 +251,7 @@ class TestYAMLConfig(TestCase):
           - [1,1]
           - [2,2]
           - [3,3]
+          window: 0
         """
         expected_list = [(1, 1), (2, 2), (3, 3)]
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
@@ -250,6 +262,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1, 1]]
+          window: 0
         alg:
           starting_it: {}
         """
@@ -263,6 +276,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1, 1]]
+          window: 0
         alg:
           num_its: {}
         """
@@ -275,6 +289,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[1,1], [2,2]]
+          window: 0
         alg:
           validation_only_wells: [1, 3]
         """
@@ -285,6 +300,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[1,1], [2,2]]
+          window: 0
         alg:
           validation_only_wells: [1, -1]
         """
@@ -295,6 +311,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[1,1], [2,2]]
+          window: 0
         alg:
           test_only_wells: [1, 3]
         """
@@ -305,6 +322,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[1,1], [2,2]]
+          window: 0
         alg:
           test_only_wells: [1, -1]
         """
@@ -315,6 +333,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[1,1], [2,2]]
+          window: 0
         alg:
           test_only_wells: [1]
         """
@@ -327,6 +346,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[1,1], [2,2], [3,3]]
+          window: 0
         alg:
           test_only_wells: [1]
         """
@@ -339,6 +359,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[1,1], [2,2], [3,3]]
+          window: 0
         """
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
         expected_base_max_exec_time = -1
@@ -350,6 +371,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
+          window: 0
         alg:
           max_exec_time: {}
         """
@@ -363,6 +385,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
+          window: 0
         alg:
           max_num_features: {}
         """
@@ -376,6 +399,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
+          window: 0
         alg:
           window: {}
         """
@@ -389,6 +413,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
+          window: 0
         alg:
           window: {}
         """
@@ -401,6 +426,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
+          window: 0
         """
         config = config_parser.YAMLConfig(config_str=yaml_str_fmt)
         self.assertEqual(config.alg['window'], expected_base_window)
@@ -410,6 +436,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
+          window: 0
         """
         config = config_parser.YAMLConfig(config_str=yaml_str_fmt)
         self.assertEqual(config.alg['sampling']['layers_window_size'],
@@ -420,6 +447,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
+          window: 0
 
         alg:
           sampling:
@@ -435,6 +463,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
+          window: 0
 
         alg:
           sampling:
@@ -450,6 +479,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
+          window: 0
 
         alg:
           sampling:
@@ -465,6 +495,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
+          window: 0
 
         alg:
           sampling:
@@ -479,6 +510,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
+          window: 0
 
         alg:
           sampling:
@@ -503,6 +535,7 @@ class TestYAMLConfig(TestCase):
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
+          window: 0
 
         alg:
           sampling:
@@ -519,6 +552,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[1,1],[2,2]]
+          window: 0
         """
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
         param_name = "new_param"
@@ -530,6 +564,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[1,1],[2,2]]
+          window: 0
         """
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
         for base_param in config_parser.Config.TOP_LEVEL_BASE_CONFIGS:
@@ -541,6 +576,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[1,1],[2,2]]
+          window: 0
         """
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
         param_name = "new_param"
@@ -553,6 +589,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[1,1],[2,2]]
+          window: 0
         """
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
         for base_param in config_parser.Config.TOP_LEVEL_BASE_CONFIGS:
@@ -563,6 +600,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[1,1],[2,2]]
+          window: 0
         """
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
         try:
@@ -576,6 +614,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[1,1],[2,2]]
+          window: 0
 
         alg:
           parallel:
@@ -590,6 +629,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[1,1],[2,2]]
+          window: 0
         """
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
         expected_layers_to_predict = 1
@@ -600,6 +640,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[1,1],[2,2]]
+          window: 0
         alg:
           layers_to_predict: {}
         """
@@ -614,6 +655,7 @@ class TestYAMLConfig(TestCase):
         yaml_str = """
         wells:
           coords: [[1,1],[2,2]]
+          window: 0
 
         alg:
           layers_to_predict: {}
@@ -630,6 +672,7 @@ class TestYAMLConfig(TestCase):
           - [4,2]
           - [7,6]
           - [2,7]
+          window: 0
 
         alg:
           layers_to_predict: {}

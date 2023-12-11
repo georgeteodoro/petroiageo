@@ -162,10 +162,6 @@ def main(args_str=None):
                          "(mpirun -np 2 python3 main.py)."
 
     if rank == manager_rank:
-        # print(f'rrrrrrrrrank2222222222: {rank}')
-        # print('heresddddddddddddddddddd')
-        # comm.barrier()
-        # assert False
         manager.run(config)
     else:
         worker.run(config)

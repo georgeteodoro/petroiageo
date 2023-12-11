@@ -1,5 +1,5 @@
 wells: # This is wells related stuff
-  coords: # well coords in (x, y) style
+  coords: # These are the original (pre-padding) coords (x, y)
     - [134, 227]
     - [146, 500]
     - [167, 186]
@@ -10,6 +10,7 @@ wells: # This is wells related stuff
     - [287, 242]
     - [230, 194]
     - [344, 276]
+  window: 3 # window size for which the hypercube was padded
 
 # real_wells = [[134, 227], [146, 500], [167, 186], [174, 365], [200, 102],
 #               [236, 113], [250, 315], [287, 242], [230, 194], [344, 276]]

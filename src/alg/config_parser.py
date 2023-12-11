@@ -66,7 +66,6 @@ def list_func_applier_decorator(func):
     element of a iterable. This exists to pass the 'underlying function'
     as a parameter to other functions.
     """
-
     def apply_func_to_every_element(my_iterable):
         """
         Applies a func to every element in my_iterable
@@ -83,7 +82,6 @@ class ConfigTypeCaster:
     provided. This is mostly file format independent, but could have
     differences between the formats accepted.
     """
-
     @classmethod
     def treat_input_config(cls, config_dict: dict) -> dict:
         treated_dict = dict()
@@ -206,32 +204,40 @@ class ConfigTypeCaster:
         # So non treated/non expected keys remain in treated_sampling_config
         treated_wells_configs.update(wells_configs)
 
+        assert 'window' in wells_configs, "[config_parser] Missing "\
+                "wells.window' configuration."
+
         if "coords" in wells_configs:
             treated_coords_configs = cls._treat_wells_coords_configs(
-                wells_configs["coords"])
+                wells_configs["coords"], int(wells_configs["window"]))
             treated_wells_configs["coords"] = treated_coords_configs
 
         return treated_wells_configs
 
     @classmethod
-    def _treat_wells_coords_configs(cls, coords_configs: list) -> list:
+    def _treat_wells_coords_configs(cls, coords_configs: list,
+                                    window: int) -> list:
         """
         Wells coords is a list composed of (x, y) tuples, [x, y] lists or
         {'x':value, 'y':value} dicts. They can all be present.
         """
-        # So non treated elements remain in treated_coords_configs
-        treated_coords_configs = list(coords_configs)
 
-        func_to_apply = list_func_applier_decorator(cls._treats_every_coord)
+        # # So non treated elements remain in treated_coords_configs
+        # treated_coords_configs = list(coords_configs)
+        # func_to_apply = list_func_applier_decorator(cls._treats_every_coord)
+        # treated_coords_configs = func_to_apply(coords_configs)
 
-        treated_coords_configs = func_to_apply(coords_configs)
+        treated_coords_configs = [
+            cls._treats_every_coord(c, window) for c in coords_configs
+        ]
 
         return treated_coords_configs
 
     @classmethod
-    def _treats_every_coord(cls, coords):
+    def _treats_every_coord(cls, coords, window):
         """
-        Assumes the coordnates are x and y integers
+        Assumes the coordnates are x and y integers.
+        The window displacement is applied here.
         """
         # its a list/tuple with two elements (x, y) or [x, y]
         if isinstance(coords, list) or isinstance(coords, tuple):
@@ -241,10 +247,10 @@ class ConfigTypeCaster:
                 )
 
             x, y = coords
-            return {"x": int(x), "y": int(y)}
+            return {"x": int(x) + window, "y": int(y) + window}
         # its a dict with x and y keys
         elif isinstance(coords, dict):
-            return {key: int(value) for key, value in coords.items()}
+            return {key: int(value) + window for key, value in coords.items()}
 
     @staticmethod
     def _which_python_bool_value(yaml_bool: str) -> bool:
@@ -274,7 +280,6 @@ class ConfigTypeCaster:
 
 
 class YAMLConfigTypeCaster(ConfigTypeCaster):
-
     @staticmethod
     def _which_python_bool_value(input_bool: str) -> bool:
         if input_bool.lower() in ["y", "yes", "on", "true"]:
@@ -292,7 +297,6 @@ class ConfigValidator:
     the config passes the type validation, some values may not be valid for
     a given config. This is file format independent.
     """
-
     @classmethod
     def raise_if_invalid_config(cls, config_dict: dict):
         cls._raise_if_alg_config_invalid(config_dict)
@@ -707,7 +711,6 @@ class Config:
 
 
 class YAMLConfig(Config):
-
     def __init__(self,
                  config_path: str = None,
                  config_dict: dict = None,

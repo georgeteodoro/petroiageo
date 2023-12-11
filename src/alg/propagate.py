@@ -81,11 +81,6 @@ def propagate(porosity_data_h5, test_data, features_dict, best_features, it,
     '''
 
     window_size = config.alg["window"]
-    disp_cube_shape = (
-        window_size * 2 + 1,
-        window_size * 2 + 1,
-        window_size * 2 + 1,
-    )
     hypercube_shape = porosity_data_h5.shape
 
     # Only train coords should be propagated, test wells shouldn't
@@ -148,7 +143,12 @@ def propagate(porosity_data_h5, test_data, features_dict, best_features, it,
             # Condition to avoid padding region since the displacement
             # may result in out of bounds access.
             not_on_padding = (lambda d: (d['z'] >= window_size) &
-                              (d['z'] < hypercube_shape[2] - window_size))
+                              (d['z'] < hypercube_shape[2] - window_size) &
+                              (d['y'] >= window_size) &
+                              (d['y'] < hypercube_shape[1] - window_size) &
+                              (d['x'] >= window_size) &
+                              (d['x'] < hypercube_shape[0] - window_size))
+
 
             # Only empty points can be propagated
             filter_fun = lambda d: (d['real'] == common.RealValues.empty) \
@@ -159,7 +159,7 @@ def propagate(porosity_data_h5, test_data, features_dict, best_features, it,
                                  & not_on_padding(d)
             coords_to_update = np.where(filter_fun(cur_chunk_np))
 
-            n_propagated_points += len(coords_to_update)
+            n_propagated_points += len(coords_to_update[0])
 
             # Update the filtered values on the tmp nparray
             cur_chunk_np['real'][coords_to_update] = common.RealValues.propagated
