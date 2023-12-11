@@ -39,8 +39,6 @@ def _predict_data(model, features_dict, best_features, coords_to_update):
 
     # Create an ndarray for keeping all features
     n_points_to_propagate = len(coords_to_update[0])
-    # predict_features_type = [(f'{f_id}', np.float64)
-    #                          for f_id in range(len(best_features))]
     to_predict_np = np.empty((n_points_to_propagate, len(best_features)),
                              dtype=np.float64)
 
