@@ -14,18 +14,18 @@ def config_arg_parser():
                                      "Aprendizado Invertido")
 
     parser.add_argument(
-        "--config",
-        dest="config_file",
-        action="store",
+        '--config',
+        dest='config_file',
+        action='store',
         required=True,
         type=str,
         help="The yaml config file path to be read",
     )
 
     parser.add_argument(
-        "--it",
-        dest="load_it",
-        action="store",
+        '--it',
+        dest='load_it',
+        action='store',
         required=False,
         default=1,
         type=int,
@@ -35,9 +35,9 @@ def config_arg_parser():
     )
 
     parser.add_argument(
-        "--nits",
-        dest="num_its",
-        action="store",
+        '--nits',
+        dest='num_its',
+        action='store',
         required=False,
         type=int,
         default=1,
@@ -45,9 +45,9 @@ def config_arg_parser():
     )
 
     parser.add_argument(
-        "--nf",
-        dest="num_features",
-        action="store",
+        '--nf',
+        dest='num_features',
+        action='store',
         required=False,
         type=int,
         default=0,
@@ -55,9 +55,9 @@ def config_arg_parser():
     )
 
     parser.add_argument(
-        "--nsf",
-        dest="num_select_features",
-        action="store",
+        '--nsf',
+        dest='num_select_features',
+        action='store',
         required=False,
         default=10,
         type=int,
@@ -65,9 +65,9 @@ def config_arg_parser():
     )
 
     parser.add_argument(
-        "--ntf",
-        dest="num_tested_features",
-        action="store",
+        '--ntf',
+        dest='num_tested_features',
+        action='store',
         default=0,
         required=False,
         type=int,
@@ -76,25 +76,25 @@ def config_arg_parser():
     )
 
     parser.add_argument(
-        "--wp",
-        dest="with_progress",
-        action="store_true",
+        '--wp',
+        dest='with_progress',
+        action='store_true',
         default=True,
         help="Enable showing progress of iterations. "
         "This can mess the slurm output up.",
     )
 
     parser.add_argument(
-        "--no-wp",
-        dest="with_progress",
-        action="store_false",
+        '--no-wp',
+        dest='with_progress',
+        action='store_false',
         help="Disables showing progress of iterations.",
     )
 
     parser.add_argument(
-        "-w",
-        dest="window",
-        action="store",
+        '-w',
+        dest='window',
+        action='store',
         required=False,
         type=int,
         help="Size of the displacement window. This value is for one side "
@@ -103,9 +103,9 @@ def config_arg_parser():
     )
 
     # parser.add_argument(
-    #     "--sp",
-    #     dest="is_sampling",
-    #     action="store_true",
+    #     '--sp',
+    #     dest='is_sampling',
+    #     action='store_true',
     #     help="Whether sampling should be used "
     #     "for feature selection (default=False).",
     # )
@@ -116,23 +116,27 @@ def config_arg_parser():
 def update_config_file_params_with_args(config: config_parser.Config,
                                         args) -> config_parser.Config:
 
-    config.alg["it"] = int(args.load_it)
-    config.alg["num_its"] = int(args.num_its)
+    config.alg['it'] = int(args.load_it)
+    assert config.alg['it'] > 0, f"First iteration is 1, "\
+                                 f"but received --it {config.alg['it']}"
+    config.alg['num_its'] = int(args.num_its)
+    assert config.alg['num_its'] > 0, f"At least 1 iteration should be run, "\
+                                 f"but received --nits {config.alg['num_its']}"
 
-    config.alg["max_num_features"] = int(args.num_select_features)
-    config.add_param("num_features", int(args.num_features))
+    config.alg['max_num_features'] = int(args.num_select_features)
+    config.add_param('num_features', int(args.num_features))
 
     if args.window is not None:
         config.alg['window'] = int(args.window)
 
     if args.with_progress is not None:
-        config.add_param("with_progress", args.with_progress)
+        config.add_param('with_progress', args.with_progress)
 
-    config.add_param("full_depth_chunks", True)
+    config.add_param('full_depth_chunks', True)
 
-    config.add_param("max_tested_features", int(args.num_tested_features))
+    config.add_param('max_tested_features', int(args.num_tested_features))
 
-    # config.add_param("is_sampling", bool(args.is_sampling))
+    # config.add_param('is_sampling', bool(args.is_sampling))
 
     return config
 

@@ -19,52 +19,53 @@ class Test_All(unittest.TestCase):
     '''
 
     # The area setup with well coords is:
+    # All coords are with padding
     #                       y
-    #   . . . . . . . . . 0
     #   . . . . . . . . . 1
-    #   . . . . 0 . . . . 2
-    #   . . . . . . . . . 3
+    #   . . . . . . . . . 2
+    #   . . . . 0 . . . . 3
     #   . . . . . . . . . 4
     #   . . . . . . . . . 5
-    #   . . . . . . . 1 . 6
-    #   . . 2 . . . . . . 7
-    # x 0 1 2 3 4 5 6 7 8
+    #   . . . . . . . . . 6
+    #   . . . . . . . 1 . 7
+    #   . . 2 . . . . . . 8
+    # x 1 2 3 4 5 6 7 8 9
 
     # it 1 :
     #                       y
-    #   . . . . . . . . . 0
-    #   . . . 0 0 0 . . . 1
-    #   . . . 0 x 0 . . . 2
-    #   . . . 0 0 0 . . . 3
-    #   . . . . . . . . . 4
-    #   . . . . . . 1 1 1 5
-    #   . 2 2 2 . . 1 x 1 6
-    #   . 2 x 2 . . 1 1 1 7
-    # x 0 1 2 3 4 5 6 7 8
+    #   . . . . . . . . . 1
+    #   . . . 0 0 0 . . . 2
+    #   . . . 0 x 0 . . . 3
+    #   . . . 0 0 0 . . . 4
+    #   . . . . . . . . . 5
+    #   . . . . . . 1 1 1 6
+    #   . 2 2 2 . . 1 x 1 7
+    #   . 2 x 2 . . 1 1 1 8
+    # x 1 2 3 4 5 6 7 8 9
 
     # it 2:
     #                       y
-    #   . . 0 0 0 0 0 . . 0
     #   . . 0 0 0 0 0 . . 1
-    #   . . 0 0 x 0 0 . . 2
-    #   . . 0 0 0 0 0 . . 3
-    #   . . 0 0 0 0 0 1 1 4
-    #   2 2 2 2 2 1 1 1 1 5
-    #   2 2 2 2 2 1 1 x 1 6
-    #   2 2 x 2 2 1 1 1 1 7
-    # x 0 1 2 3 4 5 6 7 8
+    #   . . 0 0 0 0 0 . . 2
+    #   . . 0 0 x 0 0 . . 3
+    #   . . 0 0 0 0 0 . . 4
+    #   . . 0 0 0 0 0 1 1 5
+    #   2 2 2 2 2 1 1 1 1 6
+    #   2 2 2 2 2 1 1 x 1 7
+    #   2 2 x 2 2 1 1 1 1 8
+    # x 1 2 3 4 5 6 7 8 9
 
     # it 3:
     #                       y
-    #   . 0 0 0 0 0 0 0 . 0
     #   . 0 0 0 0 0 0 0 . 1
-    #   . 0 0 0 x 0 0 0 . 2
-    #   . 0 0 0 0 0 0 0 1 3
-    #   2 0 0 0 0 0 0 1 1 4
-    #   2 2 2 2 2 1 1 1 1 5
-    #   2 2 2 2 2 1 1 x 1 6
-    #   2 2 x 2 2 1 1 1 1 7
-    # x 0 1 2 3 4 5 6 7 8
+    #   . 0 0 0 0 0 0 0 . 2
+    #   . 0 0 0 x 0 0 0 . 3
+    #   . 0 0 0 0 0 0 0 1 4
+    #   2 0 0 0 0 0 0 1 1 5
+    #   2 2 2 2 2 1 1 1 1 6
+    #   2 2 2 2 2 1 1 x 1 7
+    #   2 2 x 2 2 1 1 1 1 8
+    # x 1 2 3 4 5 6 7 8 9
 
     # it 4(with padded coords):
     #                       y
@@ -182,10 +183,10 @@ class Test_All(unittest.TestCase):
         print(output)
         print(error)
 
+        # Validate propagation (see diagrams on the TestClass beginning)
         porosity_h5_file = h5py.File(self.__class__.porosity_h5_path, 'r')
         porosity_dset = porosity_h5_file[common.POROSITY_DSET_NAME]
 
-        # Validate propagation (see diagrams on the TestClass beginning)
         depth = self.__class__.hypercube_shape[2]
         assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 41
         assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 15
@@ -201,30 +202,53 @@ class Test_All(unittest.TestCase):
         3 features are selected.
         '''
 
-        self.assertTrue(True)
+        # Retrieve CLI arguments
+        args1_str = f'--config {self.__class__.config_path} --it 1 '\
+                   f'--nits 2 --nf 1 -w 1 --nsf 3'
+        args2_str = f'--config {self.__class__.config_path} --it 3 '\
+                   f'--nits 2 --nf 1 -w 1 --nsf 3'
 
-    def test_sintetic_short(self):
-        '''
-        Performs 2 complete iterations from scratch with reduced inputs.
-        2 complete iterations.
-        3 feature files are available but only 2 are used.
-        With a window of 1 (thus 27 tests), only 10 tests are performed.
-        2 features are selected.
-        '''
+        process = Popen('mpirun -np 2 python3 -u main.py ' + args1_str,
+                        shell=True,
+                        universal_newlines=True,
+                        stdout=PIPE,
+                        stderr=PIPE,
+                        preexec_fn=os.setsid)
 
-        self.assertTrue(True)
+        output, error = process.communicate()
+        print(output)
+        print(error)
 
-    def test_real_2_iterations_from_scratch(self):
-        '''
-        Performs 2 complete iterations from scratch with reduced inputs on
-        real data.
-        2 complete iterations.
-        1 feature file is used with a window of 1 (thus 27 tests).
-        Only 10 tests are performed per selected feature.
-        10 features are selected.
-        '''
+        # Validate propagation (see diagrams on the TestClass beginning)
+        porosity_h5_file = h5py.File(self.__class__.porosity_h5_path, 'r')
+        porosity_dset = porosity_h5_file[common.POROSITY_DSET_NAME]
 
-        self.assertTrue(True)
+        depth = self.__class__.hypercube_shape[2]
+
+        assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 25
+        assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 14
+        assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 15
+        porosity_h5_file.close()
+
+        process = Popen('mpirun -np 2 python3 -u main.py ' + args2_str,
+                        shell=True,
+                        universal_newlines=True,
+                        stdout=PIPE,
+                        stderr=PIPE,
+                        preexec_fn=os.setsid)
+        output, error = process.communicate()
+        print(output)
+        print(error)
+
+        # Validate propagation (see diagrams on the TestClass beginning)
+        porosity_h5_file = h5py.File(self.__class__.porosity_h5_path, 'r')
+        porosity_dset = porosity_h5_file[common.POROSITY_DSET_NAME]
+
+        depth = self.__class__.hypercube_shape[2]
+        assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 41
+        assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 15
+        assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 16
+        porosity_h5_file.close()
 
     # =========================================================================
     # === Setup/teardown ======================================================

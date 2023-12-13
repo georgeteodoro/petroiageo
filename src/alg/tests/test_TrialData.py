@@ -17,9 +17,46 @@ concrete_classes = (TrialDataNumpy)
 @ddt
 class Test_TrialDataAll(unittest.TestCase):
 
+    # The area setup with well coords is:
+    # All coords are with padding
+    #             y
+    #   . . . . . 1
+    #   . . . . . 2
+    #   0 . . . . 3
+    #   . . 1 . . 4
+    #   . . . . . 5
+    #   . . . . . 6
+    #   . . . . . 7
+    # x 1 2 3 4 5
+
+    # it 1
+    #   . . . . . 1
+    #   0 0 . . . 2
+    #   x 0 1 1 . 3
+    #   0 0 x 1 . 4
+    #   . 1 1 1 . 5
+    #   . . . . . 6
+    #   . . . . . 7
+    # x 1 2 3 4 5
+
+    # it 2
+    #   0 0 0 . . 1
+    #   0 0 0 1 1 2
+    #   x 0 1 1 1 3
+    #   0 0 x 1 1 4
+    #   0 1 1 1 1 5
+    #   . 1 1 1 1 6
+    #   . . . . . 7
+    # x 1 2 3 4 5
+
     # All data info
-    hypercube_test_shape = (3, 4, 5)
-    chunk_test_shape = (3, 2, 5)
+    hypercube_test_shape = (5, 7, 5)
+
+    # Window is hardcoded on the padding comprehension
+    window = 1
+    hypercube_test_shape_padded = [c + 2 * 1 for c in hypercube_test_shape]
+
+    chunk_test_shape = (5, 4, 5)
     POROSITY_FILENAME = 'test_porosity.h5'
     FEATURE_FILENAME1 = 'test_feature1.h5'
     FEATURE_FILENAME2 = 'test_feature2.h5'
@@ -36,14 +73,37 @@ class Test_TrialDataAll(unittest.TestCase):
     feature2_h5_dset = None
 
     @classmethod
+    def _fill_ring(cls, r, well_id, w_x, w_y):
+        i_beg = max(w_x - r, cls.window)
+        i_end = min(w_x + r + 1, cls.hypercube_test_shape_padded[0] - 1)
+        j_beg = max(w_y - r, cls.window)
+        j_end = min(w_y + r + 1, cls.hypercube_test_shape_padded[1] - 1)
+        for i in range(i_beg, i_end):
+            for j in range(j_beg, j_end):
+                for k in range(cls.window, cls.hypercube_test_shape_padded[2] -
+                               cls.window):
+                    if cls.porosity_h5_dset[
+                            i, j, k]['real'] != common.RealValues.empty:
+                        continue
+
+                    # Only add points which are on the ring and were not
+                    # previously propagated
+                    if (i == i_beg or i == i_end - 1 or j == j_beg
+                            or j == j_end - 1):
+                        mock_porosity = w_x * w_y * k
+                        cls.porosity_h5_dset[i, j, k] = (
+                            i, j, k, mock_porosity,
+                            common.RealValues.propagated, r, well_id)
+
+    @classmethod
     def setUpClass(cls):
         # Create config object
-        yaml_str = """
+        yaml_str = f"""
         wells:
           coords:
           - [0,2]
           - [2,3]
-          window: 0
+          window: {cls.window}
         """
         cls.config = YAMLConfig(config_str=yaml_str)
         wells_list = cls.config.train_wells_coords
@@ -52,6 +112,7 @@ class Test_TrialDataAll(unittest.TestCase):
         cls.porosity_h5_f = h5py.File(cls.POROSITY_FILENAME, 'w')
 
         # Create the dataset within the h5
+        # TODO: Refactor: Move this to common and standardize this type
         porosity_data_type = np.dtype([
             ('x', np.int64),
             ('y', np.int64),
@@ -63,30 +124,36 @@ class Test_TrialDataAll(unittest.TestCase):
         ])
         cls.porosity_h5_dset = cls.porosity_h5_f.create_dataset(
             common.POROSITY_DSET_NAME,
-            cls.hypercube_test_shape,
+            cls.hypercube_test_shape_padded,
             dtype=porosity_data_type,
             chunks=cls.chunk_test_shape,
         )
 
         # Initialize all as empty data
-        for i in range(cls.hypercube_test_shape[0]):
-            for j in range(cls.hypercube_test_shape[1]):
-                for k in range(cls.hypercube_test_shape[2]):
+        for i in range(cls.hypercube_test_shape_padded[0]):
+            for j in range(cls.hypercube_test_shape_padded[1]):
+                for k in range(cls.hypercube_test_shape_padded[2]):
                     cls.porosity_h5_dset[i, j,
                                          k] = (i, j, k, 0,
                                                common.RealValues.empty, -1, -1)
 
         # Fill wells
         for (well_id, (w_x, w_y)) in enumerate(wells_list):
-            for k in range(cls.hypercube_test_shape[2]):
-                # Well 1 would not have points throughout the whole depth
-                if well_id == 1 and (k == 1 or k == 4):
-                    continue
+            for k in range(cls.window,
+                           cls.hypercube_test_shape[2] + cls.window):
+                # # Well 1 would not have points throughout the whole depth
+                # if well_id == 1 and (k == 1 or k == 4):
+                #     continue
 
                 mock_porosity = w_x * w_y * k
                 cls.porosity_h5_dset[w_x, w_y,
                                      k] = (w_x, w_y, k, mock_porosity,
                                            common.RealValues.real, 0, well_id)
+
+        # Fill more rings
+        for r in range(1, 3):
+            for (well_id, (w_x, w_y)) in enumerate(wells_list):
+                cls._fill_ring(r, well_id, w_x, w_y)
 
         # Create the feature h5 file
         cls.feature1_h5_f = h5py.File(cls.FEATURE_FILENAME1, 'w')
@@ -94,14 +161,14 @@ class Test_TrialDataAll(unittest.TestCase):
         # Create the dataset within the h5
         cls.feature1_h5_dset = cls.feature1_h5_f.create_dataset(
             common.FEAT_DSET_NAME,
-            cls.hypercube_test_shape,
+            cls.hypercube_test_shape_padded,
             dtype=np.float64,
         )
 
         # Initialize feature data
-        for i in range(cls.hypercube_test_shape[0]):
-            for j in range(cls.hypercube_test_shape[1]):
-                for k in range(cls.hypercube_test_shape[2]):
+        for i in range(cls.hypercube_test_shape_padded[0]):
+            for j in range(cls.hypercube_test_shape_padded[1]):
+                for k in range(cls.hypercube_test_shape_padded[2]):
                     cls.feature1_h5_dset[i, j, k] = i * j * k + 1
 
         # Create the feature h5 file
@@ -110,14 +177,14 @@ class Test_TrialDataAll(unittest.TestCase):
         # Create the dataset within the h5
         cls.feature2_h5_dset = cls.feature2_h5_f.create_dataset(
             common.FEAT_DSET_NAME,
-            cls.hypercube_test_shape,
+            cls.hypercube_test_shape_padded,
             dtype=np.float64,
         )
 
         # Initialize feature data
-        for i in range(cls.hypercube_test_shape[0]):
-            for j in range(cls.hypercube_test_shape[1]):
-                for k in range(cls.hypercube_test_shape[2]):
+        for i in range(cls.hypercube_test_shape_padded[0]):
+            for j in range(cls.hypercube_test_shape_padded[1]):
+                for k in range(cls.hypercube_test_shape_padded[2]):
                     cls.feature2_h5_dset[i, j, k] = i * j * k + 10
 
     @classmethod
@@ -146,15 +213,19 @@ class Test_TrialDataAll(unittest.TestCase):
                        porosity_data=porosity_dset,
                        f_sel_filter=f_sel_filter,
                        config=config)
-        self.assertTrue(True)
+
         td2 = test_cls(features_only=False,
                        porosity_data=porosity_dset,
                        f_sel_filter=f_sel_filter,
                        config=config)
+
         self.assertTrue(True)
 
     @data(concrete_classes)
-    def test_prepare_porosity_r0(self, test_cls):
+    def test_prepare_porosity_r1(self, test_cls):
+        '''
+        Test the use of prepare_porosity() the first ring.
+        '''
         # Load class data
         porosity_dset = self.__class__.porosity_h5_dset
         config = self.__class__.config
@@ -177,10 +248,83 @@ class Test_TrialDataAll(unittest.TestCase):
         # Check if all points were added
         # Total of 2 full depths, minus 2 non-added points
         # = 2*5-2 = 8
-        self.assertEqual(len(td1._trial_data_dict[0]), 8)
+        self.assertEqual(len(td1._trial_data_dict[0]),
+                         self.__class__.hypercube_test_shape[2] * 2)
 
     @data(concrete_classes)
-    def test_update_feature_r0(self, test_cls):
+    def test_prepare_porosity_r1_3(self, test_cls):
+        '''
+        Test the use of prepare_porosity() by adding 3 rings,
+        one at a time, from ring 1-3.
+        '''
+        # Load class data
+        porosity_dset = self.__class__.porosity_h5_dset
+        config = self.__class__.config
+        wells_list = config.train_wells_coords
+
+        f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
+
+        # Create TestData object
+        td1 = test_cls(features_only=False,
+                       porosity_data=porosity_dset,
+                       f_sel_filter=f_sel_filter,
+                       config=config)
+
+        # Prepare first porosity
+        td1.prepare_porosity(1)
+        td1.prepare_porosity(2)
+        td1.prepare_porosity(3)
+
+        # Only one ring exists
+        self.assertEqual(len(td1._trial_data_dict), 3)
+
+        # Check if all points were added
+        # Total of 2 full depths, minus 2 non-added points
+        # = 2*5-2 = 8
+        self.assertEqual(len(td1._trial_data_dict[0]),
+                         self.__class__.hypercube_test_shape[2] * 2)
+        self.assertEqual(len(td1._trial_data_dict[1]),
+                         self.__class__.hypercube_test_shape[2] * 11)
+        self.assertEqual(len(td1._trial_data_dict[2]),
+                         self.__class__.hypercube_test_shape[2] * 15)
+
+    @data(concrete_classes)
+    def test_prepare_porosity_r3(self, test_cls):
+        '''
+        Test the use of prepare_porosity() by adding 3 rings all at
+        once, simulating the resuming of previous iterations
+        '''
+        # Load class data
+        porosity_dset = self.__class__.porosity_h5_dset
+        config = self.__class__.config
+        wells_list = config.train_wells_coords
+
+        f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
+
+        # Create TestData object
+        td1 = test_cls(features_only=False,
+                       porosity_data=porosity_dset,
+                       f_sel_filter=f_sel_filter,
+                       config=config)
+
+        # Prepare all porosities up to iteration 3
+        td1.prepare_porosity(3)
+
+        # Only one ring exists
+        self.assertEqual(len(td1._trial_data_dict), 3)
+
+        # Check if all points were added
+        # Total of 2 full depths, minus 2 non-added points
+        # = 2*5-2 = 8
+        self.assertEqual(len(td1._trial_data_dict[0]),
+                         self.__class__.hypercube_test_shape[2] * 2)
+        self.assertEqual(len(td1._trial_data_dict[1]),
+                         self.__class__.hypercube_test_shape[2] * 11)
+        self.assertEqual(len(td1._trial_data_dict[2]),
+                         self.__class__.hypercube_test_shape[2] * 15)
+
+    @data(concrete_classes)
+    def test_update_feature_r1(self, test_cls):
         # Load class data
         porosity_dset = self.__class__.porosity_h5_dset
         f1_filename = self.__class__.FEATURE_FILENAME1
@@ -189,7 +333,6 @@ class Test_TrialDataAll(unittest.TestCase):
         wells_list = config.train_wells_coords
 
         disp = (0, 0, 0)
-        # disp_cube_shape = (1, 1, 1)
 
         f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
 
