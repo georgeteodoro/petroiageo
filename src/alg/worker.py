@@ -42,24 +42,9 @@ def run(config):
     should_propagate = config.get_param("mpi_should_update_local")
     num_its = config.alg['num_its']
     start_it = config.alg['it']
-    max_feats_to_select = config.alg["max_num_features"]
-    wells_coords = config.train_wells_coords
     train_wells_ids = config.train_wells_ids
 
-    print(f'wells_coords: {wells_coords}')
-
-    num_features = config.get_param('num_features')
-    num_features = num_features if num_features != 0 else 'all'
-
-    window_size = config.alg['window']
-    disp_cube_shape = (
-        window_size * 2 + 1,
-        window_size * 2 + 1,
-        window_size * 2 + 1,
-    )
-
     # Generate the dict of all features
-    print(beg_str + f"Loading {num_features} features.")
     all_features_dict = FeatureDataBase.load_all_features(
         config, FeatureDataH5)
 
@@ -67,24 +52,23 @@ def run(config):
     print(beg_str + f"Loading porosity.")
     porosity_h5_f, porosity_h5_dset = _load_porosity(config)
 
-    # Prepare test_data
-    print(beg_str + f"Preparing test_data.")
+    # Prepare trial_data
+    print(beg_str + f"Preparing trial_data.")
     f_sel_filter = WellsSingleRingDataFilter(train_wells_ids)
-    test_data = TrialDataNumpy(n_features=max_feats_to_select,
-                              features_only=False,
-                              wells_list=wells_coords,
-                              porosity_data=porosity_h5_dset,
-                              f_sel_filter=f_sel_filter)
+    trial_data = TrialDataNumpy(features_only=False,
+                                porosity_data=porosity_h5_dset,
+                                f_sel_filter=f_sel_filter,
+                                config=config)
 
     print(beg_str + f"Beginning iterations.")
 
     for it in range(start_it, num_its + start_it):
         best_features = ['x', 'y', 'z']
 
-        # Update test data: set test_data size and update coordinates,
+        # Update test data: set trial_data size and update coordinates,
         # porosity, and other columns
-        print(beg_str + f"[it{it}] Preparing test_data.")
-        test_data.prepare_porosity(it)
+        print(beg_str + f"[it{it}] Preparing trial_data.")
+        trial_data.prepare_porosity(it)
 
         # feature selection
         comm.send(None, dest=manager_rank, tag=MPI_TAGS.WORKER_FIRST_JOB.value)
@@ -107,9 +91,8 @@ def run(config):
                 new_features = msg
                 results = []
                 for (feature, disp) in new_features:
-                    test_data.update_feature(all_features_dict[feature], disp,
-                                             disp_cube_shape)
-                    ret = test_new_feature(test_data, config)
+                    trial_data.update_feature(all_features_dict[feature], disp)
+                    ret = test_new_feature(trial_data, config)
 
                     # None is returned upon only 1 well propagating.
                     # If so, propagation is halted.
@@ -136,9 +119,8 @@ def run(config):
                 new_feature = msg
                 (feature, disp) = new_feature
                 best_features.append(new_feature)
-                test_data.update_feature(all_features_dict[feature], disp,
-                                         disp_cube_shape)
-                test_data.commit_feature()
+                trial_data.update_feature(all_features_dict[feature], disp)
+                trial_data.commit_feature()
 
                 # Send response back requesting new job
                 comm.send(results,
@@ -153,10 +135,10 @@ def run(config):
                 best_features = []
                 best_features += msg
 
-                # Add the last column to test_data
+                # Add the last column to trial_data
                 (last_feature, disp) = best_features[-1]
-                test_data.update_feature(all_features_dict[last_feature], disp,
-                                         disp_cube_shape)
+                trial_data.update_feature(all_features_dict[last_feature],
+                                          disp)
 
                 break
 
@@ -170,9 +152,10 @@ def run(config):
 
         # propagation
         if should_propagate:
-            n_propagated_points = propagate(porosity_h5_dset, test_data,
+            n_propagated_points = propagate(porosity_h5_dset, trial_data,
                                             all_features_dict, best_features,
                                             it, config)
-            print(beg_str + f"[it{it}] Propagated {n_propagated_points} points.")
+            print(beg_str +
+                  f"[it{it}] Propagated {n_propagated_points} points.")
 
     porosity_h5_f.close()

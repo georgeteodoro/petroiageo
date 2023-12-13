@@ -8,11 +8,11 @@ class TrialDataNumpy(TrialDataBase):
     In-memory implementation of TrialDataBase using numpy as the
     concrete type for data storage.
     '''
-    def __init__(self, n_features, features_only, wells_list, f_sel_filter,
-                 porosity_data):
+
+    def __init__(self, features_only, f_sel_filter, porosity_data, config):
         # Currently no initialization is needed
-        super(TrialDataNumpy, self).__init__(
-            n_features, features_only, wells_list, f_sel_filter, porosity_data)
+        super(TrialDataNumpy, self).__init__(features_only, f_sel_filter,
+                                             porosity_data, config)
 
     def _set_ring_hook(self, ring, data):
         '''
@@ -21,7 +21,7 @@ class TrialDataNumpy(TrialDataBase):
         '''
 
         self._trial_data_dict[ring] = np.zeros((len(data)),
-                                              dtype=self._cur_data_type)
+                                               dtype=self._cur_data_type)
         fields = [i for i, j in self._base_data_type]
         self._trial_data_dict[ring][fields] = data
 

@@ -8,6 +8,7 @@ from math import prod
 from TrialDataNumpy import TrialDataNumpy
 from data_filter import WellsSingleRingDataFilter
 from FeatureDataH5 import FeatureDataH5
+from config_parser import YAMLConfig
 import common
 
 concrete_classes = (TrialDataNumpy)
@@ -19,10 +20,10 @@ class Test_TrialDataAll(unittest.TestCase):
     # All data info
     hypercube_test_shape = (3, 4, 5)
     chunk_test_shape = (3, 2, 5)
-    wells_list = [(0, 2), (2, 3)]
     POROSITY_FILENAME = 'test_porosity.h5'
     FEATURE_FILENAME1 = 'test_feature1.h5'
     FEATURE_FILENAME2 = 'test_feature2.h5'
+    config = None
 
     # Porosity data structures
     porosity_h5_f = None
@@ -36,6 +37,17 @@ class Test_TrialDataAll(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        # Create config object
+        yaml_str = """
+        wells:
+          coords:
+          - [0,2]
+          - [2,3]
+          window: 0
+        """
+        cls.config = YAMLConfig(config_str=yaml_str)
+        wells_list = cls.config.train_wells_coords
+
         # Create the porosity h5 file
         cls.porosity_h5_f = h5py.File(cls.POROSITY_FILENAME, 'w')
 
@@ -65,7 +77,7 @@ class Test_TrialDataAll(unittest.TestCase):
                                                common.RealValues.empty, -1, -1)
 
         # Fill wells
-        for (well_id, (w_x, w_y)) in enumerate(cls.wells_list):
+        for (well_id, (w_x, w_y)) in enumerate(wells_list):
             for k in range(cls.hypercube_test_shape[2]):
                 # Well 1 would not have points throughout the whole depth
                 if well_id == 1 and (k == 1 or k == 4):
@@ -125,38 +137,36 @@ class Test_TrialDataAll(unittest.TestCase):
         '''
         # Load class data
         porosity_dset = self.__class__.porosity_h5_dset
-        wells_list = self.__class__.wells_list
+        config = self.__class__.config
+        wells_list = config.train_wells_coords
 
         f_sel_filter = WellsSingleRingDataFilter(wells_list)
 
-        td1 = test_cls(n_features=5,
-                       features_only=True,
-                       wells_list=wells_list,
+        td1 = test_cls(features_only=True,
                        porosity_data=porosity_dset,
-                       f_sel_filter=f_sel_filter)
+                       f_sel_filter=f_sel_filter,
+                       config=config)
         self.assertTrue(True)
-        td2 = test_cls(n_features=5,
-                       features_only=False,
-                       wells_list=wells_list,
+        td2 = test_cls(features_only=False,
                        porosity_data=porosity_dset,
-                       f_sel_filter=f_sel_filter)
+                       f_sel_filter=f_sel_filter,
+                       config=config)
         self.assertTrue(True)
 
     @data(concrete_classes)
     def test_prepare_porosity_r0(self, test_cls):
         # Load class data
         porosity_dset = self.__class__.porosity_h5_dset
-        wells_list = self.__class__.wells_list
+        config = self.__class__.config
+        wells_list = config.train_wells_coords
 
-        n_features = 5
         f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
 
         # Create TestData object
-        td1 = test_cls(n_features=n_features,
-                       features_only=False,
-                       wells_list=wells_list,
+        td1 = test_cls(features_only=False,
                        porosity_data=porosity_dset,
-                       f_sel_filter=f_sel_filter)
+                       f_sel_filter=f_sel_filter,
+                       config=config)
 
         # Prepare first porosity
         td1.prepare_porosity(1)
@@ -173,21 +183,21 @@ class Test_TrialDataAll(unittest.TestCase):
     def test_update_feature_r0(self, test_cls):
         # Load class data
         porosity_dset = self.__class__.porosity_h5_dset
-        wells_list = self.__class__.wells_list
         f1_filename = self.__class__.FEATURE_FILENAME1
         f2_filename = self.__class__.FEATURE_FILENAME2
-        disp = (0, 0, 0)
-        disp_cube_shape = (1, 1, 1)
+        config = self.__class__.config
+        wells_list = config.train_wells_coords
 
-        n_features = 5
+        disp = (0, 0, 0)
+        # disp_cube_shape = (1, 1, 1)
+
         f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
 
         # Create TestData object
-        td1 = test_cls(n_features=n_features,
-                       features_only=False,
-                       wells_list=wells_list,
+        td1 = test_cls(features_only=False,
                        porosity_data=porosity_dset,
-                       f_sel_filter=f_sel_filter)
+                       f_sel_filter=f_sel_filter,
+                       config=config)
 
         # Prepare first porosity
         td1.prepare_porosity(1)
@@ -196,7 +206,7 @@ class Test_TrialDataAll(unittest.TestCase):
         # === Test first feature
         # =====================================================================
         f1 = FeatureDataH5(f1_filename, None)
-        td1.update_feature(f1, disp, disp_cube_shape)
+        td1.update_feature(f1, disp)
 
         cur_points = td1._trial_data_dict[0]
 
@@ -207,8 +217,8 @@ class Test_TrialDataAll(unittest.TestCase):
             val_X, val_y = td1.get_val_values(well_id)
 
             # Generate expected values
-            expected_train_coordinates = cur_points[
-                cur_points['well_id'] != well_id][['x', 'y', 'z']]
+            expected_train_coordinates = cur_points[cur_points['well_id'] !=
+                                                    well_id][['x', 'y', 'z']]
             expected_val_coordinates = cur_points[cur_points['well_id'] ==
                                                   well_id][['x', 'y', 'z']]
             expected_train_X = [[
@@ -230,7 +240,7 @@ class Test_TrialDataAll(unittest.TestCase):
         # === Test updating first feature to feature2
         # =====================================================================
         f2 = FeatureDataH5(f2_filename, None)
-        td1.update_feature(f2, disp, disp_cube_shape)
+        td1.update_feature(f2, disp)
 
         for (well_id, well) in enumerate(wells_list):
             # Get data through public interface
@@ -239,8 +249,8 @@ class Test_TrialDataAll(unittest.TestCase):
             val_X, val_y = td1.get_val_values(well_id)
 
             # Generate expected values
-            expected_train_coordinates = cur_points[
-                cur_points['well_id'] != well_id][['x', 'y', 'z']]
+            expected_train_coordinates = cur_points[cur_points['well_id'] !=
+                                                    well_id][['x', 'y', 'z']]
             expected_val_coordinates = cur_points[cur_points['well_id'] ==
                                                   well_id][['x', 'y', 'z']]
             expected_train_X = [[
@@ -262,7 +272,7 @@ class Test_TrialDataAll(unittest.TestCase):
         # === Test committing feature2 and adding feature1 to col2
         # =====================================================================
         td1.commit_feature()
-        td1.update_feature(f1, disp, disp_cube_shape)
+        td1.update_feature(f1, disp)
 
         for (well_id, well) in enumerate(wells_list):
             # Get data through public interface
@@ -271,8 +281,8 @@ class Test_TrialDataAll(unittest.TestCase):
             val_X, val_y = td1.get_val_values(well_id)
 
             # Generate expected values
-            expected_train_coordinates = cur_points[
-                cur_points['well_id'] != well_id][['x', 'y', 'z']]
+            expected_train_coordinates = cur_points[cur_points['well_id'] !=
+                                                    well_id][['x', 'y', 'z']]
             expected_val_coordinates = cur_points[cur_points['well_id'] ==
                                                   well_id][['x', 'y', 'z']]
             expected_train_X = [(

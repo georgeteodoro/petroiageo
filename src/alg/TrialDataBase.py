@@ -15,10 +15,13 @@ class TrialDataBase(ABC):
     Due to the use of padding, all coordinates are the padded coordinates. 
     Thus, it is expected of the wells_list to have padded coordinates as well.
     '''
-    def __init__(self, n_features, features_only, wells_list, f_sel_filter,
-                 porosity_data):
+
+    def __init__(self, features_only, f_sel_filter, porosity_data, config):
+        self._config = config
+
+        self._n_features = config.alg["max_num_features"]
+
         # Set the datatype for points
-        self._n_features = n_features
         self._features_only = features_only
         if features_only:
             self._base_data_type = [
@@ -36,7 +39,7 @@ class TrialDataBase(ABC):
                 ('well_id', np.int64),
             ]
         self._cur_data_type = self._base_data_type + [
-            (f'f{f}', np.float64) for f in range(n_features)
+            (f'f{f}', np.float64) for f in range(self._n_features + 1)
         ]
         self._cur_data_type = np.dtype(self._cur_data_type)
 
@@ -63,7 +66,7 @@ class TrialDataBase(ABC):
         self._data_len = -1
 
         # This is the list of real wells coordinates
-        self._wells_list = wells_list
+        self._wells_list = config.train_wells_coords
 
         self._porosity_data = porosity_data
         self._f_sel_filter = f_sel_filter
@@ -209,7 +212,7 @@ class TrialDataBase(ABC):
         self._current_feature_id += 1
         self._current_features.append(f'f{self._current_feature_id}')
 
-    def update_feature(self, feature, disp, disp_cube_shape):
+    def update_feature(self, feature, disp):
         '''
         Adds data to the last feature. Data is related to all rings.
         Receives a FeatureDataBase object and a displacement to apply on
