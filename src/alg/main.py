@@ -1,5 +1,6 @@
 import argparse
 from mpi4py import MPI
+import sys
 
 import config_parser
 import mpi_module
@@ -121,8 +122,8 @@ def update_config_file_params_with_args(config: config_parser.Config,
     config.alg["max_num_features"] = int(args.num_select_features)
     config.add_param("num_features", int(args.num_features))
 
-    if args.with_progress is not None:
-        window_size = config.alg['window'] = int(args.window)
+    if args.window is not None:
+        config.alg['window'] = int(args.window)
 
     if args.with_progress is not None:
         config.add_param("with_progress", args.with_progress)
@@ -157,6 +158,10 @@ def main(args_str=None):
     rank = comm.Get_rank()
     mpi_size = comm.Get_size()
     manager_rank = mpi_size - 1
+
+    # Call MPI.abort() on all processes if one of them breaks
+    # This avoids lingering executions after any error occurs
+    sys.excepthook = lambda x, y, z: MPI.COMM_WORLD.Abort()
 
     assert mpi_size > 1, "Two or more processes required to run "\
                          "(mpirun -np 2 python3 main.py)."
