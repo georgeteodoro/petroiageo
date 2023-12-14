@@ -15,7 +15,6 @@ class TrialDataBase(ABC):
     Due to the use of padding, all coordinates are the padded coordinates. 
     Thus, it is expected of the wells_list to have padded coordinates as well.
     '''
-
     def __init__(self, features_only, f_sel_filter, porosity_data, config):
         self._config = config
 
@@ -138,7 +137,7 @@ class TrialDataBase(ABC):
     # === Public interface ====================================================
     # =========================================================================
 
-    def prepare_porosity(self, it):
+    def prepare_porosity(self, prep_it):
         '''
         Allocate data required for the current iteration it.
         Fill coordinates, phi and well_id (when necessary).
@@ -147,58 +146,66 @@ class TrialDataBase(ABC):
         '''
 
         # Reset internal state
-        assert it>0, f"[TrialDataBase][prepare_porosity] "\
-            f"First iteration is 1, but received current iteration {it}."
-        self._current_ring = it - 1
-        self._current_feature_id = 0
-        self._current_features = []
-
-        # Set ring to be filtered
-        self._f_sel_filter.set_ring(self._current_ring)
+        assert prep_it>0, f"[TrialDataBase][prepare_porosity] "\
+            f"First iteration is 1, but received current iteration {prep_it}."
 
         # Set the first feature, even if it's empty
+        self._current_feature_id = 0
+        self._current_features = []
         self._current_features.append(f'f{self._current_feature_id}')
 
         # Remove, if necessary, old data from previous rings
         # This should be done if sampling is required
         pass
 
-        # Create new ring data
-        self._trial_data_dict[self._current_ring] = []
+        # Load all rings if this is a continued iteration
+        it_init = 0 if self._current_ring < 0 else prep_it-1
 
-        # Iterate on all porosity chunks to fill trial_data
-        points_list = []
-        for chunk_slice in self._porosity_data.iter_chunks():
-            # Skip this chunk if there are not any points withing it
-            if not common.has_points_within_chunk(
-                    self._wells_list, self._current_ring, chunk_slice):
-                continue
+        # Load rings
+        for it in range(it_init, prep_it):
 
-            # Load porosity data chunk
-            chunk_np = self._porosity_data[chunk_slice]
+            # Set ring to be filtered
+            self._f_sel_filter.set_ring(it)
 
-            # Add points to temporary points_list
-            filt_list = self._f_sel_filter.satisfies(chunk_np)
-            filt_data = chunk_np[filt_list]
+            # Create new ring data
+            self._trial_data_dict[it] = []
 
-            if self._features_only:
-                points_list.extend(filt_data[['x', 'y', 'z', 'phi']].tolist())
-            else:
-                points_list.extend(filt_data[[
-                    'x',
-                    'y',
-                    'z',
-                    'phi',
-                    'well_id',
-                ]].tolist())
+            # Iterate on all porosity chunks to fill trial_data
+            points_list = []
+            for chunk_slice in self._porosity_data.iter_chunks():
+                # Skip this chunk if there are not any points withing it
+                if not common.has_points_within_chunk(
+                        self._wells_list, it, chunk_slice):
+                    continue
 
-        # Fill ring dict
-        self._set_ring_hook(self._current_ring, points_list)
+                # Load porosity data chunk
+                chunk_np = self._porosity_data[chunk_slice]
 
-        # Update size and chunking info
-        self._chunk_size = 0
-        for r in self._trial_data_dict.keys():
-            self._chunk_size += len(self._trial_data_dict[r])
+                # Add points to temporary points_list
+                filt_list = self._f_sel_filter.satisfies(chunk_np)
+                filt_data = chunk_np[filt_list]
+
+                if self._features_only:
+                    points_list.extend(filt_data[['x', 'y', 'z',
+                                                  'phi']].tolist())
+                else:
+                    points_list.extend(filt_data[[
+                        'x',
+                        'y',
+                        'z',
+                        'phi',
+                        'well_id',
+                    ]].tolist())
+
+            # Fill ring dict
+            self._set_ring_hook(it, points_list)
+
+            # Update size and chunking info
+            self._chunk_size = 0
+            for r in self._trial_data_dict.keys():
+                self._chunk_size += len(self._trial_data_dict[r])
+
+        self._current_ring = prep_it - 1
 
     def commit_feature(self):
         '''
