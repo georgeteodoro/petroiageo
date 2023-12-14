@@ -1,6 +1,7 @@
 import argparse
 from mpi4py import MPI
 import sys
+from time import sleep
 
 import config_parser
 import mpi_module
@@ -165,7 +166,11 @@ def main(args_str=None):
 
     # Call MPI.abort() on all processes if one of them breaks
     # This avoids lingering executions after any error occurs
-    sys.excepthook = lambda x, y, z: MPI.COMM_WORLD.Abort()
+    def _end():
+        # This sleep timer allows processes to output error messages
+        sleep(3)
+        MPI.COMM_WORLD.Abort()
+    sys.excepthook = lambda x, y, z: _end()
 
     assert mpi_size > 1, "Two or more processes required to run "\
                          "(mpirun -np 2 python3 main.py)."
