@@ -1,5 +1,6 @@
 import numpy as np
 from abc import ABC, abstractmethod
+from time import time
 
 import common
 
@@ -18,7 +19,7 @@ class TrialDataBase(ABC):
     def __init__(self, features_only, f_sel_filter, porosity_data, config):
         self._config = config
 
-        self._n_features = config.alg["max_num_features"]
+        self._n_features = config.alg['max_num_features']
 
         # Set the datatype for points
         self._features_only = features_only
@@ -145,6 +146,10 @@ class TrialDataBase(ABC):
         First iteration is 1. Iteration 0 does not exists.
         '''
 
+        profile = self._config.get_param('prof_trial_prep_porosity')
+
+        t0 = time()
+
         # Reset internal state
         assert prep_it>0, f"[TrialDataBase][prepare_porosity] "\
             f"First iteration is 1, but received current iteration {prep_it}."
@@ -159,10 +164,14 @@ class TrialDataBase(ABC):
         pass
 
         # Load all rings if this is a continued iteration
-        it_init = 0 if self._current_ring < 0 else prep_it-1
+        it_init = 0 if self._current_ring < 0 else prep_it - 1
+
+        t1 = time()
 
         # Load rings
         for it in range(it_init, prep_it):
+
+            t11 = time()
 
             # Set ring to be filtered
             self._f_sel_filter.set_ring(it)
@@ -173,17 +182,23 @@ class TrialDataBase(ABC):
             # Iterate on all porosity chunks to fill trial_data
             points_list = []
             for chunk_slice in self._porosity_data.iter_chunks():
+                t111 = time()
+
                 # Skip this chunk if there are not any points withing it
-                if not common.has_points_within_chunk(
-                        self._wells_list, it, chunk_slice):
+                if not common.has_points_within_chunk(self._wells_list, it,
+                                                      chunk_slice):
                     continue
 
                 # Load porosity data chunk
                 chunk_np = self._porosity_data[chunk_slice]
 
+                t112 = time()
+
                 # Add points to temporary points_list
                 filt_list = self._f_sel_filter.satisfies(chunk_np)
+                t113 = time()
                 filt_data = chunk_np[filt_list]
+                t114 = time()
 
                 if self._features_only:
                     points_list.extend(filt_data[['x', 'y', 'z',
@@ -197,6 +212,20 @@ class TrialDataBase(ABC):
                         'well_id',
                     ]].tolist())
 
+                t115 = time()
+
+                if profile:
+                    print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
+                          f"chunk[{chunk_slice}] p_chunk_load: {t112-t111}")
+                    print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
+                          f"chunk[{chunk_slice}] p_chunk_satisfy: {t113-t112}")
+                    print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
+                          f"chunk[{chunk_slice}] p_chunk_filt: {t114-t113}")
+                    print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
+                          f"chunk[{chunk_slice}] p_chunk_extend: {t115-t114}")
+
+            t12 = time()
+
             # Fill ring dict
             self._set_ring_hook(it, points_list)
 
@@ -205,14 +234,23 @@ class TrialDataBase(ABC):
             for r in self._trial_data_dict.keys():
                 self._chunk_size += len(self._trial_data_dict[r])
 
+            t13 = time()
+            print(f"[TrialDataBase][prepare_porosity] ring[{it+1}] "
+                  f"chunk_total: {t12-t11}")
+            print(f"[TrialDataBase][prepare_porosity] ring[{it+1}] "
+                  f"ring_update: {t13-t12}")
+
         self._current_ring = prep_it - 1
+
+        t2 = time()
+        print(f"[TrialDataBase][prepare_porosity] final_time {t2-t1}")
 
     def commit_feature(self):
         '''
         Commits the current feature, then setting up the next feature.
         '''
         assert self._current_feature_id >= 0, "[TrialDataBase][commit_feature] "\
-            "Committing feature before prepare_poroisity."
+            "Committing feature before prepare_porosity."
         assert self._current_feature_id < self._n_features, \
             "[TrialDataBase][commit_feature] Committing beyond last feature."
 
@@ -226,8 +264,14 @@ class TrialDataBase(ABC):
         the input feature.
         '''
 
+        profile = self._config.get_param('prof_trial_update_feature')
+
+        t1 = time()
+
         # Fill data, one ring at a time
         for r in self._trial_data_dict.keys():
+            t11 = time()
+            
             # Retrieve the coordinate list and apply the feature displacement
             ring_coords = self._get_ring_np_values_hook(r)[['x', 'y',
                                                             'z']].copy()
@@ -237,9 +281,26 @@ class TrialDataBase(ABC):
             for coord_s, d_id in [('x', 0), ('y', 1), ('z', 2)]:
                 ring_coords[coord_s] = (ring_coords[coord_s] + disp[d_id])
 
+            t12 = time()
+
+
             # Extract displaced feature data and assign it to the last col
             filtered_feature_data = feature.filter_coords(ring_coords)
+            t13 = time()
             self._update_col_from_ring_hook(r, filtered_feature_data)
+            t14 = time()
+
+            print(f"[TrialDataBase][update_feature] ring[{r}] "
+                  f"get_coords_disp: {t12-t11}")
+            print(f"[TrialDataBase][update_feature] ring[{r}] "
+                  f"filter_coords: {t13-t12}")
+            print(f"[TrialDataBase][update_feature] ring[{r}] "
+                  f"update_col: {t14-t13}")
+
+        t2 = time()
+        print(f"[TrialDataBase][update_feature] "
+                  f"final_time: {t2-t1}")
+
 
     def get_train_values(self, well_id, chunk_id):
         '''

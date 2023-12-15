@@ -138,6 +138,10 @@ def update_config_file_params_with_args(config: config_parser.Config,
     config.add_param('max_tested_features', int(args.num_tested_features))
 
     # config.add_param('is_sampling', bool(args.is_sampling))
+    
+    # Profiling
+    config.add_param('prof_trial_prep_porosity', True)
+    config.add_param('prof_trial_update_feature', True)
 
     return config
 
