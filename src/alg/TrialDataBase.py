@@ -235,15 +235,17 @@ class TrialDataBase(ABC):
                 self._chunk_size += len(self._trial_data_dict[r])
 
             t13 = time()
-            print(f"[TrialDataBase][prepare_porosity] ring[{it+1}] "
-                  f"chunk_total: {t12-t11}")
-            print(f"[TrialDataBase][prepare_porosity] ring[{it+1}] "
-                  f"ring_update: {t13-t12}")
+            if profile:
+                print(f"[TrialDataBase][prepare_porosity] ring[{it+1}] "
+                      f"chunk_total: {t12-t11}")
+                print(f"[TrialDataBase][prepare_porosity] ring[{it+1}] "
+                      f"ring_update: {t13-t12}")
 
         self._current_ring = prep_it - 1
 
         t2 = time()
-        print(f"[TrialDataBase][prepare_porosity] final_time {t2-t1}")
+        if profile:
+            print(f"[TrialDataBase][prepare_porosity] final_time {t2-t1}")
 
     def commit_feature(self):
         '''
@@ -271,7 +273,7 @@ class TrialDataBase(ABC):
         # Fill data, one ring at a time
         for r in self._trial_data_dict.keys():
             t11 = time()
-            
+
             # Retrieve the coordinate list and apply the feature displacement
             ring_coords = self._get_ring_np_values_hook(r)[['x', 'y',
                                                             'z']].copy()
@@ -283,24 +285,23 @@ class TrialDataBase(ABC):
 
             t12 = time()
 
-
             # Extract displaced feature data and assign it to the last col
             filtered_feature_data = feature.filter_coords(ring_coords)
             t13 = time()
             self._update_col_from_ring_hook(r, filtered_feature_data)
             t14 = time()
 
-            print(f"[TrialDataBase][update_feature] ring[{r}] "
-                  f"get_coords_disp: {t12-t11}")
-            print(f"[TrialDataBase][update_feature] ring[{r}] "
-                  f"filter_coords: {t13-t12}")
-            print(f"[TrialDataBase][update_feature] ring[{r}] "
-                  f"update_col: {t14-t13}")
+            if profile:
+                print(f"[TrialDataBase][update_feature] ring[{r}] "
+                      f"get_coords_disp: {t12-t11}")
+                print(f"[TrialDataBase][update_feature] ring[{r}] "
+                      f"filter_coords: {t13-t12}")
+                print(f"[TrialDataBase][update_feature] ring[{r}] "
+                      f"update_col: {t14-t13}")
 
         t2 = time()
-        print(f"[TrialDataBase][update_feature] "
-                  f"final_time: {t2-t1}")
-
+        if profile:
+            print(f"[TrialDataBase][update_feature] final_time: {t2-t1}")
 
     def get_train_values(self, well_id, chunk_id):
         '''

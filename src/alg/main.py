@@ -142,6 +142,7 @@ def update_config_file_params_with_args(config: config_parser.Config,
     # Profiling
     config.add_param('prof_trial_prep_porosity', True)
     config.add_param('prof_trial_update_feature', True)
+    config.add_param('prof_feature_sel', True)
 
     return config
 
