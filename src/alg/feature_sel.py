@@ -100,5 +100,8 @@ def test_new_feature(trial_data, config):
             print(f"[feature_sel] well[{curr_well_id}] well_final: {t13-t12}")
 
     t2 = time()
+    if profile:
+        print(f"[feature_sel] final_feature_time: {t2-t1}")
+
 
     return np.mean(rmse_list), np.mean(mae_list)
