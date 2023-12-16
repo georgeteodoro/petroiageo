@@ -18,4 +18,3 @@ yapf
 parameterized
 ddt
 pytest
-pytest-mpi
