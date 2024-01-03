@@ -52,6 +52,8 @@ alg:
   # test_only_wells: []
 
   sampling: # Sampling strategy stuff
+    # Sampling algorithm to use, can be: none, v1
+    sampler: "v1"
     # Num of iterations as window size. If negative, use max num of 
     # iterations possible. Default: -1
     layers_window_size: 4

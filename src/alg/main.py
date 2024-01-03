@@ -103,6 +103,16 @@ def config_arg_parser():
         "7x7x7, with intervals between [-3,3].",
     )
 
+    parser.add_argument(
+        '--no-abort',
+        dest='no_abort',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Disables MPI_ABORT whenever there is an error. "
+        "Useful for debugging",
+    )
+
     # parser.add_argument(
     #     '--sp',
     #     dest='is_sampling',
@@ -175,7 +185,8 @@ def main(args_str=None):
         # This sleep timer allows processes to output error messages
         sleep(3)
         MPI.COMM_WORLD.Abort()
-    sys.excepthook = lambda x, y, z: _end()
+    if not args.no_abort:
+        sys.excepthook = lambda x, y, z: _end()
 
     assert mpi_size > 1, "Two or more processes required to run "\
                          "(mpirun -np 2 python3 main.py)."

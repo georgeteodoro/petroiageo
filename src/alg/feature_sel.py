@@ -7,7 +7,7 @@ from data_filter import FeatSelectionTrainDataFilter
 import common
 
 
-def test_new_feature(trial_data, config):
+def test_new_feature(trial_data, it, config):
     '''
     Trains a model with trial_data, returning the metric values for the
     trained model.
@@ -41,7 +41,7 @@ def test_new_feature(trial_data, config):
 
         # Validation data is not chunked, thus it only needs to be
         # retrieved once with all data
-        X_val, y_val = trial_data.get_val_values(curr_well_id)
+        X_val, y_val = trial_data.get_val_values(curr_well_id, it)
         t12 = time()
 
         # X_val=None if there are no validation points available. This can
@@ -50,12 +50,12 @@ def test_new_feature(trial_data, config):
             return None
 
         # Performs incremental learning on all chunks
-        for i, chunk_id in enumerate(range(n_training_chunks)):
+        for chunk_id in range(n_training_chunks):
             t121 = time()
 
             # Setup training data
             X_train, y_train = trial_data.get_train_values(
-                curr_well_id, chunk_id)
+                curr_well_id, chunk_id, it)
 
             lgb_train_dataset = lgb.Dataset(X_train, y_train)
             lgb_eval_dataset = lgb.Dataset(
@@ -82,9 +82,11 @@ def test_new_feature(trial_data, config):
 
             if profile:
                 print(f"[feature_sel] well[{curr_well_id}] "
-                      f"chunk[{i+1}/{n_training_chunks}] prep: {t122-t121}")
+                      f"chunk[{chunk_id+1}/{n_training_chunks}] "
+                      f"prep: {t122-t121}")
                 print(f"[feature_sel] well[{curr_well_id}] "
-                      f"chunk[{i+1}/{n_training_chunks}] train: {t123-t122}")
+                      f"chunk[{chunk_id+1}/{n_training_chunks}] "
+                      f"train: {t123-t122}")
 
         # Calculate error metrics
         pred = regressor.predict(X_val)

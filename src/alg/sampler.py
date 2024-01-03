@@ -11,7 +11,6 @@ class AbstractChunkSampler(ABC):
     """
     This is a sampler.
     """
-
     def __init__(self, config: Config):
         self._config = config
 
@@ -30,7 +29,6 @@ class ChunkSamplerV1(AbstractChunkSampler):
     This sampler samples proportionally from every well based on
     a beta dist distribuition.
     """
-
     def __init__(self, config: Config):
         super().__init__(config)
         self._alpha = config.alg['sampling']['beta_dist']['alpha']
@@ -46,7 +44,7 @@ class ChunkSamplerV1(AbstractChunkSampler):
                rng: np.random.Generator = None) -> np.ndarray:
         """
         data: The chunk data
-        n_trail_points_total: The total global number of trial points
+        n_trial_points_total: The total global number of trial points
         curr_final_layer: The first iteration layer being propagated.
             If we propagate one layer per iteration, its going to be 
             equal to the iteration. Otherwise, see Config.ring_range_to_expand()
@@ -77,8 +75,8 @@ class ChunkSamplerV1(AbstractChunkSampler):
 
         assert_msg = "Num of sampled points of some well was bellow 1!"
         assert_msg += f" {n_samp_points_per_well}"
-        assert len(n_samp_points_per_well[n_samp_points_per_well <=
-                                          0]) == 0, assert_msg
+        assert len(n_samp_points_per_well[
+            n_samp_points_per_well <= 0]) == 0, assert_msg
 
         sampled_training_points = None
 
@@ -150,8 +148,9 @@ class ChunkSamplerV1(AbstractChunkSampler):
         n_points_to_sample_chunk = np.ceil(n_points_to_sample_chunk).astype(int)
         return n_points_to_sample_chunk
 
-    def _get_n_pts_to_sample_per_well(self, n_points_to_sample_chunk: int,
-                                      n_pts_per_well: np.ndarray) -> np.ndarray:
+    def _get_n_pts_to_sample_per_well(
+            self, n_points_to_sample_chunk: int,
+            n_pts_per_well: np.ndarray) -> np.ndarray:
         """
         Calc the total number of points to sample from each well.
         n_points_to_sample_chunk: Total points to sample from chunk

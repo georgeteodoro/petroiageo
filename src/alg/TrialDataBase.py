@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from time import time
 
 import common
+from sampler import ChunkSamplerV1
 
 
 class TrialDataBase(ABC):
@@ -63,13 +64,23 @@ class TrialDataBase(ABC):
         # self._trial_data_size = dict()
 
         # Number of points within trial_data
-        self._data_len = -1
+        # self._data_len = -1
 
         # This is the list of real wells coordinates
         self._wells_list = config.train_wells_coords
 
         self._porosity_data = porosity_data
         self._f_sel_filter = f_sel_filter
+
+        # Setup sampling, if required
+        if (config.alg.get('sampling') == None or
+                config.alg['sampling'].get('sampler') == None or
+                config.alg['sampling']['sampler'] == 'none'):
+            self._sampler = None
+        elif config.alg['sampling']['sampler'] == 'v1':
+            self._sampler = ChunkSamplerV1(config)
+        else:
+            self._sampler = None
 
     # =========================================================================
     # === Interface for subclasses ============================================
@@ -147,6 +158,7 @@ class TrialDataBase(ABC):
         '''
 
         profile = self._config.get_param('prof_trial_prep_porosity')
+        rings_to_keep = self._config.alg['sampling']['layers_window_size']
 
         t0 = time()
 
@@ -161,7 +173,10 @@ class TrialDataBase(ABC):
 
         # Remove, if necessary, old data from previous rings
         # This should be done if sampling is required
-        pass
+        trial_keys = sorted(self._trial_data_dict.keys())
+        if (rings_to_keep != None and rings_to_keep > 0 and
+                len(trial_keys) == rings_to_keep):
+            self._trial_data_dict.pop(trial_keys[0])
 
         # Load all rings if this is a continued iteration
         it_init = 0 if self._current_ring < 0 else prep_it - 1
@@ -303,7 +318,7 @@ class TrialDataBase(ABC):
         if profile:
             print(f"[TrialDataBase][update_feature] final_time: {t2-t1}")
 
-    def get_train_values(self, well_id, chunk_id):
+    def get_train_values(self, well_id, chunk_id, it=-1, with_sampling=True):
         '''
         Leave-one-well-out validation function. Returns all data that
         is NOT on well_id. If well_id=-1, then all data is returned.
@@ -314,12 +329,12 @@ class TrialDataBase(ABC):
         '''
 
         well_filter = self._not_in_well_filter_hook(well_id)
-        return self._get_values(well_filter, chunk_id)
+        return self._get_values(well_filter, chunk_id, it, with_sampling)
 
-    def get_val_values(self, well_id):
+    def get_val_values(self, well_id, it=-1, with_sampling=True):
         well_filter = self._in_well_filter_hook(well_id)
         # chunk_id=0 to return all data
-        return self._get_values(well_filter, chunk_id=0)
+        return self._get_values(well_filter, 0, it, with_sampling)
 
     def set_num_training_chunks(self, n_training_chunks):
         self._n_training_chunks = n_training_chunks
@@ -331,7 +346,7 @@ class TrialDataBase(ABC):
     # === Helper functions ====================================================
     # =========================================================================
 
-    def _get_values(self, well_filter, chunk_id):
+    def _get_values(self, well_filter, chunk_id, it, with_sampling):
         '''
         Helper function for filtering trial_data.
         Returns the number of filtered points.
@@ -351,6 +366,11 @@ class TrialDataBase(ABC):
                                 "not implemented for incremental learning.")
 
             new_points = self._get_ring_filtered_values_hook(r, well_filter)
+
+            # Perform sampling
+            if with_sampling and self._sampler != None:
+                new_points = self._sampler.sample(new_points, len(new_points),
+                                                  it)
 
             # Split X from y
             new_points_X = new_points[self._current_features]

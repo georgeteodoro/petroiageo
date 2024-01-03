@@ -92,7 +92,7 @@ def run(config):
                 results = []
                 for (feature, disp) in new_features:
                     trial_data.update_feature(all_features_dict[feature], disp)
-                    ret = test_new_feature(trial_data, config)
+                    ret = test_new_feature(trial_data, it, config)
 
                     # None is returned upon only 1 well propagating.
                     # If so, propagation is halted.

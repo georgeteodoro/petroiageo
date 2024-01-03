@@ -4,7 +4,7 @@ import lightgbm as lgb
 import common
 
 
-def _train_model(test_data):
+def _train_model(trial_data):
     '''
     Generate a model for estimating porosity.
     '''
@@ -12,8 +12,9 @@ def _train_model(test_data):
     chunk_id = -1  # No incremental learning yet
 
     # Generate a training dataset for all data
-    X_train_np, y_train_np = test_data.get_train_values(well_id=-1,
-                                                        chunk_id=chunk_id)
+    X_train_np, y_train_np = trial_data.get_train_values(well_id=-1,
+                                                        chunk_id=chunk_id, 
+                                                        with_sampling=False)
     lgb_train_dataset = lgb.Dataset(X_train_np, y_train_np)
 
     # Perform training
@@ -65,14 +66,14 @@ def _predict_data(model, features_dict, best_features, coords_to_update):
     return estimated_phi
 
 
-def propagate(porosity_data_h5, test_data, features_dict, best_features, it,
+def propagate(porosity_data_h5, trial_data, features_dict, best_features, it,
               config):
     '''
     Propagates the wavefront a single ring. Initial data have no 
     'expanded' data.
     Currently, porosity_data has no encapsulation, thus it is operated upon
     directly. If encapsulating class is created, it must begin here.
-    The 'test_data' input if from the feature selection process, and thus have 
+    The 'trial_data' input if from the feature selection process, and thus have 
     all the features and porosity already set up. It is then used to generate
     the model for porosity estimation.
     Returns the number of propagated points.
@@ -91,7 +92,7 @@ def propagate(porosity_data_h5, test_data, features_dict, best_features, it,
     ring = it
 
     # Prepare the model and evaluate its performance metrics
-    model = _train_model(test_data)
+    model = _train_model(trial_data)
     rmse, mae = _eval_model(model)
     print(f"[propagation][it{it}] RMSE: {rmse}, MAE: {mae}")
 
