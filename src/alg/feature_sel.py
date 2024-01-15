@@ -3,7 +3,6 @@ import lightgbm as lgb
 from sklearn.metrics import mean_absolute_error
 from time import time
 
-from data_filter import FeatSelectionTrainDataFilter
 import common
 
 
@@ -19,7 +18,6 @@ def test_new_feature(trial_data, it, config):
 
     profile = config.get_param('prof_feature_sel')
 
-    test_wells_ids = config.alg['test_only_wells']
     n_training_chunks = int(config.alg['parallel']['n_training_chunks'])
     train_wells_ids = config.train_wells_ids
 
@@ -104,6 +102,5 @@ def test_new_feature(trial_data, it, config):
     t2 = time()
     if profile:
         print(f"[feature_sel] final_feature_time: {t2-t1}")
-
 
     return np.mean(rmse_list), np.mean(mae_list)
