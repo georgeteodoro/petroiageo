@@ -3,10 +3,12 @@ import lightgbm as lgb
 from sklearn.metrics import mean_absolute_error
 from time import time
 
+from TrialDataBase import TrialDataBase
+from config_parser import Config
 import common
 
 
-def test_new_feature(trial_data, it, config):
+def test_new_feature(trial_data: TrialDataBase, it: int, config: Config):
     '''
     Trains a model with trial_data, returning the metric values for the
     trained model.
