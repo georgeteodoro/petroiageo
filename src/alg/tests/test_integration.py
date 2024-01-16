@@ -115,8 +115,8 @@ class Test_All(unittest.TestCase):
     def test_sintetic_base(self):
         '''
         Performs 1 iteration from scratch.
-        1 feature file is used, with a window of 1 (thus 27 tests).
-        Only 1/27 test is performed.
+        1 feature file is used, with a window of 1 (thus 27 trials).
+        Only 1/27 trial is performed.
         3 features are selected.
         '''
 
@@ -140,6 +140,7 @@ class Test_All(unittest.TestCase):
 
         print(output)
         print(error)
+        assert len(error) == 0
 
         porosity_h5_file = h5py.File(Test_All.porosity_h5_path, 'r')
         porosity_dset = porosity_h5_file[common.POROSITY_DSET_NAME]
@@ -157,8 +158,8 @@ class Test_All(unittest.TestCase):
     def test_sintetic_all_iterations_from_scratch(self):
         '''
         Performs 3 complete iterations from scratch.
-        1 feature file is used, with a window of 1 (thus 27 tests).
-        All 27 tests are performed.
+        1 feature file is used, with a window of 1 (thus 27 trials).
+        All 27 trials are performed.
         3 features are selected.
         '''
 
@@ -182,6 +183,7 @@ class Test_All(unittest.TestCase):
 
         print(output)
         print(error)
+        assert len(error) == 0
 
         # Validate propagation (see diagrams on the TestClass beginning)
         porosity_h5_file = h5py.File(self.__class__.porosity_h5_path, 'r')
@@ -197,8 +199,8 @@ class Test_All(unittest.TestCase):
         '''
         Performs 2 complete iterations, continuing the execution of
         2 complete iterations.
-        1 feature file is used, with a window of 1 (thus 27 tests).
-        All 27 tests are performed.
+        1 feature file is used, with a window of 1 (thus 27 trials).
+        All 27 trials are performed.
         3 features are selected.
         '''
 
@@ -239,6 +241,7 @@ class Test_All(unittest.TestCase):
         output, error = process.communicate()
         print(output)
         print(error)
+        assert len(error) == 0
 
         # Validate propagation (see diagrams on the TestClass beginning)
         porosity_h5_file = h5py.File(self.__class__.porosity_h5_path, 'r')
@@ -248,6 +251,102 @@ class Test_All(unittest.TestCase):
         assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 41
         assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 15
         assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 16
+        porosity_h5_file.close()
+
+    def test_sintetic_sampling(self):
+        '''
+        Performs 3 iteration from scratch, followed by the 4th iteration 
+        with sampling.
+        1 feature file is used, with a window of 1 (thus 27 trials).
+        Only 1/27 trial is performed.
+        3 features are selected.
+        '''
+
+        # Retrieve CLI arguments
+        args_str = f'--config {Test_All.config_path} --it 1 '\
+                   f'--nits 3 --nf 1 -w 1 --nsf 3 --ntf 1'
+
+        # Perform first
+        process = Popen('mpirun -np 2 python3 -u main.py ' + args_str,
+                        shell=True,
+                        universal_newlines=True,
+                        stdout=PIPE,
+                        stderr=PIPE,
+                        preexec_fn=os.setsid)
+
+        output, error = process.communicate()
+
+        print(output)
+        print(error)
+        assert len(error) == 0
+
+        # ===========================================================
+
+        # Generate custom config file with sampling
+        yaml_str = f"""
+        wells:
+          coords:
+          - [4,2]
+          - [7,6]
+          - [2,7]
+          window: 1
+        features_folder: "{self.__class__.features_path}" 
+        starting_porosity_cube_path: "{self.__class__.porosity_h5_path}" 
+        alg:
+          parallel:
+            n_training_chunks: 1
+          sampling:
+            sampler: v1
+            max_points: 10
+            seed: 0
+        """
+        yaml_f = open(self.__class__.config_path, 'w')
+        yaml_f.writelines(yaml_str)
+
+        # Close all files to allow them to commit to file
+        yaml_f.close()
+
+        # Update porosity file. All points which should not be visited since
+        # they were not sampled are set phi=NaN. This breaks the execution if
+        # any value outside the sampling is visited.
+        porosity_h5_file = h5py.File(self.__class__.porosity_h5_path, 'r+')
+        porosity_dset = porosity_h5_file[common.POROSITY_DSET_NAME]
+        porosity_dset[:, :, :, 'phi'] = np.nan
+        porosity_h5_file.close()
+
+        # Retrieve CLI arguments
+        args_str = f'--config {Test_All.config_path} --it 4 '\
+                   f'--nits 1 --nf 1 -w 1 --nsf 3 --ntf 1 --no-abort'
+
+        process = Popen('mpirun -np 2 python3 -u main.py ' + args_str,
+                        shell=True,
+                        universal_newlines=True,
+                        stdout=PIPE,
+                        stderr=PIPE,
+                        preexec_fn=os.setsid)
+
+        time.sleep(2)
+
+        # Send the signal to all the process groups
+        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+
+        output, error = process.communicate()
+
+        print(output)
+        print(error)
+        assert len(error) == 0
+
+        porosity_h5_file = h5py.File(Test_All.porosity_h5_path, 'r')
+        porosity_dset = porosity_h5_file[common.POROSITY_DSET_NAME]
+
+        # print(porosity_dset[porosity_dset['real'] != common.RealValues.empty])
+        # print(porosity_dset[porosity_dset['well_id'] == 1])
+
+        # Validate propagation (see diagrams on the TestClass beginning)
+        depth = Test_All.hypercube_shape[2]
+        assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 9
+        assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 9
+        assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 6
         porosity_h5_file.close()
 
     # =========================================================================

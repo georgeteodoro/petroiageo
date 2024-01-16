@@ -367,7 +367,11 @@ class TrialDataBase(ABC):
             # Perform sampling. It should sample some of the points of a ring.
             # Combining all rings' points sampled, a chunk is formed.
             if with_sampling and self._sampler != None:
+                print(new_points.dtype)
+                print(new_points[0])
                 new_points = self._sampler.sample(new_points, chunk_size, it)
+                print(f'------------------- ring{ring_key}:')
+                print(new_points)
 
             # Split X from y
             new_points_X = new_points[self._current_features]

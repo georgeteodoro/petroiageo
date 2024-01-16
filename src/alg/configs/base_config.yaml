@@ -40,6 +40,7 @@ alg:
   test_only_wells: [5]
 
   sampling: # Sampling strategy stuff
+    sampler: 'v1'
     # Num of layers as window size. If negative, use max num of 
     # layers possible. Default: -1
     layers_window_size: -1
