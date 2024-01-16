@@ -9,7 +9,7 @@ def _train_model(trial_data):
     Generate a model for estimating porosity.
     '''
     model = None
-    chunk_id = -1  # No incremental learning yet
+    chunk_id = 0  # No incremental learning yet, so just return the first chunk
 
     # Generate a training dataset for all data
     X_train_np, y_train_np = trial_data.get_train_values(well_id=-1,

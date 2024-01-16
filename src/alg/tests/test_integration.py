@@ -280,8 +280,8 @@ class Test_All(unittest.TestCase):
         features_folder: "{cls.features_path}" 
         starting_porosity_cube_path: "{cls.porosity_h5_path}" 
         alg:
-            parallel:
-                n_training_chunks: 1
+          parallel:
+            n_training_chunks: 1
         """
         yaml_f = open(cls.config_path, 'w')
         yaml_f.writelines(yaml_str)

@@ -108,7 +108,7 @@ class TrialDataBase(ABC):
                         "Abstract method not implemented.")
 
     @abstractmethod
-    def _get_ring_filtered_values_hook(self, r, well_filter):
+    def _get_ring_filtered_values_hook(self, r, chunk_id, well_filter):
         '''
         Should return a set of points for ring r, filtered by a well_filter.
         '''
@@ -351,26 +351,23 @@ class TrialDataBase(ABC):
         Helper function for filtering trial_data.
         Returns the number of filtered points.
         '''
+        n_training_chunks = int(
+            self._config.alg['parallel']['n_training_chunks'])
+        chunk_size = sum([len(x) for x in self._trial_data_dict.values()])
+        chunk_size //= n_training_chunks
 
         # Fill training data, one ring at a time
         X = []
         y = []
-        for r in self._trial_data_dict.keys():
+        for ring_key, ring in self._trial_data_dict.items():
 
-            # CHUNKING NOT IMPLEMENTED
-            # Should be something like:
-            # for each ring, return the ratio of |ring|/|trial_data|
-            # with the proper range
-            if chunk_id > 0:
-                raise Exception("[TrialDataBase][_get_values] Chunking "
-                                "not implemented for incremental learning.")
+            new_points = self._get_ring_filtered_values_hook(
+                ring_key, chunk_id, well_filter)
 
-            new_points = self._get_ring_filtered_values_hook(r, well_filter)
-
-            # Perform sampling
+            # Perform sampling. It should sample some of the points of a ring.
+            # Combining all rings' points sampled, a chunk is formed.
             if with_sampling and self._sampler != None:
-                new_points = self._sampler.sample(new_points, len(new_points),
-                                                  it)
+                new_points = self._sampler.sample(new_points, chunk_size, it)
 
             # Split X from y
             new_points_X = new_points[self._current_features]

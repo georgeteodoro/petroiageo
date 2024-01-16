@@ -104,6 +104,9 @@ class Test_TrialDataAll(unittest.TestCase):
           - [0,2]
           - [2,3]
           window: {cls.window}
+        alg:
+          parallel:
+            n_training_chunks: 1
         """
         cls.config = YAMLConfig(config_str=yaml_str)
         wells_list = cls.config.train_wells_coords
