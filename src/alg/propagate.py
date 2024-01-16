@@ -13,8 +13,8 @@ def _train_model(trial_data):
 
     # Generate a training dataset for all data
     X_train_np, y_train_np = trial_data.get_train_values(well_id=-1,
-                                                        chunk_id=chunk_id, 
-                                                        with_sampling=False)
+                                                         chunk_id=chunk_id,
+                                                         with_sampling=False)
     lgb_train_dataset = lgb.Dataset(X_train_np, y_train_np)
 
     # Perform training
@@ -53,8 +53,7 @@ def _predict_data(model, features_dict, best_features, coords_to_update):
 
         # Zip the coords, from a tuple of 3 arrays, one for each coord,
         # to an array of (x,y,z) tuples.
-        feature_coords_np = np.array(list(zip(*feature_coords)),
-                                     dtype=np.int64)
+        feature_coords_np = np.array(list(zip(*feature_coords)), dtype=np.int64)
 
         # Filter features values for current chunk coords
         to_predict_np[:, f_id] = features_dict[feature].filter_coords(
@@ -85,7 +84,6 @@ def propagate(porosity_data_h5, trial_data, features_dict, best_features, it,
     # Only train coords should be propagated, test wells shouldn't
     wells_coords = config.train_wells_coords
     train_wells_ids = config.train_wells_ids
-    test_wells_ids = config.alg["test_only_wells"]
 
     # First iteration is 1, but first ring is 0. However, the following ring
     # should be propagated, resulting in 'ring = it - 1 + 1'.
@@ -148,7 +146,6 @@ def propagate(porosity_data_h5, trial_data, features_dict, best_features, it,
                               (d['x'] >= window_size) &
                               (d['x'] < hypercube_shape[0] - window_size))
 
-
             # Only empty points can be propagated
             filter_fun = lambda d: (d['real'] == common.RealValues.empty) \
                                  & (left_wall_cond(d) \
@@ -161,7 +158,8 @@ def propagate(porosity_data_h5, trial_data, features_dict, best_features, it,
             n_propagated_points += len(coords_to_update[0])
 
             # Update the filtered values on the tmp nparray
-            cur_chunk_np['real'][coords_to_update] = common.RealValues.propagated
+            cur_chunk_np['real'][
+                coords_to_update] = common.RealValues.propagated
             cur_chunk_np['ring'][coords_to_update] = ring
             cur_chunk_np['well_id'][coords_to_update] = train_wells_ids[
                 wells_coords.index((w_x, w_y))]
