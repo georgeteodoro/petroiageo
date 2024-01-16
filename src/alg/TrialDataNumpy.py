@@ -30,7 +30,7 @@ class TrialDataNumpy(TrialDataBase):
         self._trial_data_dict[r][f_str][:] = feature_data
 
     def _get_ring_filtered_values_hook(self, r, well_filter):
-        # Get all points from current ring, filtered by well_id
+        # Get all points from current ring, filtered by a well_filter
         ring_points = self._trial_data_dict[r]
         new_points = well_filter(ring_points)
         return new_points
