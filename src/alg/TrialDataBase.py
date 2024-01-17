@@ -17,6 +17,7 @@ class TrialDataBase(ABC):
     Due to the use of padding, all coordinates are the padded coordinates. 
     Thus, it is expected of the wells_list to have padded coordinates as well.
     '''
+
     def __init__(self, features_only, f_sel_filter, porosity_data, config):
         self._config = config
 
@@ -73,9 +74,9 @@ class TrialDataBase(ABC):
         self._f_sel_filter = f_sel_filter
 
         # Setup sampling, if required
-        if (config.alg.get('sampling') == None or
-                config.alg['sampling'].get('sampler') == None or
-                config.alg['sampling']['sampler'] == 'none'):
+        if (config.alg.get('sampling') == None
+                or config.alg['sampling'].get('sampler') == None
+                or config.alg['sampling']['sampler'] == 'none'):
             self._sampler = None
         elif config.alg['sampling']['sampler'] == 'v1':
             self._sampler = ChunkSamplerV1(config)
@@ -174,8 +175,8 @@ class TrialDataBase(ABC):
         # Remove, if necessary, old data from previous rings
         # This should be done if sampling is required
         trial_keys = sorted(self._trial_data_dict.keys())
-        if (rings_to_keep != None and rings_to_keep > 0 and
-                len(trial_keys) == rings_to_keep):
+        if (rings_to_keep != None and rings_to_keep > 0
+                and len(trial_keys) == rings_to_keep):
             self._trial_data_dict.pop(trial_keys[0])
 
         # Load all rings if this is a continued iteration
@@ -367,11 +368,10 @@ class TrialDataBase(ABC):
             # Perform sampling. It should sample some of the points of a ring.
             # Combining all rings' points sampled, a chunk is formed.
             if with_sampling and self._sampler != None:
-                print(new_points.dtype)
-                print(new_points[0])
-                new_points = self._sampler.sample(new_points, chunk_size, it)
+                new_points = self._sampler.sample(new_points, chunk_size, it,
+                                                  ring_key)
                 print(f'------------------- ring{ring_key}:')
-                print(new_points)
+                print(new_points[['x','y','z']])
 
             # Split X from y
             new_points_X = new_points[self._current_features]
