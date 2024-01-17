@@ -11,6 +11,7 @@ class AbstractChunkSampler(ABC):
     """
     This is a sampler.
     """
+
     def __init__(self, config: Config):
         self._config = config
 
@@ -19,6 +20,7 @@ class AbstractChunkSampler(ABC):
                data: np.ndarray,
                n_trial_points_total: int,
                curr_starting_layer: int,
+               curr_ring: int,
                rng: np.random.Generator = None) -> np.ndarray:
         raise NotImplementedError(
             "This method should be overrided by a child class!")
@@ -29,6 +31,7 @@ class ChunkSamplerV1(AbstractChunkSampler):
     This sampler samples proportionally from every well based on
     a beta dist distribuition.
     """
+
     def __init__(self, config: Config):
         super().__init__(config)
         self._alpha = config.alg['sampling']['beta_dist']['alpha']
@@ -41,8 +44,10 @@ class ChunkSamplerV1(AbstractChunkSampler):
                data: np.ndarray,
                n_trial_points_total: int,
                curr_final_layer: int,
+               curr_ring: int,
                rng: np.random.Generator = None) -> np.ndarray:
         """
+        This sampler may sample a little more data than the max_points.
         data: The chunk data
         n_trial_points_total: The total global number of trial points
         curr_final_layer: The first iteration layer being propagated.
@@ -59,6 +64,8 @@ class ChunkSamplerV1(AbstractChunkSampler):
                                    self._sampling_max_points):
             return data
 
+        assert curr_ring < curr_final_layer, f"Start iteration "\
+            f"{curr_final_layer} should be after latest iteration {curr_ring}."
         # At this point, we for sure need to sample data
 
         if rng is None:
@@ -75,8 +82,8 @@ class ChunkSamplerV1(AbstractChunkSampler):
 
         assert_msg = "Num of sampled points of some well was bellow 1!"
         assert_msg += f" {n_samp_points_per_well}"
-        assert len(n_samp_points_per_well[
-            n_samp_points_per_well <= 0]) == 0, assert_msg
+        assert len(n_samp_points_per_well[n_samp_points_per_well <=
+                                          0]) == 0, assert_msg
 
         sampled_training_points = None
 
@@ -95,11 +102,7 @@ class ChunkSamplerV1(AbstractChunkSampler):
             n_samp_points_well = n_samp_points_per_well[well_idx]
             well_points = data[data['well_id'] == well_id]
 
-            m = np.max(well_points['ring'])
-            assert m < curr_final_layer, f"Start iteration "\
-                f"{curr_final_layer} should be after latest iteration {m}."
-
-            probs = stats.beta.pdf(well_points['ring'],
+            probs = stats.beta.pdf(np.full(well_points.size, curr_ring),
                                    self._alpha,
                                    self._beta,
                                    loc=beta_dist_start_it,
@@ -148,9 +151,8 @@ class ChunkSamplerV1(AbstractChunkSampler):
         n_points_to_sample_chunk = np.ceil(n_points_to_sample_chunk).astype(int)
         return n_points_to_sample_chunk
 
-    def _get_n_pts_to_sample_per_well(
-            self, n_points_to_sample_chunk: int,
-            n_pts_per_well: np.ndarray) -> np.ndarray:
+    def _get_n_pts_to_sample_per_well(self, n_points_to_sample_chunk: int,
+                                      n_pts_per_well: np.ndarray) -> np.ndarray:
         """
         Calc the total number of points to sample from each well.
         n_points_to_sample_chunk: Total points to sample from chunk

@@ -69,7 +69,7 @@ class TestChunkSamplerV1(TestCase):
 
         # All points in a well coord have ring == 0
 
-        self.cur_data_type = [('x', np.int64), ('y', np.int64), ('z', np.int64),
+        self.cur_data_type = [('x', np.int64), ('y', np.int64),
                               ('phi', np.float64), ('well_id', np.int64),
                               ('ring', np.int8)]
         self.cur_data_type = np.dtype(self.cur_data_type)
@@ -144,18 +144,36 @@ class TestChunkSamplerV1(TestCase):
         return self.yaml_str_fmt.format(max_points, layers_window_size, alpha,
                                         beta)
 
+    def _agg_samples_by_ring(self, sampler: AbstractChunkSampler,
+                             data: np.ndarray, curr_final_layer: int):
+        """Do sampling for each ring at a time and aggregate the sampled data.
+        \n The sampling may sample just a little more than the max_points"""
+        rings = np.unique(data['ring'])
+        n_trial_points = data.size
+        sampled_data = None
+        for ring in rings:
+            ring_data = data[data['ring'] == ring]
+            curr_sampled_data = sampler.sample(ring_data, n_trial_points,
+                                               curr_final_layer, ring)
+            if sampled_data is None:
+                sampled_data = curr_sampled_data
+            else:
+                sampled_data = np.concatenate([sampled_data, curr_sampled_data])
+        return sampled_data
+
     def test_sample_basic_config_no_expansions(self):
         my_config = YAMLConfig(config_str=self._get_yaml_str_formated())
 
         sampler = ChunkSamplerV1(my_config)
-        filtered_data = self.data[self.data['ring'] == 0]
+        target_ring = 0
+        filtered_data = self.data[self.data['ring'] == target_ring]
         n_trial_points = filtered_data.size
         curr_final_layer = 1
         sampled_data = sampler.sample(filtered_data, n_trial_points,
-                                      curr_final_layer)
+                                      curr_final_layer, target_ring)
         self.assertEqual(sampled_data.size, n_trial_points)
 
-    def test_sample_basic_config_3_expansions(self):
+    def test_sample_all_data_config_3_expansions(self):
         my_config = YAMLConfig(config_str=self._get_yaml_str_formated())
         sampler = ChunkSamplerV1(my_config)
 
@@ -166,8 +184,9 @@ class TestChunkSamplerV1(TestCase):
                                       & (expanded_data['ring'] >= 0)]
         curr_final_layer = n_expansions + 1
         n_trial_points = filtered_data.size
-        sampled_data = sampler.sample(filtered_data, n_trial_points,
-                                      curr_final_layer)
+        sampled_data = self._agg_samples_by_ring(sampler, filtered_data,
+                                                 curr_final_layer)
+
         self.assertEqual(sampled_data.size, n_trial_points)
 
     def test_sample_max_points_no_expansions(self):
@@ -178,8 +197,8 @@ class TestChunkSamplerV1(TestCase):
         filtered_data = self.data[self.data['ring'] == 0]
         n_trial_points = filtered_data.size
         curr_final_layer = 1
-        sampled_data = sampler.sample(filtered_data, n_trial_points,
-                                      curr_final_layer)
+        sampled_data = self._agg_samples_by_ring(sampler, filtered_data,
+                                                 curr_final_layer)
         self.assertEqual(sampled_data.size, n_trial_points)
 
     def test_sample_max_points_3_expansions(self):
@@ -193,10 +212,9 @@ class TestChunkSamplerV1(TestCase):
         filtered_data = expanded_data[(expanded_data['ring'] <= n_expansions)
                                       & (expanded_data['ring'] >= 0)]
         curr_final_layer = n_expansions + 1
-        n_trial_points = filtered_data.size
-        sampled_data = sampler.sample(filtered_data, n_trial_points,
-                                      curr_final_layer)
-        self.assertEqual(sampled_data.size, max_points)
+        sampled_data = self._agg_samples_by_ring(sampler, filtered_data,
+                                                 curr_final_layer)
+        self.assertGreaterEqual(sampled_data.size, max_points)
 
     def test_sample_max_points_with_layers_no_expansions(self):
         max_points = 10
@@ -213,10 +231,9 @@ class TestChunkSamplerV1(TestCase):
             (expanded_data['ring'] <= n_expansions)
             & (expanded_data['ring'] >= curr_final_layer - layers_window_size)]
 
-        n_trial_points = filtered_data.size
-        sampled_data = sampler.sample(filtered_data, n_trial_points,
-                                      curr_final_layer)
-        self.assertEqual(sampled_data.size, max_points)
+        sampled_data = self._agg_samples_by_ring(sampler, filtered_data,
+                                                 curr_final_layer)
+        self.assertGreaterEqual(sampled_data.size, max_points)
 
     def test_sample_max_points_with_layers_3_expansions(self):
         max_points = 10
@@ -232,10 +249,9 @@ class TestChunkSamplerV1(TestCase):
             (expanded_data['ring'] <= n_expansions)
             & (expanded_data['ring'] >= curr_final_layer - layers_window_size)]
 
-        n_trial_points = filtered_data.size
-        sampled_data = sampler.sample(filtered_data, n_trial_points,
-                                      curr_final_layer)
-        self.assertEqual(sampled_data.size, max_points)
+        sampled_data = self._agg_samples_by_ring(sampler, filtered_data,
+                                                 curr_final_layer)
+        self.assertGreaterEqual(sampled_data.size, max_points)
 
     def test_sample_beta_dist_3_expansions(self):
         alpha = 1
@@ -251,8 +267,8 @@ class TestChunkSamplerV1(TestCase):
                                       & (expanded_data['ring'] >= 0)]
         curr_final_layer = n_expansions + 1
         n_trial_points = filtered_data.size
-        sampled_data = sampler.sample(filtered_data, n_trial_points,
-                                      curr_final_layer)
+        sampled_data = self._agg_samples_by_ring(sampler, filtered_data,
+                                                 curr_final_layer)
         self.assertEqual(sampled_data.size, n_trial_points)
 
     def test_sample_max_points_beta_dist_with_layers_3_expansions(self):
@@ -273,11 +289,9 @@ class TestChunkSamplerV1(TestCase):
         filtered_data = expanded_data[
             (expanded_data['ring'] <= n_expansions)
             & (expanded_data['ring'] >= curr_final_layer - layers_window_size)]
-
-        n_trial_points = filtered_data.size
-        sampled_data = sampler.sample(filtered_data, n_trial_points,
-                                      curr_final_layer)
-        self.assertEqual(sampled_data.size, max_points)
+        sampled_data = self._agg_samples_by_ring(sampler, filtered_data,
+                                                 curr_final_layer)
+        self.assertGreaterEqual(sampled_data.size, max_points)
 
     def test_sample_max_points_beta_dist_3_expansions(self):
         max_points = 10
@@ -292,10 +306,9 @@ class TestChunkSamplerV1(TestCase):
         filtered_data = expanded_data[(expanded_data['ring'] <= n_expansions)
                                       & (expanded_data['ring'] >= 0)]
         curr_final_layer = n_expansions + 1
-        n_trial_points = filtered_data.size
-        sampled_data = sampler.sample(filtered_data, n_trial_points,
-                                      curr_final_layer)
-        self.assertEqual(sampled_data.size, max_points)
+        sampled_data = self._agg_samples_by_ring(sampler, filtered_data,
+                                                 curr_final_layer)
+        self.assertGreaterEqual(sampled_data.size, max_points)
 
     def test_sample_max_points_greater_than_n_points_3_expansions(self):
         max_points = 1000
@@ -309,20 +322,20 @@ class TestChunkSamplerV1(TestCase):
                                       & (expanded_data['ring'] >= 0)]
         curr_final_layer = n_expansions + 1
         n_trial_points = filtered_data.size
-        sampled_data = sampler.sample(filtered_data, n_trial_points,
-                                      curr_final_layer)
+        sampled_data = self._agg_samples_by_ring(sampler, filtered_data,
+                                                 curr_final_layer)
         self.assertEqual(sampled_data.size, n_trial_points)
 
     def test_sample_none_data(self):
         my_config = YAMLConfig(config_str=self._get_yaml_str_formated())
         sampler = ChunkSamplerV1(my_config)
 
-        sampled_data = sampler.sample(None, 100, 1)
+        sampled_data = sampler.sample(None, 100, 1, 0)
         self.assertIsNone(sampled_data)
 
     def test_sample_empty_data(self):
         my_config = YAMLConfig(config_str=self._get_yaml_str_formated())
         sampler = ChunkSamplerV1(my_config)
         data = np.array([])
-        sampled_data = sampler.sample(data, 100, 1)
+        sampled_data = sampler.sample(data, 100, 1, 0)
         self.assertIsNone(sampled_data)
