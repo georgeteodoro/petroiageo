@@ -309,13 +309,10 @@ class Test_All(unittest.TestCase):
         # Coords chosen for training when sampling with the above configs.
         # These are hand-filled, and should the shape or rng seed change,
         # these will also be different.
-        sampled_coords = [
-            (1, 5, 2), (1, 5, 4), (1, 6, 2), (1, 8, 3), (2, 3, 3), (2, 8, 2),
-            (4, 1, 2), (3, 1, 4), (3, 8, 4), (4, 1, 2), (4, 4, 1), (4, 6, 4),
-            (4, 7, 1), (5, 3, 2), (5, 3, 4), (6, 2, 1), (6, 6, 1), (7, 4, 1),
-            (7, 6, 2), (7, 8, 1), (8, 2, 4), (8, 2, 4), (8, 5, 1), (9, 6, 1),
-            (8, 7, 2), (8, 7, 4), (9, 4, 2), (9, 4, 4)
-        ]
+        sampled_coords = [(1, 5, 1), (1, 6, 1), (2, 7, 1), (3, 8, 4), (4, 1, 2),
+                          (5, 3, 2), (5, 7, 2), (6, 2, 1), (7, 4, 1),
+                          (7, 6, 2), (7, 8, 1), (6, 6, 2), (8, 2, 4),
+                          (8, 7, 1), (9, 4, 2)]
 
         # Update porosity file. All points which should not be visited since
         # they were not sampled are set phi=NaN. This breaks the execution if

@@ -13,8 +13,7 @@ def _train_model(trial_data):
 
     # Generate a training dataset for all data
     X_train_np, y_train_np = trial_data.get_train_values(well_id=-1,
-                                                         chunk_id=chunk_id,
-                                                         with_sampling=False)
+                                                         chunk_id=chunk_id)
     lgb_train_dataset = lgb.Dataset(X_train_np, y_train_np)
 
     # Perform training

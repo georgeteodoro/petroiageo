@@ -17,7 +17,6 @@ class TrialDataBase(ABC):
     Due to the use of padding, all coordinates are the padded coordinates. 
     Thus, it is expected of the wells_list to have padded coordinates as well.
     '''
-
     def __init__(self, features_only, f_sel_filter, porosity_data, config):
         self._config = config
 
@@ -74,14 +73,15 @@ class TrialDataBase(ABC):
         self._f_sel_filter = f_sel_filter
 
         # Setup sampling, if required
-        if (config.alg.get('sampling') == None
-                or config.alg['sampling'].get('sampler') == None
-                or config.alg['sampling']['sampler'] == 'none'):
-            self._sampler = None
-        elif config.alg['sampling']['sampler'] == 'v1':
-            self._sampler = ChunkSamplerV1(config)
-        else:
-            self._sampler = None
+        self._sampler = None
+        self._rings_to_keep = -1
+        if config.alg.get('sampling') != None:
+            if config.alg['sampling'].get('sampler') != None and config.alg[
+                    'sampling']['sampler'] == 'v1':
+                self._sampler = ChunkSamplerV1(config)
+
+            if config.alg['sampling'].get('layers_window_size') != None:
+                rings_to_keep = config.alg['sampling']['layers_window_size']
 
     # =========================================================================
     # === Interface for subclasses ============================================
@@ -159,11 +159,9 @@ class TrialDataBase(ABC):
         '''
 
         profile = self._config.get_param('prof_trial_prep_porosity')
-        rings_to_keep = self._config.alg['sampling']['layers_window_size']
 
         t0 = time()
 
-        # Reset internal state
         assert prep_it>0, f"[TrialDataBase][prepare_porosity] "\
             f"First iteration is 1, but received current iteration {prep_it}."
 
@@ -172,15 +170,21 @@ class TrialDataBase(ABC):
         self._current_features = []
         self._current_features.append(f'f{self._current_feature_id}')
 
-        # Remove, if necessary, old data from previous rings
-        # This should be done if sampling is required
-        trial_keys = sorted(self._trial_data_dict.keys())
-        if (rings_to_keep != None and rings_to_keep > 0
-                and len(trial_keys) == rings_to_keep):
-            self._trial_data_dict.pop(trial_keys[0])
-
         # Load all rings if this is a continued iteration
         it_init = 0 if self._current_ring < 0 else prep_it - 1
+
+        # If the sampler is used, all rings data should be purged and
+        # generated again. Also, only the last '_rings_to_keep' rings
+        # are generated
+        if self._sampler != None:
+            self._trial_data_dict.clear()
+            if self._rings_to_keep > 0:
+                it_init = prep_it - rings_to_keep
+            else:
+                it_init = 0
+
+            # Remove all rings data
+            self._trial_data_dict.clear()
 
         t1 = time()
 
@@ -259,6 +263,10 @@ class TrialDataBase(ABC):
 
         self._current_ring = prep_it - 1
 
+        # Check if it is necessary to perform sampling
+        if self._sampler != None:
+            self._perf_sampling(it+1)
+
         t2 = time()
         if profile:
             print(f"[TrialDataBase][prepare_porosity] final_time {t2-t1}")
@@ -319,7 +327,7 @@ class TrialDataBase(ABC):
         if profile:
             print(f"[TrialDataBase][update_feature] final_time: {t2-t1}")
 
-    def get_train_values(self, well_id, chunk_id, it=-1, with_sampling=True):
+    def get_train_values(self, well_id, chunk_id, it=-1):
         '''
         Leave-one-well-out validation function. Returns all data that
         is NOT on well_id. If well_id=-1, then all data is returned.
@@ -330,12 +338,12 @@ class TrialDataBase(ABC):
         '''
 
         well_filter = self._not_in_well_filter_hook(well_id)
-        return self._get_values(well_filter, chunk_id, it, with_sampling)
+        return self._get_values(well_filter, chunk_id, it)
 
-    def get_val_values(self, well_id, it=-1, with_sampling=True):
+    def get_val_values(self, well_id, it=-1):
         well_filter = self._in_well_filter_hook(well_id)
         # chunk_id=0 to return all data
-        return self._get_values(well_filter, 0, it, with_sampling)
+        return self._get_values(well_filter, 0, it)
 
     def set_num_training_chunks(self, n_training_chunks):
         self._n_training_chunks = n_training_chunks
@@ -347,15 +355,11 @@ class TrialDataBase(ABC):
     # === Helper functions ====================================================
     # =========================================================================
 
-    def _get_values(self, well_filter, chunk_id, it, with_sampling):
+    def _get_values(self, well_filter, chunk_id, it):
         '''
         Helper function for filtering trial_data.
         Returns the number of filtered points.
         '''
-        n_training_chunks = int(
-            self._config.alg['parallel']['n_training_chunks'])
-        chunk_size = sum([len(x) for x in self._trial_data_dict.values()])
-        chunk_size //= n_training_chunks
 
         # Fill training data, one ring at a time
         X = []
@@ -364,14 +368,6 @@ class TrialDataBase(ABC):
 
             new_points = self._get_ring_filtered_values_hook(
                 ring_key, chunk_id, well_filter)
-
-            # Perform sampling. It should sample some of the points of a ring.
-            # Combining all rings' points sampled, a chunk is formed.
-            if with_sampling and self._sampler != None:
-                new_points = self._sampler.sample(new_points, chunk_size, it,
-                                                  ring_key)
-                print(f'------------------- ring{ring_key}:')
-                print(new_points[['x','y','z']])
 
             # Split X from y
             new_points_X = new_points[self._current_features]
@@ -387,3 +383,17 @@ class TrialDataBase(ABC):
         y = np.array(np.array(y).tolist())
 
         return X, y
+
+    def _perf_sampling(self, it):
+        # Number of all points in
+        total_n_points = sum([len(x) for x in self._trial_data_dict.values()])
+
+        # Sample each ring individually
+        for ring_key, ring in self._trial_data_dict.items():
+            new_ring = self._sampler.sample(ring, total_n_points, it, ring_key)
+            self._trial_data_dict[ring_key] = new_ring
+
+            # # Used for getting the sampled coords for 
+            # # sampling integration testing.
+            # print(f'------------------- ring{ring_key}:')
+            # print(new_ring[['x', 'y', 'z']])
