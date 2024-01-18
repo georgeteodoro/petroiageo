@@ -98,7 +98,7 @@ def run(config):
                     # If so, propagation is halted.
                     if not ret:
                         print(beg_str + f"[it{it}][f_it{f_it}] "
-                              "Only one remaining well. Aborting.")
+                              "Only one remaining well on trial data. Aborting.")
                         comm.send(results,
                                   dest=manager_rank,
                                   tag=MPI_TAGS.WORKER_ABORT_PROP.value)
