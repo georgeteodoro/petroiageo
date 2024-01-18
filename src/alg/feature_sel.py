@@ -18,6 +18,8 @@ def test_new_feature(trial_data: TrialDataBase, it: int, config: Config):
     the incremental learning.
     '''
 
+    assert len(
+        trial_data) > 0, "[feature_sel][test_new_feature] Empty TrialData"
     profile = config.get_param('prof_feature_sel')
 
     n_training_chunks = int(config.alg['parallel']['n_training_chunks'])
@@ -44,10 +46,9 @@ def test_new_feature(trial_data: TrialDataBase, it: int, config: Config):
         X_val, y_val = trial_data.get_val_values(curr_well_id, it)
         t12 = time()
 
-        # X_val=None if there are no validation points available. This can
-        # only happen if there is only 1 well being propagated.
-        if X_val is None:
-            return None
+        # There are no data from this well on trial data
+        if len(X_val) == 0:
+            continue
 
         # Performs incremental learning on all chunks
         for chunk_id in range(n_training_chunks):
@@ -56,6 +57,11 @@ def test_new_feature(trial_data: TrialDataBase, it: int, config: Config):
             # Setup training data
             X_train, y_train = trial_data.get_train_values(
                 curr_well_id, chunk_id, it)
+
+            # X_train=None if there are no validation points available. This can
+            # only happen if there is only 1 well being propagated.
+            if len(X_train) == 0:
+                return None
 
             lgb_train_dataset = lgb.Dataset(X_train, y_train)
             lgb_eval_dataset = lgb.Dataset(
