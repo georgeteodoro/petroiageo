@@ -179,7 +179,7 @@ class TrialDataBase(ABC):
         if self._sampler != None:
             self._trial_data_dict.clear()
             if self._rings_to_keep > 0:
-                it_init = prep_it - rings_to_keep
+                it_init = prep_it - self._rings_to_keep
             else:
                 it_init = 0
 
