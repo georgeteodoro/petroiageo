@@ -17,6 +17,7 @@ class TrialDataBase(ABC):
     Due to the use of padding, all coordinates are the padded coordinates. 
     Thus, it is expected of the wells_list to have padded coordinates as well.
     '''
+
     def __init__(self, features_only, f_sel_filter, porosity_data, config):
         self._config = config
 
@@ -81,7 +82,8 @@ class TrialDataBase(ABC):
                 self._sampler = ChunkSamplerV1(config)
 
             if config.alg['sampling'].get('layers_window_size') != None:
-                rings_to_keep = config.alg['sampling']['layers_window_size']
+                self._rings_to_keep = config.alg['sampling'][
+                    'layers_window_size']
 
     # =========================================================================
     # === Interface for subclasses ============================================
@@ -265,7 +267,7 @@ class TrialDataBase(ABC):
 
         # Check if it is necessary to perform sampling
         if self._sampler != None:
-            self._perf_sampling(it+1)
+            self._perf_sampling(it + 1)
 
         t2 = time()
         if profile:
@@ -393,7 +395,7 @@ class TrialDataBase(ABC):
             new_ring = self._sampler.sample(ring, total_n_points, it, ring_key)
             self._trial_data_dict[ring_key] = new_ring
 
-            # # Used for getting the sampled coords for 
+            # # Used for getting the sampled coords for
             # # sampling integration testing.
             # print(f'------------------- ring{ring_key}:')
             # print(new_ring[['x', 'y', 'z']])
