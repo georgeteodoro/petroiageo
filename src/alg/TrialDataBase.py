@@ -358,6 +358,9 @@ class TrialDataBase(ABC):
     def get_num_wells(self):
         return len(self._wells_list)
 
+    def __len__(self):
+        return sum([len(x) for x in self._trial_data_dict.values()])
+
     # =========================================================================
     # === Helper functions ====================================================
     # =========================================================================
@@ -386,6 +389,9 @@ class TrialDataBase(ABC):
 
         # Convert from structured array to simple array
         # This conversion from array->list->array may be inefficient...
+        # This is required for lgb.train. It can't receive structured ndarray
+        # only a regular array
+        # TODO: Tentar melhorar isso
         X = np.array(np.array(X).tolist())
         y = np.array(np.array(y).tolist())
 
@@ -393,7 +399,7 @@ class TrialDataBase(ABC):
 
     def _perf_sampling(self, it):
         # Number of all points in
-        total_n_points = sum([len(x) for x in self._trial_data_dict.values()])
+        total_n_points = len(self)
 
         # Sample each ring individually
         for ring_key, ring in self._trial_data_dict.items():
