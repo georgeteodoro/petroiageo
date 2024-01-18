@@ -1,8 +1,11 @@
-import numpy as np
 from abc import ABC, abstractmethod
+from h5py import Dataset
+import numpy as np
 from time import time
 
 import common
+from config_parser import Config
+from data_filter import WellsSingleRingDataFilter
 from sampler import ChunkSamplerV1
 
 
@@ -18,7 +21,9 @@ class TrialDataBase(ABC):
     Thus, it is expected of the wells_list to have padded coordinates as well.
     '''
 
-    def __init__(self, features_only, f_sel_filter, porosity_data, config):
+    def __init__(self, features_only: bool,
+                 f_sel_filter: WellsSingleRingDataFilter,
+                 porosity_data: Dataset, config: Config):
         self._config = config
 
         self._n_features = config.alg['max_num_features']
@@ -152,7 +157,7 @@ class TrialDataBase(ABC):
     # === Public interface ====================================================
     # =========================================================================
 
-    def prepare_porosity(self, prep_it):
+    def prepare_porosity(self, prep_it: int):
         '''
         Allocate data required for the current iteration it.
         Fill coordinates, phi and well_id (when necessary).
