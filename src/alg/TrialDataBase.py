@@ -334,7 +334,7 @@ class TrialDataBase(ABC):
         if profile:
             print(f"[TrialDataBase][update_feature] final_time: {t2-t1}")
 
-    def get_train_values(self, well_id, chunk_id, it=-1):
+    def get_train_values(self, well_id, chunk_id):
         '''
         Leave-one-well-out validation function. Returns all data that
         is NOT on well_id. If well_id=-1, then all data is returned.
@@ -345,12 +345,12 @@ class TrialDataBase(ABC):
         '''
 
         well_filter = self._not_in_well_filter_hook(well_id)
-        return self._get_values(well_filter, chunk_id, it)
+        return self._get_values(well_filter, chunk_id)
 
-    def get_val_values(self, well_id, it=-1):
+    def get_val_values(self, well_id):
         well_filter = self._in_well_filter_hook(well_id)
         # chunk_id=0 to return all data
-        return self._get_values(well_filter, 0, it)
+        return self._get_values(well_filter, 0)
 
     def set_num_training_chunks(self, n_training_chunks):
         self._n_training_chunks = n_training_chunks
@@ -365,7 +365,7 @@ class TrialDataBase(ABC):
     # === Helper functions ====================================================
     # =========================================================================
 
-    def _get_values(self, well_filter, chunk_id, it):
+    def _get_values(self, well_filter, chunk_id):
         '''
         Helper function for filtering trial_data.
         Returns the number of filtered points.

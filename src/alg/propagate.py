@@ -1,12 +1,18 @@
+from h5py import Dataset
 import numpy as np
 import lightgbm as lgb
+from sklearn.metrics import mean_absolute_error
 
 import common
+from config_parser import Config
+from TrialDataBase import TrialDataBase
+from TrialDataNumpy import TrialDataNumpy
+from data_filter import WellsSingleRingDataFilter
 
 
-def _train_model(trial_data):
+def _train_model(trial_data: TrialDataBase):
     '''
-    Generate a model for estimating porosity.
+    Generate a LightGBM model for estimating porosity.
     '''
     model = None
     chunk_id = 0  # No incremental learning yet, so just return the first chunk
@@ -28,8 +34,32 @@ def _train_model(trial_data):
     return model
 
 
-def _eval_model(model):
-    return 0, 1
+def _eval_model(model, test_data: TrialDataBase, test_wells_ids: list):
+    """
+    Evaluate the model on the test_data based on the test_wells_ids.
+    The model must have a predict(X_test) method.
+    Return the rmse and mae.
+    """
+    mse = None
+    mae = list()
+    for well_id in test_wells_ids:
+        X_test, Y_test = test_data.get_val_values(well_id)
+
+        # There are no data from this well on test data for some reason
+        msg = "[propagate][_eval_model] There are no test data"
+        msg += f" for well id {well_id}"
+        assert len(X_test) >= 0, msg
+
+        pred = model.predict(X_test)
+        if mse is None:
+            mse = np.mean((pred - Y_test)**2)
+        else:
+            mse = np.concatenate(mse, np.mean((pred - Y_test)**2))
+        mae.append(mean_absolute_error(Y_test, pred))
+
+    # Sqrt of means is different from mean of sqrts. The former is correct
+    rmse = np.sqrt(np.mean(mse))
+    return rmse, np.mean(mae)
 
 
 def _predict_data(model, features_dict, best_features, coords_to_update):
@@ -64,14 +94,15 @@ def _predict_data(model, features_dict, best_features, coords_to_update):
     return estimated_phi
 
 
-def propagate(porosity_data_h5, trial_data, features_dict, best_features, it,
-              config):
+def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
+              features_dict: dict, best_features: list, it: int,
+              config: Config):
     '''
     Propagates the wavefront a single ring. Initial data have no 
     'expanded' data.
     Currently, porosity_data has no encapsulation, thus it is operated upon
     directly. If encapsulating class is created, it must begin here.
-    The 'trial_data' input if from the feature selection process, and thus have 
+    The 'trial_data' input is from the feature selection process, and thus have 
     all the features and porosity already set up. It is then used to generate
     the model for porosity estimation.
     Returns the number of propagated points.
@@ -90,7 +121,19 @@ def propagate(porosity_data_h5, trial_data, features_dict, best_features, it,
 
     # Prepare the model and evaluate its performance metrics
     model = _train_model(trial_data)
-    rmse, mae = _eval_model(model)
+
+    #Create and prepare the test data
+    f_sel_filter = WellsSingleRingDataFilter(config.test_wells_ids)
+    test_data = TrialDataNumpy(features_only=False,
+                               porosity_data=porosity_data_h5,
+                               f_sel_filter=f_sel_filter,
+                               config=config)
+
+    test_data.prepare_porosity(it)
+    for (feature, disp) in best_features:
+        test_data.update_feature(features_dict[feature], disp)
+
+    rmse, mae = _eval_model(model, test_data, config.test_wells_ids)
     print(f"[propagation][it{it}] RMSE: {rmse}, MAE: {mae}")
 
     # Count of propagated points for checking if it was correct

@@ -4,22 +4,14 @@ import config_parser
 
 
 class TestYAMLConfig(TestCase):
+
     def test_can_update_base_conf_from_str(self):
         starting_it = 10
         num_its = 20
         generate_porosity_cube = "true"
         feature_selection_type = "NONE"
         coords = [[1, 2], [3, 4], {"x": 4, "y": 5}]
-        expected_coords = [{
-            "x": 1,
-            "y": 2
-        }, {
-            "x": 3,
-            "y": 4
-        }, {
-            "x": 4,
-            "y": 5
-        }]
+        expected_coords = [{"x": 1, "y": 2}, {"x": 3, "y": 4}, {"x": 4, "y": 5}]
         base_save_cube_every_n_its_expected = -1
         yaml_str = f"""
         alg:
@@ -355,6 +347,38 @@ class TestYAMLConfig(TestCase):
         self.assertListEqual(expected_train_only_wells_ids,
                              my_config.train_wells_ids)
 
+    def test_can_get_test_only_wells_ids(self):
+        yaml_str = """
+        wells:
+          coords: {}
+          window: 0
+        alg:
+          test_only_wells: {}
+        """
+        coords = [[1, 1], [2, 2], [3, 3]]
+        test_only_well_ids = [1]
+        my_config = config_parser.YAMLConfig(
+            config_str=yaml_str.format(coords, test_only_well_ids))
+        expected_test_only_wells_ids = test_only_well_ids
+        self.assertListEqual(expected_test_only_wells_ids,
+                             my_config.test_wells_ids)
+
+    def test_can_get_test_only_wells_coords(self):
+        yaml_str = """
+        wells:
+          coords: {}
+          window: 0
+        alg:
+          test_only_wells: {}
+        """
+        coords = [[1, 1], [2, 2]]
+        test_only_well_ids = [1]
+        my_config = config_parser.YAMLConfig(
+            config_str=yaml_str.format(coords, test_only_well_ids))
+        expected_test_only_wells_coords = [tuple(coords[test_only_well_ids[0]])]
+        self.assertListEqual(expected_test_only_wells_coords,
+                             my_config.test_wells_coords)
+
     def test_can_get_base_max_exec_time(self):
         yaml_str = """
         wells:
@@ -519,8 +543,7 @@ class TestYAMLConfig(TestCase):
               beta: {}
         """.format(alpha, beta)
         my_config = config_parser.YAMLConfig(config_str=yaml_str_fmt)
-        self.assertEqual(alpha,
-                         my_config.alg['sampling']['beta_dist']['alpha'])
+        self.assertEqual(alpha, my_config.alg['sampling']['beta_dist']['alpha'])
         self.assertEqual(beta, my_config.alg['sampling']['beta_dist']['beta'])
 
     def test_raise_invalid_sampling_beta_dist_params(self):
@@ -683,10 +706,8 @@ class TestYAMLConfig(TestCase):
         expected_start_ring = [1, 5, 31]
         expected_end_ring = [1, 6, 35]
 
-        for test_idx, (layer, it) in enumerate(zip(layers_to_predict,
-                                                   curr_it)):
-            config = config_parser.YAMLConfig(
-                config_str=yaml_str.format(layer))
+        for test_idx, (layer, it) in enumerate(zip(layers_to_predict, curr_it)):
+            config = config_parser.YAMLConfig(config_str=yaml_str.format(layer))
             ring_range = config.ring_range_to_expand(it)
             result_expected = (expected_start_ring[test_idx],
                                expected_end_ring[test_idx])

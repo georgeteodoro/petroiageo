@@ -598,8 +598,7 @@ class Config:
         layers_to_predict: 3
         return (7, 9)
         """
-        start_ring = (
-            (it - 1) * self.get_param('alg')['layers_to_predict']) + 1
+        start_ring = ((it - 1) * self.get_param('alg')['layers_to_predict']) + 1
         end_ring = start_ring + self.get_param('alg')['layers_to_predict'] - 1
         return start_ring, end_ring
 
@@ -645,6 +644,29 @@ class Config:
             id for id, _ in enumerate(self.config['wells']['coords'])
             if id not in self.alg['test_only_wells']
         ]
+
+    @property
+    def test_wells_coords(self) -> List[Tuple[int, int]]:
+        """
+        Return the coords of the test wells.
+        all wells: [(1, 2), (3, 4), (5, 6)]
+        test_only_wells: [1]
+        returns: [(3, 4)]
+        """
+        return [(w['x'], w['y'])
+                for id, w in enumerate(self.config['wells']['coords'])
+                if id in self.alg['test_only_wells']]
+
+    @property
+    def test_wells_ids(self) -> List[int]:
+        """
+        Returns the training wells ids.
+        Example: 
+        all wells: [(1, 2), (3, 4), (5, 6)]
+        test_only_wells: [1]
+        returns: [1]
+        """
+        return list(self.alg['test_only_wells'])
 
     @property
     def alg(self):

@@ -8,7 +8,7 @@ from config_parser import Config
 import common
 
 
-def test_new_feature(trial_data: TrialDataBase, it: int, config: Config):
+def test_new_feature(trial_data: TrialDataBase, config: Config):
     '''
     Trains a model with trial_data, returning the metric values for the
     trained model.
@@ -43,7 +43,7 @@ def test_new_feature(trial_data: TrialDataBase, it: int, config: Config):
 
         # Validation data is not chunked, thus it only needs to be
         # retrieved once with all data
-        X_val, y_val = trial_data.get_val_values(curr_well_id, it)
+        X_val, y_val = trial_data.get_val_values(curr_well_id)
         t12 = time()
 
         # There are no data from this well on trial data
@@ -56,7 +56,7 @@ def test_new_feature(trial_data: TrialDataBase, it: int, config: Config):
 
             # Setup training data
             X_train, y_train = trial_data.get_train_values(
-                curr_well_id, chunk_id, it)
+                curr_well_id, chunk_id)
 
             # X_train=None if there are no validation points available. This can
             # only happen if there is only 1 well being propagated.
