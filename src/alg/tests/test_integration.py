@@ -155,211 +155,211 @@ class Test_All(unittest.TestCase):
         assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 6
         porosity_h5_file.close()
 
-    # def test_sintetic_all_iterations_from_scratch(self):
-    #     '''
-    #     Performs 3 complete iterations from scratch.
-    #     1 feature file is used, with a window of 1 (thus 27 trials).
-    #     All 27 trials are performed.
-    #     3 features are selected.
-    #     '''
+    def test_sintetic_all_iterations_from_scratch(self):
+        '''
+        Performs 3 complete iterations from scratch.
+        1 feature file is used, with a window of 1 (thus 27 trials).
+        All 27 trials are performed.
+        3 features are selected.
+        '''
 
-    #     # Retrieve CLI arguments
-    #     args_str = f'--config {self.__class__.config_path} --it 1 '\
-    #                f'--nits 4 --nf 1 -w 1 --nsf 3 --no-abort'
+        # Retrieve CLI arguments
+        args_str = f'--config {self.__class__.config_path} --it 1 '\
+                   f'--nits 4 --nf 1 -w 1 --nsf 3 --no-abort'
 
-    #     process = Popen('mpirun -np 2 python3 -u main.py ' + args_str,
-    #                     shell=True,
-    #                     universal_newlines=True,
-    #                     stdout=PIPE,
-    #                     stderr=PIPE,
-    #                     preexec_fn=os.setsid)
+        process = Popen('mpirun -np 2 python3 -u main.py ' + args_str,
+                        shell=True,
+                        universal_newlines=True,
+                        stdout=PIPE,
+                        stderr=PIPE,
+                        preexec_fn=os.setsid)
 
-    #     time.sleep(5)
+        time.sleep(5)
 
-    #     # Send the signal to all the process groups
-    #     os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+        # Send the signal to all the process groups
+        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
 
-    #     output, error = process.communicate()
+        output, error = process.communicate()
 
-    #     print(output)
-    #     print(error)
-    #     assert len(error) == 0
+        print(output)
+        print(error)
+        assert len(error) == 0
 
-    #     # Validate propagation (see diagrams on the TestClass beginning)
-    #     porosity_h5_file = h5py.File(self.__class__.porosity_h5_path, 'r')
-    #     porosity_dset = porosity_h5_file[common.POROSITY_DSET_NAME]
+        # Validate propagation (see diagrams on the TestClass beginning)
+        porosity_h5_file = h5py.File(self.__class__.porosity_h5_path, 'r')
+        porosity_dset = porosity_h5_file[common.POROSITY_DSET_NAME]
 
-    #     depth = self.__class__.hypercube_shape[2]
-    #     assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 41
-    #     assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 15
-    #     assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 16
-    #     porosity_h5_file.close()
+        depth = self.__class__.hypercube_shape[2]
+        assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 41
+        assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 15
+        assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 16
+        porosity_h5_file.close()
 
-    # def test_sintetic_2_iterations_continued(self):
-    #     '''
-    #     Performs 2 complete iterations, continuing the execution of
-    #     2 complete iterations.
-    #     1 feature file is used, with a window of 1 (thus 27 trials).
-    #     All 27 trials are performed.
-    #     3 features are selected.
-    #     '''
+    def test_sintetic_2_iterations_continued(self):
+        '''
+        Performs 2 complete iterations, continuing the execution of
+        2 complete iterations.
+        1 feature file is used, with a window of 1 (thus 27 trials).
+        All 27 trials are performed.
+        3 features are selected.
+        '''
 
-    #     # Retrieve CLI arguments
-    #     args1_str = f'--config {self.__class__.config_path} --it 1 '\
-    #                f'--nits 2 --nf 1 -w 1 --nsf 3 --no-abort'
-    #     args2_str = f'--config {self.__class__.config_path} --it 3 '\
-    #                f'--nits 2 --nf 1 -w 1 --nsf 3 --no-abort'
+        # Retrieve CLI arguments
+        args1_str = f'--config {self.__class__.config_path} --it 1 '\
+                   f'--nits 2 --nf 1 -w 1 --nsf 3 --no-abort'
+        args2_str = f'--config {self.__class__.config_path} --it 3 '\
+                   f'--nits 2 --nf 1 -w 1 --nsf 3 --no-abort'
 
-    #     process = Popen('mpirun -np 2 python3 -u main.py ' + args1_str,
-    #                     shell=True,
-    #                     universal_newlines=True,
-    #                     stdout=PIPE,
-    #                     stderr=PIPE,
-    #                     preexec_fn=os.setsid)
+        process = Popen('mpirun -np 2 python3 -u main.py ' + args1_str,
+                        shell=True,
+                        universal_newlines=True,
+                        stdout=PIPE,
+                        stderr=PIPE,
+                        preexec_fn=os.setsid)
 
-    #     output, error = process.communicate()
-    #     print(output)
-    #     print(error)
+        output, error = process.communicate()
+        print(output)
+        print(error)
 
-    #     # Validate propagation (see diagrams on the TestClass beginning)
-    #     porosity_h5_file = h5py.File(self.__class__.porosity_h5_path, 'r')
-    #     porosity_dset = porosity_h5_file[common.POROSITY_DSET_NAME]
+        # Validate propagation (see diagrams on the TestClass beginning)
+        porosity_h5_file = h5py.File(self.__class__.porosity_h5_path, 'r')
+        porosity_dset = porosity_h5_file[common.POROSITY_DSET_NAME]
 
-    #     depth = self.__class__.hypercube_shape[2]
+        depth = self.__class__.hypercube_shape[2]
 
-    #     assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 25
-    #     assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 14
-    #     assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 15
-    #     porosity_h5_file.close()
+        assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 25
+        assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 14
+        assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 15
+        porosity_h5_file.close()
 
-    #     process = Popen('mpirun -np 2 python3 -u main.py ' + args2_str,
-    #                     shell=True,
-    #                     universal_newlines=True,
-    #                     stdout=PIPE,
-    #                     stderr=PIPE,
-    #                     preexec_fn=os.setsid)
-    #     output, error = process.communicate()
-    #     print(output)
-    #     print(error)
-    #     assert len(error) == 0
+        process = Popen('mpirun -np 2 python3 -u main.py ' + args2_str,
+                        shell=True,
+                        universal_newlines=True,
+                        stdout=PIPE,
+                        stderr=PIPE,
+                        preexec_fn=os.setsid)
+        output, error = process.communicate()
+        print(output)
+        print(error)
+        assert len(error) == 0
 
-    #     # Validate propagation (see diagrams on the TestClass beginning)
-    #     porosity_h5_file = h5py.File(self.__class__.porosity_h5_path, 'r')
-    #     porosity_dset = porosity_h5_file[common.POROSITY_DSET_NAME]
+        # Validate propagation (see diagrams on the TestClass beginning)
+        porosity_h5_file = h5py.File(self.__class__.porosity_h5_path, 'r')
+        porosity_dset = porosity_h5_file[common.POROSITY_DSET_NAME]
 
-    #     depth = self.__class__.hypercube_shape[2]
-    #     assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 41
-    #     assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 15
-    #     assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 16
-    #     porosity_h5_file.close()
+        depth = self.__class__.hypercube_shape[2]
+        assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 41
+        assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 15
+        assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 16
+        porosity_h5_file.close()
 
-    # def test_sintetic_sampling(self):
-    #     '''
-    #     Performs 3 iteration from scratch, followed by the 4th iteration 
-    #     with sampling.
-    #     1 feature file is used, with a window of 1 (thus 27 trials).
-    #     Only 1/27 trial is performed.
-    #     3 features are selected.
-    #     '''
+    def test_sintetic_sampling(self):
+        '''
+        Performs 3 iteration from scratch, followed by the 4th iteration 
+        with sampling.
+        1 feature file is used, with a window of 1 (thus 27 trials).
+        Only 1/27 trial is performed.
+        3 features are selected.
+        '''
 
-    #     # Retrieve CLI arguments
-    #     args_str = f'--config {self.__class__.config_path} --it 1 '\
-    #                f'--nits 3 --nf 1 -w 1 --nsf 3 --ntf 1'
+        # Retrieve CLI arguments
+        args_str = f'--config {self.__class__.config_path} --it 1 '\
+                   f'--nits 3 --nf 1 -w 1 --nsf 3 --ntf 1'
 
-    #     # Perform first
-    #     process = Popen('mpirun -np 2 python3 -u main.py ' + args_str,
-    #                     shell=True,
-    #                     universal_newlines=True,
-    #                     stdout=PIPE,
-    #                     stderr=PIPE,
-    #                     preexec_fn=os.setsid)
+        # Perform first
+        process = Popen('mpirun -np 2 python3 -u main.py ' + args_str,
+                        shell=True,
+                        universal_newlines=True,
+                        stdout=PIPE,
+                        stderr=PIPE,
+                        preexec_fn=os.setsid)
 
-    #     output, error = process.communicate()
+        output, error = process.communicate()
 
-    #     print(output)
-    #     print(error)
-    #     assert len(error) == 0
+        print(output)
+        print(error)
+        assert len(error) == 0
 
-    #     # ===========================================================
+        # ===========================================================
 
-    #     # Generate custom config file with sampling
-    #     yaml_str = f"""
-    #     wells:
-    #       coords:
-    #       - [4,2]
-    #       - [7,6]
-    #       - [2,7]
-    #       window: 1
-    #     features_folder: "{self.__class__.features_path}" 
-    #     starting_porosity_cube_path: "{self.__class__.porosity_h5_path}" 
-    #     alg:
-    #       parallel:
-    #         n_training_chunks: 1
-    #       sampling:
-    #         sampler: v1
-    #         max_points: 10
-    #         seed: 0
-    #     """
-    #     yaml_f = open(self.__class__.config_path, 'w')
-    #     yaml_f.writelines(yaml_str)
+        # Generate custom config file with sampling
+        yaml_str = f"""
+        wells:
+          coords:
+          - [4,2]
+          - [7,6]
+          - [2,7]
+          window: 1
+        features_folder: "{self.__class__.features_path}" 
+        starting_porosity_cube_path: "{self.__class__.porosity_h5_path}" 
+        alg:
+          parallel:
+            n_training_chunks: 1
+          sampling:
+            sampler: v1
+            max_points: 10
+            seed: 0
+        """
+        yaml_f = open(self.__class__.config_path, 'w')
+        yaml_f.writelines(yaml_str)
 
-    #     # Close all files to allow them to commit to file
-    #     yaml_f.close()
+        # Close all files to allow them to commit to file
+        yaml_f.close()
 
-    #     # Coords chosen for training when sampling with the above configs.
-    #     # These are hand-filled, and should the shape or rng seed change,
-    #     # these will also be different.
-    #     sampled_coords = [(1, 5, 1), (1, 6, 1), (2, 7, 1), (3, 8, 4), (4, 1, 2),
-    #                       (5, 3, 2), (5, 7, 2), (6, 2, 1), (7, 4, 1),
-    #                       (7, 6, 2), (7, 8, 1), (6, 6, 2), (8, 2, 4),
-    #                       (8, 7, 1), (9, 4, 2)]
+        # Coords chosen for training when sampling with the above configs.
+        # These are hand-filled, and should the shape or rng seed change,
+        # these will also be different.
+        sampled_coords = [(1, 5, 1), (1, 6, 1), (2, 7, 1), (3, 8, 4), (4, 1, 2),
+                          (5, 3, 2), (5, 7, 2), (6, 2, 1), (7, 4, 1),
+                          (7, 6, 2), (7, 8, 1), (6, 6, 2), (8, 2, 4),
+                          (8, 7, 1), (9, 4, 2)]
 
-    #     # Update porosity file. All points which should not be visited since
-    #     # they were not sampled are set phi=NaN. This breaks the execution if
-    #     # any value outside the sampling is visited.
-    #     porosity_h5_file = h5py.File(self.__class__.porosity_h5_path, 'r+')
-    #     porosity_dset = porosity_h5_file[common.POROSITY_DSET_NAME]
-    #     for x in range(0, self.__class__.hypercube_shape[0]):
-    #         for y in range(0, self.__class__.hypercube_shape[1]):
-    #             for z in range(0, self.__class__.hypercube_shape[2]):
-    #                 if (x, y, z) not in sampled_coords:
-    #                     porosity_dset[x, y, z, 'phi'] = np.nan
-    #     porosity_h5_file.close()
+        # Update porosity file. All points which should not be visited since
+        # they were not sampled are set phi=NaN. This breaks the execution if
+        # any value outside the sampling is visited.
+        porosity_h5_file = h5py.File(self.__class__.porosity_h5_path, 'r+')
+        porosity_dset = porosity_h5_file[common.POROSITY_DSET_NAME]
+        for x in range(0, self.__class__.hypercube_shape[0]):
+            for y in range(0, self.__class__.hypercube_shape[1]):
+                for z in range(0, self.__class__.hypercube_shape[2]):
+                    if (x, y, z) not in sampled_coords:
+                        porosity_dset[x, y, z, 'phi'] = np.nan
+        porosity_h5_file.close()
 
-    #     # Retrieve CLI arguments
-    #     args_str = f'--config {self.__class__.config_path} --it 4 '\
-    #                f'--nits 1 --nf 1 -w 1 --nsf 3 --ntf 1 --no-abort'
+        # Retrieve CLI arguments
+        args_str = f'--config {self.__class__.config_path} --it 4 '\
+                   f'--nits 1 --nf 1 -w 1 --nsf 3 --ntf 1 --no-abort'
 
-    #     process = Popen('mpirun -np 2 python3 -u main.py ' + args_str,
-    #                     shell=True,
-    #                     universal_newlines=True,
-    #                     stdout=PIPE,
-    #                     stderr=PIPE,
-    #                     preexec_fn=os.setsid)
+        process = Popen('mpirun -np 2 python3 -u main.py ' + args_str,
+                        shell=True,
+                        universal_newlines=True,
+                        stdout=PIPE,
+                        stderr=PIPE,
+                        preexec_fn=os.setsid)
 
-    #     time.sleep(2)
+        time.sleep(2)
 
-    #     # Send the signal to all the process groups
-    #     os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+        # Send the signal to all the process groups
+        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
 
-    #     output, error = process.communicate()
+        output, error = process.communicate()
 
-    #     print(output)
-    #     print(error)
-    #     assert len(error) == 0
+        print(output)
+        print(error)
+        assert len(error) == 0
 
-    #     porosity_h5_file = h5py.File(self.__class__.porosity_h5_path, 'r')
-    #     porosity_dset = porosity_h5_file[common.POROSITY_DSET_NAME]
+        porosity_h5_file = h5py.File(self.__class__.porosity_h5_path, 'r')
+        porosity_dset = porosity_h5_file[common.POROSITY_DSET_NAME]
 
-    #     # print(porosity_dset[porosity_dset['real'] != common.RealValues.empty])
-    #     # print(porosity_dset[porosity_dset['well_id'] == 1])
+        # print(porosity_dset[porosity_dset['real'] != common.RealValues.empty])
+        # print(porosity_dset[porosity_dset['well_id'] == 1])
 
-    #     # Validate propagation (see diagrams on the TestClass beginning)
-    #     depth = self.__class__.hypercube_shape[2]
-    #     assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 41
-    #     assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 15
-    #     assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 16
-    #     porosity_h5_file.close()
+        # Validate propagation (see diagrams on the TestClass beginning)
+        depth = self.__class__.hypercube_shape[2]
+        assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 41
+        assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 15
+        assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 16
+        porosity_h5_file.close()
 
     # =========================================================================
     # === Setup/teardown ======================================================
