@@ -124,7 +124,7 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
 
     #Create and prepare the test data
     f_sel_filter = WellsSingleRingDataFilter(config.test_wells_ids)
-    test_data = TrialDataNumpy(features_only=False,
+    test_data = TrialDataNumpy(features_only=True,
                                porosity_data=porosity_data_h5,
                                f_sel_filter=f_sel_filter,
                                config=config)
@@ -132,6 +132,7 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
     test_data.prepare_porosity(it)
     for (feature, disp) in best_features:
         test_data.update_feature(features_dict[feature], disp)
+        test_data.commit_feature()
 
     rmse, mae = _eval_model(model, test_data, config.test_wells_ids)
     print(f"[propagation][it{it}] RMSE: {rmse}, MAE: {mae}")
