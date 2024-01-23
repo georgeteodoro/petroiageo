@@ -11,6 +11,7 @@ Para facilitar o processo de resolução de eventuais problemas de código é pe
 As seguintes libs são necessárias para execução em ambiente linux:
  - python3
  - python3-pip
+ - python3-dev
  - mpi
  - libopenmpi-dev
 
