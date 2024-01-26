@@ -10,7 +10,6 @@ mpi4py
 lasio
 ipykernel
 matplotlib
-h5py
 tqdm
 pyyaml
 coverage
