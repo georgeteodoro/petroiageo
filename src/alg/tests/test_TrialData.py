@@ -80,16 +80,17 @@ class Test_TrialDataAll(unittest.TestCase):
         j_end = min(w_y + r + 1, cls.hypercube_test_shape_padded[1] - 1)
         for i in range(i_beg, i_end):
             for j in range(j_beg, j_end):
-                for k in range(cls.window, cls.hypercube_test_shape_padded[2] -
-                               cls.window):
+                for k in range(
+                        cls.window,
+                        cls.hypercube_test_shape_padded[2] - cls.window):
                     if cls.porosity_h5_dset[
                             i, j, k]['real'] != common.RealValues.empty:
                         continue
 
                     # Only add points which are on the ring and were not
                     # previously propagated
-                    if (i == i_beg or i == i_end - 1 or j == j_beg
-                            or j == j_end - 1):
+                    if (i == i_beg or i == i_end - 1 or j == j_beg or
+                            j == j_end - 1):
                         mock_porosity = w_x * w_y * k
                         cls.porosity_h5_dset[i, j, k] = (
                             i, j, k, mock_porosity,
@@ -246,16 +247,15 @@ class Test_TrialDataAll(unittest.TestCase):
         td1.prepare_porosity(1)
 
         # Only one ring exists
-        self.assertEqual(len(td1._trial_data_dict), 1)
+        self.assertEqual(len(td1._data), 1)
 
         # Check if all points were added
-        # Total of 2 full depths, minus 2 non-added points
-        # = 2*5-2 = 8
-        self.assertEqual(len(td1._trial_data_dict[0]),
+        # Total of 2 full depths
+        self.assertEqual(td1._ring_size(0),
                          self.__class__.hypercube_test_shape[2] * 2)
 
     @data(concrete_classes)
-    def test_prepare_porosity_r1_3(self, test_cls):
+    def test_prepare_porosity_r2_3(self, test_cls):
         '''
         Test the use of prepare_porosity() by adding 3 rings,
         one at a time, from ring 1-3.
@@ -278,17 +278,15 @@ class Test_TrialDataAll(unittest.TestCase):
         td1.prepare_porosity(2)
         td1.prepare_porosity(3)
 
-        # Only one ring exists
-        self.assertEqual(len(td1._trial_data_dict), 3)
+        # Only three ring should exist
+        self.assertEqual(len(td1._data), 3)
 
-        # Check if all points were added
-        # Total of 2 full depths, minus 2 non-added points
-        # = 2*5-2 = 8
-        self.assertEqual(len(td1._trial_data_dict[0]),
+        # Check if the points of all rings were added
+        self.assertEqual(td1._ring_size(0),
                          self.__class__.hypercube_test_shape[2] * 2)
-        self.assertEqual(len(td1._trial_data_dict[1]),
+        self.assertEqual(td1._ring_size(1),
                          self.__class__.hypercube_test_shape[2] * 11)
-        self.assertEqual(len(td1._trial_data_dict[2]),
+        self.assertEqual(td1._ring_size(2),
                          self.__class__.hypercube_test_shape[2] * 15)
 
     @data(concrete_classes)
@@ -313,17 +311,15 @@ class Test_TrialDataAll(unittest.TestCase):
         # Prepare all porosities up to iteration 3
         td1.prepare_porosity(3)
 
-        # Only one ring exists
-        self.assertEqual(len(td1._trial_data_dict), 3)
+        # Assert if all 3 rings exist
+        self.assertEqual(len(td1._data), 3)
 
-        # Check if all points were added
-        # Total of 2 full depths, minus 2 non-added points
-        # = 2*5-2 = 8
-        self.assertEqual(len(td1._trial_data_dict[0]),
+        # Check if the points of all rings were added
+        self.assertEqual(td1._ring_size(0),
                          self.__class__.hypercube_test_shape[2] * 2)
-        self.assertEqual(len(td1._trial_data_dict[1]),
+        self.assertEqual(td1._ring_size(1),
                          self.__class__.hypercube_test_shape[2] * 11)
-        self.assertEqual(len(td1._trial_data_dict[2]),
+        self.assertEqual(td1._ring_size(2),
                          self.__class__.hypercube_test_shape[2] * 15)
 
     @data(concrete_classes)
@@ -363,8 +359,8 @@ class Test_TrialDataAll(unittest.TestCase):
             val_X, val_y = td1.get_val_values(well_id)
 
             # Generate expected values
-            expected_train_coordinates = cur_points[cur_points['well_id'] !=
-                                                    well_id][['x', 'y', 'z']]
+            expected_train_coordinates = cur_points[
+                cur_points['well_id'] != well_id][['x', 'y', 'z']]
             expected_val_coordinates = cur_points[cur_points['well_id'] ==
                                                   well_id][['x', 'y', 'z']]
             expected_train_X = [[
@@ -395,8 +391,8 @@ class Test_TrialDataAll(unittest.TestCase):
             val_X, val_y = td1.get_val_values(well_id)
 
             # Generate expected values
-            expected_train_coordinates = cur_points[cur_points['well_id'] !=
-                                                    well_id][['x', 'y', 'z']]
+            expected_train_coordinates = cur_points[
+                cur_points['well_id'] != well_id][['x', 'y', 'z']]
             expected_val_coordinates = cur_points[cur_points['well_id'] ==
                                                   well_id][['x', 'y', 'z']]
             expected_train_X = [[
@@ -427,8 +423,8 @@ class Test_TrialDataAll(unittest.TestCase):
             val_X, val_y = td1.get_val_values(well_id)
 
             # Generate expected values
-            expected_train_coordinates = cur_points[cur_points['well_id'] !=
-                                                    well_id][['x', 'y', 'z']]
+            expected_train_coordinates = cur_points[
+                cur_points['well_id'] != well_id][['x', 'y', 'z']]
             expected_val_coordinates = cur_points[cur_points['well_id'] ==
                                                   well_id][['x', 'y', 'z']]
             expected_train_X = [(
@@ -447,6 +443,57 @@ class Test_TrialDataAll(unittest.TestCase):
             self.assertTrue((expected_train_y == train_y).all())
             self.assertTrue((expected_val_X == val_X).all())
             self.assertTrue((expected_val_y == val_y).all())
+
+    # @data(concrete_classes)
+    # def test_chunking(self, test_cls):
+    #     '''
+    #     Test the use of chunking for TrialData.
+    #     It is checked whether all points are returned and if the memory
+    #     usage is reduced.
+    #     '''
+
+    #     # Load class data
+    #     porosity_dset = self.__class__.porosity_h5_dset
+    #     wells_list = config.train_wells_coords
+
+    #     # Create custom config object
+    #     yaml_str = f"""
+    #     wells:
+    #       coords:
+    #       - [0,2]
+    #       - [2,3]
+    #       window: {cls.window}
+    #     alg:
+    #       parallel:
+    #         n_training_chunks:
+    #     """
+    #     cls.config = YAMLConfig(config_str=yaml_str)
+
+    #     f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
+
+    #     # Create TestData object
+    #     td1 = test_cls(features_only=False,
+    #                    porosity_data=porosity_dset,
+    #                    f_sel_filter=f_sel_filter,
+    #                    config=config)
+
+    #     # Prepare all porosities up to iteration 3
+    #     td1.prepare_porosity(3)
+
+    #     #
+
+    #     # Only one ring exists
+    #     self.assertEqual(len(td1._trial_data_dict), 3)
+
+    #     # Check if all points were added
+    #     # Total of 2 full depths, minus 2 non-added points
+    #     # = 2*5-2 = 8
+    #     self.assertEqual(len(td1._trial_data_dict[0]),
+    #                      self.__class__.hypercube_test_shape[2] * 2)
+    #     self.assertEqual(len(td1._trial_data_dict[1]),
+    #                      self.__class__.hypercube_test_shape[2] * 11)
+    #     self.assertEqual(len(td1._trial_data_dict[2]),
+    #                      self.__class__.hypercube_test_shape[2] * 15)
 
 
 if __name__ == '__main__':

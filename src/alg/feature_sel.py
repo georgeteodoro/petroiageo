@@ -25,9 +25,6 @@ def test_new_feature(trial_data: TrialDataBase, config: Config):
     n_training_chunks = int(config.alg['parallel']['n_training_chunks'])
     train_wells_ids = config.train_wells_ids
 
-    # Configure trial_data for out-of-core execution, if needed
-    trial_data.set_num_training_chunks(n_training_chunks)
-
     # Initialize metrics lists
     rmse_list = []
     mae_list = []

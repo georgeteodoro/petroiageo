@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from h5py import Dataset
 import numpy as np
 from time import time
+from math import ceil
 
 import common
 from config_parser import Config
@@ -20,7 +21,6 @@ class TrialDataBase(ABC):
     Due to the use of padding, all coordinates are the padded coordinates. 
     Thus, it is expected of the wells_list to have padded coordinates as well.
     '''
-
     def __init__(self, features_only: bool,
                  f_sel_filter: WellsSingleRingDataFilter,
                  porosity_data: Dataset, config: Config):
@@ -50,27 +50,23 @@ class TrialDataBase(ABC):
         ]
         self._cur_data_type = np.dtype(self._cur_data_type)
 
-        # Attributes for internal chunking, if necessary
-        self._n_training_chunks = -1
-        self._chunk_size = -1
-
         # Internal state
         self._current_feature_id = -1
         self._current_ring = -1
         self._current_features = []
 
-        # Location of concrete trial_data. This should be initialize, accessed
-        # and read through concrete backend subclass hooks. On the current
-        # implementation, trial_data is a map of points per ring. Thus it is
-        # easier to sample, reshape and add more points.
+        # Location of concrete trial_data. This should be initialized, accessed
+        # and read through concrete backend subclass hooks.
+        # Regardless of concrete backend implementation, trial_data is a
+        # map of points per ring. Thus it is easier to sample, reshape and
+        # add more points.
         self._trial_data_dict = dict()
 
-        # # Current actual size of each ring. This size increases due to
-        # # out-of-core porosity_data, which is ran through one chunk at a time
-        # self._trial_data_size = dict()
-
-        # Number of points within trial_data
-        # self._data_len = -1
+        # List of all rings' IDs which are present on the concrete backend
+        # data structures. This allows concrete subclasses not to worry about
+        # this common data, while this superclass can still know which rings
+        # were successfully added to the concrete object.
+        self._rings_list = []
 
         # This is the list of real wells coordinates
         self._wells_list = config.train_wells_coords
@@ -95,6 +91,23 @@ class TrialDataBase(ABC):
     # =========================================================================
 
     @abstractmethod
+    def _new_ring_hook(self, ring):
+        '''
+        Create the backend representation of a new ring. If the ring already
+        exists, it should raise an assertion exception.
+        '''
+        raise Exception("[TrialDataBase][_new_ring_hook] "
+                        "Abstract method not implemented.")
+
+    @abstractmethod
+    def _clear_trial_data_hook(self):
+        '''
+        Should delete all trial data, in preparation for another iteration.
+        '''
+        raise Exception("[TrialDataBase][_clear_trial_data_hook] "
+                        "Abstract method not implemented.")
+
+    @abstractmethod
     def _set_ring_hook(self, ring, data):
         '''
         Should add data to a trial_data ring, updating internally its size.
@@ -105,52 +118,34 @@ class TrialDataBase(ABC):
                         "Abstract method not implemented.")
 
     @abstractmethod
-    def _update_col_from_ring_hook(self, r, feature_data):
+    def _update_col_hook(self, r, w, feature_data):
         '''
-        Should update the last column of ring r.
-        It is assumed that feature_data if already filtered for points on
-        ring r. Thus, feature_data should have the correct size of the 
-        internal trial_data for ring r.
+        Should update the last column of ring r and well_id w.
+        It is assumed that feature_data perfectly matches the data 
+        for r and w. Thus, feature_data should have the correct size 
+        of the internal data for ring r and well_id w.
         '''
-        raise Exception("[TrialDataBase][_update_col_from_ring_hook] "
+        raise Exception("[TrialDataBase][_update_col_hook] "
                         "Abstract method not implemented.")
 
     @abstractmethod
-    def _get_ring_filtered_values_hook(self, r, chunk_id, well_filter):
+    def _get_values_hook(self, ring, well_id, chunk_slice=None):
         '''
-        Should return a set of points for ring r, filtered by a well_filter.
+        Should return an nparray with all data for a given ring an well_id.
+        Ideally, backend data should be stored separately, since this is a
+        recurrent operation.
+        The chunk_slice parameter allows the concrete class to better 
+        implement its retrieval of data. If not used, all data is returned.
         '''
-        raise Exception("[TrialDataBase][_get_ring_filtered_values_hook] "
+        raise Exception("[TrialDataBase][_get_values_hook] "
                         "Abstract method not implemented.")
 
     @abstractmethod
-    def _in_well_filter_hook(self, well_id):
+    def _well_size_hook(self, ring, well_id):
         '''
-        Should return a function f(data) which filters data based on
-        well_id and returns only the subset of data for which 
-        data['well_id'] == well_id.
+        Should return the number of points for a ring/well pair.
         '''
-        raise Exception("[TrialDataBase][_in_well_filter_hook] "
-                        "Abstract method not implemented.")
-
-    @abstractmethod
-    def _not_in_well_filter_hook(self, well_id):
-        '''
-        Should return a function f(data) which filters data based on
-        well_id and returns only the subset of data for which 
-        data['well_id'] != well_id. If well_id<0, should return the
-        Whole data.
-        '''
-        raise Exception("[TrialDataBase][_not_in_well_filter_hook] "
-                        "Abstract method not implemented.")
-
-    @abstractmethod
-    def _get_ring_np_values_hook(self, ring):
-        '''
-        Should return an nparray with all data from a given ring. It is ok
-        do do such, since this method should only be used internally.
-        '''
-        raise Exception("[TrialDataBase][_get_ring_np_values_hook] "
+        raise Exception("[TrialDataBase][_well_size_hook] "
                         "Abstract method not implemented.")
 
     # =========================================================================
@@ -191,7 +186,8 @@ class TrialDataBase(ABC):
                 it_init = 0
 
             # Remove all rings data
-            self._trial_data_dict.clear()
+            self._rings_list.clear()
+            self._clear_trial_data_hook()
 
         t1 = time()
 
@@ -204,10 +200,15 @@ class TrialDataBase(ABC):
             self._f_sel_filter.set_ring(it)
 
             # Create new ring data
-            self._trial_data_dict[it] = []
+            self._rings_list.append(it)
+            self._new_ring_hook(it)
 
+            # Prepare a dict of points per well_id
+            points_dict = dict()
+            for w in range(len(self._wells_list)):
+                points_dict[w] = []
+            
             # Iterate on all porosity chunks to fill trial_data
-            points_list = []
             for chunk_slice in self._porosity_data.iter_chunks():
                 t111 = time()
 
@@ -221,23 +222,27 @@ class TrialDataBase(ABC):
 
                 t112 = time()
 
-                # Add points to temporary points_list
+                # Add points to temporary points_dict
                 filt_list = self._f_sel_filter.satisfies(chunk_np)
                 t113 = time()
                 filt_data = chunk_np[filt_list]
                 t114 = time()
 
-                if self._features_only:
-                    points_list.extend(filt_data[['x', 'y', 'z',
-                                                  'phi']].tolist())
-                else:
-                    points_list.extend(filt_data[[
-                        'x',
-                        'y',
-                        'z',
-                        'phi',
-                        'well_id',
-                    ]].tolist())
+                # Extend points_dict by each well_id
+                for w in range(len(self._wells_list)):
+                    well_data = filt_data[filt_data['well_id'] == w]
+                    if self._features_only:
+                        well_data = well_data[['x', 'y', 'z','phi']]
+                    else:
+                        well_data = well_data[[
+                            'x',
+                            'y',
+                            'z',
+                            'phi',
+                            'well_id',
+                        ]]
+
+                    points_dict[w].extend(well_data.tolist())
 
                 t115 = time()
 
@@ -254,12 +259,12 @@ class TrialDataBase(ABC):
             t12 = time()
 
             # Fill ring dict
-            self._set_ring_hook(it, points_list)
-
-            # Update size and chunking info
-            self._chunk_size = 0
-            for r in self._trial_data_dict.keys():
-                self._chunk_size += len(self._trial_data_dict[r])
+            # REFACTORING/OPTIMIZARION OPORTUNITY:
+            # Change _set_ring_hook to _append_ring_hook, thus points_dict is
+            # not required. I.e., less memory needed. For numpy implementation
+            # a temporary list may still be required within it, which is
+            # converted to ndarray at the first access.
+            self._set_ring_hook(it, points_dict)
 
             t13 = time()
             if profile:
@@ -295,6 +300,16 @@ class TrialDataBase(ABC):
         Adds data to the last feature. Data is related to all rings.
         Receives a FeatureDataBase object and a displacement to apply on
         the input feature.
+
+        Data to update the backend structure is added by both 
+        ring and well_id. This allows reduced memory requirements
+        since data is retrieved slowly. TrialDataBase doesn't care how 
+        the data is stored, as long as it can access it by ring and well_id.
+
+        Observation: This is not memory-optimized. For a later iteration,
+        with 3 ring and 10 wells, for instance, the maximum amount of data 
+        being loaded to memory is the size of a ring/well set of points.
+        One way to reduce this is through chunked update
         '''
 
         profile = self._config.get_param('prof_trial_update_feature')
@@ -302,33 +317,39 @@ class TrialDataBase(ABC):
         t1 = time()
 
         # Fill data, one ring at a time
-        for r in self._trial_data_dict.keys():
-            t11 = time()
+        for r in self._rings_list:
+            for w in range(len(self._wells_list)):
 
-            # Retrieve the coordinate list and apply the feature displacement
-            ring_coords = self._get_ring_np_values_hook(r)[['x', 'y',
-                                                            'z']].copy()
-            # This algorithm applies the displacement at the whole array,
-            # allowing improved data access times.
-            # All coordinates are already padded
-            for coord_s, d_id in [('x', 0), ('y', 1), ('z', 2)]:
-                ring_coords[coord_s] = (ring_coords[coord_s] + disp[d_id])
+                # Retrieve the coordinate list of the
+                cur_coords = self._get_values_hook(r, w)[['x', 'y',
+                                                          'z']].copy()
+                # Applies the displacement at the whole array,
+                # allowing improved data access times.
+                # No padding resolution is required since
+                # all coordinates are already padded.
+                for coord_s, d_id in [('x', 0), ('y', 1), ('z', 2)]:
+                    cur_coords[coord_s] = (cur_coords[coord_s] + disp[d_id])
 
-            t12 = time()
+                # Extract displaced feature data
+                filtered_feature_data = feature.filter_coords(cur_coords)
 
-            # Extract displaced feature data and assign it to the last col
-            filtered_feature_data = feature.filter_coords(ring_coords)
-            t13 = time()
-            self._update_col_from_ring_hook(r, filtered_feature_data)
-            t14 = time()
+                # Assign feature data to the last col (i.e., current col
+                # being updated)
+                self._update_col_hook(r, w, filtered_feature_data)
 
-            if profile:
-                print(f"[TrialDataBase][update_feature] ring[{r}] "
-                      f"get_coords_disp: {t12-t11}")
-                print(f"[TrialDataBase][update_feature] ring[{r}] "
-                      f"filter_coords: {t13-t12}")
-                print(f"[TrialDataBase][update_feature] ring[{r}] "
-                      f"update_col: {t14-t13}")
+                # t11 = time()
+                # t12 = time()
+
+                # t13 = time()
+                # t14 = time()
+
+                # if profile:
+                #     print(f"[TrialDataBase][update_feature] ring[{r}] "
+                #           f"get_coords_disp: {t12-t11}")
+                #     print(f"[TrialDataBase][update_feature] ring[{r}] "
+                #           f"filter_coords: {t13-t12}")
+                #     print(f"[TrialDataBase][update_feature] ring[{r}] "
+                #           f"update_col: {t14-t13}")
 
         t2 = time()
         if profile:
@@ -344,48 +365,70 @@ class TrialDataBase(ABC):
         trial_data is returned (filtered by well_id obviously).
         '''
 
-        well_filter = self._not_in_well_filter_hook(well_id)
-        return self._get_values(well_filter, chunk_id)
+        # wells_to_retrieve is a list of indices
+        wells_to_retrieve = list(range(len(self._wells_list)))
+        wells_to_retrieve.remove(well_id)
+        return self._get_values(wells_to_retrieve, chunk_id)
 
     def get_val_values(self, well_id):
-        well_filter = self._in_well_filter_hook(well_id)
+        wells_to_retrieve = [well_id]
         # chunk_id=0 to return all data
-        return self._get_values(well_filter, 0)
-
-    def set_num_training_chunks(self, n_training_chunks):
-        self._n_training_chunks = n_training_chunks
+        return self._get_values(wells_to_retrieve, -1)
 
     def get_num_wells(self):
         return len(self._wells_list)
 
+    def _ring_size(self, ring):
+        length = 0
+        for w in range(len(self._wells_list)):
+            length += self._well_size_hook(ring, w)
+        return length
+
     def __len__(self):
-        return sum([len(x) for x in self._trial_data_dict.values()])
+        length = 0
+        for r in self._rings_list:
+            length += self._ring_size(r)
+        return length
 
     # =========================================================================
     # === Helper functions ====================================================
     # =========================================================================
 
-    def _get_values(self, well_filter, chunk_id):
+    def _get_values(self, wells_to_retrieve, chunk_id):
         '''
         Helper function for filtering trial_data.
-        Returns the number of filtered points.
+        Data is retrieved by ring and well_id until a chunk is reached.
         '''
 
-        # Fill training data, one ring at a time
+        n_training_chunks = int(
+            self._config.alg['parallel']['n_training_chunks'])
+
+        # Fill training data, one ring at a time, one well at a time
         X = []
         y = []
-        for ring_key, ring in self._trial_data_dict.items():
+        for r in self._rings_list:
+            for w in wells_to_retrieve:
+                # Calculate how many points from a ring/well_id pair
+                # this chunk should have
+                points_per_well = self._well_size_hook(r, w)
+                points_per_rw = int(ceil(points_per_well / n_training_chunks))
 
-            new_points = self._get_ring_filtered_values_hook(
-                ring_key, chunk_id, well_filter)
+                # Generate a chunk slice for the ring/well pair
+                beg = chunk_id * points_per_rw
+                end = (chunk_id + 1) * points_per_rw
+                end = min(end, points_per_well)
+                cur_slice = chunk_slice = slice(int(beg), int(end))
 
-            # Split X from y
-            new_points_X = new_points[self._current_features]
-            new_points_y = new_points['phi']
+                # Retrieve current chunk slice from the backend storage
+                new_points = self._get_values_hook(r, w, cur_slice)
 
-            # Add them to output arrays
-            X.extend(new_points_X)
-            y.extend(new_points_y)
+                # Split X from y
+                new_points_X = new_points[self._current_features]
+                new_points_y = new_points['phi']
+
+                # Add them to output arrays
+                X.extend(new_points_X)
+                y.extend(new_points_y)
 
         # Convert from structured array to simple array
         # This conversion from array->list->array may be inefficient...
