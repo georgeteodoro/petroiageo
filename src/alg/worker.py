@@ -27,8 +27,8 @@ def _load_porosity(config):
 
     # Setup HDF5 driver configuration
     mpi_kwargs = {
-        "driver": "mpio",
-        "comm": config.get_param("mpi_local_comm"),
+        'driver': 'mpio',
+        'comm': config.get_param('mpi_local_comm'),
     }
 
     porosity_cube_file = h5py.File(config.starting_porosity_cube_path,
@@ -39,7 +39,8 @@ def _load_porosity(config):
 
 
 def run(config):
-    should_propagate = config.get_param("mpi_should_update_local")
+    rank_should_propagate = config.get_param('mpi_should_update_local')
+    feature_sel_only = config.get_param('feature_sel_only')
     num_its = config.alg['num_its']
     start_it = config.alg['it']
     train_wells_ids = config.train_wells_ids
@@ -151,8 +152,12 @@ def run(config):
             else:
                 raise Exception(beg_str + f" Bad MPI tag: {msg_tag}")
 
-        # propagation
-        if should_propagate:
+        # Propagation
+        # Only one rank per node actually commits data to the hdf5 file,
+        # enforced by 'rank_should_propagate'.
+        # Also, propagation can be disabled in order to experiment with
+        # feature selection only, enforced by 'feature_sel_only'
+        if rank_should_propagate and not feature_sel_only:
             n_propagated_points = propagate(porosity_h5_dset, trial_data,
                                             all_features_dict, best_features,
                                             it, config)

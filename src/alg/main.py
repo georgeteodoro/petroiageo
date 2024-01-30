@@ -113,13 +113,16 @@ def config_arg_parser():
         "Useful for debugging",
     )
 
-    # parser.add_argument(
-    #     '--sp',
-    #     dest='is_sampling',
-    #     action='store_true',
-    #     help="Whether sampling should be used "
-    #     "for feature selection (default=False).",
-    # )
+    parser.add_argument(
+        '--fso',
+        dest='feature_sel_only',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Feature selection only. Skip the propagation step. "
+        "Useful for performance testing since no changes on the "
+        "porosity files are done.",
+    )
 
     return parser
 
@@ -148,7 +151,9 @@ def update_config_file_params_with_args(config: config_parser.Config,
     config.add_param('max_tested_features', int(args.num_tested_features))
 
     # config.add_param('is_sampling', bool(args.is_sampling))
-    
+
+    config.add_param('feature_sel_only', args.feature_sel_only)
+
     # Profiling
     config.add_param('prof_trial_prep_porosity', True)
     config.add_param('prof_trial_update_feature', True)
@@ -185,6 +190,7 @@ def main(args_str=None):
         # This sleep timer allows processes to output error messages
         sleep(3)
         MPI.COMM_WORLD.Abort()
+
     if not args.no_abort:
         sys.excepthook = lambda x, y, z: _end()
 
