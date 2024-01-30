@@ -70,8 +70,8 @@ cd "h5py"
 
 echo "[LOG] INSTALLING $CURR_STAGE...."
 
-git checkout 3.8.0
-export CC=mpicc; export HDF5_MPI="ON"; export HDF5_DIR="$HDF5_PATH/build"; pip3 install --no-build-isolation .
+git checkout 3.7.0
+export CC=mpicc; export HDF5_MPI="ON"; export HDF5_DIR="$HDF5_PATH/build"; python3 -m pip install --no-build-isolation .
 exit_if_failure $? "$(!!)"
 
 echo "[LOG] $CURR_STAGE INSTALL COMPLETE!"
