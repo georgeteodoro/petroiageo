@@ -69,7 +69,9 @@ class DataFilter():
         """
         if not isinstance(well_ids_list, list) and not isinstance(
                 well_ids_list, tuple):
-            raise TypeError("well_ids_list should be a list or a tuple!")
+            raise TypeError(f"well_ids_list should be a list or a tuple, but "\
+                            f"got {well_ids_list} "\
+                            f"of type {type(well_ids_list)}")
 
         if len(well_ids_list) > 0:
             self._filter_list.append(

@@ -8,9 +8,9 @@ class TrialDataNumpy(TrialDataBase):
     In-memory implementation of TrialDataBase using numpy as the
     concrete type for data storage.
     '''
-    def __init__(self, f_sel_filter, porosity_data, config):
+    def __init__(self, target_wells_list, porosity_data, config):
         # Currently no initialization is needed
-        super(TrialDataNumpy, self).__init__(f_sel_filter, porosity_data,
+        super(TrialDataNumpy, self).__init__(target_wells_list, porosity_data,
                                              config)
 
         # Concrete data storage. Data is stored by ring. Each ring is another

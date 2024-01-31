@@ -211,15 +211,9 @@ class Test_TrialDataAll(unittest.TestCase):
         config = self.__class__.config
         wells_list = config.train_wells_coords
 
-        f_sel_filter = WellsSingleRingDataFilter(wells_list)
+        td1 = test_cls(wells_list, porosity_dset, config)
 
-        td1 = test_cls(porosity_data=porosity_dset,
-                       f_sel_filter=f_sel_filter,
-                       config=config)
-
-        td2 = test_cls(porosity_data=porosity_dset,
-                       f_sel_filter=f_sel_filter,
-                       config=config)
+        td2 = test_cls(wells_list, porosity_dset, config)
 
         self.assertTrue(True)
 
@@ -233,12 +227,8 @@ class Test_TrialDataAll(unittest.TestCase):
         config = self.__class__.config
         wells_list = config.train_wells_coords
 
-        f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
-
         # Create TestData object
-        td1 = test_cls(porosity_data=porosity_dset,
-                       f_sel_filter=f_sel_filter,
-                       config=config)
+        td1 = test_cls(wells_list, porosity_dset, config)
 
         # Prepare first porosity
         td1.prepare_porosity(1)
@@ -262,12 +252,8 @@ class Test_TrialDataAll(unittest.TestCase):
         config = self.__class__.config
         wells_list = config.train_wells_coords
 
-        f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
-
         # Create TestData object
-        td1 = test_cls(porosity_data=porosity_dset,
-                       f_sel_filter=f_sel_filter,
-                       config=config)
+        td1 = test_cls(wells_list, porosity_dset, config)
 
         # Prepare first porosity
         td1.prepare_porosity(1)
@@ -296,12 +282,8 @@ class Test_TrialDataAll(unittest.TestCase):
         config = self.__class__.config
         wells_list = config.train_wells_coords
 
-        f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
-
         # Create TestData object
-        td1 = test_cls(porosity_data=porosity_dset,
-                       f_sel_filter=f_sel_filter,
-                       config=config)
+        td1 = test_cls(wells_list, porosity_dset, config)
 
         # Prepare all porosities up to iteration 3
         td1.prepare_porosity(3)
@@ -328,12 +310,8 @@ class Test_TrialDataAll(unittest.TestCase):
 
         disp = (0, 0, 0)
 
-        f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
-
         # Create TestData object
-        td1 = test_cls(porosity_data=porosity_dset,
-                       f_sel_filter=f_sel_filter,
-                       config=config)
+        td1 = test_cls(wells_list, porosity_dset, config)
 
         # Prepare first porosity for iteration 1 (i.e., only ring0 is
         # used for training)

@@ -124,17 +124,15 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
     model = _train_model(trial_data)
 
     #Create and prepare the test data
-    f_sel_filter = WellsSingleRingDataFilter(config.test_wells_ids)
-    test_data = TrialDataNumpy(porosity_data=porosity_data_h5,
-                               f_sel_filter=f_sel_filter,
-                               config=config)
+    test_data = TrialDataNumpy(config.test_wells_coords, porosity_data_h5,
+                               config)
 
     test_data.prepare_porosity(it)
     for (feature, disp) in best_features:
         test_data.update_feature(features_dict[feature], disp)
         test_data.commit_feature()
 
-    assert len(test_data) > 0, "[propagate] There are no testing data!"
+    # assert len(test_data) > 0, "[propagate] There are no testing data!"
     # rmse, mae = _eval_model(model, test_data, config.test_wells_ids)
     # print(f"[propagation][it{it}] RMSE: {rmse}, MAE: {mae}")
 

@@ -21,13 +21,8 @@ class TrialDataBase(ABC):
     Due to the use of padding, all coordinates are the padded coordinates. 
     Thus, it is expected of the wells_list to have padded coordinates as well.
     '''
-    def __init__(self,
-                 f_sel_filter: WellsSingleRingDataFilter,
-                 porosity_data: Dataset, config: Config):
-
-        # =================================================================================
-        # TODO: move f_sel_filter within, do WellsSingleRingDataFilter() here
-        # and add a target_wells_list parameter
+    def __init__(self, target_wells_list, porosity_data: Dataset,
+                 config: Config):
 
         self._config = config
 
@@ -64,11 +59,12 @@ class TrialDataBase(ABC):
         # were successfully added to the concrete object.
         self._rings_list = []
 
-        # This is the list of real wells coordinates
-        self._wells_list = config.train_wells_coords
+        # This is the list target wells. These can be training or test wells.
+        self._wells_list = target_wells_list
+        self._f_sel_filter = WellsSingleRingDataFilter(
+            list(range(len(target_wells_list))))
 
         self._porosity_data = porosity_data
-        self._f_sel_filter = f_sel_filter
 
         # Setup sampling, if required
         self._sampler = None

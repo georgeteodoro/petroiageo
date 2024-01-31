@@ -43,7 +43,7 @@ def run(config):
     feature_sel_only = config.get_param('feature_sel_only')
     num_its = config.alg['num_its']
     start_it = config.alg['it']
-    train_wells_ids = config.train_wells_ids
+    train_wells_coords = config.train_wells_coords
 
     # Generate the dict of all features
     all_features_dict = FeatureDataBase.load_all_features(
@@ -55,10 +55,7 @@ def run(config):
 
     # Prepare trial_data
     print(beg_str + f"Preparing trial_data.")
-    f_sel_filter = WellsSingleRingDataFilter(train_wells_ids)
-    trial_data = TrialDataNumpy(porosity_data=porosity_h5_dset,
-                                f_sel_filter=f_sel_filter,
-                                config=config)
+    trial_data = TrialDataNumpy(train_wells_coords, porosity_h5_dset, config)
 
     print(beg_str + f"Beginning iterations.")
 
