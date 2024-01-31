@@ -24,6 +24,11 @@ class TrialDataBase(ABC):
     def __init__(self, features_only: bool,
                  f_sel_filter: WellsSingleRingDataFilter,
                  porosity_data: Dataset, config: Config):
+
+        # =================================================================================
+        # TODO: move f_sel_filter within, do WellsSingleRingDataFilter() here
+        # and add a target_wells_list parameter
+
         self._config = config
 
         self._n_features = config.alg['max_num_features']
@@ -207,7 +212,7 @@ class TrialDataBase(ABC):
             points_dict = dict()
             for w in range(len(self._wells_list)):
                 points_dict[w] = []
-            
+
             # Iterate on all porosity chunks to fill trial_data
             for chunk_slice in self._porosity_data.iter_chunks():
                 t111 = time()
@@ -232,7 +237,7 @@ class TrialDataBase(ABC):
                 for w in range(len(self._wells_list)):
                     well_data = filt_data[filt_data['well_id'] == w]
                     if self._features_only:
-                        well_data = well_data[['x', 'y', 'z','phi']]
+                        well_data = well_data[['x', 'y', 'z', 'phi']]
                     else:
                         well_data = well_data[[
                             'x',
@@ -408,16 +413,22 @@ class TrialDataBase(ABC):
         y = []
         for r in self._rings_list:
             for w in wells_to_retrieve:
-                # Calculate how many points from a ring/well_id pair
-                # this chunk should have
-                points_per_well = self._well_size_hook(r, w)
-                points_per_rw = int(ceil(points_per_well / n_training_chunks))
+                # If chunking is used (i.e., not validation or test data)
+                if chunk_id > 0:
+                    # Calculate how many points from a ring/well_id pair
+                    # this chunk should have
+                    points_per_well = self._well_size_hook(r, w)
+                    points_per_rw = int(
+                        ceil(points_per_well / n_training_chunks))
 
-                # Generate a chunk slice for the ring/well pair
-                beg = chunk_id * points_per_rw
-                end = (chunk_id + 1) * points_per_rw
-                end = min(end, points_per_well)
-                cur_slice = chunk_slice = slice(int(beg), int(end))
+                    # Generate a chunk slice for the ring/well pair
+                    beg = chunk_id * points_per_rw
+                    end = (chunk_id + 1) * points_per_rw
+                    end = min(end, points_per_well)
+                    cur_slice = chunk_slice = slice(int(beg), int(end))
+                else:
+                    cur_slice = chunk_slice = slice(0,
+                                                    self._well_size_hook(r, w))
 
                 # Retrieve current chunk slice from the backend storage
                 new_points = self._get_values_hook(r, w, cur_slice)

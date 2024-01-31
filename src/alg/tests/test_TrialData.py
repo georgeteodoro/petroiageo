@@ -341,7 +341,8 @@ class Test_TrialDataAll(unittest.TestCase):
                        f_sel_filter=f_sel_filter,
                        config=config)
 
-        # Prepare first porosity
+        # Prepare first porosity for iteration 1 (i.e., only ring0 is
+        # used for training)
         td1.prepare_porosity(1)
 
         # =====================================================================
@@ -350,28 +351,33 @@ class Test_TrialDataAll(unittest.TestCase):
         f1 = FeatureDataH5(f1_filename, None)
         td1.update_feature(f1, disp)
 
-        cur_points = td1._trial_data_dict[0]
+        # Get points from ring 0
+        cur_points = td1._data[0]
 
-        for (well_id, well) in enumerate(wells_list):
+        for well_id in range(len(wells_list)):
             # Get data through public interface
             # chunk_id=0 to return all data
             train_X, train_y = td1.get_train_values(well_id, chunk_id=0)
             val_X, val_y = td1.get_val_values(well_id)
 
             # Generate expected values
-            expected_train_coordinates = cur_points[
-                cur_points['well_id'] != well_id][['x', 'y', 'z']]
-            expected_val_coordinates = cur_points[cur_points['well_id'] ==
-                                                  well_id][['x', 'y', 'z']]
+            expct_train_coordinates = []
+            for w in range(len(wells_list)):
+                if w != well_id:
+                    expct_train_coordinates.extend(
+                        cur_points[w][['x', 'y', 'z']])
+                else:
+                    expct_val_coordinates = cur_points[w][['x', 'y', 'z']]
+
             expected_train_X = [[
                 prod(c) + 1,
-            ] for c in expected_train_coordinates]
-            expected_train_y = [prod(c) for c in expected_train_coordinates]
+            ] for c in expct_train_coordinates]
+            expected_train_y = [prod(c) for c in expct_train_coordinates]
 
             expected_val_X = [[
                 prod(c) + 1,
-            ] for c in expected_val_coordinates]
-            expected_val_y = [prod(c) for c in expected_val_coordinates]
+            ] for c in expct_val_coordinates]
+            expected_val_y = [prod(c) for c in expct_val_coordinates]
 
             self.assertTrue((expected_train_X == train_X).all())
             self.assertTrue((expected_train_y == train_y).all())
@@ -391,19 +397,23 @@ class Test_TrialDataAll(unittest.TestCase):
             val_X, val_y = td1.get_val_values(well_id)
 
             # Generate expected values
-            expected_train_coordinates = cur_points[
-                cur_points['well_id'] != well_id][['x', 'y', 'z']]
-            expected_val_coordinates = cur_points[cur_points['well_id'] ==
-                                                  well_id][['x', 'y', 'z']]
+            expct_train_coordinates = []
+            for w in range(len(wells_list)):
+                if w != well_id:
+                    expct_train_coordinates.extend(
+                        cur_points[w][['x', 'y', 'z']])
+                else:
+                    expct_val_coordinates = cur_points[w][['x', 'y', 'z']]
+
             expected_train_X = [[
                 prod(c) + 10,
-            ] for c in expected_train_coordinates]
-            expected_train_y = [prod(c) for c in expected_train_coordinates]
+            ] for c in expct_train_coordinates]
+            expected_train_y = [prod(c) for c in expct_train_coordinates]
 
             expected_val_X = [[
                 prod(c) + 10,
-            ] for c in expected_val_coordinates]
-            expected_val_y = [prod(c) for c in expected_val_coordinates]
+            ] for c in expct_val_coordinates]
+            expected_val_y = [prod(c) for c in expct_val_coordinates]
 
             self.assertTrue((expected_train_X == train_X).all())
             self.assertTrue((expected_train_y == train_y).all())
@@ -423,21 +433,25 @@ class Test_TrialDataAll(unittest.TestCase):
             val_X, val_y = td1.get_val_values(well_id)
 
             # Generate expected values
-            expected_train_coordinates = cur_points[
-                cur_points['well_id'] != well_id][['x', 'y', 'z']]
-            expected_val_coordinates = cur_points[cur_points['well_id'] ==
-                                                  well_id][['x', 'y', 'z']]
+            expct_train_coordinates = []
+            for w in range(len(wells_list)):
+                if w != well_id:
+                    expct_train_coordinates.extend(
+                        cur_points[w][['x', 'y', 'z']])
+                else:
+                    expct_val_coordinates = cur_points[w][['x', 'y', 'z']]
+                    
             expected_train_X = [(
                 prod(c) + 10,
                 prod(c) + 1,
-            ) for c in expected_train_coordinates]
-            expected_train_y = [prod(c) for c in expected_train_coordinates]
+            ) for c in expct_train_coordinates]
+            expected_train_y = [prod(c) for c in expct_train_coordinates]
 
             expected_val_X = [(
                 prod(c) + 10,
                 prod(c) + 1,
-            ) for c in expected_val_coordinates]
-            expected_val_y = [prod(c) for c in expected_val_coordinates]
+            ) for c in expct_val_coordinates]
+            expected_val_y = [prod(c) for c in expct_val_coordinates]
 
             self.assertTrue((expected_train_X == train_X).all())
             self.assertTrue((expected_train_y == train_y).all())
