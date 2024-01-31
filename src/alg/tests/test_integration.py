@@ -264,7 +264,7 @@ class Test_All(unittest.TestCase):
 
         # Retrieve CLI arguments
         args_str = f'--config {self.__class__.config_path} --it 1 '\
-                   f'--nits 3 --nf 1 -w 1 --nsf 3 --ntf 1'
+                   f'--nits 3 --nf 1 -w 1 --nsf 3 --ntf 1 --no-abort'
 
         # Perform first
         process = Popen('mpirun -np 2 python3 -u main.py ' + args_str,
@@ -273,6 +273,11 @@ class Test_All(unittest.TestCase):
                         stdout=PIPE,
                         stderr=PIPE,
                         preexec_fn=os.setsid)
+
+        time.sleep(5)
+
+        # Send the signal to all the process groups
+        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
 
         output, error = process.communicate()
 
@@ -337,7 +342,7 @@ class Test_All(unittest.TestCase):
                         stderr=PIPE,
                         preexec_fn=os.setsid)
 
-        time.sleep(2)
+        time.sleep(5)
 
         # Send the signal to all the process groups
         os.killpg(os.getpgid(process.pid), signal.SIGTERM)

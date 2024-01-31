@@ -82,7 +82,8 @@ def _predict_data(model, features_dict, best_features, coords_to_update):
 
         # Zip the coords, from a tuple of 3 arrays, one for each coord,
         # to an array of (x,y,z) tuples.
-        feature_coords_np = np.array(list(zip(*feature_coords)), dtype=np.int64)
+        feature_coords_np = np.array(list(zip(*feature_coords)),
+                                     dtype=np.int64)
 
         # Filter features values for current chunk coords
         to_predict_np[:, f_id] = features_dict[feature].filter_coords(
@@ -124,8 +125,7 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
 
     #Create and prepare the test data
     f_sel_filter = WellsSingleRingDataFilter(config.test_wells_ids)
-    test_data = TrialDataNumpy(features_only=True,
-                               porosity_data=porosity_data_h5,
+    test_data = TrialDataNumpy(porosity_data=porosity_data_h5,
                                f_sel_filter=f_sel_filter,
                                config=config)
 
@@ -135,8 +135,8 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
         test_data.commit_feature()
 
     assert len(test_data) > 0, "[propagate] There are no testing data!"
-    rmse, mae = _eval_model(model, test_data, config.test_wells_ids)
-    print(f"[propagation][it{it}] RMSE: {rmse}, MAE: {mae}")
+    # rmse, mae = _eval_model(model, test_data, config.test_wells_ids)
+    # print(f"[propagation][it{it}] RMSE: {rmse}, MAE: {mae}")
 
     # Count of propagated points for checking if it was correct
     n_propagated_points = 0
@@ -202,8 +202,7 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
             n_propagated_points += len(coords_to_update[0])
 
             # Update the filtered values on the tmp nparray
-            cur_chunk_np['real'][
-                coords_to_update] = common.RealValues.propagated
+            cur_chunk_np['real'][coords_to_update] = common.RealValues.propagated
             cur_chunk_np['ring'][coords_to_update] = ring
             cur_chunk_np['well_id'][coords_to_update] = train_wells_ids[
                 wells_coords.index((w_x, w_y))]

@@ -56,8 +56,7 @@ def run(config):
     # Prepare trial_data
     print(beg_str + f"Preparing trial_data.")
     f_sel_filter = WellsSingleRingDataFilter(train_wells_ids)
-    trial_data = TrialDataNumpy(features_only=False,
-                                porosity_data=porosity_h5_dset,
+    trial_data = TrialDataNumpy(porosity_data=porosity_h5_dset,
                                 f_sel_filter=f_sel_filter,
                                 config=config)
 

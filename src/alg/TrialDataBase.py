@@ -21,7 +21,7 @@ class TrialDataBase(ABC):
     Due to the use of padding, all coordinates are the padded coordinates. 
     Thus, it is expected of the wells_list to have padded coordinates as well.
     '''
-    def __init__(self, features_only: bool,
+    def __init__(self,
                  f_sel_filter: WellsSingleRingDataFilter,
                  porosity_data: Dataset, config: Config):
 
@@ -34,22 +34,13 @@ class TrialDataBase(ABC):
         self._n_features = config.alg['max_num_features']
 
         # Set the datatype for points
-        self._features_only = features_only
-        if features_only:
-            self._base_data_type = [
-                ('x', np.int64),
-                ('y', np.int64),
-                ('z', np.int64),
-                ('phi', np.float64),
-            ]
-        else:
-            self._base_data_type = [
-                ('x', np.int64),
-                ('y', np.int64),
-                ('z', np.int64),
-                ('phi', np.float64),
-                ('well_id', np.int64),
-            ]
+        self._base_data_type = [
+            ('x', np.int64),
+            ('y', np.int64),
+            ('z', np.int64),
+            ('phi', np.float64),
+            ('well_id', np.int64),
+        ]
         self._cur_data_type = self._base_data_type + [
             (f'f{f}', np.float64) for f in range(self._n_features + 1)
         ]
@@ -65,7 +56,7 @@ class TrialDataBase(ABC):
         # Regardless of concrete backend implementation, trial_data is a
         # map of points per ring. Thus it is easier to sample, reshape and
         # add more points.
-        self._trial_data_dict = dict()
+        # self._trial_data_dict = dict()
 
         # List of all rings' IDs which are present on the concrete backend
         # data structures. This allows concrete subclasses not to worry about
@@ -236,16 +227,7 @@ class TrialDataBase(ABC):
                 # Extend points_dict by each well_id
                 for w in range(len(self._wells_list)):
                     well_data = filt_data[filt_data['well_id'] == w]
-                    if self._features_only:
-                        well_data = well_data[['x', 'y', 'z', 'phi']]
-                    else:
-                        well_data = well_data[[
-                            'x',
-                            'y',
-                            'z',
-                            'phi',
-                            'well_id',
-                        ]]
+                    well_data = well_data[['x', 'y', 'z', 'phi', 'well_id']]
 
                     points_dict[w].extend(well_data.tolist())
 
@@ -372,7 +354,8 @@ class TrialDataBase(ABC):
 
         # wells_to_retrieve is a list of indices
         wells_to_retrieve = list(range(len(self._wells_list)))
-        wells_to_retrieve.remove(well_id)
+        if well_id >= 0:
+            wells_to_retrieve.remove(well_id)
         return self._get_values(wells_to_retrieve, chunk_id)
 
     def get_val_values(self, well_id):
@@ -411,6 +394,7 @@ class TrialDataBase(ABC):
         # Fill training data, one ring at a time, one well at a time
         X = []
         y = []
+        print(f'===============wells_to_retrieve: {wells_to_retrieve}')
         for r in self._rings_list:
             for w in wells_to_retrieve:
                 # If chunking is used (i.e., not validation or test data)
@@ -456,9 +440,31 @@ class TrialDataBase(ABC):
         total_n_points = len(self)
 
         # Sample each ring individually
-        for ring_key, ring in self._trial_data_dict.items():
-            new_ring = self._sampler.sample(ring, total_n_points, it, ring_key)
-            self._trial_data_dict[ring_key] = new_ring
+        # TODO: Sampling is memory inefficient: all data from a given ring is
+        # first compiled and then sampled. Maybe later change the sampler to
+        # receive as input points from a ring/well pair.
+        for ring in self._rings_list:
+            print(f'================= ring{ring}')
+            # Compile all points from a ring
+            ring_points = []
+            for well_id in range(len(self._wells_list)):
+                ring_points.extend(self._get_values_hook(ring, well_id))
+
+            # Perform sampling
+            new_ring_points = self._sampler.sample(np.array(ring_points),
+                                                   total_n_points, it, ring)
+
+            # Split all points by well_id and add them to a dict
+            new_rings_dict = dict()
+            field_names = [i for i, j in self._base_data_type]
+            for well_id in range(len(self._wells_list)):
+                print(new_ring_points)
+                print(new_ring_points['well_id'])
+                new_rings_dict[well_id] = new_ring_points[
+                    new_ring_points['well_id'] == well_id][field_names]
+
+            # Update the internal concrete data with the sampled points
+            self._set_ring_hook(ring, new_rings_dict)
 
             # # Used for getting the sampled coords for
             # # sampling integration testing.

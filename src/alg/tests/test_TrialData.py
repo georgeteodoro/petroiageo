@@ -213,13 +213,11 @@ class Test_TrialDataAll(unittest.TestCase):
 
         f_sel_filter = WellsSingleRingDataFilter(wells_list)
 
-        td1 = test_cls(features_only=True,
-                       porosity_data=porosity_dset,
+        td1 = test_cls(porosity_data=porosity_dset,
                        f_sel_filter=f_sel_filter,
                        config=config)
 
-        td2 = test_cls(features_only=False,
-                       porosity_data=porosity_dset,
+        td2 = test_cls(porosity_data=porosity_dset,
                        f_sel_filter=f_sel_filter,
                        config=config)
 
@@ -238,8 +236,7 @@ class Test_TrialDataAll(unittest.TestCase):
         f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
 
         # Create TestData object
-        td1 = test_cls(features_only=False,
-                       porosity_data=porosity_dset,
+        td1 = test_cls(porosity_data=porosity_dset,
                        f_sel_filter=f_sel_filter,
                        config=config)
 
@@ -268,8 +265,7 @@ class Test_TrialDataAll(unittest.TestCase):
         f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
 
         # Create TestData object
-        td1 = test_cls(features_only=False,
-                       porosity_data=porosity_dset,
+        td1 = test_cls(porosity_data=porosity_dset,
                        f_sel_filter=f_sel_filter,
                        config=config)
 
@@ -303,8 +299,7 @@ class Test_TrialDataAll(unittest.TestCase):
         f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
 
         # Create TestData object
-        td1 = test_cls(features_only=False,
-                       porosity_data=porosity_dset,
+        td1 = test_cls(porosity_data=porosity_dset,
                        f_sel_filter=f_sel_filter,
                        config=config)
 
@@ -336,8 +331,7 @@ class Test_TrialDataAll(unittest.TestCase):
         f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
 
         # Create TestData object
-        td1 = test_cls(features_only=False,
-                       porosity_data=porosity_dset,
+        td1 = test_cls(porosity_data=porosity_dset,
                        f_sel_filter=f_sel_filter,
                        config=config)
 
@@ -378,6 +372,9 @@ class Test_TrialDataAll(unittest.TestCase):
                 prod(c) + 1,
             ] for c in expct_val_coordinates]
             expected_val_y = [prod(c) for c in expct_val_coordinates]
+
+            print(expected_train_X)
+            print(train_X)
 
             self.assertTrue((expected_train_X == train_X).all())
             self.assertTrue((expected_train_y == train_y).all())
@@ -440,7 +437,7 @@ class Test_TrialDataAll(unittest.TestCase):
                         cur_points[w][['x', 'y', 'z']])
                 else:
                     expct_val_coordinates = cur_points[w][['x', 'y', 'z']]
-                    
+
             expected_train_X = [(
                 prod(c) + 10,
                 prod(c) + 1,
@@ -486,7 +483,7 @@ class Test_TrialDataAll(unittest.TestCase):
     #     f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
 
     #     # Create TestData object
-    #     td1 = test_cls(features_only=False,
+    #     td1 = test_cls(
     #                    porosity_data=porosity_dset,
     #                    f_sel_filter=f_sel_filter,
     #                    config=config)
