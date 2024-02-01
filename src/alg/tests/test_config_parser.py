@@ -713,6 +713,37 @@ class TestYAMLConfig(TestCase):
                                expected_end_ring[test_idx])
             self.assertTupleEqual(ring_range, result_expected)
 
+    def test_can_get_coords_from_target_wells(self):
+        yaml_str = """
+        wells:
+          coords: {}
+          window: 0
+        """
+        wells_coords = [[4, 2], [7, 6], [2, 7]]
+        target_wells_ids = [0, 2]
+        config = config_parser.YAMLConfig(
+            config_str=yaml_str.format(wells_coords))
+
+        expected_wells_coords = [
+            tuple(wells_coords[well_id]) for well_id in target_wells_ids
+        ]
+        result_wells_coords = config.get_coords_of_target_wells_ids(
+            target_wells_ids)
+        self.assertListEqual(expected_wells_coords, result_wells_coords)
+
+    def test_raise_on_invalid_id_can_get_coords_from_target_wells(self):
+        yaml_str = """
+        wells:
+          coords: {}
+          window: 0
+        """
+        wells_coords = [[4, 2], [7, 6], [2, 7]]
+        target_wells_ids = [3]
+        config = config_parser.YAMLConfig(
+            config_str=yaml_str.format(wells_coords))
+        with self.assertRaises(IndexError):
+            _ = config.get_coords_of_target_wells_ids(target_wells_ids)
+
 
 if __name__ == "__main__":
     main()

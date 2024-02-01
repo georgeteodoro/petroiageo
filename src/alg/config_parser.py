@@ -602,6 +602,17 @@ class Config:
         end_ring = start_ring + self.get_param('alg')['layers_to_predict'] - 1
         return start_ring, end_ring
 
+    def get_coords_of_target_wells_ids(self, wells_ids: list) -> List[Tuple]:
+        """
+        Returns the coords of the target wells ids in wells_ids
+        """
+        coords = list()
+        for well_id in wells_ids:
+            curr_well_coords_dict = self.config["wells"]["coords"][well_id]
+            coords.append((curr_well_coords_dict['x'], curr_well_coords_dict['y']))
+
+        return coords
+
     @property
     def wells(self):
         return self.config["wells"]
