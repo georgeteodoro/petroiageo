@@ -362,7 +362,7 @@ def _config_filters(test_wells_ids: list, train_data_filter: DataFilter,
     be outside the n size sampling range.
     """
     if len(test_wells_ids) > 0:
-        train_data_filter.add_not_in_well_list_filter(test_wells_ids)
+        train_data_filter.add_not_in_well_id_list_filter(test_wells_ids)
 
     # Get config parameters and configure sampling
     if sampling_window > 0:

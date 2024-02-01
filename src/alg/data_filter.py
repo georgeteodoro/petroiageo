@@ -10,6 +10,7 @@ class DataFilter():
     """
     Custom data filter to be used on np.ndarray or h5py:Dataset data
     """
+
     def __init__(self):
         self._filter_list = list()
         self._min_ring = None
@@ -28,7 +29,7 @@ class DataFilter():
         self._min_ring = min_ring
         return self
 
-    def add_not_in_well_list_filter(self, well_ids_list: list) -> DataFilter:
+    def add_not_in_well_id_list_filter(self, well_ids_list: list) -> DataFilter:
         """
         Adds the not in well filter based on the well ids list.
         It will check that the data is not associated with the wells
@@ -41,18 +42,20 @@ class DataFilter():
         if len(well_ids_list) > 0:
 
             self._filter_list.append(
-                self._is_well_not_in_list_decorator(well_ids_list))
+                self._is_well_not_in_id_list_decorator(well_ids_list))
 
             self._not_in_wells.extend(well_ids_list)
 
         return self
 
-    def _is_well_not_in_list_decorator(self, well_ids_list: list) -> Callable:
+    def _is_well_not_in_id_list_decorator(self,
+                                          well_ids_list: list) -> Callable:
         """
         This is a decorator. It returns the _is_well_not_in_list
-        function that uses the well_list internally.
+        function that uses the well_ids_list internally.
         The returned function expects a ndarray as parameter.
         """
+
         def _is_well_not_in_list(d: np.ndarray) -> np.ndarray:
             ret = np.full((d.shape), True, dtype=bool)
             for x in well_ids_list:
@@ -61,7 +64,7 @@ class DataFilter():
 
         return _is_well_not_in_list
 
-    def add_in_well_list_filter(self, well_ids_list: list) -> DataFilter:
+    def add_in_well_id_list_filter(self, well_ids_list: list) -> DataFilter:
         """
         Adds the in well filter based on the well ids list.
         It will check that the data is associated with the wells
@@ -75,18 +78,19 @@ class DataFilter():
 
         if len(well_ids_list) > 0:
             self._filter_list.append(
-                self._is_well_in_list_decorator(well_ids_list))
+                self._is_well_in_id_list_decorator(well_ids_list))
 
             self._in_wells.extend(well_ids_list)
 
         return self
 
-    def _is_well_in_list_decorator(self, well_ids_list: list) -> Callable:
+    def _is_well_in_id_list_decorator(self, well_ids_list: list) -> Callable:
         """
         This is a decorator. It returns the _is_well_in_list
         function that uses the well_list internally.
         The returned function expects a ndarray as parameter.
         """
+
         def _is_well_in_list(d: np.ndarray) -> np.ndarray:
             ret = np.full((d.shape), False, dtype=bool)
             for x in well_ids_list:
@@ -176,6 +180,7 @@ class PredTrainDataFilter(DataFilter):
     add_not_in_well_list_filter method with the well_ids_list
     of the Test Data.
     """
+
     def __init__(self):
         super().__init__()
         self._filter_list.append(lambda d:
@@ -192,6 +197,7 @@ class FeatSelectionTrainDataFilter(DataFilter):
     add_not_in_well_list_filter method with the well_ids_list
     of the Test Data.
     """
+
     def __init__(self):
         super().__init__()
         self._filter_list.append(lambda d:
@@ -211,9 +217,10 @@ class WellsDataFilter(DataFilter):
     Had to name it WellsDataFilter instead of TestDataFilter because of 
     clashes with unittest's naming convention.
     """
+
     def __init__(self, well_ids_list: list):
         super().__init__()
-        self.add_in_well_list_filter(well_ids_list)
+        self.add_in_well_id_list_filter(well_ids_list)
 
 
 class WellsSingleRingDataFilter(WellsDataFilter):
@@ -225,6 +232,7 @@ class WellsSingleRingDataFilter(WellsDataFilter):
     are not expanded/propagated so they always have 'real' points.
     Also adds a ring filter, which is configurable after initialization.
     """
+
     def __init__(self, well_ids_list: list):
         super().__init__(well_ids_list)
 

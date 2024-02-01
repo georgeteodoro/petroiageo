@@ -7,7 +7,7 @@ import common
 from config_parser import Config
 from TrialDataBase import TrialDataBase
 from TrialDataNumpy import TrialDataNumpy
-from data_filter import WellsSingleRingDataFilter
+from data_filter import WellsDataFilter
 
 
 def _train_model(trial_data: TrialDataBase):

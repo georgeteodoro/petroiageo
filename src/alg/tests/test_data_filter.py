@@ -60,44 +60,44 @@ class TestDataFilter(TestCase):
 
     def test_add_in_well_list_filter(self):
         well_ids = [1, 2]
-        self.data_filter.add_in_well_list_filter(well_ids)
+        self.data_filter.add_in_well_id_list_filter(well_ids)
         result_size = len(self.data_filter.filter(self.dset[:]))
         self.assertTrue(result_size > 0 and result_size < self.dset.size)
 
     def test_add_in_well_empty_list_filter(self):
         well_ids = list()
-        self.data_filter.add_in_well_list_filter(well_ids)
+        self.data_filter.add_in_well_id_list_filter(well_ids)
         result_size = len(self.data_filter.filter(self.dset[:]))
         self.assertEqual(result_size, self.dset.size)
 
     def test_add_not_in_well_list_filter_unused_well(self):
         well_ids = [10000]
-        self.data_filter.add_not_in_well_list_filter(well_ids)
+        self.data_filter.add_not_in_well_id_list_filter(well_ids)
         result_size = len(self.data_filter.filter(self.dset[:]))
         self.assertEqual(result_size, self.dset.size)
 
     def test_add_not_in_well_list(self):
         well_ids = [1, 2]
-        self.data_filter.add_not_in_well_list_filter(well_ids)
+        self.data_filter.add_not_in_well_id_list_filter(well_ids)
         result_size = len(self.data_filter.filter(self.dset[:]))
         self.assertTrue(result_size > 0 and result_size < self.dset.size)
 
     def test_add_not_in_well_empty_list(self):
         well_ids = []
-        self.data_filter.add_not_in_well_list_filter(well_ids)
+        self.data_filter.add_not_in_well_id_list_filter(well_ids)
         result_size = len(self.data_filter.filter(self.dset[:]))
         self.assertEqual(result_size, self.dset.size)
 
     def test_can_count_data_given_filters(self):
         well_ids = [1, 2]
-        self.data_filter.add_not_in_well_list_filter(well_ids)
+        self.data_filter.add_not_in_well_id_list_filter(well_ids)
         self.data_filter.add_min_ring_filter(15)
         result_size = self.data_filter.filter_count_dset(self.dset)
         self.assertTrue(result_size > 0 and result_size < self.dset.size)
 
     def test_can_filter_chunks(self):
         well_ids = [1, 2]
-        self.data_filter.add_not_in_well_list_filter(well_ids)
+        self.data_filter.add_not_in_well_id_list_filter(well_ids)
         for chunk_slice in self.dset.iter_chunks():
             chunk_data = self.dset[chunk_slice]
             try:
@@ -132,12 +132,12 @@ class TestDataFilterWithoutData(TestCase):
     def test_invalid_in_well_list(self):
         invalid_well_ids = 1
         with self.assertRaises(TypeError):
-            self.data_filter.add_in_well_list_filter(invalid_well_ids)
+            self.data_filter.add_in_well_id_list_filter(invalid_well_ids)
 
     def test_invalid_not_in_well_list(self):
         invalid_well_ids = 1
         with self.assertRaises(TypeError):
-            self.data_filter.add_not_in_well_list_filter(invalid_well_ids)
+            self.data_filter.add_not_in_well_id_list_filter(invalid_well_ids)
 
     def test_raise_on_invalid_dset(self):
         invalid_dset = np.arange(10)
@@ -151,19 +151,19 @@ class TestDataFilterWithoutData(TestCase):
 
     def test_can_get_in_wells(self):
         in_wells_list = [1, 3, 6]
-        self.data_filter.add_in_well_list_filter(in_wells_list)
+        self.data_filter.add_in_well_id_list_filter(in_wells_list)
         self.assertListEqual(in_wells_list, self.data_filter.in_wells)
 
     def test_can_get_not_in_wells(self):
         not_in_wells_list = [1, 3, 6]
-        self.data_filter.add_not_in_well_list_filter(not_in_wells_list)
+        self.data_filter.add_not_in_well_id_list_filter(not_in_wells_list)
         self.assertListEqual(not_in_wells_list, self.data_filter.not_in_wells)
 
     def test_can_get_n_filters(self):
         not_in_wells_list = [1, 3, 6]
-        self.data_filter.add_not_in_well_list_filter(not_in_wells_list)
+        self.data_filter.add_not_in_well_id_list_filter(not_in_wells_list)
         in_wells_list = [0, 2, 4, 5]
-        self.data_filter.add_in_well_list_filter(in_wells_list)
+        self.data_filter.add_in_well_id_list_filter(in_wells_list)
         self.assertTrue(self.data_filter.n_filters == 2)
 
     def test_can_get_str(self):
@@ -251,7 +251,7 @@ class TestFeatSelTrainDataFilterWithoutData(TestCase):
         self.assertEqual(self.data_filter.n_filters, 1)
 
     def test_n_filters_after_add(self):
-        self.data_filter.add_not_in_well_list_filter([1, 2])
+        self.data_filter.add_not_in_well_id_list_filter([1, 2])
         self.assertEqual(self.data_filter.n_filters, 2)
 
 
@@ -263,7 +263,7 @@ class TestPredTrainDataFilterWithoutData(TestCase):
         self.assertEqual(self.data_filter.n_filters, 1)
 
     def test_n_filters_after_add(self):
-        self.data_filter.add_not_in_well_list_filter([1, 2])
+        self.data_filter.add_not_in_well_id_list_filter([1, 2])
         self.assertEqual(self.data_filter.n_filters, 2)
 
 
@@ -336,7 +336,7 @@ class TestWellsDataFilterWithoutData(TestCase):
         self.assertEqual(self.data_filter.n_filters, 1)
 
     def test_n_filters_after_add(self):
-        self.data_filter.add_not_in_well_list_filter([1, 2])
+        self.data_filter.add_not_in_well_id_list_filter([1, 2])
         self.assertEqual(self.data_filter.n_filters, 2)
 
 
@@ -408,7 +408,7 @@ class TestIt0DataFilters(TestCase):
     def test_can_filter_feat_sel_train_data(self):
         data_filter = FeatSelectionTrainDataFilter()
         data_filter.add_min_ring_filter(0)
-        data_filter.add_not_in_well_list_filter([0])
+        data_filter.add_not_in_well_id_list_filter([0])
         result_size = data_filter.filter_count_dset(self.dset)
         self.assertTrue(result_size > 0 and result_size < self.dset.size)
 

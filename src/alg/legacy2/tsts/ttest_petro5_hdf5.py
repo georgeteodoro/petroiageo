@@ -80,7 +80,7 @@ class TestSamplingWithData(TestCase):
         train_wells = [1, 3, 7]
         test_wells = [2, 4, 5]
         train_data_filter = DataFilter()
-        train_data_filter.add_in_well_list_filter(train_wells)
+        train_data_filter.add_in_well_id_list_filter(train_wells)
         test_data_filter = WellsDataFilter(test_wells)
         n_train_per_chunk, n_test_per_chunk = _count_train_test_points_per_chunk(
             self.dset, train_data_filter, test_data_filter)

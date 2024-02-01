@@ -19,68 +19,95 @@ class Test_All(unittest.TestCase):
     '''
 
     # The area setup with well coords is:
+    # See the well marked as test. Currently, it is the id 2
+    # As the well with id 2 is the test well, it does not expands
     # All coords are with padding
     #                       y
     #   . . . . . . . . . 1
     #   . . . . . . . . . 2
-    #   . . . . 0 . . . . 3
+    #   . . . . 1 . . . . 3
     #   . . . . . . . . . 4
     #   . . . . . . . . . 5
     #   . . . . . . . . . 6
-    #   . . . . . . . 1 . 7
-    #   . . 2 . . . . . . 8
+    #   . . . . . . . 2 . 7
+    #   . . 0 . . . . . . 8
     # x 1 2 3 4 5 6 7 8 9
 
     # it 1 :
     #                       y
     #   . . . . . . . . . 1
-    #   . . . 0 0 0 . . . 2
-    #   . . . 0 x 0 . . . 3
-    #   . . . 0 0 0 . . . 4
+    #   . . . 1 1 1 . . . 2
+    #   . . . 1 x 1 . . . 3
+    #   . . . 1 1 1 . . . 4
     #   . . . . . . . . . 5
-    #   . . . . . . 1 1 1 6
-    #   . 2 2 2 . . 1 x 1 7
-    #   . 2 x 2 . . 1 1 1 8
+    #   . . . . . . . . . 6
+    #   . 0 0 0 . . . x . 7
+    #   . 0 x 0 . . . . . 8
     # x 1 2 3 4 5 6 7 8 9
 
     # it 2:
     #                       y
-    #   . . 0 0 0 0 0 . . 1
-    #   . . 0 0 0 0 0 . . 2
-    #   . . 0 0 x 0 0 . . 3
-    #   . . 0 0 0 0 0 . . 4
-    #   . . 0 0 0 0 0 1 1 5
-    #   2 2 2 2 2 1 1 1 1 6
-    #   2 2 2 2 2 1 1 x 1 7
-    #   2 2 x 2 2 1 1 1 1 8
+    #   . . 1 1 1 1 1 . . 1
+    #   . . 1 1 1 1 1 . . 2
+    #   . . 1 1 x 1 1 . . 3
+    #   . . 1 1 1 1 1 . . 4
+    #   . . 1 1 1 1 1 . . 5
+    #   0 0 0 0 0 . . . . 6
+    #   0 0 0 0 0 . . x . 7
+    #   0 0 x 0 0 . . . . 8
     # x 1 2 3 4 5 6 7 8 9
 
     # it 3:
     #                       y
-    #   . 0 0 0 0 0 0 0 . 1
-    #   . 0 0 0 0 0 0 0 . 2
-    #   . 0 0 0 x 0 0 0 . 3
-    #   . 0 0 0 0 0 0 0 1 4
-    #   2 0 0 0 0 0 0 1 1 5
-    #   2 2 2 2 2 1 1 1 1 6
-    #   2 2 2 2 2 1 1 x 1 7
-    #   2 2 x 2 2 1 1 1 1 8
+    #   . 1 1 1 1 1 1 1 . 1
+    #   . 1 1 1 1 1 1 1 . 2
+    #   . 1 1 1 x 1 1 1 . 3
+    #   . 1 1 1 1 1 1 1 . 4
+    #   0 0 1 1 1 1 1 1 . 5
+    #   0 0 0 0 0 0 1 1 . 6
+    #   0 0 0 0 0 0 . x . 7
+    #   0 0 x 0 0 0 . . . 8
     # x 1 2 3 4 5 6 7 8 9
 
-    # it 4(with padded coords):
+    # it 4:
     #                       y
-    #   0 0 0 0 0 0 0 0 0 1
-    #   0 0 0 0 0 0 0 0 0 2
-    #   0 0 0 0 x 0 0 0 0 3
-    #   0 0 0 0 0 0 0 0 1 4
-    #   2 0 0 0 0 0 0 1 1 5
-    #   2 2 2 2 2 1 1 1 1 6
-    #   2 2 2 2 2 1 1 x 1 7
-    #   2 2 x 2 2 1 1 1 1 8
+    #   1 1 1 1 1 1 1 1 1 1
+    #   1 1 1 1 1 1 1 1 1 2
+    #   1 1 1 1 x 1 1 1 1 3
+    #   0 1 1 1 1 1 1 1 1 4
+    #   0 0 1 1 1 1 1 1 1 5
+    #   0 0 0 0 0 0 1 1 1 6
+    #   0 0 0 0 0 0 0 x . 7
+    #   0 0 x 0 0 0 0 . . 8
+    # x 1 2 3 4 5 6 7 8 9
+    
+    # it 5:
+    #                       y
+    #   1 1 1 1 1 1 1 1 1 1
+    #   1 1 1 1 1 1 1 1 1 2
+    #   1 1 1 1 x 1 1 1 1 3
+    #   0 1 1 1 1 1 1 1 1 4
+    #   0 0 1 1 1 1 1 1 1 5
+    #   0 0 0 0 0 0 1 1 1 6
+    #   0 0 0 0 0 0 0 x 1 7
+    #   0 0 x 0 0 0 0 0 . 8
+    # x 1 2 3 4 5 6 7 8 9
+
+    # it 6(with padded coords):
+    #                       y
+    #   1 1 1 1 1 1 1 1 1 1
+    #   1 1 1 1 1 1 1 1 1 2
+    #   1 1 1 1 x 1 1 1 1 3
+    #   0 1 1 1 1 1 1 1 1 4
+    #   0 0 1 1 1 1 1 1 1 5
+    #   0 0 0 0 0 0 1 1 1 6
+    #   0 0 0 0 0 0 0 x 1 7
+    #   0 0 x 0 0 0 0 0 0 8
     # x 1 2 3 4 5 6 7 8 9
 
     hypercube_shape = (9, 8, 5)
     wells_list = [(2, 7), (4, 2), (7, 6)]
+    test_well_id = 2
 
     # Add padding for window=1
     window = 1
@@ -150,9 +177,9 @@ class Test_All(unittest.TestCase):
 
         # Validate propagation (see diagrams on the TestClass beginning)
         depth = self.__class__.hypercube_shape[2]
-        assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 9
+        assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 6
         assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 9
-        assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 6
+        assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 1
         porosity_h5_file.close()
 
     def test_sintetic_all_iterations_from_scratch(self):
@@ -388,14 +415,12 @@ class Test_All(unittest.TestCase):
         # Generate config file
         yaml_str = f"""
         wells:
-          coords:
-          - [4,2]
-          - [7,6]
-          - [2,7]
+          coords: {[list(well_coords) for well_coords in cls.wells_list]}
           window: 1
         features_folder: "{cls.features_path}" 
-        starting_porosity_cube_path: "{cls.porosity_h5_path}" 
+        starting_porosity_cube_path: "{cls.porosity_h5_path}"
         alg:
+          test_only_wells: [{cls.test_well_id}]
           parallel:
             n_training_chunks: 1
         """
