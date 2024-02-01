@@ -8,6 +8,7 @@ class TrialDataNumpy(TrialDataBase):
     In-memory implementation of TrialDataBase using numpy as the
     concrete type for data storage.
     '''
+
     def __init__(self, target_wells_list, porosity_data, config):
         # Currently no initialization is needed
         super(TrialDataNumpy, self).__init__(target_wells_list, porosity_data,
@@ -37,7 +38,7 @@ class TrialDataNumpy(TrialDataBase):
         storage. Adds data organized by ring and by well_id.
         '''
 
-        for w in range(len(self._wells_list)):
+        for w in self._wells_id_list:
             well_data = data[w]
             self._data[ring][w] = np.zeros((len(well_data)),
                                            dtype=self._cur_data_type)
@@ -63,14 +64,20 @@ class TrialDataNumpy(TrialDataBase):
         The chunk_slice parameter allows the concrete class to better 
         implement its retrieval of data. If not used, all data is returned.
         '''
+        target_ring_data = self._data.get(r, dict())
+        if len(target_ring_data) == 0:
+            return np.empty(0)
 
+        target_well_data = target_ring_data.get(w, np.empty(0))
         if not chunk_slice:
-            return self._data[r][w]
+            return target_well_data
+        elif target_well_data.size > 0:
+            return target_well_data[chunk_slice]
         else:
-            return self._data[r][w][chunk_slice]
+            return target_well_data
 
     def _well_size_hook(self, r, w):
         '''
         Returns the number of points for a ring/well pair.
         '''
-        return len(self._data[r][w])
+        return len(self._data[r].get(w, list()))

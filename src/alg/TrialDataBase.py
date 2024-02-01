@@ -21,7 +21,8 @@ class TrialDataBase(ABC):
     Due to the use of padding, all coordinates are the padded coordinates. 
     Thus, it is expected of the wells_list to have padded coordinates as well.
     '''
-    def __init__(self, target_wells_list, porosity_data: Dataset,
+
+    def __init__(self, target_wells_ids_list, porosity_data: Dataset,
                  config: Config):
 
         self._config = config
@@ -60,9 +61,8 @@ class TrialDataBase(ABC):
         self._rings_list = []
 
         # This is the list target wells. These can be training or test wells.
-        self._wells_list = target_wells_list
-        self._f_sel_filter = WellsSingleRingDataFilter(
-            list(range(len(target_wells_list))))
+        self._wells_id_list = target_wells_ids_list
+        self._f_sel_filter = WellsSingleRingDataFilter(target_wells_ids_list)
 
         self._porosity_data = porosity_data
 
@@ -196,16 +196,16 @@ class TrialDataBase(ABC):
             self._new_ring_hook(it)
 
             # Prepare a dict of points per well_id
-            points_dict = dict()
-            for w in range(len(self._wells_list)):
-                points_dict[w] = []
+            points_dict = {id: list() for id in self._wells_id_list}
+            target_wells_coords = self._config.get_coords_of_target_wells_ids(
+                self._wells_id_list)
 
             # Iterate on all porosity chunks to fill trial_data
             for chunk_slice in self._porosity_data.iter_chunks():
                 t111 = time()
 
                 # Skip this chunk if there are not any points withing it
-                if not common.has_points_within_chunk(self._wells_list, it,
+                if not common.has_points_within_chunk(target_wells_coords, it,
                                                       chunk_slice):
                     continue
 
@@ -221,7 +221,7 @@ class TrialDataBase(ABC):
                 t114 = time()
 
                 # Extend points_dict by each well_id
-                for w in range(len(self._wells_list)):
+                for w in self._wells_id_list:
                     well_data = filt_data[filt_data['well_id'] == w]
                     well_data = well_data[['x', 'y', 'z', 'phi', 'well_id']]
 
@@ -301,11 +301,10 @@ class TrialDataBase(ABC):
 
         # Fill data, one ring at a time
         for r in self._rings_list:
-            for w in range(len(self._wells_list)):
+            for w in self._wells_id_list:
 
                 # Retrieve the coordinate list of the
-                cur_coords = self._get_values_hook(r, w)[['x', 'y',
-                                                          'z']].copy()
+                cur_coords = self._get_values_hook(r, w)[['x', 'y', 'z']].copy()
                 # Applies the displacement at the whole array,
                 # allowing improved data access times.
                 # No padding resolution is required since
@@ -349,7 +348,7 @@ class TrialDataBase(ABC):
         '''
 
         # wells_to_retrieve is a list of indices
-        wells_to_retrieve = list(range(len(self._wells_list)))
+        wells_to_retrieve = list(self._wells_id_list)
         if well_id >= 0:
             wells_to_retrieve.remove(well_id)
         return self._get_values(wells_to_retrieve, chunk_id)
@@ -360,11 +359,11 @@ class TrialDataBase(ABC):
         return self._get_values(wells_to_retrieve, -1)
 
     def get_num_wells(self):
-        return len(self._wells_list)
+        return len(self._wells_id_list)
 
     def _ring_size(self, ring):
         length = 0
-        for w in range(len(self._wells_list)):
+        for w in self._wells_id_list:
             length += self._well_size_hook(ring, w)
         return length
 
@@ -413,9 +412,14 @@ class TrialDataBase(ABC):
                 # Retrieve current chunk slice from the backend storage
                 new_points = self._get_values_hook(r, w, cur_slice)
 
-                # Split X from y
-                new_points_X = new_points[self._current_features]
-                new_points_y = new_points['phi']
+                # Assuming that new_points is a np.ndarray
+                if new_points.size > 0:
+                    # Split X from y
+                    new_points_X = new_points[self._current_features]
+                    new_points_y = new_points['phi']
+                else:
+                    new_points_X = list()
+                    new_points_y = list()
 
                 # Add them to output arrays
                 X.extend(new_points_X)
@@ -443,7 +447,7 @@ class TrialDataBase(ABC):
             print(f'================= ring{ring}')
             # Compile all points from a ring
             ring_points = []
-            for well_id in range(len(self._wells_list)):
+            for well_id in self._wells_id_list:
                 ring_points.extend(self._get_values_hook(ring, well_id))
 
             # Perform sampling
@@ -453,7 +457,7 @@ class TrialDataBase(ABC):
             # Split all points by well_id and add them to a dict
             new_rings_dict = dict()
             field_names = [i for i, j in self._base_data_type]
-            for well_id in range(len(self._wells_list)):
+            for well_id in self._wells_id_list:
                 print(new_ring_points)
                 print(new_ring_points['well_id'])
                 new_rings_dict[well_id] = new_ring_points[

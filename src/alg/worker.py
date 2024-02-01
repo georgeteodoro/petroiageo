@@ -43,11 +43,10 @@ def run(config):
     feature_sel_only = config.get_param('feature_sel_only')
     num_its = config.alg['num_its']
     start_it = config.alg['it']
-    train_wells_coords = config.train_wells_coords
+    train_wells_ids = config.train_wells_ids
 
     # Generate the dict of all features
-    all_features_dict = FeatureDataBase.load_all_features(
-        config, FeatureDataH5)
+    all_features_dict = FeatureDataBase.load_all_features(config, FeatureDataH5)
 
     # Load porosity data
     print(beg_str + f"Loading porosity.")
@@ -55,7 +54,7 @@ def run(config):
 
     # Prepare trial_data
     print(beg_str + f"Preparing trial_data.")
-    trial_data = TrialDataNumpy(train_wells_coords, porosity_h5_dset, config)
+    trial_data = TrialDataNumpy(train_wells_ids, porosity_h5_dset, config)
 
     print(beg_str + f"Beginning iterations.")
 
@@ -135,8 +134,7 @@ def run(config):
 
                 # Add the last column to trial_data
                 (last_feature, disp) = best_features[-1]
-                trial_data.update_feature(all_features_dict[last_feature],
-                                          disp)
+                trial_data.update_feature(all_features_dict[last_feature], disp)
 
                 break
 
