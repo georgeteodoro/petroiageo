@@ -106,6 +106,7 @@ class Test_TrialDataAll(unittest.TestCase):
           - [2,3]
           window: {cls.window}
         alg:
+          max_num_features: 2
           parallel:
             n_training_chunks: 1
         """
@@ -209,7 +210,7 @@ class Test_TrialDataAll(unittest.TestCase):
         # Load class data
         porosity_dset = self.__class__.porosity_h5_dset
         config = self.__class__.config
-        wells_list = config.train_wells_coords
+        wells_list = config.train_wells_ids
 
         td1 = test_cls(wells_list, porosity_dset, config)
 
@@ -225,7 +226,7 @@ class Test_TrialDataAll(unittest.TestCase):
         # Load class data
         porosity_dset = self.__class__.porosity_h5_dset
         config = self.__class__.config
-        wells_list = config.train_wells_coords
+        wells_list = config.train_wells_ids
 
         # Create TestData object
         td1 = test_cls(wells_list, porosity_dset, config)
@@ -250,7 +251,7 @@ class Test_TrialDataAll(unittest.TestCase):
         # Load class data
         porosity_dset = self.__class__.porosity_h5_dset
         config = self.__class__.config
-        wells_list = config.train_wells_coords
+        wells_list = config.train_wells_ids
 
         # Create TestData object
         td1 = test_cls(wells_list, porosity_dset, config)
@@ -280,7 +281,7 @@ class Test_TrialDataAll(unittest.TestCase):
         # Load class data
         porosity_dset = self.__class__.porosity_h5_dset
         config = self.__class__.config
-        wells_list = config.train_wells_coords
+        wells_list = config.train_wells_ids
 
         # Create TestData object
         td1 = test_cls(wells_list, porosity_dset, config)
@@ -306,7 +307,7 @@ class Test_TrialDataAll(unittest.TestCase):
         f1_filename = self.__class__.FEATURE_FILENAME1
         f2_filename = self.__class__.FEATURE_FILENAME2
         config = self.__class__.config
-        wells_list = config.train_wells_coords
+        wells_list = config.train_wells_ids
 
         disp = (0, 0, 0)
 
@@ -326,7 +327,7 @@ class Test_TrialDataAll(unittest.TestCase):
         # Get points from ring 0
         cur_points = td1._data[0]
 
-        for well_id in range(len(wells_list)):
+        for well_id in wells_list:
             # Get data through public interface
             # chunk_id=0 to return all data
             train_X, train_y = td1.get_train_values(well_id, chunk_id=0)
@@ -334,7 +335,7 @@ class Test_TrialDataAll(unittest.TestCase):
 
             # Generate expected values
             expct_train_coordinates = []
-            for w in range(len(wells_list)):
+            for w in wells_list:
                 if w != well_id:
                     expct_train_coordinates.extend(
                         cur_points[w][['x', 'y', 'z']])
@@ -350,9 +351,6 @@ class Test_TrialDataAll(unittest.TestCase):
                 prod(c) + 1,
             ] for c in expct_val_coordinates]
             expected_val_y = [prod(c) for c in expct_val_coordinates]
-
-            print(expected_train_X)
-            print(train_X)
 
             self.assertTrue((expected_train_X == train_X).all())
             self.assertTrue((expected_train_y == train_y).all())
@@ -365,7 +363,7 @@ class Test_TrialDataAll(unittest.TestCase):
         f2 = FeatureDataH5(f2_filename, None)
         td1.update_feature(f2, disp)
 
-        for (well_id, well) in enumerate(wells_list):
+        for well_id in wells_list:
             # Get data through public interface
             # chunk_id=0 to return all data
             train_X, train_y = td1.get_train_values(well_id, chunk_id=0)
@@ -373,7 +371,7 @@ class Test_TrialDataAll(unittest.TestCase):
 
             # Generate expected values
             expct_train_coordinates = []
-            for w in range(len(wells_list)):
+            for w in wells_list:
                 if w != well_id:
                     expct_train_coordinates.extend(
                         cur_points[w][['x', 'y', 'z']])
@@ -389,8 +387,9 @@ class Test_TrialDataAll(unittest.TestCase):
                 prod(c) + 10,
             ] for c in expct_val_coordinates]
             expected_val_y = [prod(c) for c in expct_val_coordinates]
-
-            self.assertTrue((expected_train_X == train_X).all())
+            
+            self.assertTrue(np.array_equal(expected_train_X, train_X))
+            # self.assertTrue((expected_train_X == train_X).all())
             self.assertTrue((expected_train_y == train_y).all())
             self.assertTrue((expected_val_X == val_X).all())
             self.assertTrue((expected_val_y == val_y).all())
@@ -398,10 +397,13 @@ class Test_TrialDataAll(unittest.TestCase):
         # =====================================================================
         # === Test committing feature2 and adding feature1 to col2
         # =====================================================================
+        # # First, commit the feature2
         td1.commit_feature()
+        # Now add the feature1
         td1.update_feature(f1, disp)
+        td1.commit_feature()
 
-        for (well_id, well) in enumerate(wells_list):
+        for well_id in wells_list:
             # Get data through public interface
             # chunk_id=0 to return all data
             train_X, train_y = td1.get_train_values(well_id, chunk_id=0)
@@ -409,7 +411,7 @@ class Test_TrialDataAll(unittest.TestCase):
 
             # Generate expected values
             expct_train_coordinates = []
-            for w in range(len(wells_list)):
+            for w in wells_list:
                 if w != well_id:
                     expct_train_coordinates.extend(
                         cur_points[w][['x', 'y', 'z']])
@@ -428,7 +430,8 @@ class Test_TrialDataAll(unittest.TestCase):
             ) for c in expct_val_coordinates]
             expected_val_y = [prod(c) for c in expct_val_coordinates]
 
-            self.assertTrue((expected_train_X == train_X).all())
+            self.assertTrue(np.array_equal(expected_train_X, train_X))
+            # self.assertTrue((expected_train_X == train_X).all())
             self.assertTrue((expected_train_y == train_y).all())
             self.assertTrue((expected_val_X == val_X).all())
             self.assertTrue((expected_val_y == val_y).all())
