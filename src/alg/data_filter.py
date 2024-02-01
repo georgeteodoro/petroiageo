@@ -99,6 +99,43 @@ class DataFilter():
 
         return _is_well_in_list
 
+    def add_in_well_coords_list_filter(self,
+                                       well_coords_list: list) -> DataFilter:
+        """
+        Adds the in well filter based on the well coords list.
+        It will check that the data is associated with the wells
+        in well_coords_list
+        """
+        if not isinstance(well_coords_list, list) and not isinstance(
+                well_coords_list, tuple):
+            raise TypeError(f"well_ids_list should be a list or a tuple, but "\
+                            f"got {well_coords_list} "\
+                            f"of type {type(well_coords_list)}")
+
+        if len(well_coords_list) > 0:
+            self._filter_list.append(
+                self._is_well_in_coords_list_decorator(well_coords_list))
+
+            self._in_wells.extend(well_coords_list)
+
+        return self
+
+    def _is_well_in_coords_list_decorator(self,
+                                          well_ids_list: list) -> Callable:
+        """
+        This is a decorator. It returns the _is_well_in_list
+        function that uses the well_list internally.
+        The returned function expects a ndarray as parameter.
+        """
+
+        def _is_well_in_list(d: np.ndarray) -> np.ndarray:
+            ret = np.full((d.shape), False, dtype=bool)
+            for x in well_ids_list:
+                ret += d['well_id'] == x
+            return ret
+
+        return _is_well_in_list
+
     def satisfies(self, data: np.ndarray) -> np.ndarray:
         """
         Returns a boolean array indicating the data that
