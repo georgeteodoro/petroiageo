@@ -7,7 +7,6 @@ import pytest
 
 import os
 import signal
-import subprocess
 import time
 
 import common
@@ -20,7 +19,7 @@ class Test_All(unittest.TestCase):
 
     # The area setup with well coords is:
     # See the well marked as test. Currently, it is the id 2
-    # As the well with id 2 is the test well, it does not expands
+    # As the well with id 2 is the test well, it doesn't expands
     # All coords are with padding
     #                       y
     #   . . . . . . . . . 1
@@ -77,23 +76,11 @@ class Test_All(unittest.TestCase):
     #   0 1 1 1 1 1 1 1 1 4
     #   0 0 1 1 1 1 1 1 1 5
     #   0 0 0 0 0 0 1 1 1 6
-    #   0 0 0 0 0 0 0 x . 7
+    #   0 0 0 0 0 0 0 x 1 7
     #   0 0 x 0 0 0 0 . . 8
     # x 1 2 3 4 5 6 7 8 9
-    
-    # it 5:
-    #                       y
-    #   1 1 1 1 1 1 1 1 1 1
-    #   1 1 1 1 1 1 1 1 1 2
-    #   1 1 1 1 x 1 1 1 1 3
-    #   0 1 1 1 1 1 1 1 1 4
-    #   0 0 1 1 1 1 1 1 1 5
-    #   0 0 0 0 0 0 1 1 1 6
-    #   0 0 0 0 0 0 0 x 1 7
-    #   0 0 x 0 0 0 0 0 . 8
-    # x 1 2 3 4 5 6 7 8 9
 
-    # it 6(with padded coords):
+    # it 5(with padded coords):
     #                       y
     #   1 1 1 1 1 1 1 1 1 1
     #   1 1 1 1 1 1 1 1 1 2
@@ -102,12 +89,13 @@ class Test_All(unittest.TestCase):
     #   0 0 1 1 1 1 1 1 1 5
     #   0 0 0 0 0 0 1 1 1 6
     #   0 0 0 0 0 0 0 x 1 7
-    #   0 0 x 0 0 0 0 0 0 8
+    #   0 0 x 0 0 0 0 0 1 8
     # x 1 2 3 4 5 6 7 8 9
 
     hypercube_shape = (9, 8, 5)
     wells_list = [(2, 7), (4, 2), (7, 6)]
     test_well_id = 2
+    test_well_coord = wells_list[test_well_id]
 
     # Add padding for window=1
     window = 1
@@ -158,7 +146,7 @@ class Test_All(unittest.TestCase):
                         stderr=PIPE,
                         preexec_fn=os.setsid)
 
-        time.sleep(2)
+        time.sleep(10)
 
         # Send the signal to all the process groups
         os.killpg(os.getpgid(process.pid), signal.SIGTERM)
@@ -184,7 +172,7 @@ class Test_All(unittest.TestCase):
 
     def test_sintetic_all_iterations_from_scratch(self):
         '''
-        Performs 3 complete iterations from scratch.
+        Performs 5 complete iterations from scratch.
         1 feature file is used, with a window of 1 (thus 27 trials).
         All 27 trials are performed.
         3 features are selected.
@@ -192,7 +180,7 @@ class Test_All(unittest.TestCase):
 
         # Retrieve CLI arguments
         args_str = f'--config {self.__class__.config_path} --it 1 '\
-                   f'--nits 4 --nf 1 -w 1 --nsf 3 --no-abort'
+                   f'--nits 5 --nf 1 -w 1 --nsf 3 --no-abort'
 
         process = Popen('mpirun -np 2 python3 -u main.py ' + args_str,
                         shell=True,
@@ -201,7 +189,7 @@ class Test_All(unittest.TestCase):
                         stderr=PIPE,
                         preexec_fn=os.setsid)
 
-        time.sleep(5)
+        time.sleep(20)
 
         # Send the signal to all the process groups
         os.killpg(os.getpgid(process.pid), signal.SIGTERM)
@@ -217,9 +205,10 @@ class Test_All(unittest.TestCase):
         porosity_dset = porosity_h5_file[common.POROSITY_DSET_NAME]
 
         depth = self.__class__.hypercube_shape[2]
-        assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 41
-        assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 15
-        assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 16
+
+        assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 24
+        assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 47
+        assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 1
         porosity_h5_file.close()
 
     def test_sintetic_2_iterations_continued(self):
@@ -254,9 +243,9 @@ class Test_All(unittest.TestCase):
 
         depth = self.__class__.hypercube_shape[2]
 
-        assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 25
-        assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 14
-        assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 15
+        assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 15
+        assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 25
+        assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 1
         porosity_h5_file.close()
 
         process = Popen('mpirun -np 2 python3 -u main.py ' + args2_str,
@@ -275,9 +264,9 @@ class Test_All(unittest.TestCase):
         porosity_dset = porosity_h5_file[common.POROSITY_DSET_NAME]
 
         depth = self.__class__.hypercube_shape[2]
-        assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 41
-        assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 15
-        assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 16
+        assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 23
+        assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 46
+        assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 1
         porosity_h5_file.close()
 
     def test_sintetic_sampling(self):
@@ -317,14 +306,12 @@ class Test_All(unittest.TestCase):
         # Generate custom config file with sampling
         yaml_str = f"""
         wells:
-          coords:
-          - [4,2]
-          - [7,6]
-          - [2,7]
+          coords: {[list(well_coords) for well_coords in self.__class__.wells_list]}
           window: 1
         features_folder: "{self.__class__.features_path}" 
         starting_porosity_cube_path: "{self.__class__.porosity_h5_path}" 
         alg:
+          test_only_wells: [{self.__class__.test_well_id}]
           parallel:
             n_training_chunks: 1
           sampling:
@@ -341,10 +328,21 @@ class Test_All(unittest.TestCase):
         # Coords chosen for training when sampling with the above configs.
         # These are hand-filled, and should the shape or rng seed change,
         # these will also be different.
-        sampled_coords = [(1, 5, 1), (1, 6, 1), (2, 7, 1), (3, 8, 4), (4, 1, 2),
-                          (5, 3, 2), (5, 7, 2), (6, 2, 1), (7, 4, 1),
-                          (7, 6, 2), (7, 8, 1), (6, 6, 2), (8, 2, 4),
-                          (8, 7, 1), (9, 4, 2)]
+        sampled_coords = [(3, 8, 4), (5, 3, 2), (4, 7, 1), (4, 4, 1), (4, 2, 2),
+                          (4, 6, 4), (1, 8, 3), (3, 1, 4), (3, 1, 2), (5, 5, 1),
+                          (6, 7, 1), (2, 3, 5), (2, 1, 3)]
+
+        # Adds the test well coords as well so they also have porosity
+        # for the eval model phase
+        # This supposes that there is only one test well. Should change to
+        # add the other's coords if there are more
+        test_well_x = self.__class__.test_well_coord[0]
+        test_well_y = self.__class__.test_well_coord[1]
+        depth = self.__class__.hypercube_shape[2]
+        # We must add 1 to the coords because of the padding used
+        test_data_coords = [(test_well_x + 1, test_well_y + 1, curr_depth + 1)
+                            for curr_depth in range(depth)]
+        sampled_coords.extend(test_data_coords)
 
         # Update porosity file. All points which should not be visited since
         # they were not sampled are set phi=NaN. This breaks the execution if
@@ -388,9 +386,9 @@ class Test_All(unittest.TestCase):
 
         # Validate propagation (see diagrams on the TestClass beginning)
         depth = self.__class__.hypercube_shape[2]
-        assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 41
-        assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 15
-        assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 16
+        assert sum(sum(sum(porosity_dset['well_id'] == 0))) == depth * 23
+        assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 46
+        assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 1
         porosity_h5_file.close()
 
     # =========================================================================
