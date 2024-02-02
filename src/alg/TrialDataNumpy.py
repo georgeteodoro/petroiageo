@@ -9,10 +9,14 @@ class TrialDataNumpy(TrialDataBase):
     concrete type for data storage.
     '''
 
-    def __init__(self, target_wells_list, porosity_data, config):
+    def __init__(self,
+                 target_wells_list,
+                 porosity_data,
+                 config,
+                 should_consider_sampling: bool = True):
         # Currently no initialization is needed
         super(TrialDataNumpy, self).__init__(target_wells_list, porosity_data,
-                                             config)
+                                             config, should_consider_sampling)
 
         # Concrete data storage. Data is stored by ring. Each ring is another
         # dict by well_id

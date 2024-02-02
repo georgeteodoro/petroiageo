@@ -23,7 +23,7 @@ class TrialDataBase(ABC):
     '''
 
     def __init__(self, target_wells_ids_list, porosity_data: Dataset,
-                 config: Config):
+                 config: Config, should_consider_sampling:bool = True):
 
         self._config = config
 
@@ -69,7 +69,7 @@ class TrialDataBase(ABC):
         # Setup sampling, if required
         self._sampler = None
         self._rings_to_keep = -1
-        if config.alg.get('sampling') != None:
+        if config.alg.get('sampling') != None and should_consider_sampling:
             if config.alg['sampling'].get('sampler') != None and config.alg[
                     'sampling']['sampler'] == 'v1':
                 self._sampler = ChunkSamplerV1(config)
