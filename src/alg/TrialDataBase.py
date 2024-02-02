@@ -276,7 +276,8 @@ class TrialDataBase(ABC):
             "[TrialDataBase][commit_feature] Committing beyond last feature."
 
         self._current_feature_id += 1
-        self._current_features.append(f'f{self._current_feature_id}')
+        if self._current_feature_id < self._n_features:
+            self._current_features.append(f'f{self._current_feature_id}')
 
     def update_feature(self, feature, disp):
         '''
@@ -458,8 +459,6 @@ class TrialDataBase(ABC):
             new_rings_dict = dict()
             field_names = [i for i, j in self._base_data_type]
             for well_id in self._wells_id_list:
-                print(new_ring_points)
-                print(new_ring_points['well_id'])
                 new_rings_dict[well_id] = new_ring_points[
                     new_ring_points['well_id'] == well_id][field_names]
 
