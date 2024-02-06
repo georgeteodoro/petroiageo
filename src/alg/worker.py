@@ -1,5 +1,7 @@
-from mpi4py import MPI
+from datetime import datetime 
 import h5py
+from mpi4py import MPI
+from timeit import default_timer as timer
 
 from mpi_module import MPI_TAGS
 from feature_sel import test_new_feature
@@ -59,6 +61,7 @@ def run(config):
     print(beg_str + f"Beginning iterations.")
 
     for it in range(start_it, num_its + start_it):
+        start_time = timer()
         best_features = ['x', 'y', 'z']
 
         # Update test data: set trial_data size and update coordinates,
@@ -158,4 +161,10 @@ def run(config):
             print(beg_str +
                   f"[it{it}] Propagated {n_propagated_points} points.")
 
+            end_time = timer()
+            print(beg_str + f"[it{it}] Iteration total time(s): {end_time-start_time}")
+
     porosity_h5_f.close()
+    if rank_should_propagate:
+        print(beg_str + f' End Time(hh:mm:ss.ms): {datetime.now()}')
+
