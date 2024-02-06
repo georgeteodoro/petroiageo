@@ -55,7 +55,8 @@ def run(config):
     aborted_workers = 0
 
     cur_best_feature = None
-    cur_best_metric = float('inf')
+    cur_best_rmse = float('inf')
+    cur_best_mae = float('inf')
 
     for it in range(start_it, num_its + start_it):
         print(beg_str + f" Running [it{it}]")
@@ -82,8 +83,9 @@ def run(config):
             if msg_tag == MPI_TAGS.WORKER_JOB_RESULT.value:
                 # Update best feature, if new best was found
                 for (feature, rmse, mae) in msg:
-                    if rmse < cur_best_metric:
-                        cur_best_metric = rmse
+                    if rmse < cur_best_rmse:
+                        cur_best_rmse = rmse
+                        cur_best_mae = mae
                         cur_best_feature = feature
             elif msg_tag == MPI_TAGS.WORKER_FIRST_JOB.value:
                 # Currently nothing to do on this case
@@ -151,19 +153,35 @@ def run(config):
                         all_features.remove(cur_best_feature)
                         remaining_features = all_features.copy()
                         if max_feats_to_test > 0:
-                            remaining_features = remaining_features[:max_feats_to_test]
+                            remaining_features = remaining_features[:
+                                                                    max_feats_to_test]
 
                         # Reset temporary variables
                         done_workers = 0
                         cur_best_feature = None
-                        cur_best_metric = float('inf')
+                        cur_best_rmse = float('inf')
+                        cur_best_mae = float('inf')
                     else:
                         # End the current it
+                        best_feat_string = ""
+                        for feat_name, feat_disp in best_features:
+                            best_feat_string += feat_name + " " + " ".join(
+                                [str(disp) for disp in feat_disp]) + ","
+                        best_feat_string = best_feat_string.rstrip(",")
+                        best_feat_string = "["+best_feat_string+"]"
+                        print(
+                            beg_str +
+                            f"[it{it}] Iteration best features: {best_feat_string}"
+                        )
+                        print(
+                            beg_str +
+                            f"[it{it}] Best features errors: MAE {cur_best_mae}"
+                            + f" RMSE {cur_best_rmse}")
 
                         # Send best features set to all workers
                         for worker_rank in range(workers_size):
-                            print(beg_str + f"[it{it}] Sending final "
-                                  f"best features {best_features}")
+                            print(beg_str +
+                                  f"[it{it}] Sending final best features to worker{worker_rank}")
                             comm.send(best_features,
                                       dest=worker_rank,
                                       tag=MPI_TAGS.MANAGER_BEST_FEATURES.value)
