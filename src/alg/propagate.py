@@ -134,7 +134,7 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
 
     # assert len(test_data) > 0, "[propagate] There are no testing data!"
     rmse, mae = _eval_model(model, test_data, config.test_wells_ids)
-    print(f"[propagation][it{it}] RMSE: {rmse}, MAE: {mae}")
+    print(f"[propagation][it{it}] Test errors: RMSE: {rmse} MAE: {mae}")
 
     # Count of propagated points for checking if it was correct
     n_propagated_points = 0
