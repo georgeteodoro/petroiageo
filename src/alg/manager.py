@@ -168,20 +168,20 @@ def run(config):
                             best_feat_string += feat_name + " " + " ".join(
                                 [str(disp) for disp in feat_disp]) + ","
                         best_feat_string = best_feat_string.rstrip(",")
-                        best_feat_string = "["+best_feat_string+"]"
+                        best_feat_string = "[" + best_feat_string + "]"
                         print(
                             beg_str +
                             f"[it{it}] Iteration best features: {best_feat_string}"
+                            +
+                            f" with errors: MAE {cur_best_mae} RMSE {cur_best_rmse}"
                         )
-                        print(
-                            beg_str +
-                            f"[it{it}] Best features errors: MAE {cur_best_mae}"
-                            + f" RMSE {cur_best_rmse}")
 
                         # Send best features set to all workers
                         for worker_rank in range(workers_size):
-                            print(beg_str +
-                                  f"[it{it}] Sending final best features to worker{worker_rank}")
+                            print(
+                                beg_str +
+                                f"[it{it}] Sending final best features to worker{worker_rank}"
+                            )
                             comm.send(best_features,
                                       dest=worker_rank,
                                       tag=MPI_TAGS.MANAGER_BEST_FEATURES.value)
