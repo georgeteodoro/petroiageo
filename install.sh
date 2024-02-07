@@ -52,9 +52,9 @@ cd ..
 
 CURR_STAGE="H5PY"
 echo "[LOG] INSTALLING PYTHON DEPENDENCIES FOR $CURR_STAGE"
-pip3 uninstall mpi4py
-pip3 install mpi4py==3.1.3
-pip3 install wheel Cython==3.0.0a11 numpy
+python3 -m pip uninstall mpi4py
+python3 -m pip install mpi4py==3.1.3
+python3 -m pip install wheel Cython==3.0.0a11 numpy
 echo "[LOG] PYTHON DEPENDENCIES FOR $CURR_STAGE INSTALL COMPLETE"
 
 # If the h5py exists, we supose its already installed
