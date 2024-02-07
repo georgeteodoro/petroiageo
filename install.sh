@@ -20,11 +20,11 @@ CURR_STAGE="HDF5"
 #If the hdf5 dir exists, we supose that we 
 #can skip the hdf5 clone and install
 if [ -e "hdf5" ]; then
-    echo "[LOG] FOUND hdf5 DIR AT $(pwd) ! Skipping hdf5 clone!"
+    echo "[LOG] FOUND hdf5 DIR AT $(pwd)"' ! Skipping hdf5 clone!'
 else
-    echo "[LOG] COULD NOT FIND hdf5 DIR at $(pwd) ! CLONING..."
+    echo "[LOG] COULD NOT FIND hdf5 DIR at $(pwd)"' ! CLONING...'
     git clone https://github.com/HDFGroup/hdf5.git
-    echo "[LOG] CLONING COMPLETE!"
+    echo '[LOG] CLONING COMPLETE!'
 fi
 
 cd "hdf5"
@@ -59,11 +59,11 @@ echo "[LOG] PYTHON DEPENDENCIES FOR $CURR_STAGE INSTALL COMPLETE"
 
 # If the h5py exists, we supose its already installed
 if [ -e "h5py" ]; then
-    echo "[LOG] FOUND h5py DIR AT $(pwd) ! Skipping h5py clone and install!"
+    echo "[LOG] FOUND h5py DIR AT $(pwd) "'! Skipping h5py clone and install!'
 else
-    echo "[LOG] COULD NOT FIND h5py DIR at $(pwd) ! CLONING..."
+    echo "[LOG] COULD NOT FIND h5py DIR at $(pwd)"' ! CLONING...'
     git clone https://github.com/h5py/h5py.git
-    echo "[LOG] CLONING COMPLETE!"
+    echo '[LOG] CLONING COMPLETE!'
 fi
 
 cd "h5py"
@@ -74,7 +74,7 @@ git checkout 3.7.0
 export CC=mpicc; export HDF5_MPI="ON"; export HDF5_DIR="$HDF5_PATH/build"; python3 -m pip install --no-build-isolation .
 exit_if_failure $? "$(!!)"
 
-echo "[LOG] $CURR_STAGE INSTALL COMPLETE!"
+echo "[LOG] $CURR_STAGE INSTALL COMPLETE"'!'
 
 #PYTHON REQUIREMENTS
 
@@ -86,6 +86,6 @@ python3 -m pip install -r requirements
 
 exit_if_failure $? "$(!!)"
 
-echo "[LOG] $CURR_STAGE INSTALL COMPLETE!"
+echo "[LOG] $CURR_STAGE INSTALL COMPLETE"'!'
 
-echo "[LOG] FULL INSTALL COMPLETE!"
+echo '[LOG] FULL INSTALL COMPLETE!'
