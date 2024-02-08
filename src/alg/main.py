@@ -199,6 +199,7 @@ def main(args_str=None):
 
     if rank == manager_rank:
         manager.run(config)
+        print(f"[manager][configs]{config}")
     else:
         worker.run(config)
 
