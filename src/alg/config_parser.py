@@ -742,6 +742,9 @@ class Config:
         ])
         return features_paths
 
+    def __str__(self):
+        return str(self.config)
+
 
 class YAMLConfig(Config):
     def __init__(self,
