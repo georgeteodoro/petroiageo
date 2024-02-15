@@ -5,12 +5,15 @@ wells x and y coordinates and a z range.
 import numpy as np
 import pathlib
 
+# Every seismic point z wise has a resolution of
+SEISMIC_FILE_RESOLUTION = 5
+
 if __name__ == "__main__":
     # Como o arquivo sísmico tem medições à cada 5 metros e a profundidade
     # alvo da porosidade é entre 5651 e 5810 metros, tenho que dividir por 5
     # esse range para chegar no range correto no arquivo sísmico.
     # O z_end não vai ser incluso
-    z_start, z_end = 5651 // 5, 5810 // 5
+    z_start, z_end = 5651 // SEISMIC_FILE_RESOLUTION, 5810 // SEISMIC_FILE_RESOLUTION
     
     # Where to read the seismic values from
     origin_npy_file_path = pathlib.Path(
@@ -42,7 +45,7 @@ if __name__ == "__main__":
         n_values = filtered_np.shape[-1]
         xs = np.array([x]*n_values).reshape(n_values, 1)
         ys = np.array([y]*filtered_np.shape[-1]).reshape(n_values, 1)
-        zs = np.arange(z_start, z_end, 1).reshape(n_values, 1)
+        zs = np.arange(z_start, z_end, 1).reshape(n_values, 1) * SEISMIC_FILE_RESOLUTION
         # Goes from (shape, ) to (shape, 1)
         filtered_np = filtered_np.reshape(n_values, 1)
         curr_np = np.concatenate([xs, ys, zs, filtered_np], axis=1)
