@@ -42,7 +42,7 @@ if __name__ == "__main__":
         n_values = filtered_np.shape[-1]
         xs = np.array([x]*n_values).reshape(n_values, 1)
         ys = np.array([y]*filtered_np.shape[-1]).reshape(n_values, 1)
-        zs = np.arange(0, filtered_np.shape[-1], 1).reshape(n_values, 1)
+        zs = np.arange(z_start, z_end, 1).reshape(n_values, 1)
         # Goes from (shape, ) to (shape, 1)
         filtered_np = filtered_np.reshape(n_values, 1)
         curr_np = np.concatenate([xs, ys, zs, filtered_np], axis=1)
