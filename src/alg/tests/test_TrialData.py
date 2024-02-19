@@ -45,7 +45,7 @@ class Test_TrialDataAll(unittest.TestCase):
     #   x 0 1 1 1 3
     #   0 0 x 1 1 4
     #   0 1 1 1 1 5
-    #   . 1 1 1 1 6
+    #   1 1 1 1 1 6
     #   . . . . . 7
     # x 1 2 3 4 5
 
@@ -436,57 +436,70 @@ class Test_TrialDataAll(unittest.TestCase):
             self.assertTrue((expected_val_X == val_X).all())
             self.assertTrue((expected_val_y == val_y).all())
 
-    # @data(concrete_classes)
-    # def test_chunking(self, test_cls):
-    #     '''
-    #     Test the use of chunking for TrialData.
-    #     It is checked whether all points are returned and if the memory
-    #     usage is reduced.
-    #     '''
+    @data(concrete_classes)
+    def test_chunking(self, test_cls):
+        '''
+        Test the use of chunking for TrialData.
+        It is checked whether all points are returned and if the memory
+        usage is reduced.
+        '''
 
-    #     # Load class data
-    #     porosity_dset = self.__class__.porosity_h5_dset
-    #     wells_list = config.train_wells_coords
+        # Load class data
+        porosity_dset = self.__class__.porosity_h5_dset
+        config = self.__class__.config
+        wells_list = config.train_wells_ids
 
-    #     # Create custom config object
-    #     yaml_str = f"""
-    #     wells:
-    #       coords:
-    #       - [0,2]
-    #       - [2,3]
-    #       window: {cls.window}
-    #     alg:
-    #       parallel:
-    #         n_training_chunks:
-    #     """
-    #     cls.config = YAMLConfig(config_str=yaml_str)
+        # Number of chunks tested. This parameter can be changed
+        n_chunks_test = 6
 
-    #     f_sel_filter = WellsSingleRingDataFilter(list(range(len(wells_list))))
+        # Create custom config object
+        yaml_str = f"""
+        wells:
+          coords:
+          - [0,2]
+          - [2,3]
+          window: {self.__class__.window}
+        alg:
+          parallel:
+            n_training_chunks: {n_chunks_test}
+        """
+        chunking_config = YAMLConfig(config_str=yaml_str)
 
-    #     # Create TestData object
-    #     td1 = test_cls(
-    #                    porosity_data=porosity_dset,
-    #                    f_sel_filter=f_sel_filter,
-    #                    config=config)
+        # Create TestData object
+        td1 = test_cls(wells_list, porosity_dset, chunking_config)
 
-    #     # Prepare all porosities up to iteration 3
-    #     td1.prepare_porosity(3)
+        # Prepare all porosities up to iteration 3
+        td1.prepare_porosity(3)
 
-    #     #
+        # Regardless of chunking, all validation values should be returned
+        # Number of points that should be present after iteration 2 were
+        # counted manually, as per the diagrams in the beginning of this class.
+        depth = self.__class__.hypercube_test_shape[2]
+        val_X, _ = td1.get_val_values(0)
+        self.assertTrue(len(val_X) == depth * 11)
 
-    #     # Only one ring exists
-    #     self.assertEqual(len(td1._trial_data_dict), 3)
+        # Same, for well 1
+        val_X, _ = td1.get_val_values(1)
+        self.assertTrue(len(val_X) == depth * 17)
 
-    #     # Check if all points were added
-    #     # Total of 2 full depths, minus 2 non-added points
-    #     # = 2*5-2 = 8
-    #     self.assertEqual(len(td1._trial_data_dict[0]),
-    #                      self.__class__.hypercube_test_shape[2] * 2)
-    #     self.assertEqual(len(td1._trial_data_dict[1]),
-    #                      self.__class__.hypercube_test_shape[2] * 11)
-    #     self.assertEqual(len(td1._trial_data_dict[2]),
-    #                      self.__class__.hypercube_test_shape[2] * 15)
+        # The sum of len's of all chunks should match the 
+        # total number of points.
+        total_points = 0
+        for chunk in range(n_chunks_test):
+            train_X, _ = td1.get_train_values(0, chunk_id=chunk)
+            total_points += len(train_X)
+        self.assertTrue(total_points == depth * 17)
 
+        # Same, for well 1
+        total_points = 0
+        for chunk in range(n_chunks_test):
+            train_X, _ = td1.get_train_values(1, chunk_id=chunk)
+            total_points += len(train_X)
+        self.assertTrue(total_points == depth * 11)
+
+
+
+        
 
 if __name__ == '__main__':
     unittest.main()

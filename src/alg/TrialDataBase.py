@@ -394,7 +394,7 @@ class TrialDataBase(ABC):
         for r in self._rings_list:
             for w in wells_to_retrieve:
                 # If chunking is used (i.e., not validation or test data)
-                if chunk_id > 0:
+                if chunk_id >= 0:
                     # Calculate how many points from a ring/well_id pair
                     # this chunk should have
                     points_per_well = self._well_size_hook(r, w)
