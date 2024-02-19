@@ -163,6 +163,9 @@ def run(config):
 
             end_time = timer()
             print(beg_str + f"[it{it}] Iteration total time(s): {end_time-start_time}")
+        elif rank_should_propagate:
+            print(f"[it{it}] SKIPPING PROPAGATION (feature selection only)")
+            break
 
     porosity_h5_f.close()
     if rank_should_propagate:
