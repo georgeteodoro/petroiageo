@@ -390,7 +390,6 @@ class TrialDataBase(ABC):
         # Fill training data, one ring at a time, one well at a time
         X = []
         y = []
-        print(f'===============wells_to_retrieve: {wells_to_retrieve}')
         for r in self._rings_list:
             for w in wells_to_retrieve:
                 # If chunking is used (i.e., not validation or test data)
