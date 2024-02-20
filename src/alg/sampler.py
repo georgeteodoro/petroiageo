@@ -56,18 +56,21 @@ class ChunkSamplerV1(AbstractChunkSampler):
         rng: An optional Random Number generator. If None, one will
             be created based on the config seed and used to sample
         """
-
+        print("[ChunkSamplerV1][sample] Starting sampling")
         if data is None or data.size == 0:
+            print("[ChunkSamplerV1][sample] Data is None or empty! Returning")
             return None
 
         if not self._should_sample(n_trial_points_total,
                                    self._sampling_max_points):
+            print("[ChunkSamplerV1][sample] Should not sample! Returning")
             return data
 
         assert curr_ring < curr_final_layer, f"Start iteration "\
             f"{curr_final_layer} should be after latest iteration {curr_ring}."
         # At this point, we for sure need to sample data
 
+        print("[ChunkSamplerV1][sample] Sampling!")
         if rng is None:
             rng = np.random.default_rng(seed=self._rng_seed)
 
