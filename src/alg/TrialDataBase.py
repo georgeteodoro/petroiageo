@@ -173,7 +173,7 @@ class TrialDataBase(ABC):
         if self._sampler != None:
 
             if self._rings_to_keep > 0:
-                it_init = prep_it - self._rings_to_keep
+                it_init = max(prep_it - self._rings_to_keep, 0)
             else:
                 it_init = 0
 
