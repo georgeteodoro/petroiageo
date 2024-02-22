@@ -36,7 +36,7 @@ class FeatureSchedFIFO(FeatureSchedBase):
 
         return len(self._remaining_features) > 0
 
-    def get_feature(self):
+    def get_feature(self, rank):
         '''
         Returns a feature to be tried. This feature is returned based on 
         the concrete scheduling algorithm. Every feature can only be 
@@ -46,6 +46,14 @@ class FeatureSchedFIFO(FeatureSchedBase):
 
         # The list encapsulation is to later enable batching, if necessary.
         return [self._remaining_features.pop()]
+
+    def tried_feature(self, feature, rank):
+        '''
+        The FIFO implementation does not require the knowledge of whether a
+        rank is finished with a feature.
+        '''
+        pass
+
 
     def commit_feature(self, feature):
         '''

@@ -36,12 +36,23 @@ class FeatureSchedBase(ABC):
         raise Exception("[FeatureSchedBase][has_features] "
                         "Abstract method not implemented.")
 
-    def get_feature(self):
+    def get_feature(self, rank):
         '''
         Returns a feature to be tried. This feature is returned based on 
         the concrete scheduling algorithm. Every feature can only be 
         returned once. Afterwards, it can only be returned after 
         self.begin_iteration().
+        '''
+
+        raise Exception("[FeatureSchedBase][get_feature] "
+                        "Abstract method not implemented.")
+
+    def tried_feature(self, feature, rank):
+        '''
+        Marks the end of a trial. This represents that the rank which
+        performed a trial with 'feature' has finished. This means that
+        if the feature data was to be evicted from memory, there 
+        wouldn't be any issues.
         '''
 
         raise Exception("[FeatureSchedBase][get_feature] "

@@ -14,11 +14,12 @@ beg_str = "[manager]"
 
 # Manager only works on feature selection. It does not performs propagation
 
+
 def run(config):
     # Get config parameters
     n_features_to_select = config.alg['max_num_features']
     max_feats_to_test = config.get_param('max_tested_features')
-    feat_loc_scheduler = config.get_param('feat_loc_scheduler')
+    feat_loc_scheduler = config.get_param('fsched_loc')
     num_its = config.alg['num_its']
     start_it = config.alg['it']
 
@@ -59,6 +60,7 @@ def run(config):
             if msg_tag == MPI_TAGS.WORKER_JOB_RESULT.value:
                 # Update best feature, if new best was found
                 for (feature, rmse, mae) in msg:
+                    feature_scheduler.tried_feature(feature, worker_rank)
                     if rmse < cur_best_rmse:
                         cur_best_rmse = rmse
                         cur_best_mae = mae
@@ -97,7 +99,7 @@ def run(config):
 
             if feature_scheduler.has_features():
                 # There are still features to test on this f_it
-                new_feature = feature_scheduler.get_feature()
+                new_feature = feature_scheduler.get_feature(worker_rank)
                 comm.send(new_feature,
                           dest=worker_rank,
                           tag=MPI_TAGS.MANAGER_NEW_JOB.value)
