@@ -2,6 +2,7 @@ from mpi4py import MPI
 
 from mpi_module import MPI_TAGS
 import FeatureDataBase
+from FeatureSchedFIFO import FeatureSchedFIFO
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -13,38 +14,11 @@ beg_str = "[manager]"
 
 # Manager only works on feature selection. It does not performs propagation
 
-
-def _send_new_features(remaining_features, worker_rank, config):
-    '''
-    Send a batch of features to a worker.
-    Currently this is somewhat empty, but later scheduling code will
-    be put here.
-    New features are returned just for debugging purposes.
-    '''
-
-    # Number of features to be sent to the worker.
-    # Currently only a single feature is sent.
-    # In the future a batch of features regarding data locality
-    # will be sent.
-    batch_features_size = 1
-    # batch_features_size = config.get()
-
-    # Pop a batch of features
-    new_features = [
-        remaining_features.pop() for i in range(batch_features_size)
-    ]
-
-    comm.send(new_features,
-              dest=worker_rank,
-              tag=MPI_TAGS.MANAGER_NEW_JOB.value)
-
-    return new_features
-
-
 def run(config):
     # Get config parameters
     n_features_to_select = config.alg['max_num_features']
-    max_feats_to_test = config.get_param("max_tested_features")
+    max_feats_to_test = config.get_param('max_tested_features')
+    feat_loc_scheduler = config.get_param('feat_loc_scheduler')
     num_its = config.alg['num_its']
     start_it = config.alg['it']
 
@@ -54,23 +28,25 @@ def run(config):
     # abort.
     aborted_workers = 0
 
+    if feat_loc_scheduler:
+        feature_scheduler = FeatureSchedFLoc(config)
+    else:
+        feature_scheduler = FeatureSchedFIFO(config)
+
     cur_best_feature = None
     cur_best_rmse = float('inf')
     cur_best_mae = float('inf')
 
     for it in range(start_it, num_its + start_it):
-        print(beg_str + f" Running [it{it}]")
+        print(f"{beg_str} Running [it{it}]")
 
-        # Prepare features lists
-        all_features = FeatureDataBase.gen_features_list(config)
-        remaining_features = all_features.copy()
-        if max_feats_to_test > 0:
-            remaining_features = remaining_features[:max_feats_to_test]
+        # Initialize best features and local features to be scheduled
         best_features = []
+        feature_scheduler.begin_iteration()
 
         # Count of how many workers are just waiting the end of
         # the current f_it. It only changes when there are no more
-        # remaining_features.
+        # features to be scheduled.
         done_workers = 0
 
         # Main loop on which a whole iteration is run
@@ -92,23 +68,21 @@ def run(config):
                 pass
 
             elif msg_tag == MPI_TAGS.WORKER_ABORT_PROP.value:
-                print(beg_str + f"[it{it}] Received abort from {worker_rank}.")
+                print(f"{beg_str}[it{it}] Received abort from {worker_rank}.")
 
                 # After first abort signal, there is nothing else to do
                 # with the current worker.
                 aborted_workers += 1
                 if aborted_workers == workers_size:
                     return
-
                 continue
-
             else:
                 raise Exception(f"{beg_str}[it{it}] Bad MPI tag: {msg_tag}")
 
             # If one worker has aborted, there is nothing else to do besides
             # sending an abort signal to the current worker and wait for
             if aborted_workers > 0:
-                print(beg_str + f"[it{it}] Sending abort to w{worker_rank}.")
+                print(f"{beg_str}[it{it}] Sending abort to w{worker_rank}.")
 
                 aborted_workers += 1
                 comm.send(None,
@@ -121,11 +95,13 @@ def run(config):
 
                 continue
 
-            if len(remaining_features) > 0:
+            if feature_scheduler.has_features():
                 # There are still features to test on this f_it
-                new_features = _send_new_features(remaining_features,
-                                                  worker_rank, config)
-                print(beg_str + f"[it{it}] Sending features {new_features}")
+                new_feature = feature_scheduler.get_feature()
+                comm.send(new_feature,
+                          dest=worker_rank,
+                          tag=MPI_TAGS.MANAGER_NEW_JOB.value)
+                print(f"{beg_str}[it{it}] Sending feature {new_feature}")
             else:
                 done_workers += 1
                 # If all workers are done, then this is the end of a f_it
@@ -140,9 +116,8 @@ def run(config):
 
                         # Send best current feature to all workers
                         for worker_rank in range(workers_size):
-                            print(
-                                beg_str +
-                                f"[it{it}] New best feature {cur_best_feature}")
+                            print(f"{beg_str}[it{it}] New best feature "
+                                  f"{cur_best_feature}")
                             comm.send(
                                 cur_best_feature,
                                 dest=worker_rank,
@@ -150,11 +125,7 @@ def run(config):
 
                         # Reload new remaining features without the
                         # chosen feature
-                        all_features.remove(cur_best_feature)
-                        remaining_features = all_features.copy()
-                        if max_feats_to_test > 0:
-                            remaining_features = remaining_features[:
-                                                                    max_feats_to_test]
+                        feature_scheduler.commit_feature(cur_best_feature)
 
                         # Reset temporary variables
                         done_workers = 0
@@ -169,19 +140,14 @@ def run(config):
                                 [str(disp) for disp in feat_disp]) + ","
                         best_feat_string = best_feat_string.rstrip(",")
                         best_feat_string = "[" + best_feat_string + "]"
-                        print(
-                            beg_str +
-                            f"[it{it}] Iteration best features: {best_feat_string}"
-                            +
-                            f" with errors: MAE {cur_best_mae} RMSE {cur_best_rmse}"
-                        )
+                        print(f"{beg_str}[it{it}] Iteration best features: "
+                              f"{best_feat_string} with errors: "
+                              f"MAE {cur_best_mae} RMSE {cur_best_rmse}")
 
                         # Send best features set to all workers
                         for worker_rank in range(workers_size):
-                            print(
-                                beg_str +
-                                f"[it{it}] Sending final best features to worker{worker_rank}"
-                            )
+                            print(f"{beg_str}[it{it}] Sending final best "
+                                  f"features to worker{worker_rank}")
                             comm.send(best_features,
                                       dest=worker_rank,
                                       tag=MPI_TAGS.MANAGER_BEST_FEATURES.value)

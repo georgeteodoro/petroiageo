@@ -53,7 +53,7 @@ alg:
 
   sampling: # Sampling strategy stuff
     # Sampling algorithm to use, can be: none, v1
-    sampler: "v1"
+    sampler: "none"
     # Num of iterations as window size. If negative, use max num of 
     # iterations possible. Default: -1
     layers_window_size: 4
