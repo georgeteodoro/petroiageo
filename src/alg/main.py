@@ -148,16 +148,16 @@ def update_config_file_params_with_args(config: config_parser.Config,
 
     config.add_param('full_depth_chunks', True)
 
-    config.add_param('max_tested_features', int(args.num_tested_features))
+    config.add_param('_max_feats_for_trial', int(args.num_tested_features))
 
     # config.add_param('is_sampling', bool(args.is_sampling))
 
     config.add_param('feature_sel_only', args.feature_sel_only)
 
     # Profiling
-    config.add_param('prof_trial_prep_porosity', True)
-    config.add_param('prof_trial_update_feature', True)
-    config.add_param('prof_feature_sel', True)
+    # config.add_param('prof_trial_prep_porosity', True)
+    # config.add_param('prof_trial_update_feature', True)
+    # config.add_param('prof_feature_sel', True)
 
     return config
 
@@ -199,7 +199,7 @@ def main(args_str=None):
 
     if rank == manager_rank:
         manager.run(config)
-        print(f"[manager][configs]{config}")
+        # print(f"[manager][configs]{config}")
     else:
         worker.run(config)
 

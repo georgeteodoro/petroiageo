@@ -8,7 +8,6 @@ class TrialDataNumpy(TrialDataBase):
     In-memory implementation of TrialDataBase using numpy as the
     concrete type for data storage.
     '''
-
     def __init__(self,
                  target_wells_list,
                  porosity_data,
