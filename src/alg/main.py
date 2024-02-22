@@ -124,6 +124,15 @@ def config_arg_parser():
         "porosity files are done.",
     )
 
+    parser.add_argument(
+        '--fsched-loc',
+        dest='fsched_loc',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Enable feature locality-aware scheduling.",
+    )
+
     return parser
 
 
@@ -145,6 +154,9 @@ def update_config_file_params_with_args(config: config_parser.Config,
 
     if args.with_progress is not None:
         config.add_param('with_progress', args.with_progress)
+
+    if args.fsched_loc is not None:
+        config.add_param('fsched_loc', args.fsched_loc)
 
     config.add_param('full_depth_chunks', True)
 
