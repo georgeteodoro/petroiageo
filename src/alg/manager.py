@@ -3,6 +3,7 @@ from mpi4py import MPI
 from mpi_module import MPI_TAGS
 import FeatureDataBase
 from FeatureSchedFIFO import FeatureSchedFIFO
+from FeatureSchedFLoc import FeatureSchedFLoc
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -18,7 +19,6 @@ beg_str = "[manager]"
 def run(config):
     # Get config parameters
     n_features_to_select = config.alg['max_num_features']
-    max_feats_to_test = config.get_param('max_tested_features')
     feat_loc_scheduler = config.get_param('fsched_loc')
     num_its = config.alg['num_its']
     start_it = config.alg['it']
@@ -97,10 +97,11 @@ def run(config):
 
                 continue
 
-            if feature_scheduler.has_features():
+            new_feature = feature_scheduler.get_feature(worker_rank)
+            if new_feature is not None:
                 # There are still features to test on this f_it
-                new_feature = feature_scheduler.get_feature(worker_rank)
-                comm.send(new_feature,
+                # The list encapsulation is to later enable batching
+                comm.send([new_feature],
                           dest=worker_rank,
                           tag=MPI_TAGS.MANAGER_NEW_JOB.value)
                 print(f"{beg_str}[it{it}] Sending feature {new_feature}")

@@ -8,6 +8,7 @@ class FeatureSchedBase(ABC):
     acknowledge features that were already committed, i.e., should not be 
     tried again.
     '''
+
     def __init__(self, config):
 
         self._config = config
@@ -28,20 +29,13 @@ class FeatureSchedBase(ABC):
         raise Exception("[FeatureSchedBase][begin_iteration] "
                         "Abstract method not implemented.")
 
-    def has_features(self):
-        '''
-        Returns whether there are still features to be tried.
-        '''
-
-        raise Exception("[FeatureSchedBase][has_features] "
-                        "Abstract method not implemented.")
-
     def get_feature(self, rank):
         '''
         Returns a feature to be tried. This feature is returned based on 
         the concrete scheduling algorithm. Every feature can only be 
         returned once. Afterwards, it can only be returned after 
-        self.begin_iteration().
+        self.begin_iteration(). If there are no more features, to be run
+        it should return none.
         '''
 
         raise Exception("[FeatureSchedBase][get_feature] "
