@@ -170,6 +170,9 @@ def update_config_file_params_with_args(config: config_parser.Config,
     # config.add_param('prof_trial_prep_porosity', True)
     # config.add_param('prof_trial_update_feature', True)
     # config.add_param('prof_feature_sel', True)
+    
+    # Debug info
+    # config.add_param('fsched_debug', True)
 
     return config
 

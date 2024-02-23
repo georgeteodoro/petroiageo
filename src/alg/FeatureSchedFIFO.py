@@ -6,6 +6,7 @@ class FeatureSchedFIFO(FeatureSchedBase):
     FIFO list feature scheduler implementation. Features are scheduled one 
     at a time for every displacement.
     '''
+
     def __init__(self, config):
         super(FeatureSchedFIFO, self).__init__(config)
 
@@ -29,23 +30,19 @@ class FeatureSchedFIFO(FeatureSchedBase):
 
         self._reset_internal_data()
 
-    def has_features(self):
-        '''
-        Returns whether there are still features to be tried.
-        '''
-
-        return len(self._remaining_features) > 0
-
     def get_feature(self, rank):
         '''
         Returns a feature to be tried. This feature is returned based on 
         the concrete scheduling algorithm. Every feature can only be 
         returned once. Afterwards, it can only be returned after 
-        self.begin_iteration().
+        self.begin_iteration(). If there are no more features, to be run
+        it should return none.
         '''
 
-        # The list encapsulation is to later enable batching, if necessary.
-        return [self._remaining_features.pop()]
+        if len(self._remaining_features) > 0:
+            return self._remaining_features.pop()
+        else:
+            return None
 
     def tried_feature(self, feature, rank):
         '''
@@ -53,7 +50,6 @@ class FeatureSchedFIFO(FeatureSchedBase):
         rank is finished with a feature.
         '''
         pass
-
 
     def commit_feature(self, feature):
         '''
