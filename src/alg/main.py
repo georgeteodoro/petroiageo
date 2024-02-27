@@ -133,6 +133,29 @@ def config_arg_parser():
         help="Enable feature locality-aware scheduling.",
     )
 
+    parser.add_argument(
+        '--sw',
+        dest='small_window',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Profiling option. When enabled, only coordinate k (depth) "
+        "will have displacement applied to it. This allows for having small "
+        "number of displacements per feature. Window size restrictions still "
+        "apply, i.e., enabling small_window and using -w 5 on a dataset with "
+        "window of 3 will break the application.",
+    )
+
+    parser.add_argument(
+        '--f-inmem',
+        dest='is_feature_in_mem',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Enable in-memory storage of features. If enabled, all features "
+        "are pre-fetched once before the execution of any iteration or trial.",
+    )
+
     return parser
 
 
@@ -160,16 +183,19 @@ def update_config_file_params_with_args(config: config_parser.Config,
 
     config.add_param('full_depth_chunks', True)
 
-    config.add_param('_max_feats_for_trial', int(args.num_tested_features))
+    config.add_param('max_feats_for_trial', int(args.num_tested_features))
 
     # config.add_param('is_sampling', bool(args.is_sampling))
 
     config.add_param('feature_sel_only', args.feature_sel_only)
+    config.add_param('small_window', args.small_window)
+    config.add_param('is_feature_in_mem', args.is_feature_in_mem)
 
     # Profiling
     # config.add_param('prof_trial_prep_porosity', True)
-    # config.add_param('prof_trial_update_feature', True)
     # config.add_param('prof_feature_sel', True)
+    
+    config.add_param('prof_trial_update_feature', True)
     
     # Debug info
     # config.add_param('fsched_debug', True)

@@ -11,7 +11,7 @@ class FeatureSchedFIFO(FeatureSchedBase):
         super(FeatureSchedFIFO, self).__init__(config)
 
         self._max_feats_for_trial = self._config.get_param(
-            '_max_feats_for_trial')
+            'max_feats_for_trial')
         self._all_features = self._gen_features_list()
         self._remaining_features = None
 
@@ -83,6 +83,7 @@ class FeatureSchedFIFO(FeatureSchedBase):
         num_features = self._config.get_param('num_features')
         base_features = self._config.features_files_names
         window_size = self._config.alg['window']
+        small_window = self._config.get_param('small_window')
 
         # Ignore any other file which is not an .h5 file.
         base_features = [f for f in base_features if f != ".gitkeep"]
@@ -95,9 +96,15 @@ class FeatureSchedFIFO(FeatureSchedBase):
         # Expand features for all displacements
         all_features = []
         for f in base_features:
-            for i in range(-window_size, window_size + 1):
-                for j in range(-window_size, window_size + 1):
-                    for k in range(-window_size, window_size + 1):
-                        all_features.append((f, (i, j, k)))
+            if small_window:
+                print(f"[FeatureSchedFIFO] WARNING!!!!! USING SMALL WINDOW "
+                      f"====================================================")
+                for k in range(-window_size, window_size + 1):
+                    all_features.append((f, (0, 0, k)))
+            else:
+                for i in range(-window_size, window_size + 1):
+                    for j in range(-window_size, window_size + 1):
+                        for k in range(-window_size, window_size + 1):
+                            all_features.append((f, (i, j, k)))
 
         return all_features

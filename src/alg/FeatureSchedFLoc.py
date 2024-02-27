@@ -15,7 +15,7 @@ class FeatureSchedFLoc(FeatureSchedBase):
         # Attributes from config
         self._rank_mapping = self._config.get_param('mpi_rank_mapping')
         self._max_feats_for_trial = self._config.get_param(
-            '_max_feats_for_trial')
+            'max_feats_for_trial')
         self._base_features = self._config.features_files_names
         self._debug = self._config.get_param('fsched_debug')
 
@@ -197,7 +197,7 @@ class FeatureSchedFLoc(FeatureSchedBase):
 
         # If there are no more displacements for trial remove the feature
         # allocation of a node and the feature from the running list
-        if self._remaining_disps[feature] == 0:
+        if len(self._remaining_disps[feature]) == 0:
             if feature in self._feat_loc[node]:
                 self._feat_loc[node].remove(feature)
 
@@ -260,12 +260,19 @@ class FeatureSchedFLoc(FeatureSchedBase):
         Generates the list of available features with all possible displacements.
         '''
         window_size = self._config.alg['window']
+        small_window = self._config.get_param('small_window')
 
         # Expand features for all displacements
         all_displacements = []
-        for i in range(-window_size, window_size + 1):
-            for j in range(-window_size, window_size + 1):
-                for k in range(-window_size, window_size + 1):
-                    all_displacements.append((i, j, k))
+        if small_window:
+            print(f"[FeatureSchedFLoc] WARNING!!!!! USING SMALL WINDOW "
+                  f"===================================================")
+            for k in range(-window_size, window_size + 1):
+                all_displacements.append((0, 0, k))
+        else:
+            for i in range(-window_size, window_size + 1):
+                for j in range(-window_size, window_size + 1):
+                    for k in range(-window_size, window_size + 1):
+                        all_displacements.append((i, j, k))
 
         return all_displacements
