@@ -91,6 +91,7 @@ def run(config):
             # Respond the received job
             if msg_tag == MPI_TAGS.MANAGER_NEW_JOB.value:
                 # print(beg_str + f"[it{it}][f_it{f_it}] Got to test {msg}")
+                t10 = time()
 
                 # Got new feature to analyze
                 new_features = msg
@@ -113,6 +114,9 @@ def run(config):
                         return
 
                     results.append(((feature, disp), *ret))
+                t11 = time()
+                print(f"{beg_str}[it{it}][f_it{f_it}] Finished trials "
+                      f"in {t11-t10:.2f}")
 
                 # Send response back
                 comm.send(results,
@@ -153,7 +157,7 @@ def run(config):
                 return
 
             else:
-                raise Exception(beg_str + f" Bad MPI tag: {msg_tag}")
+                raise Exception(f"{beg_str} Bad MPI tag: {msg_tag}")
 
         # Propagation
         # Only one rank per node actually commits data to the hdf5 file,
