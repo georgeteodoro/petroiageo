@@ -21,9 +21,11 @@ class TrialDataBase(ABC):
     Due to the use of padding, all coordinates are the padded coordinates. 
     Thus, it is expected of the wells_list to have padded coordinates as well.
     '''
-
-    def __init__(self, target_wells_ids_list, porosity_data: Dataset,
-                 config: Config, should_consider_sampling:bool = True):
+    def __init__(self,
+                 target_wells_ids_list,
+                 porosity_data: Dataset,
+                 config: Config,
+                 should_consider_sampling: bool = True):
 
         self._config = config
 
@@ -229,20 +231,20 @@ class TrialDataBase(ABC):
 
                 t115 = time()
 
-                if profile:
-                    print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
-                          f"chunk[{chunk_slice}] p_chunk_load: {t112-t111}")
-                    print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
-                          f"chunk[{chunk_slice}] p_chunk_satisfy: {t113-t112}")
-                    print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
-                          f"chunk[{chunk_slice}] p_chunk_filt: {t114-t113}")
-                    print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
-                          f"chunk[{chunk_slice}] p_chunk_extend: {t115-t114}")
+                # if profile:
+                #     print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
+                #           f"chunk[{chunk_slice}] p_chunk_load: {t112-t111}")
+                #     print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
+                #           f"chunk[{chunk_slice}] p_chunk_satisfy: {t113-t112}")
+                #     print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
+                #           f"chunk[{chunk_slice}] p_chunk_filt: {t114-t113}")
+                #     print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
+                #           f"chunk[{chunk_slice}] p_chunk_extend: {t115-t114}")
 
             t12 = time()
 
             # Fill ring dict
-            # REFACTORING/OPTIMIZARION OPORTUNITY:
+            # REFACTORING/OPTIMIZATION OPORTUNITY:
             # Change _set_ring_hook to _append_ring_hook, thus points_dict is
             # not required. I.e., less memory needed. For numpy implementation
             # a temporary list may still be required within it, which is
@@ -252,9 +254,9 @@ class TrialDataBase(ABC):
             t13 = time()
             if profile:
                 print(f"[TrialDataBase][prepare_porosity] ring[{it+1}] "
-                      f"chunk_total: {t12-t11}")
+                      f"chunk_total: {t12-t11:.4f}")
                 print(f"[TrialDataBase][prepare_porosity] ring[{it+1}] "
-                      f"ring_update: {t13-t12}")
+                      f"ring_update: {t13-t12:.4f}")
 
         self._current_ring = prep_it - 1
 
@@ -264,7 +266,7 @@ class TrialDataBase(ABC):
 
         t2 = time()
         if profile:
-            print(f"[TrialDataBase][prepare_porosity] final_time {t2-t1}")
+            print(f"[TrialDataBase][prepare_porosity] final_time {t2-t1:.4f}")
 
     def commit_feature(self):
         '''
@@ -300,43 +302,64 @@ class TrialDataBase(ABC):
 
         t1 = time()
 
+        get_coords_disp_time = 0
+        apply_disp_time = 0
+        filter_coords_time = 0
+        update_col_time = 0
+
         # Fill data, one ring at a time
         for r in self._rings_list:
             for w in self._wells_id_list:
+                t11 = time()
 
-                # Retrieve the coordinate list of the
-                cur_coords = self._get_values_hook(r, w)[['x', 'y', 'z']].copy()
+                # Retrieve the coordinate list of the current ring/well pair
+                cur_coords = self._get_values_hook(r, w)[['x', 'y',
+                                                          'z']].copy()
+                t12 = time()
+
                 # Applies the displacement at the whole array,
                 # allowing improved data access times.
                 # No padding resolution is required since
                 # all coordinates are already padded.
                 for coord_s, d_id in [('x', 0), ('y', 1), ('z', 2)]:
                     cur_coords[coord_s] = (cur_coords[coord_s] + disp[d_id])
+                t13 = time()
 
                 # Extract displaced feature data
                 filtered_feature_data = feature.filter_coords(cur_coords)
+                t14 = time()
 
                 # Assign feature data to the last col (i.e., current col
                 # being updated)
                 self._update_col_hook(r, w, filtered_feature_data)
+                t15 = time()
 
-                # t11 = time()
-                # t12 = time()
-
-                # t13 = time()
-                # t14 = time()
+                get_coords_disp_time += t12-t11
+                apply_disp_time += t13-t12
+                filter_coords_time += t14-t13
+                update_col_time += t15-t14
 
                 # if profile:
-                #     print(f"[TrialDataBase][update_feature] ring[{r}] "
-                #           f"get_coords_disp: {t12-t11}")
-                #     print(f"[TrialDataBase][update_feature] ring[{r}] "
-                #           f"filter_coords: {t13-t12}")
-                #     print(f"[TrialDataBase][update_feature] ring[{r}] "
-                #           f"update_col: {t14-t13}")
+                #     print(f"[TrialDataBase][update_feature][r{r}][w{w}] "
+                #           f"get_coords_disp: {t12-t11:.4f}")
+                #     print(f"[TrialDataBase][update_feature][r{r}][w{w}] "
+                #           f"apply_disp: {t13-t12:.4f}")
+                #     print(f"[TrialDataBase][update_feature][r{r}][w{w}] "
+                #           f"filter_coords: {t14-t13:.4f}")
+                #     print(f"[TrialDataBase][update_feature][r{r}][w{w}] "
+                #           f"update_col: {t15-t14:.4f}")
 
         t2 = time()
         if profile:
-            print(f"[TrialDataBase][update_feature] final_time: {t2-t1}")
+            print(f"[TrialDataBase][update_feature] final_time: {t2-t1:.4f}")
+            print(f"[TrialDataBase][update_feature] "
+                  f"get_coords_disp: {get_coords_disp_time:.2f}")
+            print(f"[TrialDataBase][update_feature] "
+                  f"apply_disp: {apply_disp_time:.2f}")
+            print(f"[TrialDataBase][update_feature] "
+                  f"filter_coords: {filter_coords_time:.2f}")
+            print(f"[TrialDataBase][update_feature] "
+                  f"update_col: {update_col_time:.2f}")
 
     def get_train_values(self, well_id, chunk_id):
         '''

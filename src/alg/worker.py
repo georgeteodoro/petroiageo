@@ -1,13 +1,13 @@
-from datetime import datetime 
+from datetime import datetime
 import h5py
 from mpi4py import MPI
 from timeit import default_timer as timer
+from time import time
 
 from mpi_module import MPI_TAGS
 from feature_sel import test_new_feature
 import FeatureDataBase
 from TrialDataNumpy import TrialDataNumpy
-from FeatureDataH5 import FeatureDataH5
 from data_filter import WellsSingleRingDataFilter
 from propagate import propagate
 import common
@@ -47,27 +47,35 @@ def run(config):
     start_it = config.alg['it']
     train_wells_ids = config.train_wells_ids
 
+    t0 = time()
+
     # Generate the dict of all features
-    all_features_dict = FeatureDataBase.load_all_features(config, FeatureDataH5)
+    all_features_dict = FeatureDataBase.load_all_features(config)
+    t1 = time()
+    print(f"{beg_str} Loaded all features in {t1-t0:.2f} secs.")
 
     # Load porosity data
-    print(beg_str + f"Loading porosity.")
     porosity_h5_f, porosity_h5_dset = _load_porosity(config)
+    t2 = time()
+    print(f"{beg_str} Loaded porosity in {t2-t1:.2f} secs.")
 
     # Prepare trial_data
-    print(beg_str + f"Preparing trial_data.")
     trial_data = TrialDataNumpy(train_wells_ids, porosity_h5_dset, config)
+    t3 = time()
+    print(f"{beg_str} Created local TrialData in {t3-t2:.2f} secs.")
 
-    print(beg_str + f"Beginning iterations.")
+    print(f"{beg_str} Beginning iterations.")
 
     for it in range(start_it, num_its + start_it):
+        t0 = time()
         start_time = timer()
         best_features = ['x', 'y', 'z']
 
         # Update test data: set trial_data size and update coordinates,
         # porosity, and other columns
-        print(beg_str + f"[it{it}] Preparing trial_data.")
         trial_data.prepare_porosity(it)
+        t1 = time()
+        print(f"{beg_str}[it{it}] Prepared trial_data in {t1-t0} secs.")
 
         # feature selection
         comm.send(None, dest=manager_rank, tag=MPI_TAGS.WORKER_FIRST_JOB.value)
@@ -82,23 +90,22 @@ def run(config):
 
             # Respond the received job
             if msg_tag == MPI_TAGS.MANAGER_NEW_JOB.value:
-                print(
-                    beg_str +
-                    f"[it{it}][f_it{f_it}] Got new feature list to test {msg}")
+                # print(beg_str + f"[it{it}][f_it{f_it}] Got to test {msg}")
 
                 # Got new feature to analyze
                 new_features = msg
                 results = []
                 for (feature, disp) in new_features:
                     trial_data.update_feature(all_features_dict[feature], disp)
+                    print(f"{beg_str}[it{it}][f_it{f_it}] "
+                          f"Trial with {best_features + [(feature, disp)]}")
                     ret = test_new_feature(trial_data, config)
 
                     # None is returned upon only 1 well propagating.
                     # If so, propagation is halted.
                     if not ret:
-                        print(
-                            beg_str + f"[it{it}][f_it{f_it}] "
-                            "Only one remaining well on trial data. Aborting.")
+                        print(f"{beg_str}[it{it}][f_it{f_it}] Only one"
+                              f"remaining well on trial data. Aborting.")
                         comm.send(results,
                                   dest=manager_rank,
                                   tag=MPI_TAGS.WORKER_ABORT_PROP.value)
@@ -113,8 +120,7 @@ def run(config):
                           tag=MPI_TAGS.WORKER_JOB_RESULT.value)
 
             elif msg_tag == MPI_TAGS.MANAGER_SELECTED_FEATURE.value:
-                print(beg_str +
-                      f"[it{it}][f_it{f_it}] Got new best feature {msg}")
+                print(f"{beg_str}[it{it}][f_it{f_it}] New best feature {msg}")
                 # Got the best feature for a f_it
                 new_feature = msg
                 (feature, disp) = new_feature
@@ -128,8 +134,7 @@ def run(config):
                           tag=MPI_TAGS.WORKER_FIRST_JOB.value)
 
             elif msg_tag == MPI_TAGS.MANAGER_BEST_FEATURES.value:
-                print(beg_str +
-                      f"[it{it}][f_it{f_it}] Got final best features {msg}")
+                print(f"{beg_str}[it{it}][f_it{f_it}] Final features {msg}")
                 # Generate the best features list
                 # best_features = ['x', 'y', 'z']
                 best_features = []
@@ -137,12 +142,13 @@ def run(config):
 
                 # Add the last column to trial_data
                 (last_feature, disp) = best_features[-1]
-                trial_data.update_feature(all_features_dict[last_feature], disp)
+                trial_data.update_feature(all_features_dict[last_feature],
+                                          disp)
 
                 break
 
             elif msg_tag == MPI_TAGS.MANAGER_ABORT_PROP.value:
-                print(beg_str + f"[it{it}][f_it{f_it}] Received abort.")
+                print(f"{beg_str}[it{it}][f_it{f_it}] Received abort.")
 
                 return
 
@@ -158,11 +164,12 @@ def run(config):
             n_propagated_points = propagate(porosity_h5_dset, trial_data,
                                             all_features_dict, best_features,
                                             it, config)
-            print(beg_str +
-                  f"[it{it}] Propagated {n_propagated_points} points.")
+            print(f"{beg_str}[it{it}] Propagated "
+                  f"{n_propagated_points} points.")
 
             end_time = timer()
-            print(beg_str + f"[it{it}] Iteration total time(s): {end_time-start_time}")
+            print(f"{beg_str}[it{it}] Iteration total "
+                  f"time(s): {end_time-start_time}")
         elif rank_should_propagate:
             print(f"[it{it}] SKIPPING PROPAGATION (feature selection only)")
             break
@@ -170,4 +177,3 @@ def run(config):
     porosity_h5_f.close()
     if rank_should_propagate:
         print(beg_str + f' End Time(hh:mm:ss.ms): {datetime.now()}')
-

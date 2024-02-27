@@ -2,16 +2,22 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 
-def load_all_features(config, feature_class):
+def load_all_features(config):
     '''
     Load all available features into a dict with their 
     name and a FeatureDataH5.
     '''
+
+    # Imports are here to avoid circular import
+    from FeatureDataH5 import FeatureDataH5
+    from FeatureDataInMem import FeatureDataInMem
+
     # Load config
     features_filenames = config.features_files_paths
     features_names = config.features_files_names
     num_features = config.get_param("num_features")
     mpi_local_comm = config.get_param("mpi_local_comm")
+    is_feature_in_mem = config.get_param("is_feature_in_mem")
 
     # Load each seismic file
     all_features_dict = dict()
@@ -22,8 +28,12 @@ def load_all_features(config, feature_class):
         if ".h5" not in str(feature_path):
             continue
 
-        all_features_dict[feature] = feature_class(str(feature_path),
-                                                   mpi_local_comm)
+        if is_feature_in_mem:
+            all_features_dict[feature] = FeatureDataInMem(
+                str(feature_path), mpi_local_comm)
+        else:
+            all_features_dict[feature] = FeatureDataH5(str(feature_path),
+                                                       mpi_local_comm)
         total_features += 1
 
     return all_features_dict
