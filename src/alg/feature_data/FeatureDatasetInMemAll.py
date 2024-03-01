@@ -11,7 +11,6 @@ class FeatureDatasetInMemAll(FeatureDatasetBase):
 
         # Load config
         mpi_local_comm = config.get_param("mpi_local_comm")
-        is_feature_in_mem = config.get_param("is_feature_in_mem")
 
         # Get a list of backend references
         self._features = dict()

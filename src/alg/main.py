@@ -156,6 +156,17 @@ def config_arg_parser():
         "are pre-fetched once before the execution of any iteration or trial.",
     )
 
+    parser.add_argument(
+        '--f-cache',
+        dest='is_feature_cache',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Enable in-memory caching of features. If enabled, entire "
+        "features are cached on first access. LRU cache with "
+        "configurable cache_lines size.",
+    )
+
     return parser
 
 
@@ -190,13 +201,14 @@ def update_config_file_params_with_args(config: config_parser.Config,
     config.add_param('feature_sel_only', args.feature_sel_only)
     config.add_param('small_window', args.small_window)
     config.add_param('is_feature_in_mem', args.is_feature_in_mem)
+    config.add_param('is_feature_cache', args.is_feature_cache)
 
     # Profiling
     # config.add_param('prof_trial_prep_porosity', True)
     # config.add_param('prof_feature_sel', True)
-    
+
     config.add_param('prof_trial_update_feature', True)
-    
+
     # Debug info
     # config.add_param('fsched_debug', True)
 
