@@ -6,7 +6,7 @@ from time import time
 
 from mpi_module import MPI_TAGS
 from feature_sel import test_new_feature
-import FeatureDataBase
+from feature_data.FeatureDatasetSimple import FeatureDatasetSimple
 from TrialDataNumpy import TrialDataNumpy
 from data_filter import WellsSingleRingDataFilter
 from propagate import propagate
@@ -50,7 +50,7 @@ def run(config):
     t0 = time()
 
     # Generate the dict of all features
-    all_features_dict = FeatureDataBase.load_all_features(config)
+    all_features = FeatureDatasetSimple(config)
     t1 = time()
     print(f"{beg_str} Loaded all features in {t1-t0:.2f} secs.")
 
@@ -103,7 +103,8 @@ def run(config):
                 new_features = msg
                 results = []
                 for (feature, disp) in new_features:
-                    trial_data.update_feature(all_features_dict[feature], disp)
+                    trial_data.update_feature(
+                        all_features.get_feature(feature), disp)
                     print(f"{beg_str}[it{it}][f_it{f_it}] "
                           f"Trial with {best_features + [(feature, disp)]}")
                     ret = test_new_feature(trial_data, config)
@@ -135,7 +136,8 @@ def run(config):
                 new_feature = msg
                 (feature, disp) = new_feature
                 best_features.append(new_feature)
-                trial_data.update_feature(all_features_dict[feature], disp)
+                trial_data.update_feature(all_features.get_feature(feature),
+                                          disp)
                 trial_data.commit_feature()
 
                 # Send response back requesting new job
@@ -152,7 +154,8 @@ def run(config):
 
                 # Add the last column to trial_data
                 (last_feature, disp) = best_features[-1]
-                trial_data.update_feature(all_features_dict[last_feature], disp)
+                trial_data.update_feature(
+                    all_features.get_feature(last_feature), disp)
 
                 break
 
@@ -175,8 +178,8 @@ def run(config):
         # feature selection only, enforced by 'feature_sel_only'
         if rank_should_propagate and not feature_sel_only:
             n_propagated_points = propagate(porosity_h5_dset, trial_data,
-                                            all_features_dict, best_features,
-                                            it, config)
+                                            all_features, best_features, it,
+                                            config)
             print(f"{beg_str}[it{it}] Propagated "
                   f"{n_propagated_points} points.")
 

@@ -5,8 +5,8 @@ import os
 import numpy as np
 from math import prod
 
-from FeatureDataH5 import FeatureDataH5
-from FeatureDataInMem import FeatureDataInMem
+from feature_data.backends.FeatureDataH5 import FeatureDataH5
+from feature_data.backends.FeatureDataInMem import FeatureDataInMem
 import common
 
 concrete_classes = [FeatureDataH5, FeatureDataInMem]

@@ -62,7 +62,7 @@ def _eval_model(model, test_data: TrialDataBase, test_wells_ids: list):
     return rmse, np.mean(mae)
 
 
-def _predict_data(model, features_dict, best_features, coords_to_update):
+def _predict_data(model, all_features, best_features, coords_to_update):
     '''
     Generate the porosity values of 'coords_to_update'.
     '''
@@ -82,11 +82,12 @@ def _predict_data(model, features_dict, best_features, coords_to_update):
 
         # Zip the coords, from a tuple of 3 arrays, one for each coord,
         # to an array of (x,y,z) tuples.
-        feature_coords_np = np.array(list(zip(*feature_coords)), dtype=np.int64)
+        feature_coords_np = np.array(list(zip(*feature_coords)),
+                                     dtype=np.int64)
 
         # Filter features values for current chunk coords
-        to_predict_np[:, f_id] = features_dict[feature].filter_coords(
-            feature_coords_np)
+        to_predict_np[:, f_id] = all_features.get_feature(
+            feature).filter_coords(feature_coords_np)
 
     # Perform porosity estimation
     estimated_phi = model.predict(to_predict_np)
@@ -95,8 +96,7 @@ def _predict_data(model, features_dict, best_features, coords_to_update):
 
 
 def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
-              features_dict: dict, best_features: list, it: int,
-              config: Config):
+              all_features, best_features: list, it: int, config: Config):
     '''
     Propagates the wavefront a single ring. Initial data have no 
     'expanded' data.
@@ -130,7 +130,7 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
     # As test data dont propagate, the test data is always at the prep_it=1
     test_data.prepare_porosity(1)
     for (feature, disp) in best_features:
-        test_data.update_feature(features_dict[feature], disp)
+        test_data.update_feature(all_features.get_feature(feature), disp)
         test_data.commit_feature()
 
     rmse, mae = _eval_model(model, test_data, config.test_wells_ids)
@@ -206,7 +206,7 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
             cur_chunk_np['well_id'][coords_to_update] = train_wells_ids[
                 wells_coords.index((w_x, w_y))]
             cur_chunk_np['phi'][coords_to_update] = _predict_data(
-                model, features_dict, best_features, coords_to_update)
+                model, all_features, best_features, coords_to_update)
 
             # Commit update to the h5 file
             porosity_data_h5["real", cur_slice[0], cur_slice[1],

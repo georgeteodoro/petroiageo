@@ -7,7 +7,7 @@ from math import prod
 
 from TrialDataNumpy import TrialDataNumpy
 from data_filter import WellsSingleRingDataFilter
-from FeatureDataH5 import FeatureDataH5
+from feature_data.backends.FeatureDataH5 import FeatureDataH5
 from config_parser import YAMLConfig
 import common
 

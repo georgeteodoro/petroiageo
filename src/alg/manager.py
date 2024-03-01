@@ -1,7 +1,6 @@
 from mpi4py import MPI
 
 from mpi_module import MPI_TAGS
-import FeatureDataBase
 from FeatureSchedFIFO import FeatureSchedFIFO
 from FeatureSchedFLoc import FeatureSchedFLoc
 
