@@ -7,6 +7,7 @@ from time import time
 from mpi_module import MPI_TAGS
 from feature_sel import test_new_feature
 from feature_data.FeatureDatasetSimple import FeatureDatasetSimple
+from feature_data.FeatureDatasetInMemAll import FeatureDatasetInMemAll
 from TrialDataNumpy import TrialDataNumpy
 from data_filter import WellsSingleRingDataFilter
 from propagate import propagate
@@ -43,6 +44,7 @@ def _load_porosity(config):
 def run(config):
     rank_should_propagate = config.get_param('mpi_should_update_local')
     feature_sel_only = config.get_param('feature_sel_only')
+    is_feature_in_mem = config.get_param("is_feature_in_mem")
     num_its = config.alg['num_its']
     start_it = config.alg['it']
     train_wells_ids = config.train_wells_ids
@@ -50,7 +52,10 @@ def run(config):
     t0 = time()
 
     # Generate the dict of all features
-    all_features = FeatureDatasetSimple(config)
+    if is_feature_in_mem:
+        all_features = FeatureDatasetInMemAll(config)
+    else:
+        all_features = FeatureDatasetSimple(config)
     t1 = time()
     print(f"{beg_str} Loaded all features in {t1-t0:.2f} secs.")
 
