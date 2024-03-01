@@ -17,7 +17,7 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
 
         # Load config
         self._mpi_local_comm = config.get_param("mpi_local_comm")
-        self._max_cache_lines = 2
+        self._max_cache_lines = 1
 
         # Setup empty cache
         self._features = dict()
