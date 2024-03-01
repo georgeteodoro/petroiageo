@@ -1,17 +1,17 @@
 import unittest
+from parameterized import parameterized
 import h5py
 import os
 import numpy as np
-from ddt import ddt, data
 from math import prod
 
 from FeatureDataH5 import FeatureDataH5
+from FeatureDataInMem import FeatureDataInMem
 import common
 
-concrete_classes = (FeatureDataH5)
+concrete_classes = [FeatureDataH5, FeatureDataInMem]
 
 
-@ddt
 class Test_FeatureDataAll(unittest.TestCase):
 
     # Hypercube data info
@@ -49,7 +49,7 @@ class Test_FeatureDataAll(unittest.TestCase):
         cls.feature_h5_f.close()
         os.remove(cls.FEATURE_FILENAME)
 
-    @data(concrete_classes)
+    @parameterized.expand(concrete_classes)
     def test_feature_init(self, test_cls):
         '''
         Test the creation of a new type.
@@ -60,7 +60,7 @@ class Test_FeatureDataAll(unittest.TestCase):
         feature = test_cls(f_filename, None)
         self.assertTrue(True)
 
-    @data(concrete_classes)
+    @parameterized.expand(concrete_classes)
     def test_filter_coords(self, test_cls):
         '''
         Test the filtering of coordinates.

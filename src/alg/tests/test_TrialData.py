@@ -2,7 +2,7 @@ import unittest
 import h5py
 import os
 import numpy as np
-from ddt import ddt, data
+from parameterized import parameterized
 from math import prod
 
 from TrialDataNumpy import TrialDataNumpy
@@ -11,10 +11,9 @@ from FeatureDataH5 import FeatureDataH5
 from config_parser import YAMLConfig
 import common
 
-concrete_classes = (TrialDataNumpy)
+concrete_classes = [TrialDataNumpy]
 
 
-@ddt
 class Test_TrialDataAll(unittest.TestCase):
 
     # The area setup with well coords is:
@@ -202,7 +201,7 @@ class Test_TrialDataAll(unittest.TestCase):
         cls.feature2_h5_f.close()
         os.remove(cls.FEATURE_FILENAME2)
 
-    @data(concrete_classes)
+    @parameterized.expand(concrete_classes)
     def test_list_init(self, test_cls):
         '''
         Test the creation of a new type.
@@ -218,7 +217,7 @@ class Test_TrialDataAll(unittest.TestCase):
 
         self.assertTrue(True)
 
-    @data(concrete_classes)
+    @parameterized.expand(concrete_classes)
     def test_prepare_porosity_r1(self, test_cls):
         '''
         Test the use of prepare_porosity() the first ring.
@@ -242,7 +241,7 @@ class Test_TrialDataAll(unittest.TestCase):
         self.assertEqual(td1._ring_size(0),
                          self.__class__.hypercube_test_shape[2] * 2)
 
-    @data(concrete_classes)
+    @parameterized.expand(concrete_classes)
     def test_prepare_porosity_r2_3(self, test_cls):
         '''
         Test the use of prepare_porosity() by adding 3 rings,
@@ -272,7 +271,7 @@ class Test_TrialDataAll(unittest.TestCase):
         self.assertEqual(td1._ring_size(2),
                          self.__class__.hypercube_test_shape[2] * 15)
 
-    @data(concrete_classes)
+    @parameterized.expand(concrete_classes)
     def test_prepare_porosity_r3(self, test_cls):
         '''
         Test the use of prepare_porosity() by adding 3 rings all at
@@ -300,7 +299,7 @@ class Test_TrialDataAll(unittest.TestCase):
         self.assertEqual(td1._ring_size(2),
                          self.__class__.hypercube_test_shape[2] * 15)
 
-    @data(concrete_classes)
+    @parameterized.expand(concrete_classes)
     def test_update_feature_r1(self, test_cls):
         # Load class data
         porosity_dset = self.__class__.porosity_h5_dset
@@ -387,7 +386,7 @@ class Test_TrialDataAll(unittest.TestCase):
                 prod(c) + 10,
             ] for c in expct_val_coordinates]
             expected_val_y = [prod(c) for c in expct_val_coordinates]
-            
+
             self.assertTrue(np.array_equal(expected_train_X, train_X))
             # self.assertTrue((expected_train_X == train_X).all())
             self.assertTrue((expected_train_y == train_y).all())
@@ -436,7 +435,7 @@ class Test_TrialDataAll(unittest.TestCase):
             self.assertTrue((expected_val_X == val_X).all())
             self.assertTrue((expected_val_y == val_y).all())
 
-    @data(concrete_classes)
+    @parameterized.expand(concrete_classes)
     def test_chunking(self, test_cls):
         '''
         Test the use of chunking for TrialData.
@@ -482,7 +481,7 @@ class Test_TrialDataAll(unittest.TestCase):
         val_X, _ = td1.get_val_values(1)
         self.assertTrue(len(val_X) == depth * 17)
 
-        # The sum of len's of all chunks should match the 
+        # The sum of len's of all chunks should match the
         # total number of points.
         total_points = 0
         for chunk in range(n_chunks_test):
@@ -497,9 +496,6 @@ class Test_TrialDataAll(unittest.TestCase):
             total_points += len(train_X)
         self.assertTrue(total_points == depth * 11)
 
-
-
-        
 
 if __name__ == '__main__':
     unittest.main()
