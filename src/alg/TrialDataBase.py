@@ -477,6 +477,9 @@ class TrialDataBase(ABC):
             new_ring_points = self._sampler.sample(np.array(ring_points),
                                                    total_n_points, it, ring)
 
+            assert_msg = f"[TrialDataBase][perf_sampling] New ring points is empty!"
+            assert new_ring_points.size > 0, assert_msg
+
             # Split all points by well_id and add them to a dict
             new_rings_dict = dict()
             field_names = [i for i, j in self._base_data_type]
