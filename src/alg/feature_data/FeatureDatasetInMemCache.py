@@ -45,8 +45,10 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
                 lru_feature_name = self._lru.pop(0)
                 lru_feature = self._features.pop(lru_feature_name)
                 del lru_feature
+                print(f"[FeatureDatasetBase] Evicting: {lru_feature_name}")
 
             # Load the missed feature
+            print(f"[FeatureDatasetBase] Loading to cache: {lru_feature_name}")
             feature_path = self._all_features_path_dict[feature]
             self._features[feature] = FeatureDataInMem(feature_path,
                                                        self._mpi_local_comm)
