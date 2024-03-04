@@ -473,11 +473,14 @@ class TrialDataBase(ABC):
             for well_id in self._wells_id_list:
                 ring_points.extend(self._get_values_hook(ring, well_id))
 
+            assert_msg = f"[TrialDataBase][perf_sampling] Ring {ring} points is empty!"
+            assert len(ring_points) > 0, assert_msg
+
             # Perform sampling
             new_ring_points = self._sampler.sample(np.array(ring_points),
                                                    total_n_points, it, ring)
 
-            assert_msg = f"[TrialDataBase][perf_sampling] New ring points is empty!"
+            assert_msg = "[TrialDataBase][perf_sampling] New ring points is empty!"
             assert new_ring_points.size > 0, assert_msg
 
             # Split all points by well_id and add them to a dict
