@@ -67,23 +67,29 @@ def run(config):
     print(f"{beg_str} Beginning iterations.")
 
     for it in range(start_it, num_its + start_it):
-        t0 = time()
+
         start_time = timer()
+
+        # feature selection
+        comm.send(None, dest=manager_rank, tag=MPI_TAGS.WORKER_FIRST_JOB.value)
+
+        status = MPI.Status()
+        msg = comm.recv(status=status)
+        msg_tag = status.Get_tag()
+
+        t0 = time()
         best_features = ['x', 'y', 'z']
 
+        # We only prepare_porosity if the manager send us some message
+        # At this point, if the message is MPI_TAGS.MANAGER_ABORT_PROP.value
+        # or a bad one, we will still prepare_porosity
         # Update test data: set trial_data size and update coordinates,
         # porosity, and other columns
         trial_data.prepare_porosity(it)
         t1 = time()
         print(f"{beg_str}[it{it}] Prepared trial_data in {t1-t0} secs.")
 
-        # feature selection
-        comm.send(None, dest=manager_rank, tag=MPI_TAGS.WORKER_FIRST_JOB.value)
-
         while True:
-            status = MPI.Status()
-            msg = comm.recv(status=status)
-            msg_tag = status.Get_tag()
 
             # Don't count the original [x,y,z] features
             f_it = len(best_features) - 3
@@ -146,8 +152,7 @@ def run(config):
 
                 # Add the last column to trial_data
                 (last_feature, disp) = best_features[-1]
-                trial_data.update_feature(all_features_dict[last_feature],
-                                          disp)
+                trial_data.update_feature(all_features_dict[last_feature], disp)
 
                 break
 
@@ -158,6 +163,10 @@ def run(config):
 
             else:
                 raise Exception(f"{beg_str} Bad MPI tag: {msg_tag}")
+
+            status = MPI.Status()
+            msg = comm.recv(status=status)
+            msg_tag = status.Get_tag()
 
         # Propagation
         # Only one rank per node actually commits data to the hdf5 file,
