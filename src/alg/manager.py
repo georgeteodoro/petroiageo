@@ -154,4 +154,26 @@ def run(config):
                             comm.send(best_features,
                                       dest=worker_rank,
                                       tag=MPI_TAGS.MANAGER_BEST_FEATURES.value)
+
+                        # Wait all workers to be at the end of it after possibly
+                        # propagating
+                        end_of_it_workers = 0
+                        while True:
+                            msg = comm.recv(status=status)
+                            msg_tag = status.Get_tag()
+                            worker_rank = status.Get_source()
+                            if msg_tag == MPI_TAGS.WORKER_END_OF_IT.value:
+                                end_of_it_workers += 1
+                            else:
+                                raise Exception(
+                                    f"{beg_str}[it{it}] Manager expected {MPI_TAGS.WORKER_END_OF_IT.value} but got {msg_tag}"
+                                )
+
+                            if end_of_it_workers == workers_size:
+                                for worker_rank in range(workers_size):
+                                    comm.send([],
+                                              dest=worker_rank,
+                                              tag=MPI_TAGS.
+                                              MANAGER_LIBERATE_WORKERS.value)
+                                break
                         break

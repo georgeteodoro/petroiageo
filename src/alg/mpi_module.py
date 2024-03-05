@@ -33,6 +33,9 @@ class MPI_TAGS(Enum):
     WORKER_ABORT_PROP = auto()
     MANAGER_ABORT_PROP = auto()
 
+    WORKER_END_OF_IT = auto()
+    MANAGER_LIBERATE_WORKERS = auto()
+
 
 def _get_local_node_comm(comm):
     '''
@@ -100,21 +103,21 @@ def _should_update_local(mpi_size, rank, comm):
     return ret
 
 def _get_mapping(rank, mpi_size, manager_rank, comm):
-    
+
     if rank == manager_rank:
-        tmp_rank_mapping = dict()    
+        tmp_rank_mapping = dict()
         for i in range(mpi_size-1):
             r, node = comm.recv()
             if node in tmp_rank_mapping:
                 tmp_rank_mapping[node].append(r)
             else:
                 tmp_rank_mapping[node] = [r]
-        
+
         # Change node name to an uid
         rank_mapping = dict()
         for nid, ranks in enumerate(tmp_rank_mapping.values()):
             rank_mapping[nid] = ranks
-        
+
         comm.bcast(rank_mapping, root=manager_rank)
     else:
         comm.send((rank, MPI.Get_processor_name()),dest=manager_rank)

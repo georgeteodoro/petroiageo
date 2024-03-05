@@ -187,6 +187,21 @@ def run(config):
             print(f"[it{it}] SKIPPING PROPAGATION (feature selection only)")
             break
 
+        # Signal manager that this worker passed by the propagation step
+        comm.send([], dest=manager_rank, tag=MPI_TAGS.WORKER_END_OF_IT.value)
+        
+        # Wait for manager liberate this worker
+        status = MPI.Status()
+        msg = comm.recv(status=status)
+        msg_tag = status.Get_tag()
+        if msg_tag == MPI_TAGS.MANAGER_LIBERATE_WORKERS.value:
+            #Manager liberated this worker to start another it or go home
+            pass
+        else:
+            raise Exception(
+                f"{beg_str} Expected {MPI_TAGS.MANAGER_LIBERATE_WORKERS.value} but got {msg_tag}"
+            )
+
     porosity_h5_f.close()
     if rank_should_propagate:
         print(beg_str + f' End Time(hh:mm:ss.ms): {datetime.now()}')
