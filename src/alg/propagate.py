@@ -127,12 +127,12 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
                                porosity_data_h5,
                                config,
                                should_consider_sampling=False)
+    # As test data dont propagate, the test data is always at the prep_it=1
     test_data.prepare_porosity(1)
     for (feature, disp) in best_features:
         test_data.update_feature(features_dict[feature], disp)
         test_data.commit_feature()
 
-    # assert len(test_data) > 0, "[propagate] There are no testing data!"
     rmse, mae = _eval_model(model, test_data, config.test_wells_ids)
     print(f"[propagation][it{it}] Test errors: RMSE: {rmse} MAE: {mae}")
 

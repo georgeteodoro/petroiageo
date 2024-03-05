@@ -21,6 +21,7 @@ class TrialDataBase(ABC):
     Due to the use of padding, all coordinates are the padded coordinates. 
     Thus, it is expected of the wells_list to have padded coordinates as well.
     '''
+
     def __init__(self,
                  target_wells_ids_list,
                  porosity_data: Dataset,
@@ -313,8 +314,7 @@ class TrialDataBase(ABC):
                 t11 = time()
 
                 # Retrieve the coordinate list of the current ring/well pair
-                cur_coords = self._get_values_hook(r, w)[['x', 'y',
-                                                          'z']].copy()
+                cur_coords = self._get_values_hook(r, w)[['x', 'y', 'z']].copy()
                 t12 = time()
 
                 # Applies the displacement at the whole array,
@@ -334,10 +334,10 @@ class TrialDataBase(ABC):
                 self._update_col_hook(r, w, filtered_feature_data)
                 t15 = time()
 
-                get_coords_disp_time += t12-t11
-                apply_disp_time += t13-t12
-                filter_coords_time += t14-t13
-                update_col_time += t15-t14
+                get_coords_disp_time += t12 - t11
+                apply_disp_time += t13 - t12
+                filter_coords_time += t14 - t13
+                update_col_time += t15 - t14
 
                 # if profile:
                 #     print(f"[TrialDataBase][update_feature][r{r}][w{w}] "
@@ -466,6 +466,7 @@ class TrialDataBase(ABC):
         # TODO: Sampling is memory inefficient: all data from a given ring is
         # first compiled and then sampled. Maybe later change the sampler to
         # receive as input points from a ring/well pair.
+
         for ring in self._rings_list:
             # print(f'================= ring{ring}')
             # Compile all points from a ring
@@ -473,13 +474,20 @@ class TrialDataBase(ABC):
             for well_id in self._wells_id_list:
                 ring_points.extend(self._get_values_hook(ring, well_id))
 
+            assert_msg = f"[TrialDataBase][perf_sampling][it{it}] Ring {ring} points is empty!"
+            assert len(ring_points) > 0, assert_msg
+
             # Perform sampling
             new_ring_points = self._sampler.sample(np.array(ring_points),
                                                    total_n_points, it, ring)
 
+            assert_msg = f"[TrialDataBase][perf_sampling][it{it}] New ring points is empty!"
+            assert new_ring_points.size > 0, assert_msg
+
             # Split all points by well_id and add them to a dict
             new_rings_dict = dict()
             field_names = [i for i, j in self._base_data_type]
+
             for well_id in self._wells_id_list:
                 new_rings_dict[well_id] = new_ring_points[
                     new_ring_points['well_id'] == well_id][field_names]
