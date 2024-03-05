@@ -466,6 +466,13 @@ class TrialDataBase(ABC):
         # TODO: Sampling is memory inefficient: all data from a given ring is
         # first compiled and then sampled. Maybe later change the sampler to
         # receive as input points from a ring/well pair.
+        print(
+            f"[TrialDataBase][perf_sampling][it{it}] Target wells ids: {self._wells_id_list}"
+        )
+        print(
+            f"[TrialDataBase][perf_sampling][it{it}] Ring list: {self._rings_list}"
+        )
+
         for ring in self._rings_list:
             # print(f'================= ring{ring}')
             # Compile all points from a ring
