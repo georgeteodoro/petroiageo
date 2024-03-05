@@ -11,7 +11,7 @@ class FeatureDataH5(FeatureDataBase):
     Implementation for out-of-core feature with hdf5.
     '''
     def __init__(self, feature_path, mpi_local_comm):
-        super(FeatureDataH5, self).__init__(feature_path)
+        super(FeatureDataH5, self).__init__()
         self._feature_file = None
         feature_file_name = feature_path[feature_path.rfind('/') + 1:]
         feature_name = feature_file_name[:feature_file_name.find('.')]

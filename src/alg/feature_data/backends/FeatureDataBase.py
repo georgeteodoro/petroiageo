@@ -7,7 +7,7 @@ class FeatureDataBase(ABC):
     Abstract feature_data class. Base for different feature_data backends.
     Feature data should be just a float value for a 3D hypercube space.
     '''
-    def __init__(self, feature_path):
+    def __init__(self):
         self._feature = None
 
     @abstractmethod

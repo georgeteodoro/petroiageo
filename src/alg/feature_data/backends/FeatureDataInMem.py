@@ -13,7 +13,7 @@ class FeatureDataInMem(FeatureDataBase):
     all data is in-memory (np.ndarray) and no more storage I/O is performed.
     '''
     def __init__(self, feature_path, mpi_local_comm):
-        super(FeatureDataInMem, self).__init__(feature_path)
+        super(FeatureDataInMem, self).__init__()
         
         # Load H5 File
         feature_file_name = feature_path[feature_path.rfind('/') + 1:]
@@ -27,7 +27,7 @@ class FeatureDataInMem(FeatureDataBase):
             }
         else:
             # This is only used for testing
-            print(f"[FeatureDataH5] WARNING: initializing FeatureDataH5 "
+            print(f"[FeatureDataInMem] WARNING: initializing FeatureDataH5 "
                   f"{feature_name} without mpio. Ignore if unittesting.")
             mpi_kwargs = {}
         self._feature_file = h5py.File(feature_path, "r", **mpi_kwargs)

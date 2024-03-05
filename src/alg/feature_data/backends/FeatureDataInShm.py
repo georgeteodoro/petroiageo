@@ -1,0 +1,97 @@
+import numpy as np
+from abc import ABC, abstractmethod
+import h5py
+import fasteners  # inter-process, intra-node lock
+from multiprocessing import shared_memory
+
+from feature_data.backends.FeatureDataBase import FeatureDataBase
+import common
+
+
+class FeatureDataInShm(FeatureDataBase):
+    '''
+    Implementation for in-memory feature with hdf5. Although the input file
+    is hdf5, it is pre-fetched in its entirety at construction, if necessary. 
+    Afterwards, all data is in-memory (shared memory accessed through 
+    np.ndarray) and no more storage I/O is performed.
+
+    This version uses shared-memory. On creation, if the feature_path
+    is valid, then the feature data is read on the shared-memory location
+    from shm_path. Otherwise, it is assumed that the data is already on 
+    shm_path. Either way, an np.ndarray wraps the shared-memory data.
+
+    On feature loading, a write lock is acquired, released after the 
+    feature is loaded. Before the np.ndarray creation, a read lock is 
+    acquired. The read lock is released at destruction. All locking is
+    blocking, thus, to avoid waiting a possible feature loading process 
+    futures are recommended.
+    '''
+    def __init__(self, shm_path, lock_path, mpi_local_comm, feature_path=None):
+        super(FeatureDataInShm, self).__init__()
+        
+        # Create the np.ndarray interface to the shared-memory
+        self._shm_feature = shared_memory.SharedMemory(name=shm_path,
+                                                       create=False)
+        self._feature = np.array(feature_shape,
+                             dtype=np.float64,
+                             buffer=self._shm_feature.buf)
+
+        self._lock = fasteners.InterProcessReaderWriterLock(lock_path)
+        
+        if feature_path is not None:
+            self._lock.acquire_write_lock()
+
+            # Load H5 File
+            feature_file_name = feature_path[feature_path.rfind('/') + 1:]
+            feature_name = feature_file_name[:feature_file_name.find('.')]
+            if mpi_local_comm is not None:
+                # Arguments to open the parallel accessible h5 file on the correct
+                # communicator (there is one per node).
+                mpi_kwargs = {
+                    'driver': 'mpio',
+                    'comm': mpi_local_comm,
+                }
+            else:
+                # This is only used for testing
+                print(f"[FeatureDataInShm] WARNING: initializing "
+                      f"FeatureDataInShm {feature_name} without mpio. "
+                      f"Ignore if unittesting.")
+                mpi_kwargs = {}
+            self._feature_file = h5py.File(feature_path, "r", **mpi_kwargs)
+
+            assert self._feature_file is not None, "[FeatureDataInShm] "\
+                f"Could not open file {feature_path}"
+
+            feature_dset = self._feature_file[common.FEAT_DSET_NAME]
+
+            assert feature_dset is not None, "[FeatureDataInShm] "\
+                f"Could not get dataset {FEAT_DSET_NAME} of file {feature_path}"
+
+            # Pre-fetch all data
+            self._feature[:] = feature_dset[:]
+            self._feature_file.close()
+            
+            self._lock.release_write_lock()
+        
+        # Now it can read
+        self._lock.acquire_read_lock()
+
+
+    def __del__(self):
+        self._lock.release_read_lock()
+
+
+    def filter_coords(self, coords):
+        '''
+        Filter points, one by one. No performance guarantee was made with this
+        simple implementation.
+        Do we need a generator???
+        '''
+
+        # Allocate output array
+        points = np.empty((len(coords), ), np.float64)
+
+        for (i, c) in enumerate(coords):
+            points[i] = self._feature[tuple(c)]
+
+        return points

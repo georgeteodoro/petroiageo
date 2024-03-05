@@ -1,9 +1,13 @@
 from multiprocessing import shared_memory
 import fasteners  # inter-process, intra-node lock
 from mpi4py import MPI
+from time import monotonic_ns
+from asyncio import Future
+import asyncio
+import numpy as np
 
 from feature_data.FeatureDatasetBase import FeatureDatasetBase
-from feature_data.backends.FeatureDataInMem import FeatureDataInMem
+from feature_data.backends.FeatureDataInShm import FeatureDataInShm
 from feature_data.backends.FeatureDataH5 import FeatureDataH5
 
 
@@ -13,9 +17,25 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
     No pre-fetching is done. The first access is always a cache miss.
     There is a configuration for cache size: number of features loaded.
 
-    TODO: For this first implementation, each process has a FeatureDataset,
-    meaning that the cache is individual per process. If initial tests are ok
-    a shared in-node implementation will be done.
+    The cache is a set of shared-memory spaces with the size of a full 
+    feature. This is accessed through FeatureDataInShm objects, which can
+    access this data though a numpy ndarray interface.
+
+    The cache is LRU, managed my two lists and a set of file locks. The
+    first list holds the name of the feature in a given cache line. The
+    second list holds a monotonic time value to find the LRU element.
+    Each feature have a read-write lock, with the write lock being used when
+    the feature is loaded into the cache. No feature with a read lock can be 
+    evicted from cache. On a cache miss with all cache lines filled and busy 
+    (i.e., with read locks), the missing process will keep re-attempting to
+    evict a cache line until one is available.
+
+    The LRU algorithm is entirely in a critical region, protected by a global 
+    lock. The cache is for processes within a common node, thus the LRU lock
+    is also shared between processes on the same node. The LRU lock does not
+    lingers on a process on cache misses, of cache hits with a write-locked
+    feature. Instead, the algorithm releases the lock and re-attempt the 
+    read process.
     '''
     def __init__(self, config):
         super(FeatureDatasetInMemCache, self).__init__(config)
@@ -29,12 +49,12 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
         # same node. LRU resolution needs to be thread-safe.
         # First, create a inter-process, intra-node file lock
         self._lru_lock = fasteners.InterProcessLock(
-            '/tmp/FeatureDataInMem.lock')
+            '/tmp/FeatureDatasetInMemCache.lock')
 
         # Then, set a single intra-node process as the creator of the
         # shared-memory LRU list.
         rank_list = np.zeros(self._mpi_local_comm.Get_size(), dtype=np.int64)
-        self._mpi_local_comm.Allgather([int64(mpi_rank), MPI.LONG],
+        self._mpi_local_comm.Allgather([np.int64(mpi_rank), MPI.LONG],
                                        [rank_list, MPI.LONG])
 
         # Process with the smallest rank value creates the LRU shared-data list
@@ -56,15 +76,17 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
                                                        create=False)
 
         # Create a numpy array which reads from the shared-memory
-        self._lru = np.array((2, self._max_cache_lines),
+        self._lru = np.ndarray((2, self._max_cache_lines),
                              dtype=np.int32,
                              buffer=self._shm_lru.buf)
 
         # Setup LRU list. It is a combination of two lists. The first row [0]
-        # contains a list of times of when an element was last used.
-        # The element with the lowest value is the LRU element. The second
-        # list [1] contains the ID of the feature currently loaded on cache.
-        # All elements are initialized with -1, representing an empty element.
+        # contains the ID of the feature currently loaded on cache. The second
+        # list [1] contains a list of times of when an element was last used.
+        # The element with the lowest value is the LRU element. All elements
+        # are initialized with -1, representing an empty element.
+        self._LRU_F_IDX = 0
+        self._LRU_TIME = 1
         if mpi_rank == rank_list.min():
             self._lru[:, :] = -1
         self._mpi_local_comm.Barrier()
@@ -97,7 +119,14 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
                     shared_memory.SharedMemory(name=lru_shm_name,
                                                create=False))
 
-    def get_feature(self, feature):
+        # Create a list of features locks for checking if a feature can be
+        # evicted from cache
+        self._feature_locks = []
+        for i in range(self._max_cache_lines):
+            self._feature_locks.append(
+                fasteners.InterProcessReaderWriterLock(self._shm_lock_path(i)))
+
+    async def _async_get_feature(self, feature):
         '''
         Returns a shared-memory backend feature object.
         An LRU lock is used to ensure thread-safeness for LRU resolution, 
@@ -121,27 +150,86 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
         done through futures.
         '''
 
-        # Check for cache miss
-        if feature not in self._features:
-            # Evict cache line based on LRU if needed
-            if len(self._lru) == self._max_cache_lines:
-                lru_feature_name = self._lru.pop(0)
-                lru_feature = self._features.pop(lru_feature_name)
-                del lru_feature
-                print(f"[FeatureDatasetBase] Evicting: {lru_feature_name}")
+        # Find an index value for the current feature
+        feature_idx = list(self._all_features_path_dict.keys()).index(feature)
 
-            # Load the missed feature
-            print(f"[FeatureDatasetBase] Loading to cache: {lru_feature_name}")
-            feature_path = self._all_features_path_dict[feature]
-            self._features[feature] = FeatureDataInMem(feature_path,
-                                                       self._mpi_local_comm)
+        # Future object for creating and returning the FeatureData wrapper.
+        # This async execution allows the lru lock to be released without
+        # waiting the creation process, which can take a long time and does
+        # not requires thread-safeness.
+        create_future = Future()
 
-        # Return cache hit
-        self._lru_hit(feature)
-        return self._features[feature]
+        # Create an async task for creating the FeatureData wrapper
+        async def _create_FeatureData(f, shm_path, lock_path, mpi_comm,
+                                      feature_path):
+            f.set_result(
+                FeatureDataInShm(shm_path, lock_path, mpi_comm, feature_path))
+
+        # All LRU operations are serialized
+        with self._lru_lock:
+            # Check for cache miss
+            if feature_idx not in self._lru[self._LRU_F_IDX]:
+                # Get the sorted indices of cache lines, ordered by _LRU_TIME
+                preference_list = np.argsort(self._lru[self._LRU_TIME])
+
+                # Attempt to find a free cache-line
+                for i in preference_list:
+                    found = self._feature_locks[i].acquire_write_lock(
+                        blocking=False)
+                    if found:
+                        line_idx = i
+                        break
+
+                # If all cache lines are in use, return and try again
+                if not found:
+                    return None
+
+                # The i-th entry can be evicted.
+                # Update the cache register
+                self._lru[self._LRU_F_IDX][line_idx] = feature_idx
+
+                # Set a feature path in order to load it from disk to memory
+                feature_path = self._all_features_path_dict[feature]
+
+            else:
+                # Retrieve index of cache line for the hit feature
+                line_idx = np.where(
+                    self._lru[self._LRU_F_IDX] == feature_idx)[0][0]
+
+                # An empty feature path represents a cache hit, i.e., no need
+                # for reloading the feature into memory
+                feature_path = None
+
+            # Set a cache hit
+            self._lru[self._LRU_TIME][line_idx] = monotonic_ns()
+
+            # Create the shared-memory FeatureData wrapper asynchronously
+            asyncio.create_task(
+                _create_FeatureData(create_future,
+                                    self._shm_feature_name(line_idx),
+                                    self._shm_lock_path(feature_idx),
+                                    self._mpi_local_comm, feature_path))
+
+        feature = await create_future
+        return feature
+
+    def get_feature(self, feature):
+        '''
+        Runs the async version of get_feature.
+        '''        
+        
+        ret = None
+        # ret can be None on a cache miss which could not find a free cache line
+        # to evict. On this case, it should keep trying.
+        while ret is None:
+            ret = asyncio.run(self._async_get_feature(feature))
+        return ret
 
     def _shm_feature_name(self, f_id):
-        return f'FeatureDatasetInMemCache.{f_id}'
+        return f'FeatureDatasetInMemCache.feature{f_id}'
+
+    def _shm_lock_path(self, f_id):
+        return f'/tmp/FeatureDatasetInMemCache.CacheLine{f_id}'
 
     def _lru_hit(self, feature):
         '''
