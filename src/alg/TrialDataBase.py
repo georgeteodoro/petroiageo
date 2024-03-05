@@ -466,12 +466,6 @@ class TrialDataBase(ABC):
         # TODO: Sampling is memory inefficient: all data from a given ring is
         # first compiled and then sampled. Maybe later change the sampler to
         # receive as input points from a ring/well pair.
-        print(
-            f"[TrialDataBase][perf_sampling][it{it}] Target wells ids: {self._wells_id_list}"
-        )
-        print(
-            f"[TrialDataBase][perf_sampling][it{it}] Ring list: {self._rings_list}"
-        )
 
         for ring in self._rings_list:
             # print(f'================= ring{ring}')
@@ -493,9 +487,6 @@ class TrialDataBase(ABC):
             # Split all points by well_id and add them to a dict
             new_rings_dict = dict()
             field_names = [i for i, j in self._base_data_type]
-
-            assert_msg = f"[TrialDataBase][perf_sampling][it{it}] field_names is empty!"
-            assert len(field_names) > 0, assert_msg
 
             for well_id in self._wells_id_list:
                 new_rings_dict[well_id] = new_ring_points[
