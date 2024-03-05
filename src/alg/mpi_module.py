@@ -33,6 +33,11 @@ class MPI_TAGS(Enum):
     WORKER_ABORT_PROP = auto()
     MANAGER_ABORT_PROP = auto()
 
+    # These two messages are used at the end of an iteration by the worker
+    # and the manager. It's objective is to sync the start of the next
+    # iteration by all workers, those that propagate and those who don't,
+    # so that some won't start the next iteration while some is still
+    # propagating the next ring
     WORKER_END_OF_IT = auto()
     MANAGER_LIBERATE_WORKERS = auto()
 
