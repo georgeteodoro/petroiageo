@@ -5,6 +5,7 @@ from time import monotonic_ns
 from asyncio import Future
 import asyncio
 import numpy as np
+from math import prod
 
 from feature_data.FeatureDatasetBase import FeatureDatasetBase
 from feature_data.backends.FeatureDataInShm import FeatureDataInShm
@@ -43,7 +44,8 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
         # Load config
         self._mpi_local_comm = config.get_param('mpi_local_comm')
         mpi_rank = config.get_param('mpi_rank')
-        self._max_cache_lines = 1
+        self._feature_shape = config.get_param('feature_shape')
+        self._max_cache_lines = int(config.alg['feature_cache_lines'])
 
         # The LRU list is shared across all FeatureDatasetInMemCache within the
         # same node. LRU resolution needs to be thread-safe.
@@ -52,33 +54,34 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
             '/tmp/FeatureDatasetInMemCache.lock')
 
         # Then, set a single intra-node process as the creator of the
-        # shared-memory LRU list.
+        # shared-memory LRU list. This is the responsible rank.
         rank_list = np.zeros(self._mpi_local_comm.Get_size(), dtype=np.int64)
         self._mpi_local_comm.Allgather([np.int64(mpi_rank), MPI.LONG],
                                        [rank_list, MPI.LONG])
+        self._is_resp_rank = mpi_rank == rank_list.min()
 
         # Process with the smallest rank value creates the LRU shared-data list
-        lru_shm_name = 'FeatureDatasetBase.lru'
-        if mpi_rank == rank_list.min():
+        if self._is_resp_rank:
             # Allocate shared-memory space
             self._shm_lru = shared_memory.SharedMemory(
-                name=lru_shm_name,
                 create=True,
                 size=(2 * self._max_cache_lines * np.dtype('int32').itemsize))
 
-        # Wait for allocation of LRU shared-memory region
-        self._mpi_local_comm.Barrier()
+            # Send the shm region name to all other processes
+            self._mpi_local_comm.bcast(self._shm_lru.name, root=mpi_rank)
+        else:
+            # Get the name of the shared-memory space
+            lru_shm_name = self._mpi_local_comm.bcast(None,
+                                                      root=rank_list.min())
 
-        # Remaining processes access existing LRU shared-memory
-        if mpi_rank != rank_list.min():
-            # Load shared-memory space
+            # Remaining processes access existing LRU shared-memory
             self._shm_lru = shared_memory.SharedMemory(name=lru_shm_name,
                                                        create=False)
 
         # Create a numpy array which reads from the shared-memory
         self._lru = np.ndarray((2, self._max_cache_lines),
-                             dtype=np.int32,
-                             buffer=self._shm_lru.buf)
+                               dtype=np.int32,
+                               buffer=self._shm_lru.buf)
 
         # Setup LRU list. It is a combination of two lists. The first row [0]
         # contains the ID of the feature currently loaded on cache. The second
@@ -87,24 +90,17 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
         # are initialized with -1, representing an empty element.
         self._LRU_F_IDX = 0
         self._LRU_TIME = 1
-        if mpi_rank == rank_list.min():
+        if self._is_resp_rank:
             self._lru[:, :] = -1
         self._mpi_local_comm.Barrier()
 
         # Allocate the shared-memory for all features
         self._shm_cache_lines = []
-        if mpi_rank == rank_list.min():
-            # Get a sample feature to find the dimensions
-            # required for a feature
-            sample_feature_path = next(
-                iter(self._all_features_path_dict.values()))
-            sample_feature = FeatureDataH5(sample_feature_path,
-                                           self._mpi_local_comm)
-            feature_size = sample_feature._feature.dtype.itemsize * \
-                           sample_feature._feature.size
-            del sample_feature
+        if self._is_resp_rank:
 
             # Create one shared-memory region per cache line
+            feature_size = prod(
+                self._feature_shape) * np.dtype('float64').itemsize
             for i in range(self._max_cache_lines):
                 self._shm_cache_lines.append(
                     shared_memory.SharedMemory(name=self._shm_feature_name(i),
@@ -113,7 +109,7 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
         self._mpi_local_comm.Barrier()
 
         # Remaining processes initialize shared-memory object
-        if mpi_rank != rank_list.min():
+        if not self._is_resp_rank:
             for i in range(self._max_cache_lines):
                 self._shm_cache_lines.append(
                     shared_memory.SharedMemory(name=lru_shm_name,
@@ -125,6 +121,19 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
         for i in range(self._max_cache_lines):
             self._feature_locks.append(
                 fasteners.InterProcessReaderWriterLock(self._shm_lock_path(i)))
+
+    def __del__(self):
+
+        for shm in self._shm_cache_lines:
+            shm.close()
+        self._shm_lru.close()
+        self._mpi_local_comm.Barrier()
+
+        if self._is_resp_rank:
+            self._shm_lru.unlink()
+            for shm in self._shm_cache_lines:
+                shm.unlink()
+        self._mpi_local_comm.Barrier()
 
     async def _async_get_feature(self, feature):
         '''
@@ -160,10 +169,11 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
         create_future = Future()
 
         # Create an async task for creating the FeatureData wrapper
-        async def _create_FeatureData(f, shm_path, lock_path, mpi_comm,
+        async def _create_FeatureData(f, shm_path, lock_path, feature_shape,
                                       feature_path):
             f.set_result(
-                FeatureDataInShm(shm_path, lock_path, mpi_comm, feature_path))
+                FeatureDataInShm(shm_path, lock_path, feature_shape,
+                                 feature_path))
 
         # All LRU operations are serialized
         with self._lru_lock:
@@ -208,7 +218,7 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
                 _create_FeatureData(create_future,
                                     self._shm_feature_name(line_idx),
                                     self._shm_lock_path(feature_idx),
-                                    self._mpi_local_comm, feature_path))
+                                    self._feature_shape, feature_path))
 
         feature = await create_future
         return feature
@@ -216,8 +226,8 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
     def get_feature(self, feature):
         '''
         Runs the async version of get_feature.
-        '''        
-        
+        '''
+
         ret = None
         # ret can be None on a cache miss which could not find a free cache line
         # to evict. On this case, it should keep trying.
@@ -226,7 +236,10 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
         return ret
 
     def _shm_feature_name(self, f_id):
-        return f'FeatureDatasetInMemCache.feature{f_id}'
+        # The header of self._shm_lru.name ensures that a shared-memory space
+        # is always available, even if the program had previously exited
+        # with errors
+        return f'{self._shm_lru.name}FeatureDatasetInMemCache.feature{f_id}'
 
     def _shm_lock_path(self, f_id):
         return f'/tmp/FeatureDatasetInMemCache.CacheLine{f_id}'

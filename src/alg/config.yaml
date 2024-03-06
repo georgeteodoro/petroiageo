@@ -30,6 +30,8 @@ alg:
   fsel_only: True
   TD_on_memory: True
 
+  feature_cache_lines: 2
+
   parallel:
     # max_points_per_chunk: 1000
     n_training_chunks: 1

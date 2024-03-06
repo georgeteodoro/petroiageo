@@ -114,8 +114,6 @@ def run(config):
                     # Check if this is the final f_it from the current it,
                     # or if this is just the end of a f_it.
                     if len(best_features) < n_features_to_select:
-                        # End the current f_it
-
                         # Send best current feature to all workers
                         for worker_rank in range(workers_size):
                             print(f"{beg_str}[it{it}] New best feature "
@@ -154,25 +152,7 @@ def run(config):
                                       dest=worker_rank,
                                       tag=MPI_TAGS.MANAGER_BEST_FEATURES.value)
 
-                        # Wait all workers to be at the end of it after possibly
-                        # propagating
-                        end_of_it_workers = 0
-                        while True:
-                            msg = comm.recv(status=status)
-                            msg_tag = status.Get_tag()
-                            worker_rank = status.Get_source()
-                            if msg_tag == MPI_TAGS.WORKER_END_OF_IT.value:
-                                end_of_it_workers += 1
-                            else:
-                                raise Exception(
-                                    f"{beg_str}[it{it}] Manager expected {MPI_TAGS.WORKER_END_OF_IT.value} but got {msg_tag}"
-                                )
-
-                            if end_of_it_workers == workers_size:
-                                for worker_rank in range(workers_size):
-                                    comm.send([],
-                                              dest=worker_rank,
-                                              tag=MPI_TAGS.
-                                              MANAGER_LIBERATE_WORKERS.value)
-                                break
                         break
+        
+        # Wait for the end of propagation
+        comm.Barrier()

@@ -33,14 +33,6 @@ class MPI_TAGS(Enum):
     WORKER_ABORT_PROP = auto()
     MANAGER_ABORT_PROP = auto()
 
-    # These two messages are used at the end of an iteration by the worker
-    # and the manager. It's objective is to sync the start of the next
-    # iteration by all workers, those that propagate and those who don't,
-    # so that some won't start the next iteration while some is still
-    # propagating the next ring
-    WORKER_END_OF_IT = auto()
-    MANAGER_LIBERATE_WORKERS = auto()
-
 
 def _get_local_node_comm(comm):
     '''
@@ -107,11 +99,12 @@ def _should_update_local(mpi_size, rank, comm):
 
     return ret
 
+
 def _get_mapping(rank, mpi_size, manager_rank, comm):
 
     if rank == manager_rank:
         tmp_rank_mapping = dict()
-        for i in range(mpi_size-1):
+        for i in range(mpi_size - 1):
             r, node = comm.recv()
             if node in tmp_rank_mapping:
                 tmp_rank_mapping[node].append(r)
@@ -125,10 +118,11 @@ def _get_mapping(rank, mpi_size, manager_rank, comm):
 
         comm.bcast(rank_mapping, root=manager_rank)
     else:
-        comm.send((rank, MPI.Get_processor_name()),dest=manager_rank)
+        comm.send((rank, MPI.Get_processor_name()), dest=manager_rank)
         rank_mapping = comm.bcast(None, root=manager_rank)
 
     return rank_mapping
+
 
 def initialize(config: config_parser.Config):
     # Get base MPI variables

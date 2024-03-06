@@ -6,14 +6,17 @@ class FeatureSchedFIFO(FeatureSchedBase):
     FIFO list feature scheduler implementation. Features are scheduled one 
     at a time for every displacement.
     '''
-
     def __init__(self, config):
         super(FeatureSchedFIFO, self).__init__(config)
 
         self._max_feats_for_trial = self._config.get_param(
             'max_feats_for_trial')
         self._all_features = self._gen_features_list()
+        self._available_features = self._all_features.copy()
         self._remaining_features = None
+
+        print(f"[FeatureSchedFIFO] Initial features "
+              f"{len(self._all_features)} {self._all_features}")
 
     # =========================================================================
     # === Public interface ====================================================
@@ -28,6 +31,7 @@ class FeatureSchedFIFO(FeatureSchedBase):
         iteration. This should not be called anywhere else.
         '''
 
+        self._available_features = self._all_features.copy()
         self._reset_internal_data()
 
     def get_feature(self, rank):
@@ -63,7 +67,7 @@ class FeatureSchedFIFO(FeatureSchedBase):
         committed feature. This should not be called anywhere else.
         '''
 
-        self._all_features.remove(feature)
+        self._available_features.remove(feature)
         self._reset_internal_data()
 
     # =========================================================================
@@ -71,10 +75,12 @@ class FeatureSchedFIFO(FeatureSchedBase):
     # =========================================================================
 
     def _reset_internal_data(self):
-        self._remaining_features = self._all_features.copy()
+        self._remaining_features = self._available_features.copy()
         if self._max_feats_for_trial > 0:
             self._remaining_features = \
                 self._remaining_features[:self._max_feats_for_trial]
+        print(f"[FeatureSchedFIFO] Reset features to "
+              f"{len(self._remaining_features)} {self._remaining_features}")
 
     def _gen_features_list(self):
         '''

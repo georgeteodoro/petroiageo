@@ -9,6 +9,9 @@ import mpi_module
 import manager
 import worker
 
+# Used only for retrieving the shape of a feature
+from feature_data.backends.FeatureDataH5 import FeatureDataH5
+
 
 def config_arg_parser():
     parser = argparse.ArgumentParser(description="Modelagem de "
@@ -249,6 +252,16 @@ def main(args_str=None):
 
     assert mpi_size > 1, "Two or more processes required to run "\
                          "(mpirun -np 2 python3 main.py)."
+
+    # Load the shape of the first feature into config. All features
+    # should have the same shape. This is kind of hacky. Maybe improve this in
+    # the future.
+    f_paths = [str(p) for p in config.features_files_paths if '.h5' in str(p)]
+    first_feature_path = str(f_paths[0])
+    feature_h5 = FeatureDataH5(first_feature_path,
+                               config.get_param('mpi_local_comm'))
+    feature_shape = feature_h5._feature.shape
+    config.add_param('feature_shape', feature_shape)
 
     if rank == manager_rank:
         manager.run(config)

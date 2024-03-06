@@ -26,38 +26,31 @@ class FeatureDataInShm(FeatureDataBase):
     blocking, thus, to avoid waiting a possible feature loading process 
     futures are recommended.
     '''
-    def __init__(self, shm_path, lock_path, mpi_local_comm, feature_path=None):
+    def __init__(self,
+                 shm_path,
+                 lock_path,
+                 feature_shape,
+                 feature_path=None):
         super(FeatureDataInShm, self).__init__()
-        
+
         # Create the np.ndarray interface to the shared-memory
         self._shm_feature = shared_memory.SharedMemory(name=shm_path,
                                                        create=False)
-        self._feature = np.array(feature_shape,
-                             dtype=np.float64,
-                             buffer=self._shm_feature.buf)
+        self._feature = np.ndarray(feature_shape,
+                                 dtype=np.float64,
+                                 buffer=self._shm_feature.buf)
 
         self._lock = fasteners.InterProcessReaderWriterLock(lock_path)
-        
+
         if feature_path is not None:
             self._lock.acquire_write_lock()
 
-            # Load H5 File
+            # Load H5 File. mpio driver not required here since only one 
+            # process per node need can fill the in-memory cache by opening
+            # and reading the file.
             feature_file_name = feature_path[feature_path.rfind('/') + 1:]
             feature_name = feature_file_name[:feature_file_name.find('.')]
-            if mpi_local_comm is not None:
-                # Arguments to open the parallel accessible h5 file on the correct
-                # communicator (there is one per node).
-                mpi_kwargs = {
-                    'driver': 'mpio',
-                    'comm': mpi_local_comm,
-                }
-            else:
-                # This is only used for testing
-                print(f"[FeatureDataInShm] WARNING: initializing "
-                      f"FeatureDataInShm {feature_name} without mpio. "
-                      f"Ignore if unittesting.")
-                mpi_kwargs = {}
-            self._feature_file = h5py.File(feature_path, "r", **mpi_kwargs)
+            self._feature_file = h5py.File(feature_path, 'r')
 
             assert self._feature_file is not None, "[FeatureDataInShm] "\
                 f"Could not open file {feature_path}"
@@ -70,16 +63,15 @@ class FeatureDataInShm(FeatureDataBase):
             # Pre-fetch all data
             self._feature[:] = feature_dset[:]
             self._feature_file.close()
-            
+
             self._lock.release_write_lock()
-        
+
         # Now it can read
         self._lock.acquire_read_lock()
 
-
     def __del__(self):
         self._lock.release_read_lock()
-
+        self._shm_feature.close()
 
     def filter_coords(self, coords):
         '''
