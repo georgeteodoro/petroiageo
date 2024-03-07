@@ -176,6 +176,7 @@ def run(config):
         # Also, propagation can be disabled in order to experiment with
         # feature selection only, enforced by 'feature_sel_only'
         if rank_should_propagate and not feature_sel_only:
+            print(f"{beg_str}[it{it}] Beginning propagation...")
             n_propagated_points = propagate(porosity_h5_dset, trial_data,
                                             all_features, best_features, it,
                                             config)
@@ -187,6 +188,10 @@ def run(config):
                   f"time(s): {end_time-start_time}")
         elif rank_should_propagate:
             print(f"[it{it}] SKIPPING PROPAGATION (feature selection only)")
+            
+            # Propagation barrier is also used by manager, regardless of f-sel
+            comm.Barrier()
+
             break
 
         # Wait for the end of propagation
