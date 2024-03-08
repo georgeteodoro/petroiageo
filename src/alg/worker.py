@@ -187,14 +187,18 @@ def run(config):
             print(f"{beg_str}[it{it}] Iteration total "
                   f"time(s): {end_time-start_time}")
         elif rank_should_propagate:
-            print(f"[it{it}] SKIPPING PROPAGATION (feature selection only)")
+            print(f"{beg_str}[it{it}] SKIPPING PROPAGATION "
+                  f"(feature selection only)")
             
             # Propagation barrier is also used by manager, regardless of f-sel
+            
+            print(f"{beg_str}[it{it}] Waiting fsel on skip")
             comm.Barrier()
 
             break
 
         # Wait for the end of propagation
+        print(f"{beg_str}[it{it}] Waiting fsel")
         comm.Barrier()
 
     porosity_h5_f.close()

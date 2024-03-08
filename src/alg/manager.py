@@ -155,4 +155,5 @@ def run(config):
                         break
         
         # Wait for the end of propagation
+        print(f"{beg_str}[it{it}] Waiting fsel")
         comm.Barrier()
