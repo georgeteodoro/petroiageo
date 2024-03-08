@@ -44,8 +44,10 @@ class FeatureSchedFIFO(FeatureSchedBase):
         '''
 
         if len(self._remaining_features) > 0:
+            print(f"[FeatureSchedFIFO][get_feature] sending feature.")
             return self._remaining_features.pop()
         else:
+            print(f"[FeatureSchedFIFO][get_feature] no more features.")
             return None
 
     def tried_feature(self, feature, rank):
