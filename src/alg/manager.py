@@ -51,9 +51,14 @@ def run(config):
 
         # Main loop on which a whole iteration is run
         while True:
+            
+            print(f"{beg_str}[it{it}] Waiting msg...")
+
             msg = comm.recv(status=status)
             msg_tag = status.Get_tag()
             worker_rank = status.Get_source()
+
+            print(f"{beg_str}[it{it}] Got {msg_tag}:{msg} from {worker_rank}.")
 
             # Parse response from worker
             if msg_tag == MPI_TAGS.WORKER_JOB_RESULT.value:
