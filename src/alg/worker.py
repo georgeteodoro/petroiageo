@@ -90,6 +90,7 @@ def run(config):
         comm.send(None, dest=manager_rank, tag=MPI_TAGS.WORKER_FIRST_JOB.value)
 
         while True:
+            print(f"{beg_str}[it{it}] Waiting msg...")
             status = MPI.Status()
             msg = comm.recv(status=status)
             msg_tag = status.Get_tag()
@@ -144,6 +145,7 @@ def run(config):
                 trial_data.commit_feature()
 
                 # Send response back requesting new job
+                print(f"{beg_str}[it{it}][f_it{f_it}] New first job")
                 comm.send(None,
                           dest=manager_rank,
                           tag=MPI_TAGS.WORKER_FIRST_JOB.value)

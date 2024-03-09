@@ -106,7 +106,7 @@ def run(config):
                 print(f"{beg_str}[it{it}] Sending feature {new_feature}")
             else:
                 done_workers += 1
-                print(f"{beg_str}[it{it}] Done workers: "
+                print(f"{beg_str}[it{it}] Done workers: w{worker_rank} "
                       f"{done_workers}/{workers_size}")
                 # If all workers are done, then this is the end of a f_it
                 # or a full iteration
