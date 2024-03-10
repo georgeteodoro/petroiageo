@@ -159,7 +159,7 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
         done through futures.
         '''
 
-        print(f"[FeatureDatasetInMemCache][_async_get_feature] Entering")
+        # print(f"[FeatureDatasetInMemCache][_async_get_feature] Entering")
 
         # Find an index value for the current feature
         feature_idx = list(self._all_features_path_dict.keys()).index(feature)
@@ -178,14 +178,14 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
                                  feature_path))
 
         # All LRU operations are serialized
-        print(f"[FeatureDatasetInMemCache][_async_get_feature] Getting lock")
+        # print(f"[FeatureDatasetInMemCache][_async_get_feature] Getting lock")
         with self._lru_lock:
-            print(f"[FeatureDatasetInMemCache][_async_get_feature] lru_locker")
+            # print(f"[FeatureDatasetInMemCache][_async_get_feature] lru_locker")
 
             # Check for cache miss
             if feature_idx not in self._lru[self._LRU_F_IDX]:
-                print(f"[FeatureDatasetInMemCache][_async_get_feature] "
-                      f"cache_miss")
+                # print(f"[FeatureDatasetInMemCache][_async_get_feature] "
+                #       f"cache_miss")
 
                 # Get the sorted indices of cache lines, ordered by _LRU_TIME
                 preference_list = np.argsort(self._lru[self._LRU_TIME])
@@ -193,28 +193,28 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
                 # Attempt to find a free cache-line
                 for i in preference_list:
                     # Perform a try-lock
-                    print(f"[FeatureDatasetInMemCache][_async_get_feature] "
-                          f"Checking free cache line with try-lock")
+                    # print(f"[FeatureDatasetInMemCache][_async_get_feature] "
+                    #       f"Checking free cache line with try-lock")
                     found = self._feature_locks[i].acquire_write_lock(
                         blocking=False)
                     if found:
                         # Release the try-lock since the FeatureData 
                         # also acquires a write lock on creation
-                        print(f"[FeatureDatasetInMemCache][_async_get_feature]"
-                              f" Found free line, releasing write-lock")
+                        # print(f"[FeatureDatasetInMemCache][_async_get_feature]"
+                        #       f" Found free line, releasing write-lock")
                         self._feature_locks[i].release_write_lock()
                         line_idx = i
                         break
 
                 # If all cache lines are in use, return and try again
                 if not found:
-                    print(f"[FeatureDatasetInMemCache][_async_get_feature] "
-                          f"No empty cache line")
+                    # print(f"[FeatureDatasetInMemCache][_async_get_feature] "
+                    #       f"No empty cache line")
                     return None
                 
-                print(f"[FeatureDatasetInMemCache][_async_get_feature] "
-                      f"Evicting line {line_idx} of feature "
-                      f"{self._lru[self._LRU_F_IDX][line_idx]}")
+                # print(f"[FeatureDatasetInMemCache][_async_get_feature] "
+                #       f"Evicting line {line_idx} of feature "
+                #       f"{self._lru[self._LRU_F_IDX][line_idx]}")
 
                 # The i-th entry can be evicted.
                 # Update the cache register
@@ -228,8 +228,8 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
                 line_idx = np.where(
                     self._lru[self._LRU_F_IDX] == feature_idx)[0][0]
 
-                print(f"[FeatureDatasetInMemCache][_async_get_feature] "
-                      f"Cache hit on line {line_idx}")
+                # print(f"[FeatureDatasetInMemCache][_async_get_feature] "
+                #       f"Cache hit on line {line_idx}")
 
                 # An empty feature path represents a cache hit, i.e., no need
                 # for reloading the feature into memory
@@ -259,8 +259,8 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
         while ret is None:
             ret = asyncio.run(self._async_get_feature(feature))
             if ret is None:
-                print(f"[FeatureDatasetInMemCache][get_feature] Failed "
-                      f"to get file, trying again")
+                # print(f"[FeatureDatasetInMemCache][get_feature] Failed "
+                #       f"to get file, trying again")
         return ret
 
     def _shm_feature_name(self, f_id):
