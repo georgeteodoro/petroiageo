@@ -33,6 +33,8 @@ class FeatureDataInShm(FeatureDataBase):
                  feature_path=None):
         super(FeatureDataInShm, self).__init__()
 
+        print(f"[FeatureDataInShm][__init__] Begun")
+
         # Create the np.ndarray interface to the shared-memory
         self._shm_feature = shared_memory.SharedMemory(name=shm_path,
                                                        create=False)
@@ -43,7 +45,10 @@ class FeatureDataInShm(FeatureDataBase):
         self._lock = fasteners.InterProcessReaderWriterLock(lock_path)
 
         if feature_path is not None:
+            print(f"[FeatureDataInShm][__init__] Should read feature data.")
+            print(f"[FeatureDataInShm][__init__] Getting Write lock...")
             self._lock.acquire_write_lock()
+            print(f"[FeatureDataInShm][__init__] Got Write lock")
 
             # Load H5 File. mpio driver not required here since only one 
             # process per node need can fill the in-memory cache by opening
@@ -61,17 +66,22 @@ class FeatureDataInShm(FeatureDataBase):
                 f"Could not get dataset {FEAT_DSET_NAME} of file {feature_path}"
 
             # Pre-fetch all data
+            print(f"[FeatureDataInShm][__init__] Fetching feature data")
             self._feature[:] = feature_dset[:]
             self._feature_file.close()
 
+            print(f"[FeatureDataInShm][__init__] Releasing Write lock")
             self._lock.release_write_lock()
 
         # Now it can read
+        print(f"[FeatureDataInShm][__init__] Getting read lock")
         self._lock.acquire_read_lock()
 
     def __del__(self):
+        print(f"[FeatureDataInShm][__del__] Releasing read lock")
         self._lock.release_read_lock()
         self._shm_feature.close()
+        print(f"[FeatureDataInShm][__del__] Done")
 
     def filter_coords(self, coords):
         '''
