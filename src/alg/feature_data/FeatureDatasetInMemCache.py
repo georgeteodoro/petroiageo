@@ -259,8 +259,8 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
         while ret is None:
             ret = asyncio.run(self._async_get_feature(feature))
             if ret is None:
-                # print(f"[FeatureDatasetInMemCache][get_feature] Failed "
-                #       f"to get file, trying again")
+                print(f"[FeatureDatasetInMemCache][get_feature] Failed "
+                      f"to get file, trying again")
         return ret
 
     def _shm_feature_name(self, f_id):
