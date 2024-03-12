@@ -8,7 +8,6 @@ class FeatureSchedFLoc(FeatureSchedBase):
     Smart feature locality-aware scheduler. It favors the distribution of 
     one feature per compute node
     '''
-
     def __init__(self, config):
         super(FeatureSchedFLoc, self).__init__(config)
 
@@ -100,8 +99,8 @@ class FeatureSchedFLoc(FeatureSchedBase):
 
         # Check if the max number of features to be returned
         # was already reached
-        if (self._max_feats_for_trial > 0
-                and self._tried_features == self._max_feats_for_trial):
+        if (self._max_feats_for_trial > 0 and
+                self._tried_features == self._max_feats_for_trial):
 
             if self._debug:
                 print("[FeatureSchedFLoc][get_feature] "
@@ -148,11 +147,13 @@ class FeatureSchedFLoc(FeatureSchedBase):
 
         # Look for a displacement of a feature which was also scheduled
         # to other nodes. Returns the feature with the least amount of
-        # nodes trying a feature.
+        # nodes trying a feature. The returned feature should also have
+        # at least 1 displacement available for trial
         min_count = np.inf
         sel_feature = None
         for feature, count_nodes in self._running_features.items():
-            if count_nodes < min_count:
+            if count_nodes < min_count and len(
+                    self._remaining_disps[sel_feature]) > 0:
                 min_count = count_nodes
                 sel_feature = feature
 
@@ -163,6 +164,8 @@ class FeatureSchedFLoc(FeatureSchedBase):
             self._running_features[sel_feature] += 1
 
             # Get an available displacement for the chosen feature
+            print(f"++++feature {sel_feature} from "
+                  f"{self._remaining_disps[sel_feature]}")
             displacement = self._remaining_disps[sel_feature].pop()
             self._tried_features += 1
             if self._debug:
@@ -246,7 +249,7 @@ class FeatureSchedFLoc(FeatureSchedBase):
         self._unscheduled_features = self._base_features.copy()
         self._running_features = dict()
 
-        # Check if there are features with no displacements available and 
+        # Check if there are features with no displacements available and
         # remove them if any
         to_remove = []
         for feature, displacements in self._remaining_disps.items():
