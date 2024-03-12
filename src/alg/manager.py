@@ -42,6 +42,7 @@ def run(config):
         print(f"{beg_str} Running [it{it}]")
 
         it_wait_time = 0
+        t0 = time()
 
         # Initialize best features and local features to be scheduled
         best_features = []
@@ -54,15 +55,15 @@ def run(config):
 
         # Main loop on which a whole iteration is run
         while True:
-            t0 = time()
+            t10 = time()
             msg = comm.recv(status=status)
-            t1 = time()
+            t11 = time()
             msg_tag = status.Get_tag()
             worker_rank = status.Get_source()
 
             # Total wait time is a gauge of manager contention. If this time
             # is too low, then there may be some contention.
-            it_wait_time += t1 - t0
+            it_wait_time += t11 - t10
 
             # Parse response from worker
             if msg_tag == MPI_TAGS.WORKER_JOB_RESULT.value:
@@ -126,9 +127,9 @@ def run(config):
                     # or if this is just the end of a f_it.
                     if len(best_features) < n_features_to_select:
                         # Send best current feature to all workers
+                        print(f"{beg_str}[it{it}] New best feature "
+                              f"{cur_best_feature}")
                         for worker_rank in range(workers_size):
-                            print(f"{beg_str}[it{it}] New best feature "
-                                  f"{cur_best_feature}")
                             comm.send(
                                 cur_best_feature,
                                 dest=worker_rank,
@@ -165,7 +166,8 @@ def run(config):
 
                         break
 
-        print(f"{beg_str}[it{it}] IT waiting time: {it_wait_time}")
+        t1 = time()
+        print(f"{beg_str}[it{it}] IT waiting time: {it_wait_time}/{t1-t0}")
 
         # Wait for the end of propagation
         print(f"{beg_str}[it{it}] Waiting fsel")
