@@ -171,7 +171,7 @@ def run(config):
             else:
                 raise Exception(f"{beg_str} Bad MPI tag: {msg_tag}")
 
-        t2 = timer()
+        t2 = time()
         print(f"{beg_str}[it{it}] Done feature_sel in: {t2-t1}")
 
         # Propagation
