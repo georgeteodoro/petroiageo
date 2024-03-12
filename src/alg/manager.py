@@ -1,4 +1,5 @@
 from mpi4py import MPI
+from time import time
 
 from mpi_module import MPI_TAGS
 from FeatureSchedFIFO import FeatureSchedFIFO
