@@ -15,8 +15,8 @@ class FeatureSchedFIFO(FeatureSchedBase):
         self._available_features = self._all_features.copy()
         self._remaining_features = None
 
-        print(f"[FeatureSchedFIFO] Initial features "
-              f"{len(self._all_features)} {self._all_features}")
+        # print(f"[FeatureSchedFIFO] Initial features: "
+        #       f"{len(self._all_features)} {self._all_features}")
 
     # =========================================================================
     # === Public interface ====================================================
@@ -44,10 +44,10 @@ class FeatureSchedFIFO(FeatureSchedBase):
         '''
 
         if len(self._remaining_features) > 0:
-            print(f"[FeatureSchedFIFO][get_feature] sending feature.")
+            # print(f"[FeatureSchedFIFO][get_feature] sending feature.")
             return self._remaining_features.pop()
         else:
-            print(f"[FeatureSchedFIFO][get_feature] no more features.")
+            # print(f"[FeatureSchedFIFO][get_feature] no more features.")
             return None
 
     def tried_feature(self, feature, rank):
@@ -81,8 +81,8 @@ class FeatureSchedFIFO(FeatureSchedBase):
         if self._max_feats_for_trial > 0:
             self._remaining_features = \
                 self._remaining_features[:self._max_feats_for_trial]
-        print(f"[FeatureSchedFIFO] Reset features to "
-              f"{len(self._remaining_features)} {self._remaining_features}")
+        # print(f"[FeatureSchedFIFO] Reset features to "
+        #       f"{len(self._remaining_features)} {self._remaining_features}")
 
     def _gen_features_list(self):
         '''

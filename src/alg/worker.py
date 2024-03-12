@@ -90,7 +90,7 @@ def run(config):
         comm.send(None, dest=manager_rank, tag=MPI_TAGS.WORKER_FIRST_JOB.value)
 
         while True:
-            print(f"{beg_str}[it{it}] Waiting msg...")
+            # print(f"{beg_str}[it{it}] Waiting msg...")
             status = MPI.Status()
             msg = comm.recv(status=status)
             msg_tag = status.Get_tag()
@@ -101,16 +101,14 @@ def run(config):
             # Respond the received job
             if msg_tag == MPI_TAGS.MANAGER_NEW_JOB.value:
                 # print(beg_str + f"[it{it}][f_it{f_it}] Got to test {msg}")
-                t10 = time()
 
                 # Got new feature to analyze
                 new_features = msg
                 results = []
                 for (feature, disp) in new_features:
+                    t10 = time()
                     trial_data.update_feature(
                         all_features.get_feature(feature), disp)
-                    print(f"{beg_str}[it{it}][f_it{f_it}] "
-                          f"Trial with {best_features + [(feature, disp)]}")
                     ret = test_new_feature(trial_data, config)
 
                     # None is returned upon only 1 well propagating.
@@ -125,9 +123,10 @@ def run(config):
                         return
 
                     results.append(((feature, disp), *ret))
-                t11 = time()
-                print(f"{beg_str}[it{it}][f_it{f_it}] Finished trials "
-                      f"in {t11-t10:.2f}")
+                    t11 = time()
+                    print(f"{beg_str}[it{it}][f_it{f_it}] Trial "
+                          f"{best_features + [(feature, disp)]} "
+                          f"in {t11-t10:.2f}")
 
                 # Send response back
                 comm.send(results,
@@ -135,7 +134,7 @@ def run(config):
                           tag=MPI_TAGS.WORKER_JOB_RESULT.value)
 
             elif msg_tag == MPI_TAGS.MANAGER_SELECTED_FEATURE.value:
-                print(f"{beg_str}[it{it}][f_it{f_it}] New best feature {msg}")
+                # print(f"{beg_str}[it{it}][f_it{f_it}] New best feature {msg}")
                 # Got the best feature for a f_it
                 new_feature = msg
                 (feature, disp) = new_feature
@@ -145,13 +144,13 @@ def run(config):
                 trial_data.commit_feature()
 
                 # Send response back requesting new job
-                print(f"{beg_str}[it{it}][f_it{f_it}] New first job")
+                # print(f"{beg_str}[it{it}][f_it{f_it}] New first job")
                 comm.send(None,
                           dest=manager_rank,
                           tag=MPI_TAGS.WORKER_FIRST_JOB.value)
 
             elif msg_tag == MPI_TAGS.MANAGER_BEST_FEATURES.value:
-                print(f"{beg_str}[it{it}][f_it{f_it}] Final features {msg}")
+                # print(f"{beg_str}[it{it}][f_it{f_it}] Final features {msg}")
                 # Generate the best features list
                 # best_features = ['x', 'y', 'z']
                 best_features = []
@@ -172,6 +171,9 @@ def run(config):
             else:
                 raise Exception(f"{beg_str} Bad MPI tag: {msg_tag}")
 
+        t2 = timer()
+        print(f"{beg_str}[it{it}] Done feature_sel in: {t2-t1}")
+
         # Propagation
         # Only one rank per node actually commits data to the hdf5 file,
         # enforced by 'rank_should_propagate'.
@@ -188,12 +190,14 @@ def run(config):
             end_time = timer()
             print(f"{beg_str}[it{it}] Iteration total "
                   f"time(s): {end_time-start_time}")
+
+            t3 = timer()
+            print(f"{beg_str}[it{it}] Done propagate in: {t3-t2}")
         elif rank_should_propagate:
             print(f"{beg_str}[it{it}] SKIPPING PROPAGATION "
                   f"(feature selection only)")
             
             # Propagation barrier is also used by manager, regardless of f-sel
-            
             print(f"{beg_str}[it{it}] Waiting fsel on skip")
             comm.Barrier()
 

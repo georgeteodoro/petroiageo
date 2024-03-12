@@ -40,6 +40,8 @@ def run(config):
     for it in range(start_it, num_its + start_it):
         print(f"{beg_str} Running [it{it}]")
 
+        it_wait_time = 0
+
         # Initialize best features and local features to be scheduled
         best_features = []
         feature_scheduler.begin_iteration()
@@ -51,14 +53,15 @@ def run(config):
 
         # Main loop on which a whole iteration is run
         while True:
-            
-            print(f"{beg_str}[it{it}] Waiting msg...")
-
+            t0 = time()
             msg = comm.recv(status=status)
+            t1 = time()
             msg_tag = status.Get_tag()
             worker_rank = status.Get_source()
 
-            print(f"{beg_str}[it{it}] Got {msg_tag}:{msg} from {worker_rank}.")
+            # Total wait time is a gauge of manager contention. If this time
+            # is too low, then there may be some contention.
+            it_wait_time += t1 - t0
 
             # Parse response from worker
             if msg_tag == MPI_TAGS.WORKER_JOB_RESULT.value:
@@ -108,7 +111,7 @@ def run(config):
                 comm.send([new_feature],
                           dest=worker_rank,
                           tag=MPI_TAGS.MANAGER_NEW_JOB.value)
-                print(f"{beg_str}[it{it}] Sending feature {new_feature}")
+                # print(f"{beg_str}[it{it}] Sending feature {new_feature}")
             else:
                 done_workers += 1
                 print(f"{beg_str}[it{it}] Done workers: w{worker_rank} "
@@ -153,14 +156,16 @@ def run(config):
 
                         # Send best features set to all workers
                         for worker_rank in range(workers_size):
-                            print(f"{beg_str}[it{it}] Sending final best "
-                                  f"features to worker{worker_rank}")
+                            # print(f"{beg_str}[it{it}] Sending final best "
+                            #       f"features to worker{worker_rank}")
                             comm.send(best_features,
                                       dest=worker_rank,
                                       tag=MPI_TAGS.MANAGER_BEST_FEATURES.value)
 
                         break
-        
+
+        print(f"{beg_str}[it{it}] IT waiting time: {it_wait_time}")
+
         # Wait for the end of propagation
         print(f"{beg_str}[it{it}] Waiting fsel")
         comm.Barrier()
