@@ -148,12 +148,13 @@ class FeatureSchedFLoc(FeatureSchedBase):
         # Look for a displacement of a feature which was also scheduled
         # to other nodes. Returns the feature with the least amount of
         # nodes trying a feature. The returned feature should also have
-        # at least 1 displacement available for trial
+        # at least 1 displacement available for trial.
         min_count = np.inf
         sel_feature = None
         for feature, count_nodes in self._running_features.items():
-            if count_nodes < min_count and len(
-                    self._remaining_disps[sel_feature]) > 0:
+            if (count_nodes < min_count and
+                    sel_feature in self._remaining_disps and
+                    len(self._remaining_disps[sel_feature]) > 0):
                 min_count = count_nodes
                 sel_feature = feature
 
