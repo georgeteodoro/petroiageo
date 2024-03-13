@@ -66,6 +66,9 @@ def _get_local_node_comm(comm):
         local_color = node_names.index(local_host_name)
     local_comm = comm.Split(local_color)
 
+    print(f"[mpi_module] Rank {rank} on global has color {local_color} and "
+          f"rank {local_comm.Get_rank()} on local")
+
     return local_comm
 
 

@@ -62,17 +62,23 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
 
         # Process with the smallest rank value creates the LRU shared-data list
         if self._is_resp_rank:
+            print(f'============= rank {mpi_rank} is creating shered lru')
             # Allocate shared-memory space
             self._shm_lru = shared_memory.SharedMemory(
                 create=True,
                 size=(2 * self._max_cache_lines * np.dtype('int32').itemsize))
+            print(f'============= rank {mpi_rank} created '
+                  f'{self._shm_lru.name}:{self._shm_lru}')
 
             # Send the shm region name to all other processes
             self._mpi_local_comm.bcast(self._shm_lru.name, root=mpi_rank)
+            print(f'============= rank {mpi_rank} broadcasted {self._shm_lru.name}')
         else:
+            print(f'+++++++++++++ rank {mpi_rank} is waiting lru creation')
             # Get the name of the shared-memory space
             lru_shm_name = self._mpi_local_comm.bcast(None,
                                                       root=rank_list.min())
+            print(f'+++++++++++++ rank {mpi_rank} got lru {lru_shm_name}')
 
             # Remaining processes access existing LRU shared-memory
             self._shm_lru = shared_memory.SharedMemory(name=lru_shm_name,
