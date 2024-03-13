@@ -43,7 +43,7 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
 
         # Load config
         self._mpi_local_comm = config.get_param('mpi_local_comm')
-        mpi_rank = config.get_param('mpi_rank')
+        mpi_local_rank = self._mpi_local_comm.Get_rank()
         self._feature_shape = config.get_param('feature_shape')
         self._max_cache_lines = int(config.alg['feature_cache_lines'])
 
@@ -56,29 +56,29 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
         # Then, set a single intra-node process as the creator of the
         # shared-memory LRU list. This is the responsible rank.
         rank_list = np.zeros(self._mpi_local_comm.Get_size(), dtype=np.int64)
-        self._mpi_local_comm.Allgather([np.int64(mpi_rank), MPI.LONG],
+        self._mpi_local_comm.Allgather([np.int64(mpi_local_rank), MPI.LONG],
                                        [rank_list, MPI.LONG])
-        self._is_resp_rank = mpi_rank == rank_list.min()
+        self._is_resp_rank = mpi_local_rank == rank_list.min()
 
         # Process with the smallest rank value creates the LRU shared-data list
         if self._is_resp_rank:
-            print(f'============= rank {mpi_rank} is creating shered lru')
+            print(f'============= rank {mpi_local_rank} is creating shered lru')
             # Allocate shared-memory space
             self._shm_lru = shared_memory.SharedMemory(
                 create=True,
                 size=(2 * self._max_cache_lines * np.dtype('int32').itemsize))
-            print(f'============= rank {mpi_rank} created '
+            print(f'============= rank {mpi_local_rank} created '
                   f'{self._shm_lru.name}:{self._shm_lru}')
 
             # Send the shm region name to all other processes
-            self._mpi_local_comm.bcast(self._shm_lru.name, root=mpi_rank)
-            print(f'============= rank {mpi_rank} broadcasted {self._shm_lru.name}')
+            self._mpi_local_comm.bcast(self._shm_lru.name, root=mpi_local_rank)
+            print(f'============= rank {mpi_local_rank} broadcasted {self._shm_lru.name}')
         else:
-            print(f'+++++++++++++ rank {mpi_rank} is waiting lru creation')
+            print(f'+++++++++++++ rank {mpi_local_rank} is waiting lru creation')
             # Get the name of the shared-memory space
             lru_shm_name = self._mpi_local_comm.bcast(None,
                                                       root=rank_list.min())
-            print(f'+++++++++++++ rank {mpi_rank} got lru {lru_shm_name}')
+            print(f'+++++++++++++ rank {mpi_local_rank} got lru {lru_shm_name}')
 
             # Remaining processes access existing LRU shared-memory
             self._shm_lru = shared_memory.SharedMemory(name=lru_shm_name,

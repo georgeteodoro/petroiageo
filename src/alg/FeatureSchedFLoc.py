@@ -135,8 +135,6 @@ class FeatureSchedFLoc(FeatureSchedBase):
             self._running_features[new_feature] = 1
 
             # Get a displacement for this feature
-            print(f"====feature {new_feature} from "
-                  f"{self._remaining_disps[new_feature]}")
             displacement = self._remaining_disps[new_feature].pop()
             self._tried_features += 1
             if self._debug:
@@ -165,8 +163,6 @@ class FeatureSchedFLoc(FeatureSchedBase):
             self._running_features[sel_feature] += 1
 
             # Get an available displacement for the chosen feature
-            print(f"++++feature {sel_feature} from "
-                  f"{self._remaining_disps[sel_feature]}")
             displacement = self._remaining_disps[sel_feature].pop()
             self._tried_features += 1
             if self._debug:
