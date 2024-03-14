@@ -111,6 +111,8 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
     window_size = config.alg["window"]
     hypercube_shape = porosity_data_h5.shape
 
+    rank = config.get_param('mpi_rank')
+
     # Only train coords should be propagated, test wells shouldn't
     wells_coords = config.train_wells_coords
     train_wells_ids = config.train_wells_ids
@@ -141,6 +143,7 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
 
     # Propagate on all chunks from porosity_data
     for chunk_n, cur_slice in enumerate(porosity_data_h5.iter_chunks()):
+        print(f"[propagation0][it{it}][worker{rank}] Chunk {chunk_n}:{cur_slice}")
 
         # Get the list of wells with points to update within the current chunk
         wells_to_update = common.has_points_within_chunk(wells_coords,
@@ -148,16 +151,26 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
                                                          cur_slice,
                                                          return_list=True)
 
+        print(f"[propagation0][it{it}][worker{rank}] len(wells_to_update): "
+              f"{len(wells_to_update)}")
+
+
         # If there are no points to propagate, skip this chunk
         if len(wells_to_update) == 0:
+            print(f"[propagation0][it{it}][worker{rank}] Chunk skipped.")
             continue
 
         # Load porosity data of the current chunk since there are points
         # to be propagated
         cur_chunk_np = porosity_data_h5[cur_slice]
 
+        print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
+              f"cur_chunk_np: {cur_chunk_np.tolist()}")
+
         # Propagate the points of each well
         for w_x, w_y in wells_to_update:
+            print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
+                  f"well: {(w_x, w_y)}")
 
             # Calculate the coordinates of the current well-ring
             well_ring_x_left = w_x - ring
@@ -196,6 +209,9 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
                                   | bot_wall_cond(d)) \
                                  & not_on_padding(d)
             coords_to_update = np.where(filter_fun(cur_chunk_np))
+
+            print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
+                  f"num coords to update: {len(coords_to_update[0])}")
 
             n_propagated_points += len(coords_to_update[0])
 
