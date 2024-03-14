@@ -2,6 +2,7 @@ from h5py import Dataset
 import numpy as np
 import lightgbm as lgb
 from sklearn.metrics import mean_absolute_error
+import os
 
 import common
 from config_parser import Config
@@ -141,6 +142,12 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
     # Count of propagated points for checking if it was correct
     n_propagated_points = 0
 
+    # File used for debugging, should be empty at the beginning of the iteration
+    import os
+    cur_chunk_np_filename = f'cur_chunk_np-w{rank}.txt'
+    if os.path.exists(cur_chunk_np_filename):
+        os.remove(cur_chunk_np_filename)
+
     # Propagate on all chunks from porosity_data
     for chunk_n, cur_slice in enumerate(porosity_data_h5.iter_chunks()):
         print(f"[propagation0][it{it}][worker{rank}] Chunk {chunk_n}:{cur_slice}")
@@ -164,8 +171,10 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
         # to be propagated
         cur_chunk_np = porosity_data_h5[cur_slice]
 
-        print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
-              f"cur_chunk_np: {cur_chunk_np.tolist()}")
+        with open(cur_chunk_np_filename, 'a') as f:
+            f.write(f"{cur_chunk_np[['x','y','z']].tolist()}")
+            # print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
+            #       f"cur_chunk_np: {cur_chunk_np[['x','y','z']].tolist()}")
 
         # Propagate the points of each well
         for w_x, w_y in wells_to_update:
@@ -214,6 +223,9 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
                   f"num coords to update: {len(coords_to_update[0])}")
 
             n_propagated_points += len(coords_to_update[0])
+
+            print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
+                  f"n_propagated_points: {n_propagated_points}")
 
             # Update the filtered values on the tmp nparray
             cur_chunk_np['real'][
