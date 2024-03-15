@@ -170,6 +170,8 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
         # Load porosity data of the current chunk since there are points
         # to be propagated
         cur_chunk_np = porosity_data_h5[cur_slice]
+        print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
+                  f"cur_chunk_np hash: {hash(cur_chunk_np.data.tobytes())}")
 
         with open(cur_chunk_np_filename, 'a') as f:
             f.write(f"{cur_chunk_np[['x','y','z']].tolist()}")
@@ -218,6 +220,13 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
                                   | bot_wall_cond(d)) \
                                  & not_on_padding(d)
             coords_to_update = np.where(filter_fun(cur_chunk_np))
+
+            print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
+                  f"coords_to_update0 hash: {hash(coords_to_update[0].data.tobytes())}")
+            print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
+                  f"coords_to_update1 hash: {hash(coords_to_update[1].data.tobytes())}")
+            print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
+                  f"coords_to_update2 hash: {hash(coords_to_update[2].data.tobytes())}")
 
             print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
                   f"num coords to update: {len(coords_to_update[0])}")
