@@ -73,6 +73,9 @@ def run(config):
     t3 = time()
     print(f"{beg_str} Created local TrialData in {t3-t2:.2f} secs.")
 
+    if rank_should_propagate:
+        print(f"{beg_str} Porosity shape: {porosity_h5_dset.shape}.")
+
     print(f"{beg_str} Beginning iterations.")
 
     for it in range(start_it, num_its + start_it):
