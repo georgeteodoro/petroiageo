@@ -194,7 +194,7 @@ def run(config):
             print(f"{beg_str}[it{it}] Iteration total "
                   f"time(s): {end_time-start_time}")
 
-            t3 = timer()
+            t3 = time()
             print(f"{beg_str}[it{it}] Done propagate in: {t3-t2}")
         elif rank_should_propagate:
             print(f"{beg_str}[it{it}] SKIPPING PROPAGATION "
