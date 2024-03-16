@@ -14,8 +14,8 @@ if __name__ == "__main__":
     # SEISMIC_FILE_RESOLUTION esse range para chegar no range correto no arquivo sísmico.
     # Por causa disso, pode ser que o valor de profundidade dos extremos seja diferente
     # do TARGET_Z_MIN e TARGET_Z_MAX informados
-    TARGET_Z_MIN = 5331
-    TARGET_Z_MAX = 6030
+    TARGET_Z_MIN = 5473
+    TARGET_Z_MAX = 5859
     z_start, z_end = TARGET_Z_MIN // SEISMIC_FILE_RESOLUTION, TARGET_Z_MAX // SEISMIC_FILE_RESOLUTION
     print(f"Intervalo de dados original pretendido: [{z_start}, {z_end}], {z_end-z_start+1} valores por poço.")
  
@@ -38,15 +38,10 @@ if __name__ == "__main__":
 
     # Where to save the filtered values
     target_npy_file_path = pathlib.Path(
-        "/petrobr/parceirosbr/petrobrasiageo/dados/Franco_florin_buzios_wells_filtered_area_1.npy"
+        "/petrobr/parceirosbr/petrobrasiageo/dados/Franco_florin_buzios_wells_filtered_area_3.npy"
         )
 
-    target_x_y_coords = [
-        [855, 1230], 
-        [834, 1297], 
-        [833, 1384], 
-        [898, 1246], 
-        [901, 1332]]
+    target_x_y_coords = [[415, 392],[477, 329]]
     
     n_wells = len(target_x_y_coords)
     print(f"{n_wells} poços a serem filtrados nas coordenadas: {target_x_y_coords}")
