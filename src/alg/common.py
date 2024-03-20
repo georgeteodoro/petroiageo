@@ -47,6 +47,10 @@ RealValues = enum("real", "propagated", "canal", "canal_expanded", "expanded",
 
 def has_points_within_chunk(wells_list, ring, chunk_slice, return_list=False):
     '''
+    Return value is defined by 'return_list': if true, return a list with all
+    wells within the chunk, if false, return true if there is at least one
+    well within the chunk.
+
     Calculates whether any points of the input 'ring' should be found
     within the given 'chunk_slice'.
     Input 'wells_list' should be a list of tuples (x,y), one for 

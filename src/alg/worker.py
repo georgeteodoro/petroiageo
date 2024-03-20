@@ -89,14 +89,25 @@ def run(config):
         t1 = time()
         print(f"{beg_str}[it{it}] Prepared trial_data in {t1-t0} secs.")
 
+        it_wait_job_time = 0
+        it_wait_response_time = 0
+        it_update_f_time = 0
+        it_commit_f_time = 0
+        it_training_time = 0
+
         # feature selection
         comm.send(None, dest=manager_rank, tag=MPI_TAGS.WORKER_FIRST_JOB.value)
 
         while True:
+            t2 = time()
+
             # print(f"{beg_str}[it{it}] Waiting msg...")
             status = MPI.Status()
             msg = comm.recv(status=status)
             msg_tag = status.Get_tag()
+
+            t3 = time()
+            it_wait_job_time += t3 - t2
 
             # Don't count the original [x,y,z] features
             f_it = len(best_features) - 3
@@ -109,9 +120,10 @@ def run(config):
                 new_features = msg
                 results = []
                 for (feature, disp) in new_features:
-                    t10 = time()
+                    t4 = time()
                     trial_data.update_feature(
                         all_features.get_feature(feature), disp)
+                    t5 = time()
                     ret = test_new_feature(trial_data, config)
 
                     # None is returned upon only 1 well propagating.
@@ -126,17 +138,24 @@ def run(config):
                         return
 
                     results.append(((feature, disp), *ret))
-                    t11 = time()
+                    t6 = time()
                     print(f"{beg_str}[it{it}][f_it{f_it}] Trial "
                           f"{best_features + [(feature, disp)]} "
-                          f"in {t11-t10:.2f}")
+                          f"in {t12-t10:.2f}")
+
+                    it_update_f_time += t5 - t4
+                    it_training_time += t6 - t5
 
                 # Send response back
+                t7 = time()
                 comm.send(results,
                           dest=manager_rank,
                           tag=MPI_TAGS.WORKER_JOB_RESULT.value)
+                t8 = time()
+                it_wait_response_time += t8 - t7
 
             elif msg_tag == MPI_TAGS.MANAGER_SELECTED_FEATURE.value:
+                t9 = time()
                 # print(f"{beg_str}[it{it}][f_it{f_it}] New best feature {msg}")
                 # Got the best feature for a f_it
                 new_feature = msg
@@ -145,14 +164,19 @@ def run(config):
                 trial_data.update_feature(all_features.get_feature(feature),
                                           disp)
                 trial_data.commit_feature()
+                t10 = time()
+                it_commit_f_time += t10 - t9
 
                 # Send response back requesting new job
                 # print(f"{beg_str}[it{it}][f_it{f_it}] New first job")
                 comm.send(None,
                           dest=manager_rank,
                           tag=MPI_TAGS.WORKER_FIRST_JOB.value)
+                t11 = time()
+                it_wait_response_time += t11 - t10
 
             elif msg_tag == MPI_TAGS.MANAGER_BEST_FEATURES.value:
+                t12 = time()
                 # print(f"{beg_str}[it{it}][f_it{f_it}] Final features {msg}")
                 # Generate the best features list
                 # best_features = ['x', 'y', 'z']
@@ -163,6 +187,8 @@ def run(config):
                 (last_feature, disp) = best_features[-1]
                 trial_data.update_feature(
                     all_features.get_feature(last_feature), disp)
+                t13 = time()
+                it_commit_f_time += t13 - t12
 
                 break
 
@@ -174,8 +200,14 @@ def run(config):
             else:
                 raise Exception(f"{beg_str} Bad MPI tag: {msg_tag}")
 
-        t2 = time()
-        print(f"{beg_str}[it{it}] Done feature_sel in: {t2-t1}")
+        t14 = time()
+        print(f"{beg_str}[it{it}][fprof] feature_sel_total {t14-t0}")
+        print(f"{beg_str}[it{it}][fprof] it_wait_job_time {it_wait_job_time}")
+        print(f"{beg_str}[it{it}][fprof] it_wait_response_time "
+              f"{it_wait_response_time}")
+        print(f"{beg_str}[it{it}][fprof] it_update_f_time {it_update_f_time}")
+        print(f"{beg_str}[it{it}][fprof] it_commit_f_time {it_commit_f_time}")
+        print(f"{beg_str}[it{it}][fprof] it_training_time {it_training_time}")
 
         # Propagation
         # Only one rank per node actually commits data to the hdf5 file,
@@ -199,7 +231,7 @@ def run(config):
         elif rank_should_propagate:
             print(f"{beg_str}[it{it}] SKIPPING PROPAGATION "
                   f"(feature selection only)")
-            
+
             # Propagation barrier is also used by manager, regardless of f-sel
             print(f"{beg_str}[it{it}] Waiting fsel on skip")
             comm.Barrier()
