@@ -141,7 +141,7 @@ def run(config):
                     t6 = time()
                     print(f"{beg_str}[it{it}][f_it{f_it}] Trial "
                           f"{best_features + [(feature, disp)]} "
-                          f"in {t12-t10:.2f}")
+                          f"in {t6-t4:.2f}")
 
                     it_update_f_time += t5 - t4
                     it_training_time += t6 - t5
