@@ -108,6 +108,7 @@ def run(config):
 
             t3 = time()
             it_wait_job_time += t3 - t2
+            print(f"{beg_str}[it{it}] it_wait_job_time {t3 - t2}")
 
             # Don't count the original [x,y,z] features
             f_it = len(best_features) - 3
