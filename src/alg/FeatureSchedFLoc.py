@@ -174,7 +174,9 @@ class FeatureSchedFLoc(FeatureSchedBase):
 
         # There are no more displacements for a feature to be tried
         if self._debug:
-            print(f"[FeatureSchedFLoc][get_feature] No more features")
+            rem_f = [len(r) for r in self._remaining_disps.values()]
+            print(f"[FeatureSchedFLoc][get_feature] No more features - tried "
+                  f"{self._tried_features} - remaining {rem_f}")
         return None
 
         # TODO: should there be a limit of how many different features a
@@ -226,6 +228,8 @@ class FeatureSchedFLoc(FeatureSchedBase):
     def _reset_internal_data(self):
 
         self._tried_features = 0
+
+        # TODO: maintain mapping of features per node between resets
 
         # Reset mapping of features per node
         self._feat_loc = dict()
