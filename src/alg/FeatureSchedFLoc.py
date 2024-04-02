@@ -176,7 +176,8 @@ class FeatureSchedFLoc(FeatureSchedBase):
         if self._debug:
             rem_f = [len(r) for r in self._remaining_disps.values()]
             print(f"[FeatureSchedFLoc][get_feature] No more features - tried "
-                  f"{self._tried_features} - remaining {rem_f}")
+                  f"{self._tried_features} - remaining {sum(rem_f)}: {rem_f}")
+                
         return None
 
         # TODO: should there be a limit of how many different features a
