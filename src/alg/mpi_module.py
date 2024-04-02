@@ -69,7 +69,7 @@ def _get_local_node_comm(comm):
     return local_comm
 
 
-def _should_update_local(mpi_size, rank, comm):
+def _should_update_local(mpi_size, rank, comm, config):
     '''
     Check whether the current process should update the local
     h5 porosity file.
@@ -77,6 +77,16 @@ def _should_update_local(mpi_size, rank, comm):
     Although multiple updates works on h5, it is inefficient.
     Manager process don't perform propagation.
     '''
+
+    # If porosity data is stored on a DFS, then only one worker should update
+    # it. Any worker process can do it. Since mpi_size-1 is the manager, rank
+    # 0 should do it.
+    is_porosity_dfs = config.get_param('is_porosity_dfs')
+    if is_porosity_dfs:
+        if rank == 0:
+            return True
+        else:
+            return False
 
     ret = False
     assigned_nodes = []
@@ -132,7 +142,8 @@ def initialize(config: config_parser.Config):
     manager_rank = mpi_size - 1
 
     local_comm = _get_local_node_comm(global_comm)
-    should_update_local = _should_update_local(mpi_size, rank, global_comm)
+    should_update_local = _should_update_local(mpi_size, rank, global_comm,
+                                               config)
     rank_mapping = _get_mapping(rank, mpi_size, manager_rank, global_comm)
 
     # TODO: later add a 'mpi' TOP_LEVEL_BASE_CONFIG to config

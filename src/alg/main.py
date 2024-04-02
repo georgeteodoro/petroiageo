@@ -170,6 +170,19 @@ def config_arg_parser():
         "configurable cache_lines size.",
     )
 
+    parser.add_argument(
+        '--p-dfs',
+        dest='is_porosity_dfs',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Signals that porosity data is on DFS, meaning that only "
+        "a single worker should propagate data. Since the propagated "
+        "data is globally available through the DFS, this is ok. The "
+        "alternative is to perform propagation on node-local porosity "
+        "files, one worker per node.",
+    )
+
     return parser
 
 
@@ -205,6 +218,7 @@ def update_config_file_params_with_args(config: config_parser.Config,
     config.add_param('small_window', args.small_window)
     config.add_param('is_feature_in_mem', args.is_feature_in_mem)
     config.add_param('is_feature_cache', args.is_feature_cache)
+    config.add_param('is_porosity_dfs', args.is_porosity_dfs)
 
     # Profiling
     # config.add_param('prof_trial_prep_porosity', True)
