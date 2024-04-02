@@ -108,7 +108,6 @@ class FeatureSchedFLoc(FeatureSchedBase):
             return None
 
         # Try to return a displacement of a feature present on the rank's node
-        # for feature in self._feat_loc[node].keys():
         for feature in self._feat_loc[node]:
             if len(self._remaining_disps[feature]) > 0:
                 # There is a displacement for the current feature
@@ -151,8 +150,8 @@ class FeatureSchedFLoc(FeatureSchedBase):
         sel_feature = None
         for feature, count_nodes in self._running_features.items():
             if (count_nodes < min_count and
-                    sel_feature in self._remaining_disps and
-                    len(self._remaining_disps[sel_feature]) > 0):
+                    feature in self._remaining_disps and
+                    len(self._remaining_disps[feature]) > 0):
                 min_count = count_nodes
                 sel_feature = feature
 
