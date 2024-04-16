@@ -6,12 +6,13 @@ from parameterized import parameterized
 from math import prod
 
 from TrialDataNumpy import TrialDataNumpy
+from TrialDataSharedNumpy import TrialDataSharedNumpy
 from data_filter import WellsSingleRingDataFilter
 from feature_data.backends.FeatureDataH5 import FeatureDataH5
 from config_parser import YAMLConfig
 import common
 
-concrete_classes = [TrialDataNumpy]
+concrete_classes = [TrialDataNumpy, TrialDataSharedNumpy]
 
 
 class Test_TrialDataAll(unittest.TestCase):
@@ -233,9 +234,6 @@ class Test_TrialDataAll(unittest.TestCase):
         # Prepare first porosity
         td1.prepare_porosity(1)
 
-        # Only one ring exists
-        self.assertEqual(len(td1._data), 1)
-
         # Check if all points were added
         # Total of 2 full depths
         self.assertEqual(td1._ring_size(0),
@@ -259,9 +257,6 @@ class Test_TrialDataAll(unittest.TestCase):
         td1.prepare_porosity(1)
         td1.prepare_porosity(2)
         td1.prepare_porosity(3)
-
-        # Only three ring should exist
-        self.assertEqual(len(td1._data), 3)
 
         # Check if the points of all rings were added
         self.assertEqual(td1._ring_size(0),
@@ -287,9 +282,6 @@ class Test_TrialDataAll(unittest.TestCase):
 
         # Prepare all porosities up to iteration 3
         td1.prepare_porosity(3)
-
-        # Assert if all 3 rings exist
-        self.assertEqual(len(td1._data), 3)
 
         # Check if the points of all rings were added
         self.assertEqual(td1._ring_size(0),
@@ -323,9 +315,6 @@ class Test_TrialDataAll(unittest.TestCase):
         f1 = FeatureDataH5(f1_filename, None)
         td1.update_feature(f1, disp)
 
-        # Get points from ring 0
-        cur_points = td1._data[0]
-
         for well_id in wells_list:
             # Get data through public interface
             # chunk_id=0 to return all data
@@ -337,9 +326,10 @@ class Test_TrialDataAll(unittest.TestCase):
             for w in wells_list:
                 if w != well_id:
                     expct_train_coordinates.extend(
-                        cur_points[w][['x', 'y', 'z']])
+                        td1._get_values_hook(0, w)[['x', 'y', 'z']])
                 else:
-                    expct_val_coordinates = cur_points[w][['x', 'y', 'z']]
+                    expct_val_coordinates = td1._get_values_hook(
+                        0, w)[['x', 'y', 'z']]
 
             expected_train_X = [[
                 prod(c) + 1,
@@ -351,6 +341,8 @@ class Test_TrialDataAll(unittest.TestCase):
             ] for c in expct_val_coordinates]
             expected_val_y = [prod(c) for c in expct_val_coordinates]
 
+            print(expected_train_X)
+            print(train_X)
             self.assertTrue((expected_train_X == train_X).all())
             self.assertTrue((expected_train_y == train_y).all())
             self.assertTrue((expected_val_X == val_X).all())
@@ -373,9 +365,10 @@ class Test_TrialDataAll(unittest.TestCase):
             for w in wells_list:
                 if w != well_id:
                     expct_train_coordinates.extend(
-                        cur_points[w][['x', 'y', 'z']])
+                        td1._get_values_hook(0, w)[['x', 'y', 'z']])
                 else:
-                    expct_val_coordinates = cur_points[w][['x', 'y', 'z']]
+                    expct_val_coordinates = td1._get_values_hook(
+                        0, w)[['x', 'y', 'z']]
 
             expected_train_X = [[
                 prod(c) + 10,
@@ -396,7 +389,7 @@ class Test_TrialDataAll(unittest.TestCase):
         # =====================================================================
         # === Test committing feature2 and adding feature1 to col2
         # =====================================================================
-        # # First, commit the feature2
+        # First, commit the feature2
         td1.commit_feature(f2, disp)
         # Now add the feature1
         td1.commit_feature(f1, disp)
@@ -412,9 +405,10 @@ class Test_TrialDataAll(unittest.TestCase):
             for w in wells_list:
                 if w != well_id:
                     expct_train_coordinates.extend(
-                        cur_points[w][['x', 'y', 'z']])
+                        td1._get_values_hook(0, w)[['x', 'y', 'z']])
                 else:
-                    expct_val_coordinates = cur_points[w][['x', 'y', 'z']]
+                    expct_val_coordinates = td1._get_values_hook(
+                        0, w)[['x', 'y', 'z']]
 
             expected_train_X = [(
                 prod(c) + 10,
@@ -427,6 +421,9 @@ class Test_TrialDataAll(unittest.TestCase):
                 prod(c) + 1,
             ) for c in expct_val_coordinates]
             expected_val_y = [prod(c) for c in expct_val_coordinates]
+
+            print(expected_train_X)
+            print(train_X)
 
             self.assertTrue(np.array_equal(expected_train_X, train_X))
             # self.assertTrue((expected_train_X == train_X).all())

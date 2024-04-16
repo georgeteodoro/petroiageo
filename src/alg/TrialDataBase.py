@@ -280,8 +280,10 @@ class TrialDataBase(ABC):
         # Hook used by concurrent implementations of TrialDataBase.
         # Default behavior is: return True, i.e., all processes perform
         # update_feature().
-        if self._should_commit_feature_hook():
+        should_commit_feature = self._should_commit_feature_hook()
+        if should_commit_feature:
             self.update_feature(feature, disp)
+            self._done_commit_feature_hook()
 
         self._current_feature_id += 1
         if self._current_feature_id < self._n_features:
@@ -471,7 +473,7 @@ class TrialDataBase(ABC):
         # Sample each ring individually
         # TODO: Sampling is memory inefficient: all data from a given ring is
         # first compiled and then sampled. Maybe later change the sampler to
-        # receive as input points from a ring/well pair.
+        # receive as input the points from a ring/well pair.
 
         for ring in self._rings_list:
             # print(f'================= ring{ring}')
@@ -520,3 +522,14 @@ class TrialDataBase(ABC):
         will not be accounted on get_values().
         '''
         return True
+
+    def _done_commit_feature_hook(self):
+        '''
+        Hook used by concurrent implementations of TrialDataBase.
+        Default behavior is: do nothing, since all processes perform 
+        update_feature() there is no need for syncing.
+
+        Override implementations should release all remaining processes
+        locked for feature committing.
+        '''
+        pass
