@@ -161,9 +161,8 @@ def run(config):
                 new_feature = msg
                 (feature, disp) = new_feature
                 best_features.append(new_feature)
-                trial_data.update_feature(all_features.get_feature(feature),
+                trial_data.commit_feature(all_features.get_feature(feature),
                                           disp)
-                trial_data.commit_feature()
                 t10 = time()
                 it_commit_f_time += t10 - t9
 

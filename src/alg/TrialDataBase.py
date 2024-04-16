@@ -21,7 +21,6 @@ class TrialDataBase(ABC):
     Due to the use of padding, all coordinates are the padded coordinates. 
     Thus, it is expected of the wells_list to have padded coordinates as well.
     '''
-
     def __init__(self,
                  target_wells_ids_list,
                  porosity_data: Dataset,
@@ -269,7 +268,7 @@ class TrialDataBase(ABC):
         if profile:
             print(f"[TrialDataBase][prepare_porosity] final_time {t2-t1:.4f}")
 
-    def commit_feature(self):
+    def commit_feature(self, feature, disp):
         '''
         Commits the current feature, then setting up the next feature.
         '''
@@ -277,6 +276,12 @@ class TrialDataBase(ABC):
             "Committing feature before prepare_porosity."
         assert self._current_feature_id < self._n_features, \
             "[TrialDataBase][commit_feature] Committing beyond last feature."
+
+        # Hook used by concurrent implementations of TrialDataBase.
+        # Default behavior is: return True, i.e., all processes perform
+        # update_feature().
+        if self._should_commit_feature_hook():
+            self.update_feature(feature, disp)
 
         self._current_feature_id += 1
         if self._current_feature_id < self._n_features:
@@ -314,7 +319,8 @@ class TrialDataBase(ABC):
                 t11 = time()
 
                 # Retrieve the coordinate list of the current ring/well pair
-                cur_coords = self._get_values_hook(r, w)[['x', 'y', 'z']].copy()
+                cur_coords = self._get_values_hook(r, w)[['x', 'y',
+                                                          'z']].copy()
                 t12 = time()
 
                 # Applies the displacement at the whole array,
@@ -474,14 +480,16 @@ class TrialDataBase(ABC):
             for well_id in self._wells_id_list:
                 ring_points.extend(self._get_values_hook(ring, well_id))
 
-            assert_msg = f"[TrialDataBase][perf_sampling][it{it}] Ring {ring} points is empty!"
+            assert_msg = f"[TrialDataBase][perf_sampling][it{it}] "\
+                         f"Ring {ring} points is empty!"
             assert len(ring_points) > 0, assert_msg
 
             # Perform sampling
             new_ring_points = self._sampler.sample(np.array(ring_points),
                                                    total_n_points, it, ring)
 
-            assert_msg = f"[TrialDataBase][perf_sampling][it{it}] New ring points is empty!"
+            assert_msg = f"[TrialDataBase][perf_sampling][it{it}] New "\
+                         f"ring points is empty!"
             assert new_ring_points.size > 0, assert_msg
 
             # Split all points by well_id and add them to a dict
@@ -499,3 +507,16 @@ class TrialDataBase(ABC):
             # # sampling integration testing.
             # print(f'------------------- ring{ring_key}:')
             # print(new_ring[['x', 'y', 'z']])
+
+    def _should_commit_feature_hook(self):
+        '''
+        Hook used by concurrent implementations of TrialDataBase.
+        Default behavior is: return True, i.e., all processes perform
+        update_feature().
+
+        Override implementations should lock while committing is being
+        performed, and return False afterwards. This keeps the profiling 
+        times consistent. I.e., the commit time of a non-committing process
+        will not be accounted on get_values().
+        '''
+        return True

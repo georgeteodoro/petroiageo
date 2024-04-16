@@ -13,7 +13,6 @@ class TrialDataNumpy(TrialDataBase):
                  porosity_data,
                  config,
                  should_consider_sampling: bool = True):
-        # Currently no initialization is needed
         super(TrialDataNumpy, self).__init__(target_wells_list, porosity_data,
                                              config, should_consider_sampling)
 

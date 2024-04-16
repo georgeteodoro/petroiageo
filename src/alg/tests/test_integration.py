@@ -139,12 +139,13 @@ class Test_All(unittest.TestCase):
         args_str = f'--config {self.__class__.config_path} --it 1 '\
                    f'--nits 1 --nf 1 -w 1 --nsf 3 --ntf 1'
 
-        process = Popen('mpirun -np 2 --bind-to core python3 -u main.py ' + args_str,
-                        shell=True,
-                        universal_newlines=True,
-                        stdout=PIPE,
-                        stderr=PIPE,
-                        preexec_fn=os.setsid)
+        process = Popen(
+            'mpirun -np 2 --bind-to core python3 -u main.py ' + args_str,
+            shell=True,
+            universal_newlines=True,
+            stdout=PIPE,
+            stderr=PIPE,
+            preexec_fn=os.setsid)
 
         # time.sleep(10)
 
@@ -183,7 +184,8 @@ class Test_All(unittest.TestCase):
                    f'--nits 5 --nf 1 -w 1 --nsf 3'
 
         process = Popen(
-            'mpirun -np 3 --oversubscribe --bind-to core python3 -u main.py ' + args_str,
+            'mpirun -np 3 --oversubscribe --bind-to core python3 -u main.py ' +
+            args_str,
             shell=True,
             universal_newlines=True,
             stdout=PIPE,
@@ -227,12 +229,13 @@ class Test_All(unittest.TestCase):
         args2_str = f'--config {self.__class__.config_path} --it 3 '\
                    f'--nits 2 --nf 1 -w 1 --nsf 3'
 
-        process = Popen('mpirun -np 2 --bind-to core python3 -u main.py ' + args1_str,
-                        shell=True,
-                        universal_newlines=True,
-                        stdout=PIPE,
-                        stderr=PIPE,
-                        preexec_fn=os.setsid)
+        process = Popen(
+            'mpirun -np 2 --bind-to core python3 -u main.py ' + args1_str,
+            shell=True,
+            universal_newlines=True,
+            stdout=PIPE,
+            stderr=PIPE,
+            preexec_fn=os.setsid)
 
         output, error = process.communicate()
         print(output)
@@ -249,12 +252,13 @@ class Test_All(unittest.TestCase):
         assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 1
         porosity_h5_file.close()
 
-        process = Popen('mpirun -np 2 --bind-to core python3 -u main.py ' + args2_str,
-                        shell=True,
-                        universal_newlines=True,
-                        stdout=PIPE,
-                        stderr=PIPE,
-                        preexec_fn=os.setsid)
+        process = Popen(
+            'mpirun -np 2 --bind-to core python3 -u main.py ' + args2_str,
+            shell=True,
+            universal_newlines=True,
+            stdout=PIPE,
+            stderr=PIPE,
+            preexec_fn=os.setsid)
         output, error = process.communicate()
         print(output)
         print(error)
@@ -284,12 +288,13 @@ class Test_All(unittest.TestCase):
                    f'--nits 3 --nf 1 -w 1 --nsf 3 --ntf 1'
 
         # Perform first
-        process = Popen('mpirun -np 2 --bind-to core python3 -u main.py ' + args_str,
-                        shell=True,
-                        universal_newlines=True,
-                        stdout=PIPE,
-                        stderr=PIPE,
-                        preexec_fn=os.setsid)
+        process = Popen(
+            'mpirun -np 2 --bind-to core python3 -u main.py ' + args_str,
+            shell=True,
+            universal_newlines=True,
+            stdout=PIPE,
+            stderr=PIPE,
+            preexec_fn=os.setsid)
 
         # time.sleep(5)
 
@@ -305,9 +310,12 @@ class Test_All(unittest.TestCase):
         # ===========================================================
 
         # Generate custom config file with sampling
+        coords = [
+            list(well_coords) for well_coords in self.__class__.wells_list
+        ]
         yaml_str = f"""
         wells:
-          coords: {[list(well_coords) for well_coords in self.__class__.wells_list]}
+          coords: {coords}
           window: 1
         features_folder: "{self.__class__.features_path}" 
         starting_porosity_cube_path: "{self.__class__.porosity_h5_path}" 
@@ -363,12 +371,13 @@ class Test_All(unittest.TestCase):
         args_str = f'--config {self.__class__.config_path} --it 4 '\
                    f'--nits 1 --nf 1 -w 1 --nsf 3 --ntf 1'
 
-        process = Popen('mpirun -np 2 --bind-to core python3 -u main.py ' + args_str,
-                        shell=True,
-                        universal_newlines=True,
-                        stdout=PIPE,
-                        stderr=PIPE,
-                        preexec_fn=os.setsid)
+        process = Popen(
+            'mpirun -np 2 --bind-to core python3 -u main.py ' + args_str,
+            shell=True,
+            universal_newlines=True,
+            stdout=PIPE,
+            stderr=PIPE,
+            preexec_fn=os.setsid)
 
         # time.sleep(5)
 
@@ -408,9 +417,12 @@ class Test_All(unittest.TestCase):
                    f'--nits 5 --nf 2 -w 1 --sw --nsf 3 --f-cache --no-abort'
 
         # Generate custom config file with sampling
+        coords = [
+            list(well_coords) for well_coords in self.__class__.wells_list
+        ]
         yaml_str = f"""
         wells:
-          coords: {[list(well_coords) for well_coords in self.__class__.wells_list]}
+          coords: {coords}
           window: 1
         features_folder: "{self.__class__.features_path}" 
         starting_porosity_cube_path: "{self.__class__.porosity_h5_path}" 

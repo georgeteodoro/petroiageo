@@ -397,10 +397,9 @@ class Test_TrialDataAll(unittest.TestCase):
         # === Test committing feature2 and adding feature1 to col2
         # =====================================================================
         # # First, commit the feature2
-        td1.commit_feature()
+        td1.commit_feature(f2, disp)
         # Now add the feature1
-        td1.update_feature(f1, disp)
-        td1.commit_feature()
+        td1.commit_feature(f1, disp)
 
         for well_id in wells_list:
             # Get data through public interface
