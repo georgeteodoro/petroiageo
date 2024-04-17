@@ -61,7 +61,7 @@ def _get_local_node_comm(comm):
     if rank == manager_rank:
         # Manager should be at a separate communicator since it won't be
         # opening any h5 file.
-        local_color = len(local_host_name)
+        local_color = mpi_size
     else:
         local_color = node_names.index(local_host_name)
     local_comm = comm.Split(local_color)
