@@ -54,6 +54,9 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         self._shm_lock = fasteners.InterProcessLock(
             '/tmp/TrialDataSharedBase.lock')
 
+        self._is_last_col_empty = True
+        self._commiting_feature = False
+
     # =========================================================================
     # === Interface for subclasses ============================================
     # =========================================================================
@@ -159,51 +162,60 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         for r and w. Thus, feature_data should have the correct size 
         of the internal data for ring r and well_id w.
 
-        Current data is stored locally.
+        In the default case (updating the last column for a trial), 
+        the data goes to local memory. If it is a commit operation, the
+        data goes to shared memory.
         '''
 
-        f_str = f'f{self._current_feature_id}'
-        self._data_local[r][w][:] = feature_data
+        if self._commiting_feature:
+            f_str = f'f{self._current_feature_id}'
+            self._data_shr[r][w][f_str] = feature_data
+        else:
+            self._is_last_col_empty = False
+            self._data_local[r][w][:] = feature_data
 
     def _get_values_hook(self, r, w, chunk_slice=None):
         '''
-        Return a compiled np array with all data for a given ring and well_id.
-        Data comes from both shared memory and local memory (current feature).
+        Return an np array with all data for a given ring and well_id.
+
+        Data can come from both shared memory and local memory 
+        (current feature), or shared memory only. On the regular case, there
+        is an ongoing trial, thus data is compiled from shared and local 
+        memory. When propagating, the selected features are committed, with no
+        other _update_col_hook(). Thus, the last column (local) is empty and 
+        should not be returned.
+
         The chunk_slice parameter allows the concrete class to better 
         implement its retrieval of data. If not used, all data is returned.
         '''
 
-        # Check if there is a ring r. Checking could be done either in
-        # _data_shr or _data_local.
+        # Check if there is a ring r.
         shm_ring_dict = self._data_shr.get(r)
         if shm_ring_dict is None:
             return np.empty(0)
 
         # Retrieve all data
         shm_well_data = shm_ring_dict.get(w, np.empty(0))
-        local_well_data = self._data_local[r].get(w, np.empty(0))
 
-        print(shm_well_data['f0'])
-        print(self._current_feature_id)
-        print(local_well_data)
-
-        ##### PROBLEM: get_training_data work differently before and after a commit:
-        # BEFORE: should include local data
-        # after: current feature (last col) should be empty.... thus not add!!!
-        aaaaaaaaaaaaaa
-
-        if local_well_data.size == 0:
+        if shm_well_data.size == 0:
             # Empty ring/well case
-            target_well_data = np.empty(0)
+            return np.empty(0)
+
+        # Add shared memory data
+        if not chunk_slice:
+            target_well_data = shm_well_data.copy()
         else:
-            # Compile the data into a single object for returning
+            # Data loading with chunking
+            target_well_data = shm_well_data[chunk_slice].copy()
+
+        # Update return data with the last column on local
+        # memory, if there is data on it.
+        if not self._is_last_col_empty:
+            local_well_data = self._data_local[r].get(w, np.empty(0))
             if not chunk_slice:
-                target_well_data = shm_well_data.copy()
                 target_well_data[
                     f'f{self._current_feature_id}'] = local_well_data[:]
             else:
-                # Data loading uses chunking
-                target_well_data = shm_well_data[chunk_slice].copy()
                 target_well_data[
                     f'f{self._current_feature_id}'] = local_well_data[
                         chunk_slice]
@@ -234,6 +246,11 @@ class TrialDataSharedBase(TrialDataBase, ABC):
             self._mpi_local_comm.Barrier()
             return False
 
+        self._commiting_feature = True
+        
+        # Since a feature is being committed, the last column is invalid
+        self._is_last_col_empty = True
+
         return True
 
     def _done_commit_feature_hook(self):
@@ -250,4 +267,6 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         else:
             print("[TrialDataSharedBase] _mpi_local_comm is None. "\
                   "Ignore if unittesting.")
+
+        self._commiting_feature = False
         self._shm_lock.release()

@@ -141,11 +141,11 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
     # Count of propagated points for checking if it was correct
     n_propagated_points = 0
 
-    # File used for debugging, should be empty at the beginning of the iteration
-    import os
-    cur_chunk_np_filename = f'cur_chunk_np-w{rank}.txt'
-    if os.path.exists(cur_chunk_np_filename):
-        os.remove(cur_chunk_np_filename)
+    # # File used for debugging, should be empty at the beginning of the iteration
+    # import os
+    # cur_chunk_np_filename = f'cur_chunk_np-w{rank}.txt'
+    # if os.path.exists(cur_chunk_np_filename):
+    #     os.remove(cur_chunk_np_filename)
 
     # Propagate on all chunks from porosity_data
     for chunk_n, cur_slice in enumerate(porosity_data_h5.iter_chunks()):
@@ -173,10 +173,10 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
         print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
               f"cur_chunk_np hash: {hash(cur_chunk_np.data.tobytes())}")
 
-        with open(cur_chunk_np_filename, 'a') as f:
-            f.write(f"{cur_chunk_np[['x','y','z']].tolist()}")
-            # print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
-            #       f"cur_chunk_np: {cur_chunk_np[['x','y','z']].tolist()}")
+        # with open(cur_chunk_np_filename, 'a') as f:
+        #     f.write(f"{cur_chunk_np[['x','y','z']].tolist()}")
+        #     # print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
+        #     #       f"cur_chunk_np: {cur_chunk_np[['x','y','z']].tolist()}")
 
         # Propagate the points of each well
         for w_x, w_y in wells_to_update:

@@ -72,11 +72,11 @@ class TrialDataNumpy(TrialDataBase):
 
         target_well_data = target_ring_data.get(w, np.empty(0))
         if not chunk_slice:
-            return target_well_data
+            return target_well_data.copy()
         elif target_well_data.size > 0:
-            return target_well_data[chunk_slice]
+            return target_well_data[chunk_slice].copy()
         else:
-            return target_well_data
+            return target_well_data.copy()
 
     def _well_size_hook(self, r, w):
         '''
