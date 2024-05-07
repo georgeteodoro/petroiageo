@@ -183,6 +183,18 @@ def config_arg_parser():
         "files, one worker per node.",
     )
 
+    parser.add_argument(
+        '--t-shd',
+        dest='is_shared_trial_data',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Enables shared memory storage of trial data. Shared memory "
+        "is only for processes within the same node. Each node has a single "
+        "shared trial data structure on memory.",
+    )
+
+
     return parser
 
 
@@ -219,6 +231,7 @@ def update_config_file_params_with_args(config: config_parser.Config,
     config.add_param('is_feature_in_mem', args.is_feature_in_mem)
     config.add_param('is_feature_cache', args.is_feature_cache)
     config.add_param('is_porosity_dfs', args.is_porosity_dfs)
+    config.add_param('is_shared_trial_data', args.is_shared_trial_data)
 
     # Profiling
     # config.add_param('prof_trial_prep_porosity', True)

@@ -192,6 +192,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         # Check if there is a ring r.
         shm_ring_dict = self._data_shr.get(r)
         if shm_ring_dict is None:
+            print('++++++++++ shm_ring_dict is None')
             return np.empty(0)
 
         # Retrieve all data
@@ -199,6 +200,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
 
         if shm_well_data.size == 0:
             # Empty ring/well case
+            print('++++++++++ shm_well_data.size == 0')
             return np.empty(0)
 
         # Add shared memory data
@@ -219,6 +221,8 @@ class TrialDataSharedBase(TrialDataBase, ABC):
                 target_well_data[
                     f'f{self._current_feature_id}'] = local_well_data[
                         chunk_slice]
+
+        print(f'======returning{target_well_data}')
 
         return target_well_data
 

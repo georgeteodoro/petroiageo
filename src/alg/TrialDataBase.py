@@ -321,6 +321,7 @@ class TrialDataBase(ABC):
                 t11 = time()
 
                 # Retrieve the coordinate list of the current ring/well pair
+                print(r, w)
                 cur_coords = self._get_values_hook(r, w)[['x', 'y', 'z']]
                 t12 = time()
 

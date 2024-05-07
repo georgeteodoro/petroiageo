@@ -10,6 +10,7 @@ from feature_data.FeatureDatasetSimple import FeatureDatasetSimple
 from feature_data.FeatureDatasetInMemAll import FeatureDatasetInMemAll
 from feature_data.FeatureDatasetInMemCache import FeatureDatasetInMemCache
 from TrialDataNumpy import TrialDataNumpy
+from TrialDataSharedNumpy import TrialDataSharedNumpy
 from data_filter import WellsSingleRingDataFilter
 from propagate import propagate
 import common
@@ -47,6 +48,7 @@ def run(config):
     feature_sel_only = config.get_param('feature_sel_only')
     is_feature_in_mem = config.get_param("is_feature_in_mem")
     is_feature_cache = config.get_param("is_feature_cache")
+    is_shared_trial_data = config.get_param("is_shared_trial_data")
     num_its = config.alg['num_its']
     start_it = config.alg['it']
     train_wells_ids = config.train_wells_ids
@@ -69,7 +71,10 @@ def run(config):
     print(f"{beg_str} Loaded porosity in {t2-t1:.2f} secs.")
 
     # Prepare trial_data
-    trial_data = TrialDataNumpy(train_wells_ids, porosity_h5_dset, config)
+    if is_shared_trial_data:
+        trial_data = TrialDataSharedNumpy(train_wells_ids, porosity_h5_dset, config)
+    else:
+        trial_data = TrialDataNumpy(train_wells_ids, porosity_h5_dset, config)
     t3 = time()
     print(f"{beg_str} Created local TrialData in {t3-t2:.2f} secs.")
 
