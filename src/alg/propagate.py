@@ -149,9 +149,8 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
 
     # Propagate on all chunks from porosity_data
     for chunk_n, cur_slice in enumerate(porosity_data_h5.iter_chunks()):
-        print(
-            f"[propagation0][it{it}][worker{rank}] Chunk {chunk_n}:{cur_slice}"
-        )
+        # print(f"[propagation0][it{it}][worker{rank}] "
+        #       f"Chunk {chunk_n}:{cur_slice}")
 
         # Get the list of wells with points to update within the current chunk
         wells_to_update = common.has_points_within_chunk(wells_coords,
@@ -159,29 +158,24 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
                                                          cur_slice,
                                                          return_list=True)
 
-        print(f"[propagation0][it{it}][worker{rank}] len(wells_to_update): "
-              f"{len(wells_to_update)}")
+        # print(f"[propagation0][it{it}][worker{rank}] len(wells_to_update): "
+        #       f"{len(wells_to_update)}")
 
         # If there are no points to propagate, skip this chunk
         if len(wells_to_update) == 0:
-            print(f"[propagation0][it{it}][worker{rank}] Chunk skipped.")
+            # print(f"[propagation0][it{it}][worker{rank}] Chunk skipped.")
             continue
 
         # Load porosity data of the current chunk since there are points
         # to be propagated
         cur_chunk_np = porosity_data_h5[cur_slice]
-        print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
-              f"cur_chunk_np hash: {hash(cur_chunk_np.data.tobytes())}")
-
-        # with open(cur_chunk_np_filename, 'a') as f:
-        #     f.write(f"{cur_chunk_np[['x','y','z']].tolist()}")
-        #     # print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
-        #     #       f"cur_chunk_np: {cur_chunk_np[['x','y','z']].tolist()}")
+        # print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
+        #       f"cur_chunk_np hash: {hash(cur_chunk_np.data.tobytes())}")
 
         # Propagate the points of each well
         for w_x, w_y in wells_to_update:
-            print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
-                  f"well: {(w_x, w_y)}")
+            # print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
+            #       f"well: {(w_x, w_y)}")
 
             # Calculate the coordinates of the current well-ring
             well_ring_x_left = w_x - ring
@@ -221,26 +215,10 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
                                  & not_on_padding(d)
             coords_to_update = np.where(filter_fun(cur_chunk_np))
 
-            print(
-                f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
-                f"coords_to_update0 hash: {hash(coords_to_update[0].data.tobytes())}"
-            )
-            print(
-                f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
-                f"coords_to_update1 hash: {hash(coords_to_update[1].data.tobytes())}"
-            )
-            print(
-                f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
-                f"coords_to_update2 hash: {hash(coords_to_update[2].data.tobytes())}"
-            )
-
-            print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
-                  f"num coords to update: {len(coords_to_update[0])}")
-
             n_propagated_points += len(coords_to_update[0])
 
-            print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
-                  f"n_propagated_points: {n_propagated_points}")
+            # print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
+            #       f"n_propagated_points: {n_propagated_points}")
 
             # Update the filtered values on the tmp nparray
             cur_chunk_np['real'][

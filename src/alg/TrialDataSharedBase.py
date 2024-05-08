@@ -86,29 +86,29 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         Delete all data, resetting internal data to an empty dict.
         '''
 
-        # Local data can be deleted individually
-        del self._data_local
-        self._data_local = dict()
+        # # Local data can be deleted individually
+        # del self._data_local
+        # self._data_local = dict()
 
-        # Shared data can only be deleted by one process.
-        is_locked = self._shm_lock.acquire(blocking=False)
+        # # Shared data can only be deleted by one process.
+        # is_locked = self._shm_lock.acquire(blocking=False)
 
-        # The first process to acquire the lock does the work
-        if is_locked:
-            # Do stuff...
+        # # The first process to acquire the lock does the work
+        # if is_locked:
+        #     # Do stuff...
 
-            # All processes are synced before releasing the lock. This
-            # ensures that it is impossible to do the work twice since
-            # the lock is only released when all processes already tried
-            # to acquire it and won't try it again.
-            if self._mpi_local_comm is not None:
-                self._mpi_local_comm.Barrier()
-            else:
-                print("[TrialDataSharedBase] _mpi_local_comm is None. "\
-                      "Ignore if unittesting.")
-            self._shm_lock.release()
-        else:
-            self._mpi_local_comm.Barrier()
+        #     # All processes are synced before releasing the lock. This
+        #     # ensures that it is impossible to do the work twice since
+        #     # the lock is only released when all processes already tried
+        #     # to acquire it and won't try it again.
+        #     if self._mpi_local_comm is not None:
+        #         self._mpi_local_comm.Barrier()
+        #     else:
+        #         print("[TrialDataSharedBase] _mpi_local_comm is None. "\
+        #               "Ignore if unittesting.")
+        #     self._shm_lock.release()
+        # else:
+        #     self._mpi_local_comm.Barrier()
 
         raise Exception('TODO')
 
@@ -121,18 +121,18 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         memory space.
         '''
 
-        # Shared data can only be deleted by one process.
-        is_locked = self._shm_lock.acquire(blocking=False)
+        # Allocate space for all features which should be used for training
+        # for shared access.
+        for w in self._wells_id_list:
+            # Create the shared structure on all processes
+            well_data = data[w]
+            self._data_shr[ring][w] = self._alloc_empty_ring_well_concrete(
+                len(well_data))
 
-        # The first process to acquire the lock does the work
-        if is_locked:
-            # Allocate space for all features which should be used for training
-            for w in self._wells_id_list:
-                well_data = data[w]
-                self._data_shr[ring][w] = self._alloc_empty_ring_well_concrete(
-                    len(well_data))
-
-                # Copy base data to shared memory
+            # Copy base data to shared memory
+            # The first process to acquire the lock does the work
+            is_locked = self._shm_lock.acquire(blocking=False)
+            if is_locked:
                 field_names = [i for i, j in self._base_data_type]
                 self._data_shr[ring][w][field_names] = well_data
 
@@ -145,15 +145,21 @@ class TrialDataSharedBase(TrialDataBase, ABC):
             else:
                 print("[TrialDataSharedBase] _mpi_local_comm is None. "\
                       "Ignore if unittesting.")
-            self._shm_lock.release()
-        else:
-            self._mpi_local_comm.Barrier()
 
-        # Allocate space for the single current feature
+            # If the locking process reached this point, then all remaining
+            # processes already forfeited the chance to copy the porosity data
+            # to the shared memory.
+            if is_locked:
+                self._shm_lock.release()
+
+
+        # Allocate space for the local single current feature
         for w in self._wells_id_list:
             well_data = data[w]
-            self._data_local[ring][w] = self._alloc_empty_ring_well_concrete(
-                len(well_data), last_feature=True)
+            self._data_local[ring][
+                w] = self._alloc_empty_ring_well_last_feature_concrete(
+                    len(well_data))
+
 
     def _update_col_hook(self, r, w, feature_data):
         '''
@@ -192,7 +198,6 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         # Check if there is a ring r.
         shm_ring_dict = self._data_shr.get(r)
         if shm_ring_dict is None:
-            print('++++++++++ shm_ring_dict is None')
             return np.empty(0)
 
         # Retrieve all data
@@ -200,15 +205,15 @@ class TrialDataSharedBase(TrialDataBase, ABC):
 
         if shm_well_data.size == 0:
             # Empty ring/well case
-            print('++++++++++ shm_well_data.size == 0')
             return np.empty(0)
 
-        # Add shared memory data
+        # Add shared data
         if not chunk_slice:
             target_well_data = shm_well_data.copy()
         else:
             # Data loading with chunking
             target_well_data = shm_well_data[chunk_slice].copy()
+
 
         # Update return data with the last column on local
         # memory, if there is data on it.
@@ -221,8 +226,6 @@ class TrialDataSharedBase(TrialDataBase, ABC):
                 target_well_data[
                     f'f{self._current_feature_id}'] = local_well_data[
                         chunk_slice]
-
-        print(f'======returning{target_well_data}')
 
         return target_well_data
 
@@ -251,7 +254,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
             return False
 
         self._commiting_feature = True
-        
+
         # Since a feature is being committed, the last column is invalid
         self._is_last_col_empty = True
 

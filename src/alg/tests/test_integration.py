@@ -479,24 +479,27 @@ class Test_All(unittest.TestCase):
 
         # Retrieve CLI arguments
         args_str = f'--config {self.__class__.config_path} --it 1 '\
-                   f'--nits 5 --nf 2 -w 1 --sw --nsf 3 --t-shd --no-abort'
+                   f'--nits 5 --nf 2 -w 1 --sw --nsf 3 --t-shd'
 
         process = Popen(
-            'mpirun -np 3 --tag-output --bind-to core python3 -u main.py ' + args_str,
+            'mpirun -np 4 --tag-output --bind-to core python3 -u main.py ' +
+            args_str,
             shell=True,
             universal_newlines=True,
             stdout=PIPE,
             stderr=PIPE,
             preexec_fn=os.setsid)
 
-        time.sleep(5)
+        # time.sleep(2)
 
-        # Send the signal to all the process groups
-        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+        # # Send the signal to all the process groups
+        # os.killpg(os.getpgid(process.pid), signal.SIGTERM)
 
         output, error = process.communicate()
         print(output)
         print(error)
+
+        0/0
 
         # Validate propagation (see diagrams on the TestClass beginning)
         porosity_h5_file = h5py.File(self.__class__.porosity_h5_path, 'r')
@@ -508,9 +511,6 @@ class Test_All(unittest.TestCase):
         assert sum(sum(sum(porosity_dset['well_id'] == 1))) == depth * 47
         assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 1
         porosity_h5_file.close()
-
-        
-
 
     # =========================================================================
     # === Setup/teardown ======================================================
