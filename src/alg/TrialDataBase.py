@@ -183,6 +183,9 @@ class TrialDataBase(ABC):
             self._rings_list.clear()
             self._clear_trial_data_hook()
 
+            # TODO: deprecate _clear_trial_data_hook() since it is the 
+            # sampler's job to define which data should be available
+
         t1 = time()
 
         # Load rings
@@ -321,7 +324,6 @@ class TrialDataBase(ABC):
                 t11 = time()
 
                 # Retrieve the coordinate list of the current ring/well pair
-                print(r, w)
                 cur_coords = self._get_values_hook(r, w)[['x', 'y', 'z']]
                 t12 = time()
 
