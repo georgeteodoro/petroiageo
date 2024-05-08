@@ -13,6 +13,7 @@ from config_parser import YAMLConfig
 import common
 
 concrete_classes = [TrialDataNumpy, TrialDataSharedNumpy]
+# concrete_classes = [TrialDataNumpy]
 
 
 class Test_TrialDataAll(unittest.TestCase):
