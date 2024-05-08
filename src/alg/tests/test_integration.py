@@ -499,8 +499,6 @@ class Test_All(unittest.TestCase):
         print(output)
         print(error)
 
-        0/0
-
         # Validate propagation (see diagrams on the TestClass beginning)
         porosity_h5_file = h5py.File(self.__class__.porosity_h5_path, 'r')
         porosity_dset = porosity_h5_file[common.POROSITY_DSET_NAME]

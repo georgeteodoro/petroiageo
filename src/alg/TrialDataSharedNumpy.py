@@ -1,6 +1,11 @@
-import numpy as np
-from mpi4py import MPI
 from multiprocessing import shared_memory, resource_tracker
+import numpy as np
+import mpi4py
+
+# For some unknown buggy reason using the import below results in pytest not
+# executing the Popen('mpirun...') commands. It just skips the execution...
+# Still, just importing mpi4py seems ok..... nice...
+# from mpi4py import MPI 
 
 from TrialDataSharedBase import TrialDataSharedBase
 
@@ -34,7 +39,8 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
             rank_list = np.zeros(self._mpi_local_comm.Get_size(),
                                  dtype=np.int64)
             self._mpi_local_comm.Allgather(
-                [np.int64(mpi_local_rank), MPI.LONG], [rank_list, MPI.LONG])
+                [np.int64(mpi_local_rank), mpi4py.MPI.LONG],
+                [rank_list, mpi4py.MPI.LONG])
             self._resp_rank = rank_list.min()
             self._is_resp_rank = mpi_local_rank == self._resp_rank
         else:
@@ -44,14 +50,14 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
     def __del__(self):
         for shm_object in self._shm_objects:
             shm_object.close()
-        
+
         if self._mpi_local_comm is not None:
             self._mpi_local_comm.Barrier()
-        
-        if self._is_resp_rank:
+
+        if self._mpi_local_comm is None or self._is_resp_rank:
             for shm_object in self._shm_objects:
                 shm_object.unlink()
-        
+
         if self._mpi_local_comm is not None:
             self._mpi_local_comm.Barrier()
 
@@ -68,7 +74,7 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
         '''
 
         # Only a single responsible rank allocates the shared memory region
-        if self._is_resp_rank:
+        if self._mpi_local_comm is None or self._is_resp_rank:
             shm_object = shared_memory.SharedMemory(
                 create=True, size=(length * self._cur_data_type.itemsize))
 
@@ -89,11 +95,11 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
             # the allocating process
             shm_object = shared_memory.SharedMemory(name=shm_name,
                                                     create=False)
-            # This unregister deals with an obnoxious warning from 
+            # This unregister deals with an obnoxious warning from
             # resource_tracker, which senses leaking shm objects.
             # All shm objects are properly cleaned on __del__().
             resource_tracker.unregister(shm_object._name, 'shared_memory')
-        
+
         self._shm_objects.append(shm_object)
 
         # Return array data which wraps a shared memory region
