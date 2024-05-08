@@ -1,0 +1,6 @@
+iteration;RMSE;MAE;features
+1;4.459114536381398;3.6149043391325564; Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 -2, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 -3, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 0
+2;2.6161825687818143;1.9800815222021084; Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 0, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 -2, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 -3
+3;1.8470296925802367;1.457228439057539; Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 0, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 -3, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 -2
+4;2.0656416703832443;1.4701579118454098; Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 -2, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 0, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 -3
+5;1.8679076129574783;1.2862010685497793; Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 -2, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 0, Franco_florin_buzios_28_09-2_azimuth_area1_ -3 -3 -3

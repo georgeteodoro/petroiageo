@@ -1,10 +1,9 @@
 import numpy as np
-import scipy.ndimage
-import scipy.signal
 from algs import *
 import pathlib
 from timeit import default_timer as timer
 from datetime import datetime
+import argparse
 
 
 def apply_and_save(func, save_path, *args, **kwargs):
@@ -257,8 +256,8 @@ def calc_1d_window_features(windows_1D, algs, f, results_folder, seismic):
             )
 
 
-def load_seismic_data(data_folder, current_file):
-    data_file_path = data_folder / f"{current_file}.npy"
+def load_seismic_data(current_file):
+    data_file_path = current_file
     if not data_file_path.exists() or not data_file_path.is_file():
         print(f"{data_file_path} não é um caminho de arquivo sísmico aceito!")
         exit(-1)
@@ -281,92 +280,49 @@ def load_seismic_data(data_folder, current_file):
 
 
 if __name__ == "__main__":
-    N_CPU = 20  # Must be a positive integer
+    parser = argparse.ArgumentParser()
+    parser.add_argument('filename')
+    parser.add_argument('algorithm', nargs="+")
+    parser.add_argument('-o', '--output', type=str, default=".")
+    parser.add_argument('-w1', '--window1d', type=int, default=5)
+    parser.add_argument('-w3', '--window3d', type=int, default=(3,3,9), nargs="+")
+    parser.add_argument('-n_cpu', type=int, default=1)
+    args = parser.parse_args()
 
-    seismic_files = ["Franco_florin_buzios_28_09-2"]
+    N_CPU = args.n_cpu
+    algs_to_run = {*args.algorithm}
+    windows_1D = [args.window1d]
+    windows_3D = [args.window3d]
 
-    windows_1D = [3, 5, 7, 9]
-
-    windows_3D = [
-        # (5,5,11),
-        # (5,5,9),
-        # (5,5,7),
-        (3, 3, 11),
-        # (3,3,9),
-        # (3,3,7)
-    ]
-
-    algs_to_run = {
-        # "gersz", "marfurt", "sobel",
-        "instFrequency",
-        "envelope",
-        "median",
-        "mean",
-        "max",
-        "min",
-        "sum",
-    }
-
-    if algs_to_run == {"all"}:
-        algs_to_run = {
-            "dip_angle",
-            "azimuth",
-            "mean_curvature",
-            "gaussian_curvature",
-            "max_curvature",
-            "min_curvature",
-            "most_positive_curvature",
-            "most_negative_curvature",
-            "shape_index",
-            "dip_curvature",
-            "contour_curvature",
-            "curvedness",
-            "rms",
-            "instFrequency",
-            "envelope",
-            "marfurt",
-            "sobel",
-            "gersz",
-            "gst",
-            "median",
-            "mean",
-            "max",
-            "min",
-            "sum",
-        }
-
-    data_load_folder = pathlib.Path(
-        "/petrobr/parceirosbr/petrobrasiageo/francisco.azevedo/"
-    )
-    if not data_load_folder.exists() or not data_load_folder.is_dir():
-        print(f" {data_load_folder} não é um caminho de pasta aceitável!")
+    data_load = pathlib.Path(args.filename)
+    if not data_load.exists():
+        print(f" {data_load} não existe!")
         exit(-1)
 
-    results_folder = pathlib.Path("results/")
-    results_folder.mkdir(exist_ok=True)
+    seismic_data = load_seismic_data(data_load)
+    results = pathlib.Path(args.output)
+    results.mkdir(exist_ok=True)
+    data_load = args.filename.split("/")[-1].split(".")[0]
 
-    for current_file in seismic_files:
-        seismic_data = load_seismic_data(data_load_folder, current_file)
+    calc_curvature_features(
+        algs_to_run, data_load, results, seismic_data
+    )
 
-        calc_curvature_features(
-            algs_to_run, current_file, results_folder, seismic_data
-        )
+    calc_analitic_features(
+        algs_to_run, data_load, results, seismic_data
+    )
 
-        calc_analitic_features(
-            algs_to_run, current_file, results_folder, seismic_data
-        )
+    calc_1d_window_features(
+        windows_1D, algs_to_run, data_load, results, seismic_data
+    )
 
-        calc_1d_window_features(
-            windows_1D, algs_to_run, current_file, results_folder, seismic_data
-        )
+    calc_3d_window_features(
+        N_CPU,
+        windows_3D,
+        algs_to_run,
+        data_load,
+        results,
+        seismic_data,
+    )
 
-        calc_3d_window_features(
-            N_CPU,
-            windows_3D,
-            algs_to_run,
-            current_file,
-            results_folder,
-            seismic_data,
-        )
-
-        print(f"Fim computação para o arquivo {current_file}")
+    print(f"Fim computação para o arquivo {data_load}")

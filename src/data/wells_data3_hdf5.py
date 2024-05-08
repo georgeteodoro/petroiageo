@@ -15,10 +15,11 @@ import sys
 sys.path.insert(0, "..")
 
 from alg import common
+from alg.datasets_names import POROSITY_DSET_NAME
 
 
-def _new_random_coord(x, y, expanded_real_points):
-    f_rand = np.random.normal
+def _new_random_coord(x_len, y_len, expanded_real_points):
+    f_rand = np.random.uniform
 
     # Workaround for lack of do-while
     new_x = expanded_real_points[0][0]
@@ -26,14 +27,16 @@ def _new_random_coord(x, y, expanded_real_points):
 
     # Get a new coordinate for the expanded point
     while (new_x, new_y) in expanded_real_points:
-        new_x = f_rand() * x
-        new_y = f_rand() * y
+        new_x = abs(f_rand()) * x_len
+        new_y = abs(f_rand()) * y_len
 
-    return abs(round(new_x)), abs(round(new_y))
+    return round(new_x), round(new_y)
 
 
 def porosity_points_py2hdf5(porosity_file, hdf5_file_path, hypercube_shape,
                             chunk_shape, real_points, mult_factor):
+    print(f"[porosity_points_py2hdf5] Expected shape: {hypercube_shape}")
+
     print(f"[porosity_points_py2hdf5] Loading porosity file")
     porosity_file_path = pathlib.Path(porosity_file)
     # if porosity_file_path.suffix == ".txt":
@@ -55,7 +58,7 @@ def porosity_points_py2hdf5(porosity_file, hdf5_file_path, hypercube_shape,
         ('well_id', np.int64),
     ])
     porosity_h5_dset = porosity_h5_f.create_dataset(
-        'p',
+        POROSITY_DSET_NAME,
         hypercube_shape,
         dtype=data_type,
         chunks=chunk_shape,
@@ -102,39 +105,34 @@ def porosity_points_py2hdf5(porosity_file, hdf5_file_path, hypercube_shape,
 
         # Create a sample full depth well
         full_depth_well = np.empty(z_len, dtype=data_type)
-        count = 0
-        for x, y, z, p in porosity_np:
-            if (x, y) in real_points:
-                full_depth_well[count] = (
-                    np.int64(x),
-                    np.int64(y),
-                    np.int64(count),
-                    p,
-                    common.RealValues.real,
-                    0,
-                    -1,
-                )
-                count += 1
-                if count == z_len:
-                    break
+        for z in range(z_len):
+            full_depth_well[z] = (
+                np.int64(0),
+                np.int64(0),
+                np.int64(z),
+                abs(np.random.normal()),  # Random porosity
+                common.RealValues.real,
+                0,
+                -1,
+            )
 
         # Filter only real data
         expanded_real_points = real_points.copy()
-        well_id = len(real_points)
         print('[porosity_points_py2hdf5] New well points:')
-        for _ in range(1, mult_factor * len(real_points)):
+        for well_id in range(len(real_points), mult_factor * len(real_points)):
             # Get a new random coordinate for the well and update it in the
             # full_depth_well to be copied
-            new_x, new_y = _new_random_coord(x, y, expanded_real_points)
+            new_x, new_y = _new_random_coord(x_len, y_len,
+                                             expanded_real_points)
             expanded_real_points.append((new_x, new_y))
             print(f'({new_x}, {new_y})')
             full_depth_well['x'] = new_x
             full_depth_well['y'] = new_y
             full_depth_well['well_id'] = well_id
-            well_id += 1
 
             # Add new well to h5 dataset
-            porosity_h5_dset[np.int64(x), np.int64(y), :] = full_depth_well[:]
+            porosity_h5_dset[np.int64(new_x),
+                             np.int64(new_y), :] = full_depth_well[:]
 
     porosity_h5_f.close()
 
@@ -182,31 +180,39 @@ def config_arg_parser() -> argparse.ArgumentParser:
 
 
 if __name__ == '__main__':
-    # wells_coords = [(34, 97), (98, 46), (55, 30), (101, 132), (33, 184)]
-    wells_coords = [
-        (134, 227),
-        (146, 500),
-        (167, 186),
-        (174, 365),
-        (200, 102),
-        (236, 113),
-        (250, 315),
-        (287, 242),
-        (230, 194),
-        (344, 276),
-    ]
+    wells_coords = [(34, 97), (98, 46), (55, 30), (101, 132), (33, 184)]
+    #wells_coords = [
+    #    (134, 227),
+    #    (146, 500),
+    #    (167, 186),
+    #    (174, 365),
+    #    (200, 102),
+    #    (236, 113),
+    #    (250, 315),
+    #    (287, 242),
+    #    (230, 194),
+    #    (344, 276),
+    #]
 
     parser = config_arg_parser()
     args = parser.parse_args()
+
+    # Hypercube shape from feature file contains the padding for the
+    # displacement. This is unnecessary here
     hypercube_shape = h5py.File(pathlib.Path(args.feat_file_path),
                                 'r')['f'].shape
+    disp_window = 3
+    hypercube_shape = (hypercube_shape[0] - 2 * disp_window,
+                       hypercube_shape[1] - 2 * disp_window,
+                       hypercube_shape[2] - 2 * disp_window)
+
     porosity_file_path = args.porosity_file
     hdf5_file_path = args.hdf5_file
     mult_factor = int(args.mult_factor)
 
     # chunk_shape = (100, 100, 16)
     # chunk_shape = (434, 323, 251)
-    chunk_shape = (300, 200, hypercube_shape[2])
+    chunk_shape = (100, 100, hypercube_shape[2])
 
     porosity_points_py2hdf5(
         porosity_file_path,

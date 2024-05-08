@@ -1,0 +1,111 @@
+wells: # This is wells related stuff
+  coords: # well coords in (x, y) style
+    - [134, 227]
+    - [146, 500]
+    - [167, 186]
+    - [174, 365]
+    - [200, 102]
+    - [236, 113]
+    - [250, 315]
+    - [287, 242]
+    - [230, 194]
+    - [344, 276]
+    - [646, 261]
+    - [89, 798]
+    - [274, 1215]
+    - [80, 357]
+    - [251, 99]
+    - [296, 1114]
+    - [600, 759]
+    - [238, 323]
+    - [61, 1033]
+    - [263, 738]
+    - [592, 888]
+    - [299, 857]
+    - [852, 170]
+    - [79, 389]
+    - [278, 437]
+    - [832, 583]
+    - [752, 889]
+    - [776, 643]
+    - [857, 266]
+    - [201, 417]
+    - [102, 908]
+    - [36, 647]
+    - [296, 803]
+    - [383, 446]
+    - [136, 1274]
+    - [103, 1280]
+    - [460, 828]
+    - [19, 661]
+    - [821, 413]
+    - [103, 1202]
+
+# real_wells = [[134, 227], [146, 500], [167, 186], [174, 365], [200, 102],
+#               [236, 113], [250, 315], [287, 242], [230, 194], [344, 276]]
+
+# Directory where every file will be treated as a feature
+features_folder: "../../data/POV/features/h5_features_large" 
+
+# Output path for the porosity cube produced (if any)
+porosity_cube_output_path: "./results/porosity.npy" 
+
+# The starting porosity cube file.
+starting_porosity_cube_path: "../../data/POV/large_porosity_data.h5" 
+
+alg:
+  # Starting iteration. The iteration index will be used for other params.
+  # Default: 1
+  starting_it: 1
+  num_its: 10 # Num of iterations to run. Default: 10
+  
+  # If you want to really generate the porosity cube in the end. Default is true
+  generate_porosity_cube: true
+  
+  # If you want to save the porosity cube for every n its. 
+  # If negative, ex. -1, save only the last one.
+  # Default -1.
+  save_cube_every_n_its: -1
+
+  # Indicates the wells that should be used for validation only. 
+  # Index starts at 0. Default is an empty list
+  validation_only_wells: [2, 3]
+  
+  # Indicates the wells that should be used for testing only. 
+  # Index starts at 0. Default is an empty list
+  test_only_wells: [0, 1]
+  # test_only_wells: []
+
+  sampling: # Sampling strategy stuff
+    # Num of iterations as window size. If negative, use max num of 
+    # iterations possible. Default: -1
+    layers_window_size: 0
+    # Max num of points for the sampling. If negative, use all data available. 
+    # Default: -1
+    max_points: 0
+    
+    # Function to penalize data from earlier iterations 
+    # following the beta distribution.
+    # Set alpha=1 and beta=1 for no penalty. Default: alpha=1 and beta=1
+    beta_dist:
+      alpha: 1
+      beta: 1
+  
+  # Feature selection type. Options: ['FORWARD', 'NONE']. Default: FORWARD
+  feature_selection_type: "FORWARD"
+  
+  # Max num of features to select in the feature_selection_step. Default: 1
+  max_num_features: 1
+  
+  # Max exec time in seconds. If negative there is no limit. Default: -1
+  max_exec_time: 1000
+  # If it should save metrics for every iteration or don't 
+  # save any metrics. Default: true
+  metrics_by_it: true
+  
+  # When it should save the trained model. 
+  # Accepted: 'last' (saves only the last one), 
+  # 'every_n' where 'n' should be replaced by an int, 
+  # a list [1,2,3,...] indicating the iterations.
+  # Default: 'last'
+  save_models_on: "last"

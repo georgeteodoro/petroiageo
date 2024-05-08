@@ -1,12 +1,13 @@
-import yaml
+import collections.abc
+from typing import List, Tuple
+import pathlib
+import enum
 
+import yaml
 try:
     from yaml import CBaseLoader as Loader
 except ImportError:
     from yaml import BaseLoader as Loader
-
-import pathlib
-import enum
 
 
 class InvalidNewParamError(Exception):
@@ -38,7 +39,7 @@ class SaveModelTypes:
         return all([element >= 0 for element in my_list])
 
     @staticmethod
-    def raise_if_not_valid(save_model_type):
+    def raise_if_invalid(save_model_type):
         if isinstance(save_model_type, list):
             if not SaveModelTypes._has_positives_only(save_model_type):
                 raise ValueError("alg.save_models_on: The list should have "
@@ -65,7 +66,6 @@ def list_func_applier_decorator(func):
     element of a iterable. This exists to pass the 'underlying function'
     as a parameter to other functions.
     """
-
     def apply_func_to_every_element(my_iterable):
         """
         Applies a func to every element in my_iterable
@@ -82,7 +82,6 @@ class ConfigTypeCaster:
     provided. This is mostly file format independent, but could have
     differences between the formats accepted.
     """
-
     @classmethod
     def treat_input_config(cls, config_dict: dict) -> dict:
         treated_dict = dict()
@@ -112,6 +111,8 @@ class ConfigTypeCaster:
             "validation_only_wells": list_func_applier_decorator(int),
             "test_only_wells": list_func_applier_decorator(int),
             "max_num_features": int,
+            "window": int,
+            "layers_to_predict": int,
             "max_exec_time": int,
             "generate_porosity_cube": cls._which_python_bool_value,
             "metrics_by_it": cls._which_python_bool_value,
@@ -129,6 +130,11 @@ class ConfigTypeCaster:
                 alg_configs["sampling"])
             treated_alg_configs["sampling"] = treated_sampling_config
 
+        if "parallel" in alg_configs:
+            treated_parallel_config = cls._type_cast_parallel_configs(
+                alg_configs["parallel"])
+            treated_alg_configs["parallel"] = treated_parallel_config
+
         return treated_alg_configs
 
     @classmethod
@@ -138,7 +144,11 @@ class ConfigTypeCaster:
         # So non treated/non expected keys remain in treated_sampling_config
         treated_sampling_config.update(sampling_configs)
 
-        key_func_to_apply_dict = {"its_window_size": int, "max_points": int}
+        key_func_to_apply_dict = {
+            "layers_window_size": int,
+            "max_points": int,
+            "seed": int
+        }
 
         cls._apply_key_func_mapping_to_dict_and_modify_target_dict(
             key_func_map=key_func_to_apply_dict,
@@ -152,6 +162,23 @@ class ConfigTypeCaster:
             treated_sampling_config["beta_dist"] = treated_beta_dist_configs
 
         return treated_sampling_config
+
+    @classmethod
+    def _type_cast_parallel_configs(cls, parallel_configs: dict) -> dict:
+        treated_parallel_config = dict()
+
+        # So non treated/non expected keys remain in treated_sampling_config
+        treated_parallel_config.update(parallel_configs)
+
+        key_func_to_apply_dict = {"max_points_per_chunk": int}
+
+        cls._apply_key_func_mapping_to_dict_and_modify_target_dict(
+            key_func_map=key_func_to_apply_dict,
+            base_dict=parallel_configs,
+            dict_to_modify=treated_parallel_config,
+        )
+
+        return treated_parallel_config
 
     @classmethod
     def _type_cast_beta_dist_configs(cls, beta_dist_configs: dict) -> dict:
@@ -177,32 +204,40 @@ class ConfigTypeCaster:
         # So non treated/non expected keys remain in treated_sampling_config
         treated_wells_configs.update(wells_configs)
 
+        assert 'window' in wells_configs, "[config_parser] Missing "\
+                "wells.window' configuration."
+
         if "coords" in wells_configs:
             treated_coords_configs = cls._treat_wells_coords_configs(
-                wells_configs["coords"])
+                wells_configs["coords"], int(wells_configs["window"]))
             treated_wells_configs["coords"] = treated_coords_configs
 
         return treated_wells_configs
 
     @classmethod
-    def _treat_wells_coords_configs(cls, coords_configs: list) -> list:
+    def _treat_wells_coords_configs(cls, coords_configs: list,
+                                    window: int) -> list:
         """
         Wells coords is a list composed of (x, y) tuples, [x, y] lists or
         {'x':value, 'y':value} dicts. They can all be present.
         """
-        # So non treated elements remain in treated_coords_configs
-        treated_coords_configs = list(coords_configs)
 
-        func_to_apply = list_func_applier_decorator(cls._treats_every_coord)
+        # # So non treated elements remain in treated_coords_configs
+        # treated_coords_configs = list(coords_configs)
+        # func_to_apply = list_func_applier_decorator(cls._treats_every_coord)
+        # treated_coords_configs = func_to_apply(coords_configs)
 
-        treated_coords_configs = func_to_apply(coords_configs)
+        treated_coords_configs = [
+            cls._treats_every_coord(c, window) for c in coords_configs
+        ]
 
         return treated_coords_configs
 
     @classmethod
-    def _treats_every_coord(cls, coords):
+    def _treats_every_coord(cls, coords, window):
         """
-        Assumes the coordnates are x and y integers
+        Assumes the coordnates are x and y integers.
+        The window displacement is applied here.
         """
         # its a list/tuple with two elements (x, y) or [x, y]
         if isinstance(coords, list) or isinstance(coords, tuple):
@@ -212,10 +247,10 @@ class ConfigTypeCaster:
                 )
 
             x, y = coords
-            return {"x": int(x), "y": int(y)}
+            return {"x": int(x) + window, "y": int(y) + window}
         # its a dict with x and y keys
         elif isinstance(coords, dict):
-            return {key: int(value) for key, value in coords.items()}
+            return {key: int(value) + window for key, value in coords.items()}
 
     @staticmethod
     def _which_python_bool_value(yaml_bool: str) -> bool:
@@ -245,7 +280,6 @@ class ConfigTypeCaster:
 
 
 class YAMLConfigTypeCaster(ConfigTypeCaster):
-
     @staticmethod
     def _which_python_bool_value(input_bool: str) -> bool:
         if input_bool.lower() in ["y", "yes", "on", "true"]:
@@ -263,25 +297,22 @@ class ConfigValidator:
     the config passes the type validation, some values may not be valid for
     a given config. This is file format independent.
     """
+    @classmethod
+    def raise_if_invalid_config(cls, config_dict: dict):
+        cls._raise_if_alg_config_invalid(config_dict)
+        cls._raise_if_wells_config_invalid(config_dict["wells"])
 
     @classmethod
-    def raise_if_not_valid_config(cls, config_dict: dict):
-        cls._raise_if_alg_config_not_valid(config_dict)
-        cls._raise_if_wells_config_not_valid(config_dict)
-
-    @classmethod
-    def _raise_if_alg_config_not_valid(cls, config_dict: dict):
+    def _raise_if_alg_config_invalid(cls, config_dict: dict):
         alg_configs = config_dict["alg"]
-
-        starting_it = alg_configs["starting_it"]
-        if starting_it < 0:
+        if alg_configs["starting_it"] < 0:
             raise ValueError(
-                f"alg.starting_it should be a positive integer but {starting_it} was given!"
+                f"alg.starting_it must be a positive integer! {alg_configs['starting_it']} was given!"
             )
 
         if alg_configs["num_its"] < 1:
             raise ValueError(
-                f"alg.num_its should be at least 1 but {alg_configs['num_its']} was given!"
+                f"alg.num_its must be at least 1! {alg_configs['num_its']} was given!"
             )
 
         if not cls._has_positives_only(alg_configs["validation_only_wells"]):
@@ -309,21 +340,34 @@ class ConfigValidator:
             FeatureSelection[alg_configs["feature_selection_type"].name]
         except:
             raise ValueError(
-                f"alg.feature_selection_type should be one of {[type for type in FeatureSelection.__members__]}!"
+                f"alg.feature_selection_type must be one of {[type for type in FeatureSelection.__members__]}!"
             )
 
-        cls._raise_if_beta_dist_params_not_valid(alg_configs["sampling"])
+        cls._raise_if_sampling_params_invalid(alg_configs["sampling"])
 
-        if alg_configs["max_num_features"] < 0:
+        if alg_configs["max_num_features"] <= 0:
             raise ValueError(
-                f"alg.max_num_features: Should be a positive integer but {alg_configs['max_num_features']} was given!"
+                f"alg.max_num_features must be a positive integer! {alg_configs['max_num_features']} was given!"
             )
 
-        SaveModelTypes.raise_if_not_valid(alg_configs["save_models_on"])
+        if alg_configs["window"] < 0:
+            raise ValueError(
+                f"alg.window must be a non negative integer! {alg_configs['window']} was given!"
+            )
+
+        if alg_configs["layers_to_predict"] < 1:
+            raise ValueError(
+                f"alg.layers_to_predict must be a positive integer! {alg_configs['layers_to_predict']} was given!"
+            )
+
+        SaveModelTypes.raise_if_invalid(alg_configs["save_models_on"])
+
+        if alg_configs['parallel']['max_points_per_chunk'] == 0:
+            raise ValueError(
+                f"alg.parallel.max_points_per_chunk: Can't be zero!")
 
     @staticmethod
-    def _raise_if_wells_config_not_valid(config_dict: dict):
-        wells_config = config_dict["wells"]
+    def _raise_if_wells_config_invalid(wells_config: dict):
 
         if len(wells_config["coords"]) == 0:
             raise ValueError(
@@ -337,8 +381,16 @@ class ConfigValidator:
                 )
 
     @staticmethod
-    def _raise_if_beta_dist_params_not_valid(config_dict: dict):
-        beta_dist_dict = config_dict["beta_dist"]
+    def _raise_if_sampling_params_invalid(samp_config_dict: dict):
+        ConfigValidator._raise_if_beta_dist_params_invalid(samp_config_dict)
+
+        if samp_config_dict['seed'] < 0:
+            raise ValueError(
+                f"alg.sampling.seed: Seed value can't be negative!")
+
+    @staticmethod
+    def _raise_if_beta_dist_params_invalid(samp_config_dict: dict):
+        beta_dist_dict = samp_config_dict["beta_dist"]
         if beta_dist_dict["beta"] < 0:
             raise ValueError(
                 f"alg.sampling.beta_dist.beta: Beta value cant be negative!")
@@ -374,7 +426,7 @@ class Config:
     ]
 
     def __init__(self,
-                 config_path,
+                 config_path: str = None,
                  config_dict: dict = None,
                  config_str: str = None):
         input_config = self._get_input_config(config_path, config_dict,
@@ -384,9 +436,9 @@ class Config:
 
         self.config = self._base_config()
 
-        self._update_config_with_input_config(input_config)
+        self.config = self.update_recursivelly(self.config, input_config)
 
-        ConfigValidator.raise_if_not_valid_config(self.config)
+        ConfigValidator.raise_if_invalid_config(self.config)
 
     def _treat_input_config(self, config: dict) -> dict:
         config_type_caster = self._get_config_type_caster()
@@ -397,23 +449,16 @@ class Config:
         raise NotImplementedError(
             "Not implemented! This should be file type dependent!")
 
-    def _update_config_with_input_config(self, input_config: dict):
-        if "wells" in input_config:
-            self.config["wells"].update(input_config["wells"])
-
-        if "alg" in input_config:
-            self.config["alg"].update(input_config["alg"])
-
-        if "features_folder" in input_config:
-            self.config["features_folder"] = input_config["features_folder"]
-
-        if "starting_porosity_cube_path" in input_config:
-            self.config["starting_porosity_cube_path"] = input_config[
-                "starting_porosity_cube_path"]
-
-        if "porosity_cube_output_path" in input_config:
-            self.config["porosity_cube_output_path"] = input_config[
-                "porosity_cube_output_path"]
+    def update_recursivelly(self, target, input):
+        """
+        https://stackoverflow.com/a/3233356/16264901
+        """
+        for k, v in input.items():
+            if isinstance(v, collections.abc.Mapping):
+                target[k] = self.update_recursivelly(target.get(k, {}), v)
+            else:
+                target[k] = v
+        return target
 
     def _get_input_config(self,
                           config_path,
@@ -482,8 +527,11 @@ class Config:
         base_config["validation_only_wells"] = list()
         base_config["test_only_wells"] = list()
         base_config["sampling"] = self._base_sampling_config()
+        base_config["parallel"] = self._base_parallel_config()
         base_config["feature_selection_type"] = FeatureSelection["FORWARD"]
         base_config["max_num_features"] = 1
+        base_config["window"] = 3
+        base_config["layers_to_predict"] = 1
         base_config["max_exec_time"] = -1
         base_config["metrics_by_it"] = True
         base_config["save_models_on"] = "last"
@@ -491,9 +539,15 @@ class Config:
 
     def _base_sampling_config(self) -> dict:
         base_config = dict()
-        base_config["its_window_size"] = -1
+        base_config["layers_window_size"] = -1
         base_config["max_points"] = -1
+        base_config["seed"] = 42
         base_config["beta_dist"] = self._base_penalty_sampling_func_config()
+        return base_config
+
+    def _base_parallel_config(self) -> dict:
+        base_config = dict()
+        base_config["max_points_per_chunk"] = 10000
         return base_config
 
     def _base_penalty_sampling_func_config(self) -> dict:
@@ -535,6 +589,30 @@ class Config:
         """
         return self.config.get(param_name, None)
 
+    def ring_range_to_expand(self, it: int) -> Tuple[int, int]:
+        """
+        Returns the exact ring range [start, end] to expand/predict based on
+        the it and the num of layers we must expand/predict on each iteration.
+        Example:
+        it: 3
+        layers_to_predict: 3
+        return (7, 9)
+        """
+        start_ring = ((it - 1) * self.get_param('alg')['layers_to_predict']) + 1
+        end_ring = start_ring + self.get_param('alg')['layers_to_predict'] - 1
+        return start_ring, end_ring
+
+    def get_coords_of_target_wells_ids(self, wells_ids: list) -> List[Tuple]:
+        """
+        Returns the coords of the target wells ids in wells_ids
+        """
+        coords = list()
+        for well_id in wells_ids:
+            curr_well_coords_dict = self.config["wells"]["coords"][well_id]
+            coords.append((curr_well_coords_dict['x'], curr_well_coords_dict['y']))
+
+        return coords
+
     @property
     def wells(self):
         return self.config["wells"]
@@ -544,13 +622,62 @@ class Config:
         raise AttributeError("wells config is read only!")
 
     @property
-    def wells_as_simple_list(self):
+    def wells_as_simple_list(self) -> List[Tuple[int, int]]:
         """
         Returns a list of tuples with the wells coords:
-        [(1,2),(3,4),(5,6)...]
+        [(1, 2),(3, 4),(5, 6)...]
         """
         return [(well["x"], well["y"])
                 for well in self.config["wells"]["coords"]]
+
+    @property
+    def train_wells_coords(self) -> List[Tuple[int, int]]:
+        """
+        Return the coords of the training wells.
+        all wells: [(1, 2), (3, 4), (5, 6)]
+        test_only_wells: [1]
+        returns: [(1, 2), (5, 6)]
+        """
+        return [(w['x'], w['y'])
+                for id, w in enumerate(self.config['wells']['coords'])
+                if id not in self.alg['test_only_wells']]
+
+    @property
+    def train_wells_ids(self) -> List[int]:
+        """
+        Returns the training wells ids.
+        Example: 
+        all wells: [(1, 2), (3, 4), (5, 6)]
+        test_only_wells: [1]
+        returns: [0, 2]
+        """
+        return [
+            id for id, _ in enumerate(self.config['wells']['coords'])
+            if id not in self.alg['test_only_wells']
+        ]
+
+    @property
+    def test_wells_coords(self) -> List[Tuple[int, int]]:
+        """
+        Return the coords of the test wells.
+        all wells: [(1, 2), (3, 4), (5, 6)]
+        test_only_wells: [1]
+        returns: [(3, 4)]
+        """
+        return [(w['x'], w['y'])
+                for id, w in enumerate(self.config['wells']['coords'])
+                if id in self.alg['test_only_wells']]
+
+    @property
+    def test_wells_ids(self) -> List[int]:
+        """
+        Returns the training wells ids.
+        Example: 
+        all wells: [(1, 2), (3, 4), (5, 6)]
+        test_only_wells: [1]
+        returns: [1]
+        """
+        return list(self.alg['test_only_wells'])
 
     @property
     def alg(self):
@@ -592,11 +719,7 @@ class Config:
         """
         Returns a list with the complete path to every feature in the feature folder
         """
-        features_folder_path = pathlib.Path(self.config["features_folder"])
-        features_paths = [
-            path for path in list(features_folder_path.glob("*"))
-            if path.is_file()
-        ]
+        features_paths = self._get_feat_files_paths()
         complete_paths = [path.absolute() for path in features_paths]
         return complete_paths
 
@@ -607,19 +730,25 @@ class Config:
         A feature name is equal to the name of its file without the suffix.
         Example: feature1.h5 -> name:feature1
         """
-        features_folder_path = pathlib.Path(self.config["features_folder"])
-        features_paths = [
-            path for path in list(features_folder_path.glob("*"))
-            if path.is_file()
-        ]
+        features_paths = self._get_feat_files_paths()
         features_names = [path.stem for path in features_paths]
         return features_names
 
+    def _get_feat_files_paths(self) -> List[pathlib.Path]:
+        features_folder_path = pathlib.Path(self.config["features_folder"])
+        features_paths = sorted([
+            path for path in list(features_folder_path.glob("*"))
+            if path.is_file()
+        ])
+        return features_paths
+
+    def __str__(self):
+        return str(self.config)
+
 
 class YAMLConfig(Config):
-
     def __init__(self,
-                 config_path,
+                 config_path: str = None,
                  config_dict: dict = None,
                  config_str: str = None):
         super().__init__(config_path, config_dict, config_str)

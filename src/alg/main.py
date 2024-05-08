@@ -1,143 +1,256 @@
 import argparse
-import pathlib
-from tqdm import tqdm
+from mpi4py import MPI
+import sys
+from time import sleep
 
 import config_parser
 import mpi_module
-from inverted_learning_interface import BaseInvertedLearning
-from h5_porosity_data_loader import H5PorosityDataLoader
-from h5_seismic_data_loader import H5SeismicDataLoader
-from h5_expand_alg import H5ExpandAlg
-from h5_feature_selection_alg import H5FeatureSelectionAlg
-from h5_apply_alg import H5ApplyAlg
 
+import manager
+import worker
 
-# DEPRECATED
-# Still need to figure out logging
-def print_progress(with_progress, r):
-    if with_progress:
-        return tqdm(r)
-    else:
-        return r
+# Used only for retrieving the shape of a feature
+from feature_data.backends.FeatureDataH5 import FeatureDataH5
 
 
 def config_arg_parser():
-    parser = argparse.ArgumentParser(description="POV")
+    parser = argparse.ArgumentParser(description="Modelagem de "
+                                     "Aprendizado Invertido")
 
     parser.add_argument(
-        "--config",
-        dest="config_file",
-        action="store",
+        '--config',
+        dest='config_file',
+        action='store',
         required=True,
+        type=str,
         help="The yaml config file path to be read",
     )
+
     parser.add_argument(
-        "--it",
-        dest="load_it",
-        action="store",
+        '--it',
+        dest='load_it',
+        action='store',
         required=False,
-        help="Iteration to load",
+        default=1,
+        type=int,
+        help="Iteration to start. E.g., if value is 3, it is assumed "
+        "that propagation went through iteration 2. First iteration is "
+        "1 (default=1)",
     )
+
     parser.add_argument(
-        "--nits",
-        dest="num_its",
-        action="store",
+        '--nits',
+        dest='num_its',
+        action='store',
         required=False,
-        help="Number of iterations to run",
+        type=int,
+        default=1,
+        help="Number of iterations to run (default=1).",
     )
+
     parser.add_argument(
-        "--nf",
-        dest="num_features",
-        action="store",
+        '--nf',
+        dest='num_features',
+        action='store',
         required=False,
-        help="Number of total features",
-    )
-    parser.add_argument(
-        "--nsf",
-        dest="num_select_features",
-        action="store",
-        required=False,
-        help="Number of maximum features to be "
-        "selected",
-    )
-    parser.add_argument(
-        "--ntf",
-        dest="num_tested_features",
-        action="store",
+        type=int,
         default=0,
-        help="Number of features to be tested before choosing "
-        "a selected feature.",
+        help="Number of total features (default=0, i.e., all)",
     )
+
     parser.add_argument(
-        "--wp",
-        dest="with_progress",
-        action="store_true",
+        '--nsf',
+        dest='num_select_features',
+        action='store',
+        required=False,
+        default=10,
+        type=int,
+        help="Number of maximum features to be selected (default=10)",
+    )
+
+    parser.add_argument(
+        '--ntf',
+        dest='num_tested_features',
+        action='store',
+        default=0,
+        required=False,
+        type=int,
+        help="Number of features to be tested before choosing "
+        "a selected feature (default=0, i.e., all).",
+    )
+
+    parser.add_argument(
+        '--wp',
+        dest='with_progress',
+        action='store_true',
         default=True,
         help="Enable showing progress of iterations. "
         "This can mess the slurm output up.",
     )
+
     parser.add_argument(
-        "--no-wp",
-        dest="with_progress",
-        action="store_false",
+        '--no-wp',
+        dest='with_progress',
+        action='store_false',
         help="Disables showing progress of iterations.",
     )
 
     parser.add_argument(
-        "--local",
-        dest="local_files",
-        action="store_true",
-        help="Read files from main.py root folder.",
+        '-w',
+        dest='window',
+        action='store',
+        required=False,
+        type=int,
+        help="Size of the displacement window. This value is for one side "
+        "only. I.e., a window of 3 would result in a minicube of "
+        "7x7x7, with intervals between [-3,3].",
     )
 
     parser.add_argument(
-        "--sp",
-        dest="is_sampling",
-        action="store_true",
-        help="Whether sampling should be used "
-        "for feature selection (default=False).",
+        '--no-abort',
+        dest='no_abort',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Disables MPI_ABORT whenever there is an error. "
+        "Useful for debugging",
     )
+
+    parser.add_argument(
+        '--fso',
+        dest='feature_sel_only',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Feature selection only. Skip the propagation step. "
+        "Useful for performance testing since no changes on the "
+        "porosity files are done.",
+    )
+
+    parser.add_argument(
+        '--fsched-loc',
+        dest='fsched_loc',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Enable feature locality-aware scheduling.",
+    )
+
+    parser.add_argument(
+        '--sw',
+        dest='small_window',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Profiling option. When enabled, only coordinate k (depth) "
+        "will have displacement applied to it. This allows for having small "
+        "number of displacements per feature. Window size restrictions still "
+        "apply, i.e., enabling small_window and using -w 5 on a dataset with "
+        "window of 3 will break the application.",
+    )
+
+    parser.add_argument(
+        '--f-inmem',
+        dest='is_feature_in_mem',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Enable in-memory storage of features. If enabled, all features "
+        "are pre-fetched once before the execution of any iteration or trial.",
+    )
+
+    parser.add_argument(
+        '--f-cache',
+        dest='is_feature_cache',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Enable in-memory caching of features. If enabled, entire "
+        "features are cached on first access. LRU cache with "
+        "configurable cache_lines size.",
+    )
+
+    parser.add_argument(
+        '--p-dfs',
+        dest='is_porosity_dfs',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Signals that porosity data is on DFS, meaning that only "
+        "a single worker should propagate data. Since the propagated "
+        "data is globally available through the DFS, this is ok. The "
+        "alternative is to perform propagation on node-local porosity "
+        "files, one worker per node.",
+    )
+
+    parser.add_argument(
+        '--t-shd',
+        dest='is_shared_trial_data',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Enables shared memory storage of trial data. Shared memory "
+        "is only for processes within the same node. Each node has a single "
+        "shared trial data structure on memory.",
+    )
+
 
     return parser
 
 
 def update_config_file_params_with_args(config: config_parser.Config,
                                         args) -> config_parser.Config:
-    if args.num_select_features is not None:
-        config.alg["max_num_features"] = int(args.num_select_features)
 
-    if args.load_it is not None:
-        config.alg["starting_it"] = int(args.load_it)
+    config.alg['it'] = int(args.load_it)
+    assert config.alg['it'] > 0, f"First iteration is 1, "\
+                                 f"but received --it {config.alg['it']}"
+    config.alg['num_its'] = int(args.num_its)
+    assert config.alg['num_its'] > 0, f"At least 1 iteration should be run, "\
+                                 f"but received --nits {config.alg['num_its']}"
 
-    if args.num_its is not None:
-        config.alg["num_its"] = int(args.num_its)
+    config.alg['max_num_features'] = int(args.num_select_features)
+    config.add_param('num_features', int(args.num_features))
 
-    if args.num_features is not None:
-        config.add_param("num_features", int(args.num_features))
-    else:
-        config.add_param("num_features", 0)
+    if args.window is not None:
+        config.alg['window'] = int(args.window)
 
     if args.with_progress is not None:
-        config.add_param("with_progress", args.with_progress)
+        config.add_param('with_progress', args.with_progress)
 
-    if (args.local_files is not None) and args.local_files:
-        spcp = f"./{pathlib.Path(config['starting_porosity_cube_path']).name}"
-        config["starting_porosity_cube_path"] = spcp
-        config.features_folder = "./features/"
+    if args.fsched_loc is not None:
+        config.add_param('fsched_loc', args.fsched_loc)
 
-    config.add_param("full_depth_chunks", True)
-    config.add_param("window", 3)
+    config.add_param('full_depth_chunks', True)
 
-    config.add_param("max_tested_features", int(args.num_tested_features))
+    config.add_param('max_feats_for_trial', int(args.num_tested_features))
 
-    config.add_param("is_sampling", bool(args.is_sampling))
+    # config.add_param('is_sampling', bool(args.is_sampling))
+
+    config.add_param('feature_sel_only', args.feature_sel_only)
+    config.add_param('small_window', args.small_window)
+    config.add_param('is_feature_in_mem', args.is_feature_in_mem)
+    config.add_param('is_feature_cache', args.is_feature_cache)
+    config.add_param('is_porosity_dfs', args.is_porosity_dfs)
+    config.add_param('is_shared_trial_data', args.is_shared_trial_data)
+
+    # Profiling
+    # config.add_param('prof_trial_prep_porosity', True)
+    # config.add_param('prof_feature_sel', True)
+
+    # config.add_param('prof_trial_update_feature', True)
+
+    # Debug info
+    config.add_param('fsched_debug', True)
 
     return config
 
 
-def main():
+def main(args_str=None):
     # Retrieve CLI arguments
-    args = config_arg_parser().parse_args()
+    if args_str is None:
+        args = config_arg_parser().parse_args()
+    else:
+        args = config_arg_parser().parse_args(args_str.split(' '))
 
     # Retrieve config file parameters
     config = config_parser.YAMLConfig(args.config_file)
@@ -149,16 +262,39 @@ def main():
     # Initialized values and other objects are inserted into config
     mpi_module.initialize(config)
 
-    # Run base algorithm
-    alg = BaseInvertedLearning(
-        H5SeismicDataLoader(config),
-        H5PorosityDataLoader(config),
-        H5ExpandAlg(config),
-        H5FeatureSelectionAlg(config),
-        H5ApplyAlg(config),
-        config,
-    )
-    alg.run()
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    mpi_size = comm.Get_size()
+    manager_rank = mpi_size - 1
+
+    # Call MPI.abort() on all processes if one of them breaks
+    # This avoids lingering executions after any error occurs
+    def _end():
+        # This sleep timer allows processes to output error messages
+        sleep(3)
+        MPI.COMM_WORLD.Abort()
+
+    if not args.no_abort:
+        sys.excepthook = lambda x, y, z: _end()
+
+    assert mpi_size > 1, "Two or more processes required to run "\
+                         "(mpirun -np 2 python3 main.py)."
+
+    # Load the shape of the first feature into config. All features
+    # should have the same shape. This is kind of hacky. Maybe improve this in
+    # the future.
+    f_paths = [str(p) for p in config.features_files_paths if '.h5' in str(p)]
+    first_feature_path = str(f_paths[0])
+    feature_h5 = FeatureDataH5(first_feature_path,
+                               config.get_param('mpi_local_comm'))
+    feature_shape = feature_h5._feature.shape
+    config.add_param('feature_shape', feature_shape)
+
+    if rank == manager_rank:
+        manager.run(config)
+        # print(f"[manager][configs]{config}")
+    else:
+        worker.run(config)
 
 
 if __name__ == "__main__":

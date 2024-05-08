@@ -38,3 +38,7 @@ venv/
 !dados/xx.npy
 !dados/pp.npy
 !.gitkeep
+
+*.coverage
+
+.vscode

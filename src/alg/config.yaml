@@ -1,5 +1,5 @@
 wells: # This is wells related stuff
-  coords: # well coords in (x, y) style
+  coords: # These are the original (pre-padding) coords (x, y)
     - [134, 227]
     - [146, 500]
     - [167, 186]
@@ -10,6 +10,7 @@ wells: # This is wells related stuff
     - [287, 242]
     - [230, 194]
     - [344, 276]
+  window: 3 # window size for which the hypercube was padded
 
 # real_wells = [[134, 227], [146, 500], [167, 186], [174, 365], [200, 102],
 #               [236, 113], [250, 315], [287, 242], [230, 194], [344, 276]]
@@ -23,10 +24,17 @@ porosity_cube_output_path: "./results/porosity.npy"
 starting_porosity_cube_path: "../../data/POV/porosity_data.h5" 
 
 alg:
-  # Starting iteration. The iteration index will be used for other params.
-  # Default: 0
-  starting_it: 0 
   num_its: 10 # Num of iterations to run. Default: 10
+
+  seismic_on_memory: True
+  fsel_only: True
+  TD_on_memory: True
+
+  feature_cache_lines: 2
+
+  parallel:
+    # max_points_per_chunk: 1000
+    n_training_chunks: 1
   
   # If you want to really generate the porosity cube in the end. Default is true
   generate_porosity_cube: true
@@ -46,9 +54,11 @@ alg:
   # test_only_wells: []
 
   sampling: # Sampling strategy stuff
+    # Sampling algorithm to use, can be: none, v1
+    sampler: "none"
     # Num of iterations as window size. If negative, use max num of 
     # iterations possible. Default: -1
-    its_window_size: 4
+    layers_window_size: 4
     # Max num of points for the sampling. If negative, use all data available. 
     # Default: -1
     max_points: 10000
