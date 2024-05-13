@@ -188,7 +188,7 @@ class TrialDataBase(ABC):
 
         t1 = time()
 
-        # Load rings
+        # Load rings, one at a time
         for it in range(it_init, prep_it):
 
             t11 = time()
@@ -246,14 +246,15 @@ class TrialDataBase(ABC):
 
             t12 = time()
 
+            # print(f'=========== points_dict.shape for ring {it}: '
+            #       f'{[(wid, len(d)) for wid, d in points_dict.items()]}')
+            
             # Fill ring dict
             # REFACTORING/OPTIMIZATION OPORTUNITY:
             # Change _set_ring_hook to _append_ring_hook, thus points_dict is
             # not required. I.e., less memory needed. For numpy implementation
             # a temporary list may still be required within it, which is
             # converted to ndarray at the first access.
-            print(f'=========== points_dict.shape: '
-                  f'{[(wid, len(d)) for wid, d in points_dict.items()]}')
             self._set_ring_hook(it, points_dict)
 
             t13 = time()

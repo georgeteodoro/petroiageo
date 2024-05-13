@@ -28,14 +28,16 @@ class TrialDataSharedBase(TrialDataBase, ABC):
     This is an abstract class, abstracting the backend for storing data. 
     Both feature data and shared data are abstracted.
     '''
+
     def __init__(self,
                  target_wells_list,
                  porosity_data,
                  config,
                  should_consider_sampling: bool = True):
         # Currently no initialization is needed
-        super(TrialDataSharedBase, self).__init__(
-            target_wells_list, porosity_data, config, should_consider_sampling)
+        super(TrialDataSharedBase,
+              self).__init__(target_wells_list, porosity_data, config,
+                             should_consider_sampling)
 
         # Load config
         self._mpi_local_comm = config.get_param('mpi_local_comm')
@@ -98,8 +100,8 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         del self._data_local
         self._data_local = dict()
 
-        # Delete all concrete data stored. Coordination, i.e. which process 
-        # actually deletes shared data, is solved by the concrete 
+        # Delete all concrete data stored. Coordination, i.e. which process
+        # actually deletes shared data, is solved by the concrete
         # implementation.
         self._del_all_concrete()
 
@@ -115,14 +117,15 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         # Allocate space for all features which should be used for training
         # for shared access.
         for w in self._wells_id_list:
-            # There may be no data for certain wells
             well_data = data[w]
-            assert len(well_data) > 0, "[TrialDataSharedBase]"\
-            f"[_set_ring_hook] Well {w} is empty on ring {ring}"
-
             # Create the shared structure on all processes
             self._data_shr[ring][w] = self._alloc_empty_ring_well_concrete(
                 len(well_data))
+            
+            # There may be no data for certain wells. If so, there is no
+            # need to fill the data.
+            if len(well_data) == 0:
+                continue
 
             # Copy base data to shared memory
             # The first process to acquire the lock does the work
