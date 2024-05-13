@@ -118,7 +118,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
             # There may be no data for certain wells
             well_data = data[w]
             assert len(well_data) > 0, "[TrialDataSharedBase]"\
-            f"[_set_ring_hook] Well {w} is empty"
+            f"[_set_ring_hook] Well {w} is empty on ring {ring}"
 
             # Create the shared structure on all processes
             self._data_shr[ring][w] = self._alloc_empty_ring_well_concrete(
