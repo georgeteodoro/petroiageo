@@ -201,7 +201,7 @@ class TrialDataBase(ABC):
             self._new_ring_hook(it)
 
             # Prepare a dict of points per well_id
-            points_dict = {id: list() for id in self._wells_id_list}
+            points_dict = {wid: list() for wid in self._wells_id_list}
             target_wells_coords = self._config.get_coords_of_target_wells_ids(
                 self._wells_id_list)
 
@@ -252,6 +252,8 @@ class TrialDataBase(ABC):
             # not required. I.e., less memory needed. For numpy implementation
             # a temporary list may still be required within it, which is
             # converted to ndarray at the first access.
+            print(f'=========== points_dict.shape: '
+                  f'{[(wid, len(d)) for wid, d in points_dict.items()]}')
             self._set_ring_hook(it, points_dict)
 
             t13 = time()
