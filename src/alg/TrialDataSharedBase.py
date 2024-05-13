@@ -115,8 +115,14 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         # Allocate space for all features which should be used for training
         # for shared access.
         for w in self._wells_id_list:
-            # Create the shared structure on all processes
+            # There may be no data for certain wells
             well_data = data[w]
+            if len(well_data) == 0:
+                print(f"[TrialDataSharedBase][_set_ring_hook] Well {w} "
+                      f"is empty!")
+                continue
+
+            # Create the shared structure on all processes
             self._data_shr[ring][w] = self._alloc_empty_ring_well_concrete(
                 len(well_data))
 
