@@ -5,7 +5,7 @@ import mpi4py
 # For some unknown buggy reason using the import below results in pytest not
 # executing the Popen('mpirun...') commands. It just skips the execution...
 # Still, just importing mpi4py seems ok..... nice...
-# from mpi4py import MPI 
+# from mpi4py import MPI
 
 from TrialDataSharedBase import TrialDataSharedBase
 
@@ -48,18 +48,7 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
                   "Ignore if unittesting.")
 
     def __del__(self):
-        for shm_object in self._shm_objects:
-            shm_object.close()
-
-        if self._mpi_local_comm is not None:
-            self._mpi_local_comm.Barrier()
-
-        if self._mpi_local_comm is None or self._is_resp_rank:
-            for shm_object in self._shm_objects:
-                shm_object.unlink()
-
-        if self._mpi_local_comm is not None:
-            self._mpi_local_comm.Barrier()
+        self._del_all_concrete()
 
     def _alloc_empty_ring_well_last_feature_concrete(self,
                                                      length,
@@ -106,3 +95,22 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
         return np.ndarray((length),
                           dtype=self._cur_data_type,
                           buffer=shm_object.buf)
+
+    def _del_all_concrete(self):
+        '''
+        Clears all data managed by the concrete class.
+        All processes should call this method to avoid being locked at 
+        the barrier.
+        '''
+        for shm_object in self._shm_objects:
+            shm_object.close()
+
+        if self._mpi_local_comm is not None:
+            self._mpi_local_comm.Barrier()
+
+        if self._mpi_local_comm is None or self._is_resp_rank:
+            for shm_object in self._shm_objects:
+                shm_object.unlink()
+
+        if self._mpi_local_comm is not None:
+            self._mpi_local_comm.Barrier()

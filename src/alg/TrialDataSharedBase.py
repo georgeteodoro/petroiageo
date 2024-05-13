@@ -70,6 +70,14 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         raise Exception("[TrialDataSharedBase][_alloc_empty_ring"\
                         "_well_concrete] Abstract method not implemented.")
 
+    @abstractmethod
+    def _del_all_concrete(self, length, last_feature=False):
+        '''
+        Clears all data managed by the concrete class.
+        '''
+        raise Exception("[TrialDataSharedBase][_del_all_concrete] "\
+                        "Abstract method not implemented.")
+
     # =========================================================================
     # === Implementations of TrialDataBase ====================================
     # =========================================================================
@@ -86,31 +94,14 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         Delete all data, resetting internal data to an empty dict.
         '''
 
-        # # Local data can be deleted individually
-        # del self._data_local
-        # self._data_local = dict()
+        # Local data can be deleted individually
+        del self._data_local
+        self._data_local = dict()
 
-        # # Shared data can only be deleted by one process.
-        # is_locked = self._shm_lock.acquire(blocking=False)
-
-        # # The first process to acquire the lock does the work
-        # if is_locked:
-        #     # Do stuff...
-
-        #     # All processes are synced before releasing the lock. This
-        #     # ensures that it is impossible to do the work twice since
-        #     # the lock is only released when all processes already tried
-        #     # to acquire it and won't try it again.
-        #     if self._mpi_local_comm is not None:
-        #         self._mpi_local_comm.Barrier()
-        #     else:
-        #         print("[TrialDataSharedBase] _mpi_local_comm is None. "\
-        #               "Ignore if unittesting.")
-        #     self._shm_lock.release()
-        # else:
-        #     self._mpi_local_comm.Barrier()
-
-        raise Exception('TODO')
+        # Delete all concrete data stored. Coordination, i.e. which process 
+        # actually deletes shared data, is solved by the concrete 
+        # implementation.
+        self._del_all_concrete()
 
     def _set_ring_hook(self, ring, data):
         '''
@@ -152,14 +143,12 @@ class TrialDataSharedBase(TrialDataBase, ABC):
             if is_locked:
                 self._shm_lock.release()
 
-
         # Allocate space for the local single current feature
         for w in self._wells_id_list:
             well_data = data[w]
             self._data_local[ring][
                 w] = self._alloc_empty_ring_well_last_feature_concrete(
                     len(well_data))
-
 
     def _update_col_hook(self, r, w, feature_data):
         '''
@@ -213,7 +202,6 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         else:
             # Data loading with chunking
             target_well_data = shm_well_data[chunk_slice].copy()
-
 
         # Update return data with the last column on local
         # memory, if there is data on it.
