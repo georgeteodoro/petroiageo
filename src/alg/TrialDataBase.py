@@ -326,8 +326,16 @@ class TrialDataBase(ABC):
             for w in self._wells_id_list:
                 t11 = time()
 
+                # Check if there are points for a ring/well pair. Example for
+                # when there are no points: well w has already propagated
+                # all it could, being surrounded by other wells, thus there
+                # may be a ring for which it has no points.
+                cur_values = self._get_values_hook(r, w)
+                if len(cur_values) == 0:
+                    continue
+                
                 # Retrieve the coordinate list of the current ring/well pair
-                cur_coords = self._get_values_hook(r, w)[['x', 'y', 'z']]
+                cur_coords = cur_values[['x', 'y', 'z']]
                 t12 = time()
 
                 # Applies the displacement at the whole array,
