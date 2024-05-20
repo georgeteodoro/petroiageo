@@ -8,8 +8,8 @@
 
 module load python/3.9.6
 
-source ../../../../meu_python/bin/activate
-FEATS_FOLDER='../../../data/ANP/features/area1'
-TARGET_FOLDER='../../../data/ANP/features/area1/hdf5'
+source ../../../../venv/bin/activate
+FEATS_FOLDER='../../../../data/POV/features/area_1/'
+TARGET_FOLDER='../../../../data/POV/features/area_1/hdf5'
 
 python3 seismic_data3_hdf5.py -f $FEATS_FOLDER -o $TARGET_FOLDER
