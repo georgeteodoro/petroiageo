@@ -189,7 +189,7 @@ def calc_3d_window_features(
                 results_folder / f"{f}_gst_{w}.npy",
                 seismic,
                 w,
-                {"sigma": 1},
+                sigma=1
             )
         if "sobel" in algs:
             apply_and_save(
