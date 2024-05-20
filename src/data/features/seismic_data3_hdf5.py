@@ -23,7 +23,7 @@ import sys
 
 sys.path.insert(0, "../..")
 
-from alg.datasets_names import FEAT_DSET_NAME
+from alg.common import FEAT_DSET_NAME
 
 
 def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path, chunk_shape,
