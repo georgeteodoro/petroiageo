@@ -7,6 +7,7 @@ import argparse
 import h5py
 from math import prod
 import numpy as np
+import pandas as pd
 import pathlib
 from tqdm import tqdm
 
@@ -32,8 +33,10 @@ def _new_random_coord(x_len, y_len, expanded_real_points):
     return round(new_x), round(new_y)
 
 
-def porosity_points_py2hdf5(porosity_file, hdf5_file_path, hypercube_shape,
-                            chunk_shape, real_points, mult_factor):
+def porosity_points_py2hdf5(porosity_file: str, por_col: str,
+                            hdf5_file_path: str, hypercube_shape: tuple,
+                            chunk_shape: tuple, real_points: list,
+                            mult_factor: int):
     print(f"[porosity_points_py2hdf5] Expected shape: {hypercube_shape}")
 
     print(f"[porosity_points_py2hdf5] Loading porosity file")
@@ -41,7 +44,8 @@ def porosity_points_py2hdf5(porosity_file, hdf5_file_path, hypercube_shape,
     # if porosity_file_path.suffix == ".txt":
     #     porosity_np = np.loadtxt(porosity_file_path, delimiter=" ")
     # elif porosity_file_path.suffix == ".npy":
-    porosity_np = np.load(porosity_file_path, allow_pickle=True)
+    porosity_np = pd.read_csv(porosity_file_path)
+    porosity_np = porosity_np[['area_x', 'area_y', 'z', por_col]].values
 
     print("[porosity_points_py2hdf5] Creating hdf5 file")
     new_h5_porosity_path = pathlib.Path(hdf5_file_path)
@@ -121,8 +125,7 @@ def porosity_points_py2hdf5(porosity_file, hdf5_file_path, hypercube_shape,
         for well_id in range(len(real_points), mult_factor * len(real_points)):
             # Get a new random coordinate for the well and update it in the
             # full_depth_well to be copied
-            new_x, new_y = _new_random_coord(x_len, y_len,
-                                             expanded_real_points)
+            new_x, new_y = _new_random_coord(x_len, y_len, expanded_real_points)
             expanded_real_points.append((new_x, new_y))
             print(f'({new_x}, {new_y})')
             full_depth_well['x'] = new_x
@@ -151,9 +154,19 @@ def config_arg_parser() -> argparse.ArgumentParser:
         dest='porosity_file',
         action='store',
         required=True,
-        help="The file path with the base porosity. As it may be a subset "
+        help="The csv file path with the wells porosities. As it may be a subset "
         "of the whole 3D cube, it is not possible to get the cube shape "
         "from this.",
+    )
+
+    parser.add_argument(
+        '-p_col',
+        dest='por_col',
+        action='store',
+        required=True,
+        type=str,
+        help=
+        "The porosity column name to consider as the base porosity. Example: density_por"
     )
 
     parser.add_argument(
@@ -179,7 +192,7 @@ def config_arg_parser() -> argparse.ArgumentParser:
 
 
 if __name__ == '__main__':
-    wells_coords = [(34, 97), (98, 46), (55, 30), (101, 132), (33, 184)]
+    wells_area_coords = [(34, 97), (98, 46), (55, 30), (101, 132), (33, 184)]
     #wells_coords = [
     #    (134, 227),
     #    (146, 500),
@@ -208,6 +221,7 @@ if __name__ == '__main__':
     porosity_file_path = args.porosity_file
     hdf5_file_path = args.hdf5_file
     mult_factor = int(args.mult_factor)
+    por_col = args.p_col
 
     # chunk_shape = (100, 100, 16)
     # chunk_shape = (434, 323, 251)
@@ -215,9 +229,10 @@ if __name__ == '__main__':
 
     porosity_points_py2hdf5(
         porosity_file_path,
+        por_col,
         hdf5_file_path,
         hypercube_shape,
         chunk_shape,
-        wells_coords,
+        wells_area_coords,
         mult_factor,
     )
