@@ -86,7 +86,7 @@ def run(config):
     for it in range(start_it, num_its + start_it):
         t0 = time()
         start_time = timer()
-        best_features = ['x', 'y', 'z']
+        best_features = []
 
         # Update test data: set trial_data size and update coordinates,
         # porosity, and other columns
@@ -115,7 +115,7 @@ def run(config):
             it_wait_job_time += t3 - t2
 
             # Don't count the original [x,y,z] features
-            f_it = len(best_features) - 3
+            f_it = len(best_features)
 
             # Respond the received job
             if msg_tag == MPI_TAGS.MANAGER_NEW_JOB.value:
