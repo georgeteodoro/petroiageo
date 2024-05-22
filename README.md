@@ -43,6 +43,17 @@ A compilação/instalação do h5py, a ser feita após o HDF5, sendo feita usand
 
 O h5py pode ter problemas de incompatibilidade com o mpi4py. Para evitar problemas certificar que a versão do mpi4py seja a 3.1.3. Isso é feito nos comando acima, onde uma versão previamente instalada do mpi4py é removida, sendo instalada a versão esperada.
 
+### Lista de compatibilidade
+
+Foi testado com sucesso a compatibilidade das seguintes versões:
+
+python3.12.3:
+ - mpi4py 3.1.6
+ - HDF5 hdf5-1_12_2-3-rc1
+ - Cython 3.0.10
+ - h5py 3.11.0
+
+
 # Requisitos - Dados
 
 A execução da aplicação usa dois tipos de dados: dados sísmicos e dados reais de porosidade de poços. Os dados reais de poço são pequenos, e por isso já estão disponíveis nesse repositório privado. Os dados sísmicos são maiores e assim não constam no repositório. Esses arquivos *numpy* devem ser colocados no diretório **./data/**, contido na raiz deste projeto. Abaixo temos a lista de arquivos necessários para execução da aplicação que devem ser colocados no diretório **./data**:
