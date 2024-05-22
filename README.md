@@ -47,11 +47,11 @@ O h5py pode ter problemas de incompatibilidade com o mpi4py. Para evitar problem
 
 Foi testado com sucesso a compatibilidade das seguintes versões:
 
-python3.12.3:
- - mpi4py 3.1.6
- - HDF5 hdf5-1_12_2-3-rc1
- - Cython 3.0.10
- - h5py 3.11.0
+ - python 3.12.3:
+     - mpi4py 3.1.6
+     - HDF5 hdf5-1_12_2-3-rc1
+     - Cython 3.0.10
+     - h5py 3.11.0
 
 
 # Requisitos - Dados
