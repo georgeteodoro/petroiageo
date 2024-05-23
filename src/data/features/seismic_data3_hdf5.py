@@ -96,7 +96,7 @@ def _create_feature_hdf5_file(
             FEAT_DSET_NAME,
             large_data_shape,
             dtype=np.float64,
-            chunks=chunk_shape,
+#            chunks=chunk_shape,
             data=feature_full_np.flat,
         )
 
@@ -400,8 +400,8 @@ if __name__ == '__main__':
         # 'NEAR_gersztenkorn_5-5-11.npy', 'NEAR_gst_5-5-7.npy',
         # 'NEAR_most-positive-curvature_.npy', 'NEAR_dip-curvature_.npy',
         # 'NEAR_gersztenkorn_5-5-7.npy', 'NEAR_gst_5-5-9.npy',
-        'FAR.npy',
-        # 'all'
+        # 'FAR.npy',
+        'all'
     ]
     if target_features_files_names_with_extension[0] == "all":
         complete_files_path = list(base_features_dir.glob("*.npy"))
@@ -424,7 +424,7 @@ if __name__ == '__main__':
     disp_window = 3
     # chunk_shape = (100, 100, 32 + disp_window + disp_window)
     #chunk_shape = (100, 100, 251 + disp_window + disp_window)
-    chunk_shape = (434, 323, 251 + disp_window + disp_window)
+    chunk_shape = (231+2*disp_window, 419+2*disp_window, 134+2*disp_window)
     [
         seismic_feature_np2hdf5_planar(f, chunk_shape, disp_window,
                                        args.output_dir, mult_factor)
