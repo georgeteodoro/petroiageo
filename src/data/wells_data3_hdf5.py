@@ -41,11 +41,9 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
 
     print(f"[porosity_points_py2hdf5] Loading porosity file")
     porosity_file_path = pathlib.Path(porosity_file)
-    # if porosity_file_path.suffix == ".txt":
-    #     porosity_np = np.loadtxt(porosity_file_path, delimiter=" ")
-    # elif porosity_file_path.suffix == ".npy":
+
     porosity_np = pd.read_csv(porosity_file_path)
-    porosity_np = porosity_np[['area_x', 'area_y', 'z', por_col]].values
+    porosity_np = porosity_np[['area_x', 'area_y', 'area_z', por_col]].values
 
     print("[porosity_points_py2hdf5] Creating hdf5 file")
     new_h5_porosity_path = pathlib.Path(hdf5_file_path)
