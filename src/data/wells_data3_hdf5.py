@@ -64,6 +64,7 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
         dtype=data_type,
         chunks=chunk_shape,
     )
+    print(f"Target cube shape: {porosity_h5_dset.shape}")
 
     print(f"[porosity_points_py2hdf5] Filling coordinates")
     (x_len, y_len, z_len) = hypercube_shape
@@ -89,16 +90,15 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
             real = common.RealValues.canal
             well_id = -1
             ring = -1
-        porosity_h5_dset[np.int64(x), np.int64(y),
-                         np.int64(z)] = (
-                             np.int64(x),
-                             np.int64(y),
-                             np.int64(z),
-                             p,
-                             real,
-                             ring,
-                             well_id,
-                         )
+        value_to_add = (np.int64(x), np.int64(y), np.int64(z),
+                        p, real, ring, well_id,)
+
+        try:   
+            porosity_h5_dset[np.int64(x), np.int64(y),
+                         np.int64(z)] = value_to_add
+        except Exception as e:
+            print(f"ERROR: Tentou adicionar os seguintes valores: {value_to_add}")
+            raise e
 
     if mult_factor > 1:
         print(f"[porosity_points_py2hdf5] Adding extra "\
@@ -190,7 +190,10 @@ def config_arg_parser() -> argparse.ArgumentParser:
 
 
 if __name__ == '__main__':
-    wells_area_coords = [(34, 97), (98, 46), (55, 30), (101, 132), (33, 184)]
+    # POV AREA 1 COORDS
+    wells_area_coords = [(112, 21), (76, 10), (163, 150), (106, 102), (126, 223), (43, 94), (22, 408), (10, 135), (50, 273), (220, 184)]
+    # ANP AREA 1 COORDS
+    #wells_area_coords = [(34, 97), (98, 46), (55, 30), (101, 132), (33, 184)]
     #wells_coords = [
     #    (134, 227),
     #    (146, 500),
@@ -215,16 +218,16 @@ if __name__ == '__main__':
     hypercube_shape = (hypercube_shape[0] - 2 * disp_window,
                        hypercube_shape[1] - 2 * disp_window,
                        hypercube_shape[2] - 2 * disp_window)
-
+    print(f"Hypercube shape: {hypercube_shape}")
     porosity_file_path = args.porosity_file
     hdf5_file_path = args.hdf5_file
     mult_factor = int(args.mult_factor)
-    por_col = args.p_col
+    por_col = args.por_col
 
     # chunk_shape = (100, 100, 16)
     # chunk_shape = (434, 323, 251)
     chunk_shape = (100, 100, hypercube_shape[2])
-
+    print(f"chunk shape: {chunk_shape}")
     porosity_points_py2hdf5(
         porosity_file_path,
         por_col,
