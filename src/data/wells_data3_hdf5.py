@@ -51,6 +51,15 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
     porosity_np['well_id'] = porosity_np[['area_x', 'area_y']].apply(
         lambda row: real_points.index((row['area_x'], row['area_y'])), axis=1)
 
+    real_data_ring = 0
+    porosity_np['ring'] = real_data_ring
+
+    porosity_np['real'] = common.RealValues.real
+
+    porosity_np['area_x'] = porosity_np['area_x'].astype("int64")
+    porosity_np['area_y'] = porosity_np['area_y'].astype("int64")
+    porosity_np['area_z'] = porosity_np['area_z'].astype("int64")
+
     porosity_np = porosity_np[[
         'area_x', 'area_y', 'area_z', por_col, 'well_id'
     ]].values
@@ -92,24 +101,22 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
 
     print(f"[porosity_points_py2hdf5] Updating {len(porosity_np)} values")
 
-    ring = 0
     real = common.RealValues.real
 
     for x, y, z, p, w_id in porosity_np:
 
         value_to_add = (
-            np.int64(x),
-            np.int64(y),
-            np.int64(z),
+            x,
+            y,
+            z,
             p,
             real,
-            ring,
+            real_data_ring,
             w_id,
         )
 
         try:
-            porosity_h5_dset[np.int64(x), np.int64(y),
-                             np.int64(z)] = value_to_add
+            porosity_h5_dset[x, y, z] = value_to_add
         except Exception as e:
             print(
                 f"ERROR: Tentou adicionar os seguintes valores: {value_to_add}")
