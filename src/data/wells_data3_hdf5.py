@@ -48,9 +48,8 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
     real_points = sorted(
         list(porosity_np[['area_x', 'area_y']].value_counts().index))
 
-    porosity_np['well_id'] = porosity_np[[
-        'area_x', 'area_y'
-    ]].apply(lambda row: real_points.index((row['area_x'], row['area_y'])))
+    porosity_np['well_id'] = porosity_np[['area_x', 'area_y']].apply(
+        lambda row: real_points.index((row['area_x'], row['area_y'])), axis=1)
 
     porosity_np = porosity_np[[
         'area_x', 'area_y', 'area_z', por_col, 'well_id'
