@@ -100,7 +100,7 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
 
     print(f"[porosity_points_py2hdf5] Updating {len(porosity_np)} values")
 
-    for idx, row in porosity_np.iterrows():
+    for row in porosity_np.itertuples():
         x = row['area_x']
         y = row['area_y']
         z = row['area_z']
