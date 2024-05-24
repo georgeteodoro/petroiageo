@@ -53,16 +53,15 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
 
     real_data_ring = 0
     porosity_np['ring'] = real_data_ring
-
     porosity_np['real'] = common.RealValues.real
 
-    porosity_np['area_x'] = porosity_np['area_x'].astype("int64")
-    porosity_np['area_y'] = porosity_np['area_y'].astype("int64")
-    porosity_np['area_z'] = porosity_np['area_z'].astype("int64")
-
-    porosity_np = porosity_np[[
-        'area_x', 'area_y', 'area_z', por_col, 'well_id'
-    ]].values
+    porosity_np = porosity_np.astype({
+        'ring': np.int64,
+        'real': np.int64,
+        'area_x': np.int64,
+        'area_y': np.int64,
+        'area_z': np.int64
+    })
 
     print("[porosity_points_py2hdf5] Creating hdf5 file")
     new_h5_porosity_path = pathlib.Path(hdf5_file_path)
@@ -101,26 +100,18 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
 
     print(f"[porosity_points_py2hdf5] Updating {len(porosity_np)} values")
 
-    real = common.RealValues.real
+    # We do this so each col keep its dtype
+    # If we got everything at once, the resulting np
+    # would be of type np.float64
+    x = porosity_np['area_x'].values
+    y = porosity_np['area_y'].values
+    z = porosity_np['area_z'].values
+    p = porosity_np[por_col].values
+    real = porosity_np['real'].values
+    ring = porosity_np['ring'].values
+    well_id = porosity_np['well_id'].values
 
-    for x, y, z, p, w_id in porosity_np:
-
-        value_to_add = (
-            x,
-            y,
-            z,
-            p,
-            real,
-            real_data_ring,
-            w_id,
-        )
-
-        try:
-            porosity_h5_dset[x, y, z] = value_to_add
-        except Exception as e:
-            print(
-                f"ERROR: Tentou adicionar os seguintes valores: {value_to_add}")
-            raise e
+    porosity_h5_dset[x, y, z] = (x, y, z, p, real, ring, well_id)
 
     if mult_factor > 1:
         print(f"[porosity_points_py2hdf5] Adding extra "\
