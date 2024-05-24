@@ -35,14 +35,18 @@ def _new_random_coord(x_len, y_len, expanded_real_points):
 
 def porosity_points_py2hdf5(porosity_file: str, por_col: str,
                             hdf5_file_path: str, hypercube_shape: tuple,
-                            chunk_shape: tuple, real_points: list,
-                            mult_factor: int):
+                            chunk_shape: tuple, mult_factor: int):
     print(f"[porosity_points_py2hdf5] Expected shape: {hypercube_shape}")
 
     print(f"[porosity_points_py2hdf5] Loading porosity file")
     porosity_file_path = pathlib.Path(porosity_file)
 
     porosity_np = pd.read_csv(porosity_file_path)
+    # Essa ordenação define o index de cada poço e deverá ser mantida
+    # no arquivo de configuração config.yaml. Basicamente, ordena os poços
+    # pela coordenada x na área
+    real_points = sorted(
+        list(porosity_np[['area_x', 'area_y']].value_counts().index))
     porosity_np = porosity_np[['area_x', 'area_y', 'area_z', por_col]].values
 
     print("[porosity_points_py2hdf5] Creating hdf5 file")
@@ -190,22 +194,6 @@ def config_arg_parser() -> argparse.ArgumentParser:
 
 
 if __name__ == '__main__':
-    # POV AREA 1 COORDS
-    wells_area_coords = [(112, 21), (76, 10), (163, 150), (106, 102), (126, 223), (43, 94), (22, 408), (10, 135), (50, 273), (220, 184)]
-    # ANP AREA 1 COORDS
-    #wells_area_coords = [(34, 97), (98, 46), (55, 30), (101, 132), (33, 184)]
-    #wells_coords = [
-    #    (134, 227),
-    #    (146, 500),
-    #    (167, 186),
-    #    (174, 365),
-    #    (200, 102),
-    #    (236, 113),
-    #    (250, 315),
-    #    (287, 242),
-    #    (230, 194),
-    #    (344, 276),
-    #]
 
     parser = config_arg_parser()
     args = parser.parse_args()
@@ -234,6 +222,5 @@ if __name__ == '__main__':
         hdf5_file_path,
         hypercube_shape,
         chunk_shape,
-        wells_area_coords,
         mult_factor,
     )
