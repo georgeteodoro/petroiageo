@@ -38,31 +38,6 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
                             chunk_shape: tuple, mult_factor: int):
     print(f"[porosity_points_py2hdf5] Expected shape: {hypercube_shape}")
 
-    print(f"[porosity_points_py2hdf5] Loading porosity file")
-    porosity_file_path = pathlib.Path(porosity_file)
-    porosity_np = pd.read_csv(porosity_file_path)
-
-    # Essa ordenação define o index de cada poço e deverá ser mantida
-    # no arquivo de configuração config.yaml. Basicamente, ordena os poços
-    # pela coordenada x na área
-    real_points = sorted(
-        list(porosity_np[['area_x', 'area_y']].value_counts().index))
-
-    porosity_np['well_id'] = porosity_np[['area_x', 'area_y']].apply(
-        lambda row: real_points.index((row['area_x'], row['area_y'])), axis=1)
-
-    real_data_ring = 0
-    porosity_np['ring'] = real_data_ring
-    porosity_np['real'] = common.RealValues.real
-
-    porosity_np = porosity_np.astype({
-        'ring': np.int64,
-        'real': np.int64,
-        'area_x': np.int64,
-        'area_y': np.int64,
-        'area_z': np.int64
-    })
-
     print("[porosity_points_py2hdf5] Creating hdf5 file")
     new_h5_porosity_path = pathlib.Path(hdf5_file_path)
     new_h5_porosity_path.parent.mkdir(exist_ok=True, parents=True)
@@ -98,20 +73,42 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
         # Commit all points for a given x coordinate
         porosity_h5_dset[i, ...] = all_yz
 
+    print(f"[porosity_points_py2hdf5] Loading porosity file")
+    porosity_file_path = pathlib.Path(porosity_file)
+    porosity_np = pd.read_csv(porosity_file_path)
+
+    # Essa ordenação define o index de cada poço e deverá ser mantida
+    # no arquivo de configuração config.yaml. Basicamente, ordena os poços
+    # pela coordenada x na área
+    real_points = sorted(
+        list(porosity_np[['area_x', 'area_y']].value_counts().index))
+
+    porosity_np['well_id'] = porosity_np[['area_x', 'area_y']].apply(
+        lambda row: real_points.index((row['area_x'], row['area_y'])), axis=1)
+
+    real_data_ring = 0
+    porosity_np['ring'] = real_data_ring
+    porosity_np['real'] = common.RealValues.real
+
+    porosity_np = porosity_np.astype({
+        'ring': np.int64,
+        'real': np.int64,
+        'area_x': np.int64,
+        'area_y': np.int64,
+        'area_z': np.int64
+    })
+
     print(f"[porosity_points_py2hdf5] Updating {len(porosity_np)} values")
 
-    # We do this so each col keep its dtype
-    # If we got everything at once, the resulting np
-    # would be of type np.float64
-    x = porosity_np['area_x'].values
-    y = porosity_np['area_y'].values
-    z = porosity_np['area_z'].values
-    p = porosity_np[por_col].values
-    real = porosity_np['real'].values
-    ring = porosity_np['ring'].values
-    well_id = porosity_np['well_id'].values
-
-    porosity_h5_dset[x, y, z] = (x, y, z, p, real, ring, well_id)
+    for idx, row in porosity_np.iterrows():
+        x = row['area_x']
+        y = row['area_y']
+        z = row['area_z']
+        p = row[por_col]
+        real = row['real']
+        ring = row['ring']
+        well_id = row['well_id']
+        porosity_h5_dset[x, y, z] = (x, y, z, p, real, ring, well_id)
 
     if mult_factor > 1:
         print(f"[porosity_points_py2hdf5] Adding extra "\
