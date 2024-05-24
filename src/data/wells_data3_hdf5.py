@@ -101,13 +101,13 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
     print(f"[porosity_points_py2hdf5] Updating {len(porosity_np)} values")
 
     for row in porosity_np.itertuples():
-        x = row['area_x']
-        y = row['area_y']
-        z = row['area_z']
-        p = row[por_col]
-        real = row['real']
-        ring = row['ring']
-        well_id = row['well_id']
+        x = row.area_x
+        y = row.area_y
+        z = row.area_z
+        p = getattr(row, por_col)
+        real = row.real
+        ring = row.ring
+        well_id = row.well_id
         porosity_h5_dset[x, y, z] = (x, y, z, p, real, ring, well_id)
 
     if mult_factor > 1:
