@@ -40,14 +40,21 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
 
     print(f"[porosity_points_py2hdf5] Loading porosity file")
     porosity_file_path = pathlib.Path(porosity_file)
-
     porosity_np = pd.read_csv(porosity_file_path)
+
     # Essa ordenação define o index de cada poço e deverá ser mantida
     # no arquivo de configuração config.yaml. Basicamente, ordena os poços
     # pela coordenada x na área
     real_points = sorted(
         list(porosity_np[['area_x', 'area_y']].value_counts().index))
-    porosity_np = porosity_np[['area_x', 'area_y', 'area_z', por_col]].values
+
+    porosity_np['well_id'] = porosity_np[[
+        'area_x', 'area_y'
+    ]].apply(lambda row: real_points.index((row['x'], row['y'])))
+
+    porosity_np = porosity_np[[
+        'area_x', 'area_y', 'area_z', por_col, 'well_id'
+    ]].values
 
     print("[porosity_points_py2hdf5] Creating hdf5 file")
     new_h5_porosity_path = pathlib.Path(hdf5_file_path)
@@ -85,23 +92,28 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
         porosity_h5_dset[i, ...] = all_yz
 
     print(f"[porosity_points_py2hdf5] Updating {len(porosity_np)} values")
-    for x, y, z, p in tqdm(porosity_np):
-        if (x, y) in real_points:
-            real = common.RealValues.real
-            well_id = real_points.index((x, y))
-            ring = 0
-        else:
-            real = common.RealValues.canal
-            well_id = -1
-            ring = -1
-        value_to_add = (np.int64(x), np.int64(y), np.int64(z),
-                        p, real, ring, well_id,)
 
-        try:   
+    ring = 0
+    real = common.RealValues.real
+
+    for x, y, z, p, w_id in porosity_np:
+
+        value_to_add = (
+            np.int64(x),
+            np.int64(y),
+            np.int64(z),
+            p,
+            real,
+            ring,
+            w_id,
+        )
+
+        try:
             porosity_h5_dset[np.int64(x), np.int64(y),
-                         np.int64(z)] = value_to_add
+                             np.int64(z)] = value_to_add
         except Exception as e:
-            print(f"ERROR: Tentou adicionar os seguintes valores: {value_to_add}")
+            print(
+                f"ERROR: Tentou adicionar os seguintes valores: {value_to_add}")
             raise e
 
     if mult_factor > 1:
