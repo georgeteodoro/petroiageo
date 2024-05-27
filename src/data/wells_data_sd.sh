@@ -13,5 +13,6 @@ FEAT_FILE='../../../data/POV/features/area_1/hdf5/pov_area_1_near_seismic_azimut
 POR_FILE='../../../data/POV/porosity/merged/pov_area_1_merged_info.csv'
 P_COL='density_por'
 TARGET_HDF5_FILE='../../../data/POV/porosity/processed/baseline_area_1.h5'
+CONFIG_FILE='../alg/pov_area_1_config.yaml'
 
-python3 wells_data3_hdf5.py -f $FEAT_FILE -p $POR_FILE -o $TARGET_HDF5_FILE -p_col $P_COL
+python3 wells_data3_hdf5.py -f $FEAT_FILE -p $POR_FILE -o $TARGET_HDF5_FILE -p_col $P_COL -config $CONFIG_FILE
