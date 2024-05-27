@@ -66,6 +66,7 @@ def list_func_applier_decorator(func):
     element of a iterable. This exists to pass the 'underlying function'
     as a parameter to other functions.
     """
+
     def apply_func_to_every_element(my_iterable):
         """
         Applies a func to every element in my_iterable
@@ -82,14 +83,14 @@ class ConfigTypeCaster:
     provided. This is mostly file format independent, but could have
     differences between the formats accepted.
     """
+
     @classmethod
     def treat_input_config(cls, config_dict: dict) -> dict:
         treated_dict = dict()
 
         treated_dict.update(config_dict)
         if "alg" in config_dict:
-            treated_dict["alg"] = cls._type_cast_alg_configs(
-                config_dict["alg"])
+            treated_dict["alg"] = cls._type_cast_alg_configs(config_dict["alg"])
 
         if "wells" in config_dict:
             treated_dict["wells"] = cls._treat_wells_configs(
@@ -201,7 +202,7 @@ class ConfigTypeCaster:
     def _treat_wells_configs(cls, wells_configs: dict) -> dict:
         treated_wells_configs = dict()
 
-        # So non treated/non expected keys remain in treated_sampling_config
+        # So untreated/unexpected keys remain in treated_sampling_config
         treated_wells_configs.update(wells_configs)
 
         assert 'window' in wells_configs, "[config_parser] Missing "\
@@ -280,6 +281,7 @@ class ConfigTypeCaster:
 
 
 class YAMLConfigTypeCaster(ConfigTypeCaster):
+
     @staticmethod
     def _which_python_bool_value(input_bool: str) -> bool:
         if input_bool.lower() in ["y", "yes", "on", "true"]:
@@ -297,6 +299,7 @@ class ConfigValidator:
     the config passes the type validation, some values may not be valid for
     a given config. This is file format independent.
     """
+
     @classmethod
     def raise_if_invalid_config(cls, config_dict: dict):
         cls._raise_if_alg_config_invalid(config_dict)
@@ -461,7 +464,7 @@ class Config:
         return target
 
     def _get_input_config(self,
-                          config_path,
+                          config_path: str = None,
                           config_dict: dict = None,
                           config_str: str = None):
         """
@@ -559,6 +562,7 @@ class Config:
     def _base_wells_config(self) -> dict:
         base_config = dict()
         base_config["coords"] = list()
+        #as wells.window is required, we dont have to set it a base value
         return base_config
 
     def add_param(self, param_name: str, param_value):
@@ -609,7 +613,8 @@ class Config:
         coords = list()
         for well_id in wells_ids:
             curr_well_coords_dict = self.config["wells"]["coords"][well_id]
-            coords.append((curr_well_coords_dict['x'], curr_well_coords_dict['y']))
+            coords.append(
+                (curr_well_coords_dict['x'], curr_well_coords_dict['y']))
 
         return coords
 
@@ -747,6 +752,7 @@ class Config:
 
 
 class YAMLConfig(Config):
+
     def __init__(self,
                  config_path: str = None,
                  config_dict: dict = None,
