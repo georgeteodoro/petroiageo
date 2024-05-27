@@ -418,7 +418,7 @@ class TestYAMLConfig(TestCase):
                 _ = config_parser.YAMLConfig(
                     config_str=yaml_str_fmt.format(invalid_value))
 
-    def test_raise_on_invalid_window(self):
+    def test_raise_on_invalid_alg_window(self):
         invalid_values = [100.3, 'ab', -2]
         yaml_str_fmt = """
         wells:
@@ -432,7 +432,7 @@ class TestYAMLConfig(TestCase):
                 _ = config_parser.YAMLConfig(
                     config_str=yaml_str_fmt.format(invalid_value))
 
-    def test_can_set_window(self):
+    def test_can_set_alg_window(self):
         window = 2
         yaml_str_fmt = """
         wells:
@@ -445,7 +445,7 @@ class TestYAMLConfig(TestCase):
             config_str=yaml_str_fmt.format(window))
         self.assertEqual(config.alg['window'], window)
 
-    def test_can_get_base_window(self):
+    def test_can_get_base_alg_window(self):
         expected_base_window = 3
         yaml_str_fmt = """
         wells:
