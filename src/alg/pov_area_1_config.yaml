@@ -1,6 +1,6 @@
 wells: # This is wells related stuff
-  coords: # These are the original (pre-padding) coords (x, y)
-    - [[112, 21], [76, 10], [163, 150], [106, 102], [126, 223], [43, 94],
+  # These are the original (pre-padding) coords (x, y)
+  coords: [[112, 21], [76, 10], [163, 150], [106, 102], [126, 223], [43, 94],
      [22, 408], [10, 135], [50, 273], [220, 184]]
   window: 3 # window size for which the hypercube was padded
 
