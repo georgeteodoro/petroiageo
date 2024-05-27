@@ -11,5 +11,6 @@ module load python/3.9.6
 source ../../../../venv/bin/activate
 FEATS_FOLDER='../../../../data/POV/features/area_1/'
 TARGET_FOLDER='../../../../data/POV/features/area_1/hdf5'
+CONFIG_FILE='../../alg/pov_area_1_config.yaml'
 
-python3 seismic_data3_hdf5.py -f $FEATS_FOLDER -o $TARGET_FOLDER
+python3 seismic_data3_hdf5.py -f $FEATS_FOLDER -o $TARGET_FOLDER -config $CONFIG_FILE
