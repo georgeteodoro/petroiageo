@@ -24,6 +24,7 @@ import sys
 sys.path.insert(0, "../..")
 
 from alg.common import FEAT_DSET_NAME
+from alg import config_parser
 
 
 def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path, chunk_shape,
@@ -96,7 +97,7 @@ def _create_feature_hdf5_file(
             FEAT_DSET_NAME,
             large_data_shape,
             dtype=np.float64,
-#            chunks=chunk_shape,
+            #            chunks=chunk_shape,
             data=feature_full_np.flat,
         )
 
@@ -121,8 +122,7 @@ def _fill_center(feature_full_np, feature_np, data_shape, mult_factor,
 
                 # Fill values of the current slice with a
                 # full copy of feature_np
-                feature_full_np[x_i:x_o, y_i:y_o,
-                                z_i:z_o] = feature_np[:, :, :]
+                feature_full_np[x_i:x_o, y_i:y_o, z_i:z_o] = feature_np[:, :, :]
 
 
 def _fill_borders(feature_full_np, data_shape, displacement_window):
@@ -138,8 +138,8 @@ def _fill_borders(feature_full_np, data_shape, displacement_window):
     # Top/bottom regions
     for z in range(displacement_window):
         # Top
-        feature_full_np[x_slice, y_slice, z] = feature_full_np[x_slice,
-                                                               y_slice, 0]
+        feature_full_np[x_slice, y_slice, z] = feature_full_np[x_slice, y_slice,
+                                                               0]
 
         # Bottom
         feature_full_np[x_slice, y_slice, data_shape[2] - z -
@@ -365,6 +365,16 @@ def config_arg_parser() -> argparse.ArgumentParser:
         "dimensions (x, y, z). E.g., (1, 2, 2).",
     )
 
+    parser.add_argument(
+        '-config',
+        dest='config_file_path',
+        action='store',
+        required=True,
+        help=
+        "The YAML config file path with wells coords. This is necessary to garantee"
+        " the wells coords ordering.",
+    )
+
     return parser
 
 
@@ -421,10 +431,13 @@ if __name__ == '__main__':
         if not file.suffix == '.npy':
             raise ValueError(f"{file} is not a .npy file!")
 
-    disp_window = 3
+    disp_window = config_parser.YAMLConfig(
+        args.config_file_path).wells['window']
+    print(f"[LOG] Disp window found: {disp_window}")
     # chunk_shape = (100, 100, 32 + disp_window + disp_window)
     #chunk_shape = (100, 100, 251 + disp_window + disp_window)
-    chunk_shape = (231+2*disp_window, 419+2*disp_window, 134+2*disp_window)
+    chunk_shape = (231 + 2 * disp_window, 419 + 2 * disp_window,
+                   134 + 2 * disp_window)
     [
         seismic_feature_np2hdf5_planar(f, chunk_shape, disp_window,
                                        args.output_dir, mult_factor)
