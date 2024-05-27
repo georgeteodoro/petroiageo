@@ -80,11 +80,12 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
 
     print(f"[porosity_points_py2hdf5] Loading config file")
     real_points = get_wells_coords(config_file_path)
+    print(f"[porosity_points_py2hdf5] Wells coords found:\n{real_points}")
 
     try:
         # Define the well id for every point
         porosity_np['well_id'] = porosity_np[['area_x', 'area_y']].apply(
-            lambda row: real_points.index([row['area_x'], row['area_y']]),
+            lambda row: real_points.index((row['area_x'], row['area_y'])),
             axis=1)
     except Exception as e:
         err_msg = "ERRO!: Confira se as coordenadas dos poços no arquivo de configuração"
