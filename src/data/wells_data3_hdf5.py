@@ -15,7 +15,7 @@ import sys
 
 sys.path.insert(0, "..")
 
-from alg import common
+from alg import common, config_parser
 
 
 def _new_random_coord(x_len, y_len, expanded_real_points):
@@ -34,8 +34,9 @@ def _new_random_coord(x_len, y_len, expanded_real_points):
 
 
 def porosity_points_py2hdf5(porosity_file: str, por_col: str,
-                            hdf5_file_path: str, hypercube_shape: tuple,
-                            chunk_shape: tuple, mult_factor: int):
+                            hdf5_file_path: str, config_file_path: pathlib.Path,
+                            hypercube_shape: tuple, chunk_shape: tuple,
+                            mult_factor: int):
     print(f"[porosity_points_py2hdf5] Expected shape: {hypercube_shape}")
 
     print("[porosity_points_py2hdf5] Creating hdf5 file")
@@ -77,14 +78,19 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
     porosity_file_path = pathlib.Path(porosity_file)
     porosity_np = pd.read_csv(porosity_file_path)
 
-    # Essa ordenação define o index de cada poço e deverá ser mantida
-    # no arquivo de configuração config.yaml. Basicamente, ordena os poços
-    # pela coordenada x na área
-    real_points = sorted(
-        list(porosity_np[['area_x', 'area_y']].value_counts().index))
+    print(f"[porosity_points_py2hdf5] Loading config file")
+    real_points = get_wells_coords(config_file_path)
 
-    porosity_np['well_id'] = porosity_np[['area_x', 'area_y']].apply(
-        lambda row: real_points.index((row['area_x'], row['area_y'])), axis=1)
+    try:
+        # Define the well id for every point
+        porosity_np['well_id'] = porosity_np[['area_x', 'area_y']].apply(
+            lambda row: real_points.index((row['area_x'], row['area_y'])),
+            axis=1)
+    except Exception as e:
+        err_msg = "ERRO!: Confira se as coordenadas dos poços no arquivo de configuração"
+        err_msg += " estão relativas a área alvo!"
+        print(err_msg)
+        raise e
 
     real_data_ring = 0
     porosity_np['ring'] = real_data_ring
@@ -146,6 +152,11 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
 
     porosity_h5_f.close()
 
+def get_wells_coords(config_file_path: pathlib.Path) -> list:
+    config = config_parser.YAMLConfig(config_file_path)
+    real_points = config.wells_as_simple_list
+    return real_points
+
 
 def config_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description='POV')
@@ -174,7 +185,17 @@ def config_arg_parser() -> argparse.ArgumentParser:
         required=True,
         type=str,
         help=
-        "The porosity column name to consider as the base porosity. Example: density_por"
+        "The porosity column name to consider as the base porosity. Example: density_por",
+    )
+
+    parser.add_argument(
+        '-config',
+        dest='config_file_path',
+        action='store',
+        required=True,
+        help=
+        "The YAML config file path with wells coords. This is necessary to garantee"
+        " the wells coords ordering.",
     )
 
     parser.add_argument(
@@ -217,6 +238,7 @@ if __name__ == '__main__':
     hdf5_file_path = args.hdf5_file
     mult_factor = int(args.mult_factor)
     por_col = args.por_col
+    config_file_path = pathlib.Path(args.config_file_path)
 
     # chunk_shape = (100, 100, 16)
     # chunk_shape = (434, 323, 251)
@@ -226,6 +248,7 @@ if __name__ == '__main__':
         porosity_file_path,
         por_col,
         hdf5_file_path,
+        config_file_path,
         hypercube_shape,
         chunk_shape,
         mult_factor,
