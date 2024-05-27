@@ -208,9 +208,11 @@ class ConfigTypeCaster:
         assert 'window' in wells_configs, "[config_parser] Missing "\
                 "wells.window' configuration."
 
+        treated_wells_configs['window'] = int(wells_configs["window"])
+
         if "coords" in wells_configs:
             treated_coords_configs = cls._treat_wells_coords_configs(
-                wells_configs["coords"], int(wells_configs["window"]))
+                wells_configs["coords"], treated_wells_configs['window'])
             treated_wells_configs["coords"] = treated_coords_configs
 
         return treated_wells_configs
