@@ -27,8 +27,8 @@ from alg.common import FEAT_DSET_NAME
 from alg import config_parser
 
 
-def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path, chunk_shape,
-                                   displacement_window,
+def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path,
+                                   disp_window:int,
                                    output_dir: pathlib.Path, mult_factor):
     feature_name = feature_path.stem
 
@@ -37,16 +37,20 @@ def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path, chunk_shape,
     feature_np = np.load(feature_path)
 
     data_shape = feature_np.shape
-
+    chunk_shape = (data_shape[0] + 2 * disp_window,
+                   data_shape[1] + 2 * disp_window,
+                   data_shape[2] + 2 * disp_window)
     print(f"[seismic_feature_np2hdf5_planar] original shape: {data_shape} "
           f"with length {prod(data_shape)}")
+
+    print(f"[seismic_feature_np2hdf5_planar] chunk shape: {chunk_shape}")
 
     # Generate large data shape for replicating the data
     large_data_shape = [
         mult_factor[i] * data_shape[i] for i in range(len(data_shape))
     ]
     large_data_shape = (np.array(large_data_shape) +
-                        (2 * displacement_window)).tolist()
+                        (2 * disp_window)).tolist()
 
     print(f"[seismic_feature_np2hdf5_planar] new shape: {large_data_shape} "
           f"with length {prod(large_data_shape)}")
@@ -56,20 +60,20 @@ def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path, chunk_shape,
     print(f"[seismic_feature_np2hdf5_planar] "\
           f"assigning center of {feature_name}")
     _fill_center(feature_full_np, feature_np, data_shape, mult_factor,
-                 displacement_window)
+                 disp_window)
 
     print(f"[seismic_feature_np2hdf5_planar] "\
           f"assigning borders of {feature_name}")
-    _fill_borders(feature_full_np, data_shape, displacement_window)
+    _fill_borders(feature_full_np, data_shape, disp_window)
 
     print(f"[seismic_feature_np2hdf5_planar] "\
           f"assigning cubes of {feature_name}")
     _fill_cubes(feature_full_np, feature_np, data_shape, large_data_shape,
-                displacement_window)
+                disp_window)
 
     print(f"[seismic_feature_np2hdf5_planar] "\
           f"assigning rods of {feature_name}")
-    _fill_rods(feature_full_np, large_data_shape, displacement_window)
+    _fill_rods(feature_full_np, large_data_shape, disp_window)
 
     _create_feature_hdf5_file(
         feature_name,
@@ -434,12 +438,8 @@ if __name__ == '__main__':
     disp_window = config_parser.YAMLConfig(
         args.config_file_path).wells['window']
     print(f"[LOG] Disp window found: {disp_window}")
-    # chunk_shape = (100, 100, 32 + disp_window + disp_window)
-    #chunk_shape = (100, 100, 251 + disp_window + disp_window)
-    chunk_shape = (231 + 2 * disp_window, 419 + 2 * disp_window,
-                   134 + 2 * disp_window)
+
     [
-        seismic_feature_np2hdf5_planar(f, chunk_shape, disp_window,
-                                       args.output_dir, mult_factor)
-        for f in complete_files_path
+        seismic_feature_np2hdf5_planar(f, disp_window, args.output_dir,
+                                       mult_factor) for f in complete_files_path
     ]
