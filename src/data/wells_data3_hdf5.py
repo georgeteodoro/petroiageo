@@ -35,9 +35,24 @@ def _new_random_coord(x_len, y_len, expanded_real_points):
 
 def porosity_points_py2hdf5(porosity_file: str, por_col: str,
                             hdf5_file_path: str, config_file_path: pathlib.Path,
-                            hypercube_shape: tuple, chunk_shape: tuple,
-                            mult_factor: int):
-    print(f"[porosity_points_py2hdf5] Expected shape: {hypercube_shape}")
+                            feat_file_path: str, mult_factor: int):
+
+    print(f"[porosity_points_py2hdf5] Loading config file")
+    real_points, disp_window = get_wells_coords_and_disp_window(
+        config_file_path)
+    print(f"[porosity_points_py2hdf5] Wells coords found:\n{real_points}")
+    print(f"[porosity_points_py2hdf5] Disp window found:\n{disp_window}")
+
+    # Hypercube shape from feature file contains the padding for the
+    # displacement. This is unnecessary here
+    hypercube_shape = h5py.File(pathlib.Path(feat_file_path), 'r')['f'].shape
+    hypercube_shape = (hypercube_shape[0] - 2 * disp_window,
+                       hypercube_shape[1] - 2 * disp_window,
+                       hypercube_shape[2] - 2 * disp_window)
+    print(f"[porosity_points_py2hdf5] Hypercube shape: {hypercube_shape}")
+
+    chunk_shape = (100, 100, hypercube_shape[2])
+    print(f"[porosity_points_py2hdf5] Chunk shape: {chunk_shape}")
 
     print("[porosity_points_py2hdf5] Creating hdf5 file")
     new_h5_porosity_path = pathlib.Path(hdf5_file_path)
@@ -58,7 +73,9 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
         dtype=data_type,
         chunks=chunk_shape,
     )
-    print(f"Target cube shape: {porosity_h5_dset.shape}")
+    print(
+        f"[porosity_points_py2hdf5] Target cube shape: {porosity_h5_dset.shape}"
+    )
 
     print(f"[porosity_points_py2hdf5] Filling coordinates")
     (x_len, y_len, z_len) = hypercube_shape
@@ -77,12 +94,6 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
     print(f"[porosity_points_py2hdf5] Loading porosity file")
     porosity_file_path = pathlib.Path(porosity_file)
     porosity_np = pd.read_csv(porosity_file_path)
-
-    print(f"[porosity_points_py2hdf5] Loading config file")
-    real_points, disp_window = get_wells_coords_and_disp_window(
-        config_file_path)
-    print(f"[porosity_points_py2hdf5] Wells coords found:\n{real_points}")
-    print(f"[porosity_points_py2hdf5] Disp window found:\n{disp_window}")
 
     try:
         # Define the well id for every point
@@ -231,31 +242,18 @@ if __name__ == '__main__':
     parser = config_arg_parser()
     args = parser.parse_args()
 
-    # Hypercube shape from feature file contains the padding for the
-    # displacement. This is unnecessary here
-    hypercube_shape = h5py.File(pathlib.Path(args.feat_file_path),
-                                'r')['f'].shape
-    disp_window = 3
-    hypercube_shape = (hypercube_shape[0] - 2 * disp_window,
-                       hypercube_shape[1] - 2 * disp_window,
-                       hypercube_shape[2] - 2 * disp_window)
-    print(f"Hypercube shape: {hypercube_shape}")
     porosity_file_path = args.porosity_file
     hdf5_file_path = args.hdf5_file
     mult_factor = int(args.mult_factor)
     por_col = args.por_col
     config_file_path = pathlib.Path(args.config_file_path)
+    feat_file_path = args.feat_file_path
 
-    # chunk_shape = (100, 100, 16)
-    # chunk_shape = (434, 323, 251)
-    chunk_shape = (100, 100, hypercube_shape[2])
-    print(f"chunk shape: {chunk_shape}")
     porosity_points_py2hdf5(
         porosity_file_path,
         por_col,
         hdf5_file_path,
         config_file_path,
-        hypercube_shape,
-        chunk_shape,
+        feat_file_path,
         mult_factor,
     )
