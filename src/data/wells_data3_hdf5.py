@@ -82,7 +82,7 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
     real_points, disp_window = get_wells_coords_and_disp_window(
         config_file_path)
     print(f"[porosity_points_py2hdf5] Wells coords found:\n{real_points}")
-    print(f"[porosity_points_py2hdf5] Desp window found:\n{disp_window}")
+    print(f"[porosity_points_py2hdf5] Disp window found:\n{disp_window}")
 
     try:
         # Define the well id for every point
@@ -109,7 +109,6 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
     })
 
     print(f"[porosity_points_py2hdf5] Updating {len(porosity_np)} values")
-
     for row in porosity_np.itertuples():
         x = row.area_x
         y = row.area_y
