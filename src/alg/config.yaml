@@ -21,7 +21,9 @@ features_folder: "../../data/POV/features/h5_features"
 # Output path for the porosity cube produced (if any)
 porosity_cube_output_path: "./results/porosity.npy" 
 # The starting porosity cube file.
-starting_porosity_cube_path: "../../data/POV/porosity_data.h5" 
+starting_porosity_cube_path: "../../data/POV/porosity_data.h5"
+#starting_porosity_cube_path: "../../data/POV/porosity_data-it10.h5"
+
 
 alg:
   num_its: 10 # Num of iterations to run. Default: 10
