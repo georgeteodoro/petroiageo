@@ -466,17 +466,15 @@ class TrialDataBase(ABC):
                     # Split X from y
                     new_points_X = new_points[self._current_features].tolist()
                     new_points_y = new_points['phi'].tolist()
-                else:
-                    new_points_X = list()
-                    new_points_y = list()
 
-                # Add them to output arrays
-                X.append(new_points_X)
-                y.append(new_points_y)
+                    # Add them to output arrays
+                    X.append(new_points_X)
+                    y.append(new_points_y)
 
         # Concatenate all temporary arrays into a single output array
-        X = np.concatenate(X)
-        y = np.concatenate(y)
+        if len(X) > 0:
+            X = np.concatenate(X)
+            y = np.concatenate(y)
 
         return X, y
 
