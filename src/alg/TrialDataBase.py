@@ -21,6 +21,7 @@ class TrialDataBase(ABC):
     Due to the use of padding, all coordinates are the padded coordinates. 
     Thus, it is expected of the wells_list to have padded coordinates as well.
     '''
+
     def __init__(self,
                  target_wells_ids_list,
                  porosity_data: Dataset,
@@ -183,7 +184,7 @@ class TrialDataBase(ABC):
             self._rings_list.clear()
             self._clear_trial_data_hook()
 
-            # TODO: deprecate _clear_trial_data_hook() since it is the 
+            # TODO: deprecate _clear_trial_data_hook() since it is the
             # sampler's job to define which data should be available
 
         t1 = time()
@@ -248,7 +249,7 @@ class TrialDataBase(ABC):
 
             # print(f'=========== points_dict.shape for ring {it}: '
             #       f'{[(wid, len(d)) for wid, d in points_dict.items()]}')
-            
+
             # Fill ring dict
             # REFACTORING/OPTIMIZATION OPORTUNITY:
             # Change _set_ring_hook to _append_ring_hook, thus points_dict is
@@ -333,7 +334,7 @@ class TrialDataBase(ABC):
                 cur_values = self._get_values_hook(r, w)
                 if len(cur_values) == 0:
                     continue
-                
+
                 # Retrieve the coordinate list of the current ring/well pair
                 cur_coords = cur_values[['x', 'y', 'z']]
                 t12 = time()
@@ -431,9 +432,13 @@ class TrialDataBase(ABC):
         n_training_chunks = int(
             self._config.alg['parallel']['n_training_chunks'])
 
-        # Fill training data, one ring at a time, one well at a time
+        # Output collection of data. Each data chunk (ring/well pair) is
+        # appended to the lists bellow. Later these are concatenated, avoiding
+        # using extend and reallocating data.
         X = []
         y = []
+
+        # Fill training data, one ring at a time, one well at a time
         for r in self._rings_list:
             for w in wells_to_retrieve:
                 # If chunking is used (i.e., not validation or test data)
@@ -459,23 +464,19 @@ class TrialDataBase(ABC):
                 # Assuming that new_points is a np.ndarray
                 if new_points.size > 0:
                     # Split X from y
-                    new_points_X = new_points[self._current_features]
-                    new_points_y = new_points['phi']
+                    new_points_X = new_points[self._current_features].tolist()
+                    new_points_y = new_points['phi'].tolist()
                 else:
                     new_points_X = list()
                     new_points_y = list()
 
                 # Add them to output arrays
-                X.extend(new_points_X)
-                y.extend(new_points_y)
+                X.append(new_points_X)
+                y.append(new_points_y)
 
-        # Convert from structured array to simple array
-        # This conversion from array->list->array may be inefficient...
-        # This is required for lgb.train. It can't receive structured ndarray
-        # only a regular array
-        # TODO: Tentar melhorar isso
-        X = np.array(np.array(X).tolist())
-        y = np.array(np.array(y).tolist())
+        # Concatenate all temporary arrays into a single output array
+        X = np.concatenate(X)
+        y = np.concatenate(y)
 
         return X, y
 
