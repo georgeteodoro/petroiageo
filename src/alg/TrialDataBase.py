@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from h5py import Dataset
 import numpy as np
+from numpy.lib import recfunctions as rfn
 from time import time
 from math import ceil
 
@@ -431,6 +432,12 @@ class TrialDataBase(ABC):
 
         n_training_chunks = int(
             self._config.alg['parallel']['n_training_chunks'])
+        profile = self._config.get_param('prof_TD_get_values')
+
+        prep_slice_time = 0
+        get_val_hook_time = 0
+        to_list_time = 0
+        append_time = 0
 
         # Output collection of data. Each data chunk (ring/well pair) is
         # appended to the lists bellow. Later these are concatenated, avoiding
@@ -441,6 +448,7 @@ class TrialDataBase(ABC):
         # Fill training data, one ring at a time, one well at a time
         for r in self._rings_list:
             for w in wells_to_retrieve:
+                t0 = time()
                 # If chunking is used (i.e., not validation or test data)
                 if chunk_id >= 0:
                     # Calculate how many points from a ring/well_id pair
@@ -457,24 +465,51 @@ class TrialDataBase(ABC):
                 else:
                     cur_slice = chunk_slice = slice(0,
                                                     self._well_size_hook(r, w))
+                t1 = time()
+                prep_slice_time += t1 - t0
 
                 # Retrieve current chunk slice from the backend storage
                 new_points = self._get_values_hook(r, w, cur_slice)
 
+                t2 = time()
+                get_val_hook_time += t2 - t1
+
                 # Assuming that new_points is a np.ndarray
                 if new_points.size > 0:
                     # Split X from y
-                    new_points_X = new_points[self._current_features].tolist()
-                    new_points_y = new_points['phi'].tolist()
+                    new_points_X = new_points[self._current_features]
+                    new_points_y = new_points['phi']
+
+                    # This conversion removes the structured array information,
+                    # converting to a simple 2D ndarray (lines, fields). Now
+                    # the conversion does not require expensive copying/moving
+                    # the whole data points multiple times just to be
+                    # compatible with lgb.train().
+                    new_points_X = rfn.structured_to_unstructured(new_points_X)
+
+                    t3 = time()
+                    to_list_time += t3 - t2
 
                     # Add them to output arrays
                     X.append(new_points_X)
                     y.append(new_points_y)
 
+                    t4 = time()
+                    append_time += t4 - t3
+
         # Concatenate all temporary arrays into a single output array
+        t5 = time()
         if len(X) > 0:
             X = np.concatenate(X)
             y = np.concatenate(y)
+        t6 = time()
+
+        print(f"[TrialDataBase][_get_values] prep_slice {prep_slice_time:.4f}")
+        print(f"[TrialDataBase][_get_values] "
+              f"_get_values_hook {get_val_hook_time:.4f}")
+        print(f"[TrialDataBase][_get_values] to_list {to_list_time:.4f}")
+        print(f"[TrialDataBase][_get_values] append {append_time:.4f}")
+        print(f"[TrialDataBase][_get_values] concatenate {t6-t5:.4f}")
 
         return X, y
 
