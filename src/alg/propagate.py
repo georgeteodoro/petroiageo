@@ -53,9 +53,9 @@ def _eval_model(model, test_data: TrialDataBase, test_wells_ids: list):
 
         pred = model.predict(X_test)
         if mse is None:
-            mse = np.mean((pred - Y_test)**2)
+            mse = [np.mean((pred - Y_test)**2)]
         else:
-            mse = np.concatenate(mse, np.mean((pred - Y_test)**2))
+            mse.append(np.mean((pred - Y_test)**2))
         mae.append(mean_absolute_error(Y_test, pred))
 
     # Sqrt of means is different from mean of sqrts. The former is correct
