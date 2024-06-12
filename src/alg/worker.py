@@ -112,6 +112,7 @@ def run(config):
             msg_tag = status.Get_tag()
 
             t3 = time()
+            print(f"{beg_str}[it{it}] msg_wait {t3-t2:.4f}")
             it_wait_job_time += t3 - t2
 
             # Don't count the original [x,y,z] features
