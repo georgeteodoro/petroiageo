@@ -34,7 +34,7 @@ class TrialDataNumpy(TrialDataBase):
         del self._data
         self._data = dict()
 
-    def _set_ring_hook(self, ring, data):
+    def _set_ring_hook(self, ring, data, overwrite=False):
         '''
         Add porosity and other info (coordinates and well_id) to the _data 
         storage. Adds data organized by ring and by well_id.

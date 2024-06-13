@@ -7,12 +7,13 @@ from math import prod
 
 from TrialDataNumpy import TrialDataNumpy
 from TrialDataSharedNumpy import TrialDataSharedNumpy
+from TrialDataH5 import TrialDataH5
 from data_filter import WellsSingleRingDataFilter
 from feature_data.backends.FeatureDataH5 import FeatureDataH5
 from config_parser import YAMLConfig
 import common
 
-concrete_classes = [TrialDataNumpy, TrialDataSharedNumpy]
+concrete_classes = [TrialDataNumpy, TrialDataSharedNumpy, TrialDataH5]
 # concrete_classes = [TrialDataNumpy]
 
 
@@ -342,6 +343,7 @@ class Test_TrialDataAll(unittest.TestCase):
             ] for c in expct_val_coordinates]
             expected_val_y = [prod(c) for c in expct_val_coordinates]
 
+            print(f'well: {well_id}')
             print(expected_train_X)
             print(train_X)
             self.assertTrue((expected_train_X == train_X).all())
