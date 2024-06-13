@@ -104,7 +104,7 @@ class TrialDataBase(ABC):
                         "Abstract method not implemented.")
 
     @abstractmethod
-    def _set_ring_hook(self, ring, data):
+    def _set_ring_hook(self, ring, data, overwrite=False):
         '''
         Should add data to a trial_data ring, updating internally its size.
         This method is called only once to add all points of a ring, for 
@@ -550,7 +550,8 @@ class TrialDataBase(ABC):
                     new_ring_points['well_id'] == well_id][field_names]
 
             # Update the internal concrete data with the sampled points
-            self._set_ring_hook(ring, new_rings_dict)
+            # Existing points are deleted
+            self._set_ring_hook(ring, new_rings_dict, overwrite=True)
 
             # # Used for getting the sampled coords for
             # # sampling integration testing.
