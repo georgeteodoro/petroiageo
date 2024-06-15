@@ -26,6 +26,13 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
               self).__init__(target_wells_list, porosity_data, config,
                              should_consider_sampling)
 
+        # Representation of data storage index. Actual concrete data used
+        # numpy objects to be stores within the dict's, by ring,well.
+        # Two objects are created, one for shared data access, and one for
+        # local data (i.e., current feature data).
+        self._data_shr = dict()
+        self._data_local = dict()
+
         # Shared memory objects used to get data for numpy objects
         # (self._data_shr). This is necessary for cleanup on __del__().
         self._shm_objects = []
@@ -52,13 +59,49 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
     def __del__(self):
         self._del_all_concrete()
 
-    def _alloc_empty_ring_well_last_feature_concrete(self,
-                                                     length,
-                                                     last_feature=False):
-        # Only the space for a single column is allocated.
-        return np.zeros((length), dtype=np.float64)
+    def _get_shd(self, ring, well):
+        '''
+        Returns the concrete numpy reference to the shared data structure.
+        Returns an empty np array if the ring,well pair is not present.
+        '''
+        # Check if there is a ring r.
+        shm_ring_dict = self._data_shr.get(ring)
+        if shm_ring_dict is None:
+            return np.empty(0)
 
-    def _alloc_empty_ring_well_concrete(self, length):
+        # Retrieve all data
+        shm_well_data = shm_ring_dict.get(well, np.empty(0))
+
+        return shm_ring_dict.get(well, np.empty(0))
+
+    def _get_local(self, ring, well):
+        '''
+        Returns a concrete reference to the local data structure.
+        This concrete structure have numpy index semantics.
+        Returns an empty np array if the ring,well pair is not present.
+        '''
+
+        return self._data_local[ring].get(well, np.empty(0))
+
+    def _update_shd_col(self, ring, well, cols, data):
+        '''
+        Updates a single column on the shared data structure.
+        '''
+        self._data_shr[ring][well][cols] = data
+
+    def _update_local_col(self, ring, well, data):
+        '''
+        Updates the last column on the local data structure.
+        '''
+        self._data_local[ring][well][:] = data
+
+
+    def _alloc_empty_ring_well_last_feature_concrete(self,
+                                                     length, ring, well):
+        # Only the space for a single column is allocated.
+        self._data_local[ring][well] = np.zeros((length), dtype=np.float64)
+
+    def _alloc_empty_ring_well_concrete(self, length, ring, well):
         '''
         Allocate an empty concrete object to store shared data for a
         ring/well pair, or the single column for the current feature.
@@ -99,9 +142,30 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
         self._shm_objects.append(shm_object)
 
         # Return array data which wraps a shared memory region
-        return np.ndarray((length),
+        self._data_shr[ring][well]= np.ndarray((length),
                           dtype=self._cur_data_type,
                           buffer=shm_object.buf)
+
+    def _new_ring_hook(self, ring):
+        '''
+        A new ring is a dict of data by well_id
+        '''
+        self._data_shr[ring] = dict()
+        self._data_local[ring] = dict()
+
+    def _clear_trial_data_hook(self):
+        '''
+        Delete all data, resetting internal data to an empty dict.
+        '''
+
+        # Local data can be deleted individually
+        del self._data_local
+        self._data_local = dict()
+
+        # Delete all concrete data stored. Coordination, i.e. which process
+        # actually deletes shared data, is solved by the concrete
+        # implementation.
+        self._del_all_concrete()
 
     def _del_all_concrete(self):
         '''
