@@ -42,13 +42,6 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         # Load config
         self._mpi_local_comm = config.get_param('mpi_local_comm')
 
-        # Representation of data storage. The actual data assignment is
-        # performed by a concrete class though the abstract interface.
-        # Two objects are created, one for shared data access, and one for
-        # local data (i.e., current feature data).
-        self._data_shr = dict()
-        self._data_local = dict()
-
         # Inter-process lock for updating the shared-memory data. This can be
         # for deleting data (_clear_trial_data_hook()) or committing data.
         # This lock is also used for creating shared-memory data regions for
@@ -64,7 +57,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
     # =========================================================================
 
     @abstractmethod
-    def _alloc_empty_ring_well_concrete(self, length, last_feature=False):
+    def _alloc_empty_ring_well_concrete(self, length, ring, well):
         '''
         Allocate an empty concrete object to store shared data for a
         ring/well pair, or the single column for the current feature.
@@ -73,37 +66,56 @@ class TrialDataSharedBase(TrialDataBase, ABC):
                         "_well_concrete] Abstract method not implemented.")
 
     @abstractmethod
-    def _del_all_concrete(self, length, last_feature=False):
+    def _alloc_empty_ring_well_last_feature_concrete(self,
+                                                     length, ring, well):
+        raise Exception("[TrialDataSharedBase][_alloc_empty_ring_well_last"\
+                        "_feature_concrete] Abstract method not implemented.")
+
+    @abstractmethod
+    def _del_all_concrete(self, length):
         '''
         Clears all data managed by the concrete class.
         '''
         raise Exception("[TrialDataSharedBase][_del_all_concrete] "\
                         "Abstract method not implemented.")
 
+    @abstractmethod
+    def _get_shd(self, ring, well):
+        '''
+        Returns a concrete reference to the shared data structure.
+        This concrete structure have numpy index semantics.
+        '''
+        raise Exception("[TrialDataSharedBase][_get_shd] "\
+                        "Abstract method not implemented.")
+
+    @abstractmethod
+    def _get_local(self, ring, well):
+        '''
+        Returns a concrete reference to the local data structure.
+        This concrete structure have numpy index semantics.
+        '''
+        raise Exception("[TrialDataSharedBase][_get_local] "\
+                        "Abstract method not implemented.")
+
+    @abstractmethod
+    def _update_shd_col(self, ring, well, cols, data):
+        '''
+        Updates a set of columns on the shared data structure.
+        '''
+        raise Exception("[TrialDataSharedBase][_update_shd_col] "\
+                        "Abstract method not implemented.")
+
+    @abstractmethod
+    def _update_local_col(self, ring, well, data):
+        '''
+        Updates the last column on the local data structure.
+        '''
+        raise Exception("[TrialDataSharedBase][_update_local_col] "\
+                        "Abstract method not implemented.")
+
     # =========================================================================
     # === Implementations of TrialDataBase ====================================
     # =========================================================================
-
-    def _new_ring_hook(self, ring):
-        '''
-        A new ring is a dict of data by well_id
-        '''
-        self._data_shr[ring] = dict()
-        self._data_local[ring] = dict()
-
-    def _clear_trial_data_hook(self):
-        '''
-        Delete all data, resetting internal data to an empty dict.
-        '''
-
-        # Local data can be deleted individually
-        del self._data_local
-        self._data_local = dict()
-
-        # Delete all concrete data stored. Coordination, i.e. which process
-        # actually deletes shared data, is solved by the concrete
-        # implementation.
-        self._del_all_concrete()
 
     def _set_ring_hook(self, ring, data):
         '''
@@ -119,11 +131,10 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         for w in self._wells_id_list:
             well_data = data[w]
             # Create the shared structure on all processes
-            self._data_shr[ring][w] = self._alloc_empty_ring_well_concrete(
-                len(well_data))
+            self._alloc_empty_ring_well_concrete(len(well_data), ring, w)
             
             # There may be no data for certain wells. If so, there is no
-            # need to fill the data.
+            # need to fill empty data.
             if len(well_data) == 0:
                 continue
 
@@ -132,7 +143,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
             is_locked = self._shm_lock.acquire(blocking=False)
             if is_locked:
                 field_names = [i for i, j in self._base_data_type]
-                self._data_shr[ring][w][field_names] = well_data
+                self._update_shd_col(ring, w, field_names, well_data)
 
             # All processes are synced before releasing the lock. This
             # ensures that it is impossible to do the work twice since
@@ -153,9 +164,8 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         # Allocate space for the local single current feature
         for w in self._wells_id_list:
             well_data = data[w]
-            self._data_local[ring][
-                w] = self._alloc_empty_ring_well_last_feature_concrete(
-                    len(well_data))
+            self._alloc_empty_ring_well_last_feature_concrete(
+                    len(well_data), ring, w)
 
     def _update_col_hook(self, r, w, feature_data):
         '''
@@ -171,10 +181,10 @@ class TrialDataSharedBase(TrialDataBase, ABC):
 
         if self._commiting_feature:
             f_str = f'f{self._current_feature_id}'
-            self._data_shr[r][w][f_str] = feature_data
+            self._update_shd_col(r, w, f_str, feature_data)
         else:
             self._is_last_col_empty = False
-            self._data_local[r][w][:] = feature_data
+            self._update_local_col(r, w, feature_data)
 
     def _get_values_hook(self, r, w, chunk_slice=None):
         '''
@@ -191,14 +201,8 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         implement its retrieval of data. If not used, all data is returned.
         '''
 
-        # Check if there is a ring r.
-        shm_ring_dict = self._data_shr.get(r)
-        if shm_ring_dict is None:
-            return np.empty(0)
-
         # Retrieve all data
-        shm_well_data = shm_ring_dict.get(w, np.empty(0))
-
+        shm_well_data = self._get_shd(r, w)
         if shm_well_data.size == 0:
             # Empty ring/well case
             return np.empty(0)
@@ -213,13 +217,12 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         # Update return data with the last column on local
         # memory, if there is data on it.
         if not self._is_last_col_empty:
-            local_well_data = self._data_local[r].get(w, np.empty(0))
             if not chunk_slice:
                 target_well_data[
-                    f'f{self._current_feature_id}'] = local_well_data[:]
+                    f'f{self._current_feature_id}'] = self._get_local(r,w)[:]
             else:
                 target_well_data[
-                    f'f{self._current_feature_id}'] = local_well_data[
+                    f'f{self._current_feature_id}'] = self._get_local(r,w)[
                         chunk_slice]
 
         return target_well_data
@@ -229,7 +232,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         Returns the number of points for a ring/well pair. Local data 
         structure is used to avoid shm overheads.
         '''
-        return len(self._data_local[r].get(w, list()))
+        return len(self._get_local(r, w))
 
     def _should_commit_feature_hook(self):
         '''

@@ -10,10 +10,9 @@ import mpi4py
 from TrialDataSharedBase import TrialDataSharedBase
 
 
-class TrialDataSharedNumpy(TrialDataSharedBase):
+class TrialDataSharedH5(TrialDataSharedBase):
     '''
-    Shared memory implementation through numpy.
-
+    Shared memory implementation through H5.
     '''
 
     def __init__(self,
@@ -22,7 +21,7 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
                  config,
                  should_consider_sampling: bool = True):
         # Currently no initialization is needed
-        super(TrialDataSharedNumpy,
+        super(TrialDataSharedH5,
               self).__init__(target_wells_list, porosity_data, config,
                              should_consider_sampling)
 

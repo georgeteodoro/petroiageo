@@ -37,10 +37,6 @@ class TrialDataH5(TrialDataBase):
         # Create H5 file
         self._cur_h5 = h5py.File(f'{self._filename}', 'w')
 
-        # # Concrete data storage. Data is stored by ring. Each ring is another
-        # # dict by well_id
-        # self._data = dict()
-
     def _new_ring_hook(self, ring):
         '''
         Creation of datasets is done by ring,well pair, not just ring.
