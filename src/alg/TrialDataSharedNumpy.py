@@ -150,7 +150,7 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
 
         self._shm_objects.append(shm_object)
 
-        # Return array data which wraps a shared memory region
+        # Store the array data which wraps a shared memory region
         self._data_shr[ring][well]= np.ndarray((length),
                           dtype=self._cur_data_type,
                           buffer=shm_object.buf)
