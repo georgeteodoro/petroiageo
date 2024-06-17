@@ -107,9 +107,6 @@ class TrialDataH5(TrialDataBase):
         The chunk_slice parameter allows the concrete class to better 
         implement its retrieval of data. If not used, all data is returned.
         '''
-        # target_ring_data = self._data.get(r, dict())
-        # if len(target_ring_data) == 0:
-        #     return np.empty(0)
 
         # Get dset for the ring,well pair
         dset_name = f'r{r}-w{w}'
@@ -122,14 +119,6 @@ class TrialDataH5(TrialDataBase):
                 return dset[:].copy()
             else:
                 return dset[chunk_slice].copy()
-
-        # target_well_data = target_ring_data.get(w, np.empty(0))
-        # if not chunk_slice:
-        #     return target_well_data.copy()
-        # elif target_well_data.size > 0:
-        #     return target_well_data[chunk_slice].copy()
-        # else:
-        #     return target_well_data.copy()
 
     def _well_size_hook(self, r, w):
         '''
