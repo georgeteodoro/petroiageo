@@ -59,7 +59,7 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
     def __del__(self):
         self._del_all_concrete()
 
-    def _get_shd(self, ring, well):
+    def _get_shd(self, ring, well, chunk_slice=None):
         '''
         Returns the concrete numpy reference to the shared data structure.
         Returns an empty np array if the ring,well pair is not present.
@@ -72,16 +72,25 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
         # Retrieve all data
         shm_well_data = shm_ring_dict.get(well, np.empty(0))
 
-        return shm_ring_dict.get(well, np.empty(0))
+        if chunk_slice is not None:
+            if len(shm_well_data) > 0:
+                return shm_well_data[chunk_slice]
+            else:
+                return np.empty(0)
+        else:
+            return shm_well_data
 
-    def _get_local(self, ring, well):
+    def _get_local(self, ring, well, chunk_slice=None):
         '''
         Returns a concrete reference to the local data structure.
         This concrete structure have numpy index semantics.
         Returns an empty np array if the ring,well pair is not present.
         '''
 
-        return self._data_local[ring].get(well, np.empty(0))
+        if chunk_slice is not None:
+            return self._data_local[ring].get(well, np.empty(0))[chunk_slice]
+        else:
+            return self._data_local[ring].get(well, np.empty(0))
 
     def _update_shd_col(self, ring, well, cols, data):
         '''

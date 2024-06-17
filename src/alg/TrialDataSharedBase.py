@@ -80,7 +80,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
                         "Abstract method not implemented.")
 
     @abstractmethod
-    def _get_shd(self, ring, well):
+    def _get_shd(self, ring, well, chunk_slice=None):
         '''
         Returns a concrete reference to the shared data structure.
         This concrete structure have numpy index semantics.
@@ -89,7 +89,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
                         "Abstract method not implemented.")
 
     @abstractmethod
-    def _get_local(self, ring, well):
+    def _get_local(self, ring, well, chunk_slice=None):
         '''
         Returns a concrete reference to the local data structure.
         This concrete structure have numpy index semantics.
@@ -202,28 +202,18 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         '''
 
         # Retrieve all data
-        shm_well_data = self._get_shd(r, w)
+        shm_well_data = self._get_shd(r, w, chunk_slice)
         if shm_well_data.size == 0:
             # Empty ring/well case
             return np.empty(0)
 
-        # Add shared data
-        if not chunk_slice:
-            target_well_data = shm_well_data.copy()
-        else:
-            # Data loading with chunking
-            target_well_data = shm_well_data[chunk_slice].copy()
+        target_well_data = shm_well_data.copy()
 
         # Update return data with the last column on local
         # memory, if there is data on it.
         if not self._is_last_col_empty:
-            if not chunk_slice:
-                target_well_data[
-                    f'f{self._current_feature_id}'] = self._get_local(r,w)[:]
-            else:
-                target_well_data[
-                    f'f{self._current_feature_id}'] = self._get_local(r,w)[
-                        chunk_slice]
+            target_well_data[
+                    f'f{self._current_feature_id}'] = self._get_local(r,w, chunk_slice)[:]
 
         return target_well_data
 
