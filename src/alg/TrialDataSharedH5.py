@@ -1,6 +1,8 @@
 from multiprocessing import shared_memory, resource_tracker
 import numpy as np
 import mpi4py
+import os
+import h5py
 
 # For some unknown buggy reason using the import below results in pytest not
 # executing the Popen('mpirun...') commands. It just skips the execution...
@@ -25,6 +27,12 @@ class TrialDataSharedH5(TrialDataSharedBase):
               self).__init__(target_wells_list, porosity_data, config,
                              should_consider_sampling)
 
+        # These default values are required for unittesting since without
+        # mpi_local there cannot be a responsible process
+        resp_rank = 0
+        mpi_local_rank = 0
+        self._is_resp_rank = True
+
         self._mpi_local_comm = config.get_param('mpi_local_comm')
         if self._mpi_local_comm is not None:
             # Local node processes communicator. Required to coordinate the
@@ -38,25 +46,25 @@ class TrialDataSharedH5(TrialDataSharedBase):
             self._mpi_local_comm.Allgather(
                 [np.int64(mpi_local_rank), mpi4py.MPI.LONG],
                 [rank_list, mpi4py.MPI.LONG])
-            self._resp_rank = rank_list.min()
-            self._is_resp_rank = mpi_local_rank == self._resp_rank
+            resp_rank = rank_list.min()
+            self._is_resp_rank = mpi_local_rank == resp_rank
         else:
             print("[TrialDataSharedBase] _mpi_local_comm is None. "\
                   "Ignore if unittesting.")
 
         # Define H5 filenames for shared and local data
-        self._shd_filename = f"/tmp/TD-shr-tmp.h5"
-        self._local_filename = f"/tmp/TD-r{mpi_local_rank}-tmp.h5"
+        self._shd_filename = f"/tmp/TD-shr-r{resp_rank}-tmp.h5"
+        self._local_filename = f"/tmp/TD-local-r{mpi_local_rank}-tmp.h5"
 
         # If the cur file exists, it should be deleted
-        if os.path.exists(self._shd_filename):
+        if self._is_resp_rank and os.path.exists(self._shd_filename):
             os.remove(self._shd_filename)
         if os.path.exists(self._local_filename):
             os.remove(self._local_filename)
 
         # Responsible rank creates the shared H5 file, 
         # while remaining ranks open it
-        if self._resp_rank:
+        if self._is_resp_rank:
             self._shd_h5 = h5py.File(f'{self._shd_filename}', 'w')
             if self._mpi_local_comm is not None:
                 self._mpi_local_comm.Barrier()
@@ -96,7 +104,7 @@ class TrialDataSharedH5(TrialDataSharedBase):
         '''
 
         # Get dset for the ring,well pair
-        dset_name = f'r{ring}w{well}'
+        dset_name = f'r{ring}-w{well}'
         dset = self._local_h5.get(dset_name)
 
         if dset is None:
@@ -117,10 +125,11 @@ class TrialDataSharedH5(TrialDataSharedBase):
         dset = self._shd_h5.get(dset_name)
         assert dset is not None
 
-        for i, col in enumerate(cols):
-            dset[field] = [item[i] for item in data]
-
-        # self._data_shr[ring][well][cols] = data
+        if data[0] is tuple:
+            for i, col in enumerate(cols):
+                dset[col] = [item[i] for item in data]
+            else:
+                dset[col] = data
 
     def _update_local_col(self, ring, well, data):
         '''
@@ -147,88 +156,74 @@ class TrialDataSharedH5(TrialDataSharedBase):
                                       dtype=np.float64)
 
 
-# ========================================================
     def _alloc_empty_ring_well_concrete(self, length, ring, well):
         '''
         Allocate an empty concrete object to store shared data for a
         ring/well pair, or the single column for the current feature.
-        '''
+        ''' 
 
-        # On the case of an empty ring,well pair, just create an empty
-        # numpy array with the correct shape/dtype.
-        if length == 0:
-            return np.zeros((0), dtype=self._cur_data_type)
+        dset_name = f'r{ring}-w{well}'
 
         # Only a single responsible rank allocates the shared memory region
         if self._mpi_local_comm is None or self._is_resp_rank:
-            shm_object = shared_memory.SharedMemory(
-                create=True, size=(length * self._cur_data_type.itemsize))
+            # Both on the empty case as with the non-empty case the array must
+            # be created, empty or not.
+            self._shd_h5.create_dataset(dset_name,
+                                          (length, ),
+                                          dtype=self._cur_data_type)
 
-            # Broadcasts the shared memory name to other processes
-            # on the same node
+            # Signals all other non-responsible processes that the data
+            # structure was created
             if self._mpi_local_comm is not None:
-                self._mpi_local_comm.bcast(shm_object.name,
-                                           root=self._resp_rank)
+                self._mpi_local_comm.Barrier()
             else:
-                print("[TrialDataSharedBase] _mpi_local_comm is None. "\
+                print("[TrialDataSharedH5] _mpi_local_comm is None. "\
                       "Ignore if unittesting.")
 
         else:
-            # Receive the shared memory name for the allocating process
-            shm_name = self._mpi_local_comm.bcast(None, root=self._resp_rank)
-
-            # Opens the shared memory region, previously created by
-            # the allocating process
-            shm_object = shared_memory.SharedMemory(name=shm_name,
-                                                    create=False)
-            # This unregister deals with an obnoxious warning from
-            # resource_tracker, which senses leaking shm objects.
-            # All shm objects are properly cleaned on __del__().
-            resource_tracker.unregister(shm_object._name, 'shared_memory')
-
-        self._shm_objects.append(shm_object)
-
-        # Return array data which wraps a shared memory region
-        self._data_shr[ring][well]= np.ndarray((length),
-                          dtype=self._cur_data_type,
-                          buffer=shm_object.buf)
+            # Wait for the responsible process to create the data structure
+            self._mpi_local_comm.Barrier()
 
     def _new_ring_hook(self, ring):
         '''
-        A new ring is a dict of data by well_id
+        Creation of datasets is done by ring,well pair, not just ring.
+        Does nothing.
         '''
-        self._data_shr[ring] = dict()
-        self._data_local[ring] = dict()
+
+        pass
 
     def _clear_trial_data_hook(self):
-        '''
-        Delete all data, resetting internal data to an empty dict.
-        '''
-
-        # Local data can be deleted individually
-        del self._data_local
-        self._data_local = dict()
-
-        # Delete all concrete data stored. Coordination, i.e. which process
-        # actually deletes shared data, is solved by the concrete
-        # implementation.
         self._del_all_concrete()
+        
 
     def _del_all_concrete(self):
         '''
-        Clears all data managed by the concrete class.
-        All processes should call this method to avoid being locked at 
-        the barrier.
+        Delete all data by deleting the H5 file. The local file is deleted 
+        individually by each owing process, while shared data is deleted
+        only by the responsible process.
         '''
-        for shm_object in self._shm_objects:
-            shm_object.close()
 
-        if self._mpi_local_comm is not None:
+        if os.path.exists(self._local_filename):
+            os.remove(self._local_filename)
+
+        # Create new local H5 file
+        self._cur_h5 = h5py.File(f'{self._local_filename}', 'w')
+
+        # Responsible rank should delete shared data and create a new file
+        # after waiting sync of all remaining processes. This solves the race
+        # condition of deleting a h5 file when another process might still be
+        # accessing it.
+        if self._is_resp_rank:
+            if self._mpi_local_comm is not None:
+                self._mpi_local_comm.Barrier()
+            if os.path.exists(self._shd_filename):
+                os.remove(self._shd_filename)
+            if self._mpi_local_comm is not None:
+                self._mpi_local_comm.Barrier()
+        else:
+            # Remaining processes should also update its internal file 
+            # reference by re-opening it after the responsible process
+            # creates it
             self._mpi_local_comm.Barrier()
-
-        if self._mpi_local_comm is None or self._is_resp_rank:
-            for shm_object in self._shm_objects:
-                shm_object.unlink()
-
-        if self._mpi_local_comm is not None:
             self._mpi_local_comm.Barrier()
+            self._cur_h5 = h5py.File(f'{self._shd_filename}', '+r')

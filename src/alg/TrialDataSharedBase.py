@@ -71,13 +71,13 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         raise Exception("[TrialDataSharedBase][_alloc_empty_ring_well_last"\
                         "_feature_concrete] Abstract method not implemented.")
 
-    @abstractmethod
-    def _del_all_concrete(self, length):
-        '''
-        Clears all data managed by the concrete class.
-        '''
-        raise Exception("[TrialDataSharedBase][_del_all_concrete] "\
-                        "Abstract method not implemented.")
+    # @abstractmethod
+    # def _del_all_concrete(self):
+    #     '''
+    #     Clears all data managed by the concrete class.
+    #     '''
+    #     raise Exception("[TrialDataSharedBase][_del_all_concrete] "\
+    #                     "Abstract method not implemented.")
 
     @abstractmethod
     def _get_shd(self, ring, well, chunk_slice=None):
@@ -180,7 +180,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         '''
 
         if self._commiting_feature:
-            f_str = f'f{self._current_feature_id}'
+            f_str = [f'f{self._current_feature_id}']
             self._update_shd_col(r, w, f_str, feature_data)
         else:
             self._is_last_col_empty = False
@@ -220,7 +220,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
     def _well_size_hook(self, r, w):
         '''
         Returns the number of points for a ring/well pair. Local data 
-        structure is used to avoid shm overheads.
+        structure is used to avoid shared structure overheads.
         '''
         return len(self._get_local(r, w))
 

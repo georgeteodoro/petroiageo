@@ -16,9 +16,8 @@ import common
 
 concrete_classes = [TrialDataNumpy, TrialDataSharedNumpy, 
     TrialDataH5, 
-    # TrialDataSharedH5,
+    TrialDataSharedH5,
     ]
-# concrete_classes = [TrialDataNumpy]
 
 
 class Test_TrialDataAll(unittest.TestCase):
@@ -152,10 +151,6 @@ class Test_TrialDataAll(unittest.TestCase):
         for (well_id, (w_x, w_y)) in enumerate(wells_list):
             for k in range(cls.window,
                            cls.hypercube_test_shape[2] + cls.window):
-                # # Well 1 would not have points throughout the whole depth
-                # if well_id == 1 and (k == 1 or k == 4):
-                #     continue
-
                 mock_porosity = w_x * w_y * k
                 cls.porosity_h5_dset[w_x, w_y,
                                      k] = (w_x, w_y, k, mock_porosity,
@@ -347,9 +342,6 @@ class Test_TrialDataAll(unittest.TestCase):
             ] for c in expct_val_coordinates]
             expected_val_y = [prod(c) for c in expct_val_coordinates]
 
-            print(f'well: {well_id}')
-            print(expected_train_X)
-            print(train_X)
             self.assertTrue((expected_train_X == train_X).all())
             self.assertTrue((expected_train_y == train_y).all())
             self.assertTrue((expected_val_X == val_X).all())
@@ -388,7 +380,6 @@ class Test_TrialDataAll(unittest.TestCase):
             expected_val_y = [prod(c) for c in expct_val_coordinates]
 
             self.assertTrue(np.array_equal(expected_train_X, train_X))
-            # self.assertTrue((expected_train_X == train_X).all())
             self.assertTrue((expected_train_y == train_y).all())
             self.assertTrue((expected_val_X == val_X).all())
             self.assertTrue((expected_val_y == val_y).all())
@@ -431,9 +422,7 @@ class Test_TrialDataAll(unittest.TestCase):
 
             print(expected_train_X)
             print(train_X)
-
             self.assertTrue(np.array_equal(expected_train_X, train_X))
-            # self.assertTrue((expected_train_X == train_X).all())
             self.assertTrue((expected_train_y == train_y).all())
             self.assertTrue((expected_val_X == val_X).all())
             self.assertTrue((expected_val_y == val_y).all())
