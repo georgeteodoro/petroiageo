@@ -194,6 +194,25 @@ def config_arg_parser():
         "shared trial data structure on memory.",
     )
 
+    parser.add_argument(
+        '--t-h5',
+        dest='is_h5_trial_data',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Enables H5 storage of trial data.",
+    )
+
+    parser.add_argument(
+        '--t-h5-shd',
+        dest='is_h5_shared_trial_data',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Enables shared H5 storage of trial data. Shared H5 file "
+        "is only for processes within the same node. Each node has a single "
+        "shared trial data file.",
+    )
 
     return parser
 
@@ -232,6 +251,8 @@ def update_config_file_params_with_args(config: config_parser.Config,
     config.add_param('is_feature_cache', args.is_feature_cache)
     config.add_param('is_porosity_dfs', args.is_porosity_dfs)
     config.add_param('is_shared_trial_data', args.is_shared_trial_data)
+    config.add_param('is_h5_trial_data', args.is_h5_trial_data)
+    config.add_param('is_h5_shared_trial_data', args.is_h5_shared_trial_data)
 
     # Profiling
     # config.add_param('prof_trial_prep_porosity', True)

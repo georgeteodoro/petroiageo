@@ -62,19 +62,22 @@ class TrialDataSharedH5(TrialDataSharedBase):
         if os.path.exists(self._local_filename):
             os.remove(self._local_filename)
 
-        # Responsible rank creates the shared H5 file, 
-        # while remaining ranks open it
-        if self._is_resp_rank:
-            self._shd_h5 = h5py.File(f'{self._shd_filename}', 'w')
-            if self._mpi_local_comm is not None:
-                self._mpi_local_comm.Barrier()
-        else:
-            self._mpi_local_comm.Barrier()
-            self._shd_h5 = h5py.File(f'{self._shd_filename}', 'r+')
+        # H5 MPI config for multiple processes opening the same file
+        if self._mpi_local_comm is not None:
+            self._mpi_kwargs = {
+                "driver": "mpio",
+                "comm": config.get_param("mpi_local_comm"),
+            }
+        else: 
+            self._mpi_kwargs = {}
+
+        # File creating is a collective operation, thus must be performed
+        # by all processes
+        self._shd_h5 = h5py.File(f'{self._shd_filename}', 'a',
+                                 **self._mpi_kwargs)
 
         # Create local H5 file
         self._local_h5 = h5py.File(f'{self._local_filename}', 'w')
-        # self._last_col_name = 'l'
 
     def __del__(self):
         self._del_all_concrete()
@@ -143,46 +146,23 @@ class TrialDataSharedH5(TrialDataSharedBase):
 
         dset[:] = data[:]
 
-        # self._data_local[ring][well][:] = data
-
-
-    def _alloc_empty_ring_well_last_feature_concrete(self,
-                                                     length, ring, well):
+    def _alloc_empty_ring_well_last_feature_concrete(self, length, ring, well):
         # Only the space for a single column is allocated.
-        # self._data_local[ring][well] = np.zeros((length), dtype=np.float64)
         dset_name = f'r{ring}-w{well}'
-        self._local_h5.create_dataset(dset_name,
-                                      (length, ),
-                                      dtype=np.float64)
-
+        self._local_h5.create_dataset(dset_name, (length, ), dtype=np.float64)
 
     def _alloc_empty_ring_well_concrete(self, length, ring, well):
         '''
         Allocate an empty concrete object to store shared data for a
         ring/well pair, or the single column for the current feature.
-        ''' 
+        '''
 
         dset_name = f'r{ring}-w{well}'
 
-        # Only a single responsible rank allocates the shared memory region
-        if self._mpi_local_comm is None or self._is_resp_rank:
-            # Both on the empty case as with the non-empty case the array must
-            # be created, empty or not.
-            self._shd_h5.create_dataset(dset_name,
-                                          (length, ),
-                                          dtype=self._cur_data_type)
-
-            # Signals all other non-responsible processes that the data
-            # structure was created
-            if self._mpi_local_comm is not None:
-                self._mpi_local_comm.Barrier()
-            else:
-                print("[TrialDataSharedH5] _mpi_local_comm is None. "\
-                      "Ignore if unittesting.")
-
-        else:
-            # Wait for the responsible process to create the data structure
-            self._mpi_local_comm.Barrier()
+        # h5py.create_detaset is a collective operation, thus must be 
+        # performed by all processes
+        self._shd_h5.create_dataset(dset_name, (length, ),
+                                    dtype=self._cur_data_type)
 
     def _new_ring_hook(self, ring):
         '''
@@ -194,7 +174,6 @@ class TrialDataSharedH5(TrialDataSharedBase):
 
     def _clear_trial_data_hook(self):
         self._del_all_concrete()
-        
 
     def _del_all_concrete(self):
         '''
@@ -207,23 +186,21 @@ class TrialDataSharedH5(TrialDataSharedBase):
             os.remove(self._local_filename)
 
         # Create new local H5 file
-        self._cur_h5 = h5py.File(f'{self._local_filename}', 'w')
+        self._local_h5 = h5py.File(f'{self._local_filename}', 'w')
 
-        # Responsible rank should delete shared data and create a new file
-        # after waiting sync of all remaining processes. This solves the race
-        # condition of deleting a h5 file when another process might still be
+        # Responsible rank should delete shared data after waiting sync of 
+        # all remaining processes. This solves the race condition of 
+        # deleting a h5 file when another process might still be
         # accessing it.
         if self._is_resp_rank:
             if self._mpi_local_comm is not None:
                 self._mpi_local_comm.Barrier()
             if os.path.exists(self._shd_filename):
                 os.remove(self._shd_filename)
-            if self._mpi_local_comm is not None:
-                self._mpi_local_comm.Barrier()
         else:
-            # Remaining processes should also update its internal file 
-            # reference by re-opening it after the responsible process
-            # creates it
             self._mpi_local_comm.Barrier()
-            self._mpi_local_comm.Barrier()
-            self._cur_h5 = h5py.File(f'{self._shd_filename}', '+r')
+
+        # File creating is a collective operation, thus must be performed
+        # by all processes
+        self._shd_h5 = h5py.File(f'{self._shd_filename}', 'a',
+                                 **self._mpi_kwargs)

@@ -523,7 +523,6 @@ class TrialDataBase(ABC):
         # receive as input the points from a ring/well pair.
 
         for ring in self._rings_list:
-            # print(f'================= ring{ring}')
             # Compile all points from a ring
             ring_points = []
             for well_id in self._wells_id_list:

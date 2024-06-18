@@ -139,13 +139,13 @@ class Test_All(unittest.TestCase):
         args_str = f'--config {self.__class__.config_path} --it 1 '\
                    f'--nits 1 --nf 1 -w 1 --nsf 3 --ntf 1'
 
-        process = Popen(
-            'mpirun -np 2 --bind-to core python3 -u main.py ' + args_str,
-            shell=True,
-            universal_newlines=True,
-            stdout=PIPE,
-            stderr=PIPE,
-            preexec_fn=os.setsid)
+        process = Popen('mpirun -np 2 --bind-to core python3 -u main.py ' +
+                        args_str,
+                        shell=True,
+                        universal_newlines=True,
+                        stdout=PIPE,
+                        stderr=PIPE,
+                        preexec_fn=os.setsid)
 
         # time.sleep(10)
 
@@ -229,13 +229,13 @@ class Test_All(unittest.TestCase):
         args2_str = f'--config {self.__class__.config_path} --it 3 '\
                    f'--nits 2 --nf 1 -w 1 --nsf 3'
 
-        process = Popen(
-            'mpirun -np 2 --bind-to core python3 -u main.py ' + args1_str,
-            shell=True,
-            universal_newlines=True,
-            stdout=PIPE,
-            stderr=PIPE,
-            preexec_fn=os.setsid)
+        process = Popen('mpirun -np 2 --bind-to core python3 -u main.py ' +
+                        args1_str,
+                        shell=True,
+                        universal_newlines=True,
+                        stdout=PIPE,
+                        stderr=PIPE,
+                        preexec_fn=os.setsid)
 
         output, error = process.communicate()
         print(output)
@@ -252,13 +252,13 @@ class Test_All(unittest.TestCase):
         assert sum(sum(sum(porosity_dset['well_id'] == 2))) == depth * 1
         porosity_h5_file.close()
 
-        process = Popen(
-            'mpirun -np 2 --bind-to core python3 -u main.py ' + args2_str,
-            shell=True,
-            universal_newlines=True,
-            stdout=PIPE,
-            stderr=PIPE,
-            preexec_fn=os.setsid)
+        process = Popen('mpirun -np 2 --bind-to core python3 -u main.py ' +
+                        args2_str,
+                        shell=True,
+                        universal_newlines=True,
+                        stdout=PIPE,
+                        stderr=PIPE,
+                        preexec_fn=os.setsid)
         output, error = process.communicate()
         print(output)
         print(error)
@@ -288,13 +288,13 @@ class Test_All(unittest.TestCase):
                    f'--nits 3 --nf 1 -w 1 --nsf 3 --ntf 1'
 
         # Perform first
-        process = Popen(
-            'mpirun -np 2 --bind-to core python3 -u main.py ' + args_str,
-            shell=True,
-            universal_newlines=True,
-            stdout=PIPE,
-            stderr=PIPE,
-            preexec_fn=os.setsid)
+        process = Popen('mpirun -np 2 --bind-to core python3 -u main.py ' +
+                        args_str,
+                        shell=True,
+                        universal_newlines=True,
+                        stdout=PIPE,
+                        stderr=PIPE,
+                        preexec_fn=os.setsid)
 
         # time.sleep(5)
 
@@ -371,13 +371,13 @@ class Test_All(unittest.TestCase):
         args_str = f'--config {self.__class__.config_path} --it 4 '\
                    f'--nits 1 --nf 1 -w 1 --nsf 3 --ntf 1'
 
-        process = Popen(
-            'mpirun -np 2 --bind-to core python3 -u main.py ' + args_str,
-            shell=True,
-            universal_newlines=True,
-            stdout=PIPE,
-            stderr=PIPE,
-            preexec_fn=os.setsid)
+        process = Popen('mpirun -np 2 --bind-to core python3 -u main.py ' +
+                        args_str,
+                        shell=True,
+                        universal_newlines=True,
+                        stdout=PIPE,
+                        stderr=PIPE,
+                        preexec_fn=os.setsid)
 
         # time.sleep(5)
 
