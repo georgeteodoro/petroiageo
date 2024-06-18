@@ -257,6 +257,7 @@ class TrialDataBase(ABC):
             # not required. I.e., less memory needed. For numpy implementation
             # a temporary list may still be required within it, which is
             # converted to ndarray at the first access.
+            print(f'---------prepare_porosity it {it}')
             self._set_ring_hook(it, points_dict)
 
             t13 = time()

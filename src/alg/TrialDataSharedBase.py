@@ -122,12 +122,12 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         Add porosity and other info (coordinates and well_id) to the _data 
         storage. Adds data organized by ring and by well_id.
 
-        Since this data is shared among all processes, it resides in shared
-        memory space.
+        This data is shared among all processes.
         '''
 
         # Allocate space for all features which should be used for training
         # for shared access.
+        print(f'-----------_set_ring_hook ring {ring}')
         for w in self._wells_id_list:
             well_data = data[w]
             # Create the shared structure on all processes
