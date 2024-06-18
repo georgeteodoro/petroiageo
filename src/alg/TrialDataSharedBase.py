@@ -143,6 +143,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
             is_locked = self._shm_lock.acquire(blocking=False)
             if is_locked:
                 field_names = [i for i, j in self._base_data_type]
+                print(f'updating local r/w {ring}/{w}')
                 self._update_shd_col(ring, w, field_names, well_data)
 
             # All processes are synced before releasing the lock. This
@@ -181,11 +182,9 @@ class TrialDataSharedBase(TrialDataBase, ABC):
 
         if self._commiting_feature:
             f_str = [f'f{self._current_feature_id}']
-            print(f'updating shd {f_str} on r/w {r}/{w}')
             self._update_shd_col(r, w, f_str, feature_data)
         else:
             self._is_last_col_empty = False
-            print(f'updating local r/w {r}/{w}')
             self._update_local_col(r, w, feature_data)
 
     def _get_values_hook(self, r, w, chunk_slice=None):

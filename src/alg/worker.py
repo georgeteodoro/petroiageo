@@ -11,6 +11,8 @@ from feature_data.FeatureDatasetInMemAll import FeatureDatasetInMemAll
 from feature_data.FeatureDatasetInMemCache import FeatureDatasetInMemCache
 from TrialDataNumpy import TrialDataNumpy
 from TrialDataSharedNumpy import TrialDataSharedNumpy
+from TrialDataH5 import TrialDataH5
+from TrialDataSharedH5 import TrialDataSharedH5
 from data_filter import WellsSingleRingDataFilter
 from propagate import propagate
 import common
@@ -49,6 +51,8 @@ def run(config):
     is_feature_in_mem = config.get_param("is_feature_in_mem")
     is_feature_cache = config.get_param("is_feature_cache")
     is_shared_trial_data = config.get_param("is_shared_trial_data")
+    is_h5_trial_data = config.get_param("is_h5_trial_data")
+    is_h5_shared_trial_data = config.get_param("is_h5_shared_trial_data")
     num_its = config.alg['num_its']
     start_it = config.alg['it']
     train_wells_ids = config.train_wells_ids
@@ -72,7 +76,13 @@ def run(config):
 
     # Prepare trial_data
     if is_shared_trial_data:
-        trial_data = TrialDataSharedNumpy(train_wells_ids, porosity_h5_dset, config)
+        trial_data = TrialDataSharedNumpy(train_wells_ids, porosity_h5_dset,
+                                          config)
+    elif is_h5_trial_data:
+        trial_data = TrialDataH5(train_wells_ids, porosity_h5_dset, config)
+    elif is_h5_shared_trial_data:
+        trial_data = TrialDataSharedH5(train_wells_ids, porosity_h5_dset,
+                                       config)
     else:
         trial_data = TrialDataNumpy(train_wells_ids, porosity_h5_dset, config)
     t3 = time()

@@ -105,6 +105,7 @@ class HDFMultiColList:
     Both train and validation data are inside
     Able to add new features columns on the fly as well as change a given column
     """
+
     def __init__(self, cur_h5_dset: h5py.Dataset):
         """
         cur_h5_dset must be 1D
@@ -152,7 +153,8 @@ class HDFMultiColList:
             seismic_read_time += t1 - t0
             TD_write_time += t2 - t1
 
-        print(f"[insert_filtered_feature] IO_SEISMIC_READ: {seismic_read_time}")
+        print(f"[insert_filtered_feature] IO_SEISMIC_READ: "
+              f"{seismic_read_time}")
         print(f"[insert_filtered_feature] IO_TD_WRITE: {TD_write_time}")
 
     def update_last_col(self, feature_gen):
@@ -192,7 +194,8 @@ class HDFMultiColList:
 
         if not self.cur_h5_dset.chunks:
             # Filter all data which has the given well_id
-            well_data = self.cur_h5_dset[self.cur_h5_dset["well_id"] == well_id]
+            well_data = self.cur_h5_dset[self.cur_h5_dset["well_id"] ==
+                                         well_id]
 
             X = well_data[self.all_features]
             y = well_data["phi"]
@@ -315,7 +318,8 @@ def main():
         dest="it_clear",
         action="store",
         default=None,
-        help="Clear all data which is not inside the inputted ring (inclusive).",
+        help=
+        "Clear all data which is not inside the inputted ring (inclusive).",
     )
 
     parser.add_argument(
@@ -379,7 +383,8 @@ def main():
         print(f"\tCanal expanded: {metrics[4]} "
               f"{100*(metrics[4]/total_points):.2f}%")
         empty_points = total_points - sum(metrics)
-        print(f"\tEmpty: {empty_points} {100*(empty_points/total_points):.2f}%")
+        print(
+            f"\tEmpty: {empty_points} {100*(empty_points/total_points):.2f}%")
 
         # get max iteration
         print("Points per iteration:")
@@ -523,7 +528,8 @@ def main():
         print(f"\tCanal expanded: {metrics[4]} "
               f"{100*(metrics[4]/total_points):.2f}%")
         empty_points = total_points - sum(metrics)
-        print(f"\tEmpty: {empty_points} {100*(empty_points/total_points):.2f}%")
+        print(
+            f"\tEmpty: {empty_points} {100*(empty_points/total_points):.2f}%")
 
         # get max iteration
         print("Points per iteration:")
