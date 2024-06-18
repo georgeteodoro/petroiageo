@@ -125,11 +125,11 @@ class TrialDataSharedH5(TrialDataSharedBase):
         dset = self._shd_h5.get(dset_name)
         assert dset is not None
 
-        if data[0] is tuple:
+        if len(cols) > 1:
             for i, col in enumerate(cols):
                 dset[col] = [item[i] for item in data]
-            else:
-                dset[col] = data
+        else:
+            dset[cols[0]] = data
 
     def _update_local_col(self, ring, well, data):
         '''
