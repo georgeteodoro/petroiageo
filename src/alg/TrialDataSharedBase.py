@@ -117,7 +117,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
     # === Implementations of TrialDataBase ====================================
     # =========================================================================
 
-    def _set_ring_hook(self, ring, data):
+    def _set_ring_hook(self, ring, data, overwite=False):
         '''
         Add porosity and other info (coordinates and well_id) to the _data 
         storage. Adds data organized by ring and by well_id.
@@ -143,7 +143,6 @@ class TrialDataSharedBase(TrialDataBase, ABC):
             is_locked = self._shm_lock.acquire(blocking=False)
             if is_locked:
                 field_names = [i for i, j in self._base_data_type]
-                print(f'updating local r/w {ring}/{w}')
                 self._update_shd_col(ring, w, field_names, well_data)
 
             # All processes are synced before releasing the lock. This
