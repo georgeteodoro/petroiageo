@@ -162,10 +162,9 @@ class TrialDataSharedH5(TrialDataSharedBase):
         # If performing sampling, there should already be a dataset with this 
         # name, thus we should delete the old data first
         print(f'=================creating dset {dset_name}')
-        existing_dset = self._shd_h5.get(dset_name)
-        if existing_dset is not None:
+        if self._shd_h5.get(dset_name) is not None:
             print(f'=================deleting first {dset_name}')
-            del existing_dset
+            del self._shd_h5[dset_name]
 
         # h5py.create_detaset is a collective operation, thus must be 
         # performed by all processes
