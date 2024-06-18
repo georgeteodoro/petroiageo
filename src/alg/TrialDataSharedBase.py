@@ -127,7 +127,6 @@ class TrialDataSharedBase(TrialDataBase, ABC):
 
         # Allocate space for all features which should be used for training
         # for shared access.
-        print(f'-----------_set_ring_hook ring {ring}')
         for w in self._wells_id_list:
             well_data = data[w]
             # Create the shared structure on all processes
