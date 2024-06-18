@@ -550,7 +550,7 @@ class TrialDataBase(ABC):
 
             # Update the internal concrete data with the sampled points
             # Existing points are deleted
-            self._set_ring_hook(ring, new_rings_dict, overwrite=True)
+            self._set_ring_hook(ring, new_rings_dict, True)
 
             # # Used for getting the sampled coords for
             # # sampling integration testing.
