@@ -165,6 +165,12 @@ class TrialDataSharedH5(TrialDataSharedBase):
         if self._shd_h5.get(dset_name) is not None:
             print(f'=================deleting first {dset_name}')
             del self._shd_h5[dset_name]
+            
+            # Sync is required to make sure no other process begins creating
+            # the new dataset before all processes delete the old one before.
+            if self._mpi_local_comm is not None:
+                self._mpi_local_comm.Barrier()
+
 
         # h5py.create_detaset is a collective operation, thus must be 
         # performed by all processes
