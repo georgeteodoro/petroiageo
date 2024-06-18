@@ -35,7 +35,7 @@ alg:
   feature_cache_lines: 2
 
   parallel:
-    # max_points_per_chunk: 1000
+    max_points_per_chunk: 10
     n_training_chunks: 1
   
   # If you want to really generate the porosity cube in the end. Default is true
