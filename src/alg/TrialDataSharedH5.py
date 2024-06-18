@@ -159,9 +159,14 @@ class TrialDataSharedH5(TrialDataSharedBase):
 
         dset_name = f'r{ring}-w{well}'
 
+        # If performing sampling, there should already be a dataset with this 
+        # name, thus we should delete the old data first
+        existing_dset = self._shd_h5.get(dset_name)
+        if existing_dset is not None:
+            del existing_dset
+
         # h5py.create_detaset is a collective operation, thus must be 
         # performed by all processes
-        print(f'=================creating dset {dset_name}')
         self._shd_h5.create_dataset(dset_name, (length, ),
                                     dtype=self._cur_data_type)
 
