@@ -161,6 +161,7 @@ class TrialDataSharedH5(TrialDataSharedBase):
 
         # h5py.create_detaset is a collective operation, thus must be 
         # performed by all processes
+        print(f'=================creating dset {dset_name}')
         self._shd_h5.create_dataset(dset_name, (length, ),
                                     dtype=self._cur_data_type)
 
