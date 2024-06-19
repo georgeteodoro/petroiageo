@@ -35,8 +35,21 @@ alg:
   feature_cache_lines: 2
 
   parallel:
-    max_points_per_chunk: 10
+    #max_points_per_chunk: 10
     n_training_chunks: 1
+
+  sampling: # Sampling strategy stuff
+    sampler: "v1"
+    layers_window_size: 100
+    max_points: 10000000
+
+    # Function to penalize data from earlier iterations
+    # following the beta distribution.
+    # Set alpha=1 and beta=1 for no penalty. Default: alpha=1 and beta=1
+    beta_dist:
+      alpha: 1
+      beta: 1
+
   
   # If you want to really generate the porosity cube in the end. Default is true
   generate_porosity_cube: true
@@ -55,22 +68,6 @@ alg:
   test_only_wells: [0, 1]
   # test_only_wells: []
 
-  sampling: # Sampling strategy stuff
-    # Sampling algorithm to use, can be: none, v1
-    sampler: "none"
-    # Num of iterations as window size. If negative, use max num of 
-    # iterations possible. Default: -1
-    layers_window_size: 4
-    # Max num of points for the sampling. If negative, use all data available. 
-    # Default: -1
-    max_points: 10000
-    
-    # Function to penalize data from earlier iterations 
-    # following the beta distribution.
-    # Set alpha=1 and beta=1 for no penalty. Default: alpha=1 and beta=1
-    beta_dist:
-      alpha: 1
-      beta: 1
   
   # Feature selection type. Options: ['FORWARD', 'NONE']. Default: FORWARD
   feature_selection_type: "FORWARD"

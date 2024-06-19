@@ -147,8 +147,14 @@ class TrialDataSharedH5(TrialDataSharedBase):
         dset[:] = data[:]
 
     def _alloc_empty_ring_well_last_feature_concrete(self, length, ring, well):
-        # Only the space for a single column is allocated.
         dset_name = f'r{ring}-w{well}'
+
+        # If performing sampling, there should already be a dataset with this 
+        # name, thus we should delete the old data first
+        if self._local_h5.get(dset_name) is not None:
+            del self._local_h5[dset_name]
+
+        # Only the space for a single column is allocated.
         self._local_h5.create_dataset(dset_name, (length, ), dtype=np.float64)
 
     def _alloc_empty_ring_well_concrete(self, length, ring, well):
@@ -161,16 +167,13 @@ class TrialDataSharedH5(TrialDataSharedBase):
 
         # If performing sampling, there should already be a dataset with this 
         # name, thus we should delete the old data first
-        print(f'=================creating dset {dset_name}')
         if self._shd_h5.get(dset_name) is not None:
-            print(f'=================deleting first {dset_name}')
             del self._shd_h5[dset_name]
             
             # Sync is required to make sure no other process begins creating
             # the new dataset before all processes delete the old one before.
             if self._mpi_local_comm is not None:
                 self._mpi_local_comm.Barrier()
-
 
         # h5py.create_detaset is a collective operation, thus must be 
         # performed by all processes
