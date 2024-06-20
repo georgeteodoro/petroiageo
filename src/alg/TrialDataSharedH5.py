@@ -4,11 +4,6 @@ import mpi4py
 import os
 import h5py
 
-# For some unknown buggy reason using the import below results in pytest not
-# executing the Popen('mpirun...') commands. It just skips the execution...
-# Still, just importing mpi4py seems ok..... nice...
-# from mpi4py import MPI
-
 from TrialDataSharedBase import TrialDataSharedBase
 
 
@@ -68,7 +63,8 @@ class TrialDataSharedH5(TrialDataSharedBase):
                 "driver": "mpio",
                 "comm": config.get_param("mpi_local_comm"),
             }
-        else: 
+        else:
+            # Empty config for unittseting, when not mpi comm is used
             self._mpi_kwargs = {}
 
         # File creating is a collective operation, thus must be performed
@@ -149,7 +145,7 @@ class TrialDataSharedH5(TrialDataSharedBase):
     def _alloc_empty_ring_well_last_feature_concrete(self, length, ring, well):
         dset_name = f'r{ring}-w{well}'
 
-        # If performing sampling, there should already be a dataset with this 
+        # If performing sampling, there should already be a dataset with this
         # name, thus we should delete the old data first
         if self._local_h5.get(dset_name) is not None:
             del self._local_h5[dset_name]
@@ -165,17 +161,17 @@ class TrialDataSharedH5(TrialDataSharedBase):
 
         dset_name = f'r{ring}-w{well}'
 
-        # If performing sampling, there should already be a dataset with this 
+        # If performing sampling, there should already be a dataset with this
         # name, thus we should delete the old data first
         if self._shd_h5.get(dset_name) is not None:
             del self._shd_h5[dset_name]
-            
+
             # Sync is required to make sure no other process begins creating
             # the new dataset before all processes delete the old one before.
             if self._mpi_local_comm is not None:
                 self._mpi_local_comm.Barrier()
 
-        # h5py.create_detaset is a collective operation, thus must be 
+        # h5py.create_detaset is a collective operation, thus must be
         # performed by all processes
         self._shd_h5.create_dataset(dset_name, (length, ),
                                     dtype=self._cur_data_type)
@@ -204,8 +200,8 @@ class TrialDataSharedH5(TrialDataSharedBase):
         # Create new local H5 file
         self._local_h5 = h5py.File(f'{self._local_filename}', 'w')
 
-        # Responsible rank should delete shared data after waiting sync of 
-        # all remaining processes. This solves the race condition of 
+        # Responsible rank should delete shared data after waiting sync of
+        # all remaining processes. This solves the race condition of
         # deleting a h5 file when another process might still be
         # accessing it.
         if self._is_resp_rank:
