@@ -3,6 +3,7 @@ import h5py
 from mpi4py import MPI
 from timeit import default_timer as timer
 from time import time
+import gc
 
 from mpi_module import MPI_TAGS
 from feature_sel import test_new_feature
@@ -44,6 +45,8 @@ def _load_porosity(config):
 
     return porosity_cube_file, porosity_cube_dset
 
+gc_start = None
+gc_times = []
 
 def run(config):
     rank_should_propagate = config.get_param('mpi_should_update_local')
@@ -56,6 +59,21 @@ def run(config):
     num_its = config.alg['num_its']
     start_it = config.alg['it']
     train_wells_ids = config.train_wells_ids
+
+    # Log GC usage
+    def gc_callback(phase, info):
+        global gc_start
+        global gc_times
+        if phase == 'start':  
+            # this indicates the function is called before garbage collection  
+            gc_start = time()  
+        else:
+            # phase have only 2 possible values: 'start' and 'stop'
+            duration = time() - gc_start
+            gc_start = None
+            gc_times += [duration]
+
+    gc.callbacks += [gc_callback]
 
     t0 = time()
 
@@ -258,5 +276,6 @@ def run(config):
         comm.Barrier()
 
     porosity_h5_f.close()
+    print(beg_str + f"[GC] calls: {len(gc_times)} total: {sum(gc_times):.2f}")
     if rank_should_propagate:
         print(beg_str + f' End Time(hh:mm:ss.ms): {datetime.now()}')
