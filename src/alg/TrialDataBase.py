@@ -236,15 +236,15 @@ class TrialDataBase(ABC):
 
                 t115 = time()
 
-                # if profile:
-                #     print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
-                #           f"chunk[{chunk_slice}] p_chunk_load: {t112-t111}")
-                #     print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
-                #           f"chunk[{chunk_slice}] p_chunk_satisfy: {t113-t112}")
-                #     print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
-                #           f"chunk[{chunk_slice}] p_chunk_filt: {t114-t113}")
-                #     print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
-                #           f"chunk[{chunk_slice}] p_chunk_extend: {t115-t114}")
+                if profile:
+                    print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
+                          f"chunk[{chunk_slice}] p_chunk_load: {t112-t111:.5f}")
+                    print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
+                          f"chunk[{chunk_slice}] p_chunk_satisfy: {t113-t112:.5f}")
+                    print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
+                          f"chunk[{chunk_slice}] p_chunk_filt: {t114-t113:.5f}")
+                    print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
+                          f"chunk[{chunk_slice}] p_chunk_extend: {t115-t114:.5f}")
 
             t12 = time()
 
