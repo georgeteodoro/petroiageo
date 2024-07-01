@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import fasteners  # inter-process, intra-node lock
 import numpy as np
+from time import time
 
 from TrialDataBase import TrialDataBase
 
@@ -71,14 +72,6 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         raise Exception("[TrialDataSharedBase][_alloc_empty_ring_well_last"\
                         "_feature_concrete] Abstract method not implemented.")
 
-    # @abstractmethod
-    # def _del_all_concrete(self):
-    #     '''
-    #     Clears all data managed by the concrete class.
-    #     '''
-    #     raise Exception("[TrialDataSharedBase][_del_all_concrete] "\
-    #                     "Abstract method not implemented.")
-
     @abstractmethod
     def _get_shd(self, ring, well, chunk_slice=None):
         '''
@@ -128,9 +121,14 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         # Allocate space for all features which should be used for training
         # for shared access.
         for w in self._wells_id_list:
+            t0 = time()
             well_data = data[w]
+            t1 = time()
+
             # Create the shared structure on all processes
             self._alloc_empty_ring_well_concrete(len(well_data), ring, w)
+            t2 = time()
+
             
             # There may be no data for certain wells. If so, there is no
             # need to fill empty data.
@@ -143,6 +141,8 @@ class TrialDataSharedBase(TrialDataBase, ABC):
             if is_locked:
                 field_names = [i for i, j in self._base_data_type]
                 self._update_shd_col(ring, w, field_names, well_data)
+            t3 = time()
+
 
             # All processes are synced before releasing the lock. This
             # ensures that it is impossible to do the work twice since
@@ -154,17 +154,30 @@ class TrialDataSharedBase(TrialDataBase, ABC):
                 print("[TrialDataSharedBase] _mpi_local_comm is None. "\
                       "Ignore if unittesting.")
 
+            t4 = time()
+
+
             # If the locking process reached this point, then all remaining
             # processes already forfeited the chance to copy the porosity data
             # to the shared memory.
             if is_locked:
                 self._shm_lock.release()
 
+            print(f"[TrialDataSharedBase] get_w_index: {t1-t0:.3f}")
+            print(f"[TrialDataSharedBase] alloc_empty_ring: {t2-t1:.3f}")
+            print(f"[TrialDataSharedBase] update_shm_col: {t3-t2:.3f}")
+            print(f"[TrialDataSharedBase] wait_update: {t4-t3:.3f}")
+
         # Allocate space for the local single current feature
         for w in self._wells_id_list:
+            t5 = time()
             well_data = data[w]
+            t6 = time()
             self._alloc_empty_ring_well_last_feature_concrete(
                     len(well_data), ring, w)
+            t7 = time()
+            print(f"[TrialDataSharedBase] get_w_index_last_f: {t7-t6:.3f}")
+            print(f"[TrialDataSharedBase] alloc_last_f: {t6-t5:.3f}")
 
     def _update_col_hook(self, r, w, feature_data):
         '''

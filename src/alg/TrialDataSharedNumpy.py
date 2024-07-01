@@ -1,6 +1,7 @@
 from multiprocessing import shared_memory, resource_tracker
 import numpy as np
 import mpi4py
+from time import time
 
 # For some unknown buggy reason using the import below results in pytest not
 # executing the Popen('mpirun...') commands. It just skips the execution...
@@ -123,8 +124,11 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
 
         # Only a single responsible rank allocates the shared memory region
         if self._mpi_local_comm is None or self._is_resp_rank:
+            t0=time()
             shm_object = shared_memory.SharedMemory(
                 create=True, size=(length * self._cur_data_type.itemsize))
+            t1=time()
+            print(f"[TrialDataSharedNumpy] shm_alloc: {t1-t0:.3f}")
 
             # Broadcasts the shared memory name to other processes
             # on the same node
