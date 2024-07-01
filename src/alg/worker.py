@@ -49,7 +49,7 @@ gc_start = None
 gc_times = []
 
 def run(config):
-    rank_should_propagate = config.get_param('mpi_should_update_local')
+    rank_should_update_td_local = config.get_param('mpi_should_update_local')
     feature_sel_only = config.get_param('feature_sel_only')
     is_feature_in_mem = config.get_param("is_feature_in_mem")
     is_feature_cache = config.get_param("is_feature_cache")
@@ -106,7 +106,7 @@ def run(config):
     t3 = time()
     print(f"{beg_str} Created local TrialData in {t3-t2:.2f} secs.")
 
-    if rank_should_propagate:
+    if rank_should_update_td_local:
         print(f"{beg_str} Porosity shape: {porosity_h5_dset.shape}.")
 
     print(f"{beg_str} Beginning iterations.")
@@ -118,14 +118,19 @@ def run(config):
 
         # Update test data: set trial_data size and update coordinates,
         # porosity, and other columns
-        trial_data.prepare_porosity(it)
+        if rank_should_update_td_local:
+            trial_data.prepare_porosity(it)
+        # Sync all processes to begin the iteration only after trial data
+        # has been updated
+        print('waiting...')
+        comm.Barrier()
+
         t1 = time()
         print(f"{beg_str}[it{it}] Prepared trial_data in {t1-t0} secs.")
 
         # REMOVE ==============================================
         # return after prepare porosity, which already have bad performance
         # for high memory pressure
-        comm.Barrier()
         return
 
         it_wait_job_time = 0
@@ -250,10 +255,10 @@ def run(config):
 
         # Propagation
         # Only one rank per node actually commits data to the hdf5 file,
-        # enforced by 'rank_should_propagate'.
+        # enforced by 'rank_should_update_td_local'.
         # Also, propagation can be disabled in order to experiment with
         # feature selection only, enforced by 'feature_sel_only'
-        if rank_should_propagate and not feature_sel_only:
+        if rank_should_update_td_local and not feature_sel_only:
             print(f"{beg_str}[it{it}] Beginning propagation...")
             n_propagated_points = propagate(porosity_h5_dset, trial_data,
                                             all_features, best_features, it,
@@ -267,7 +272,7 @@ def run(config):
 
             t3 = time()
             print(f"{beg_str}[it{it}] Done propagate in: {t3-t2}")
-        elif rank_should_propagate:
+        elif rank_should_update_td_local:
             print(f"{beg_str}[it{it}] SKIPPING PROPAGATION "
                   f"(feature selection only)")
 
@@ -283,5 +288,5 @@ def run(config):
 
     porosity_h5_f.close()
     print(beg_str + f"[GC] calls: {len(gc_times)} total: {sum(gc_times):.2f}")
-    if rank_should_propagate:
+    if rank_should_update_td_local:
         print(beg_str + f' End Time(hh:mm:ss.ms): {datetime.now()}')
