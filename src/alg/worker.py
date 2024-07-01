@@ -122,6 +122,12 @@ def run(config):
         t1 = time()
         print(f"{beg_str}[it{it}] Prepared trial_data in {t1-t0} secs.")
 
+        # REMOVE ==============================================
+        # return after prepare porosity, which already have bad performance
+        # for high memory pressure
+        comm.Barrier()
+        return
+
         it_wait_job_time = 0
         it_wait_response_time = 0
         it_update_f_time = 0

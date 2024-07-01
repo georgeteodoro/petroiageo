@@ -53,6 +53,12 @@ def run(config):
         # features to be scheduled.
         done_workers = 0
 
+        # REMOVE ==============================================
+        # return after prepare porosity, which already have bad performance
+        # for high memory pressure
+        comm.Barrier()
+        return
+
         # Main loop on which a whole iteration is run
         while True:
             t10 = time()
