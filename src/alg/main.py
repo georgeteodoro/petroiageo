@@ -311,6 +311,9 @@ def main(args_str=None):
     feature_shape = feature_h5._feature.shape
     config.add_param('feature_shape', feature_shape)
 
+    # Reclaim memory and close file pointers (and release file cache pages)
+    del feature_h5
+
     if rank == manager_rank:
         manager.run(config)
         # print(f"[manager][configs]{config}")

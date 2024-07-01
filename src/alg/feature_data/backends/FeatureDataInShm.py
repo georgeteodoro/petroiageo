@@ -44,6 +44,7 @@ class FeatureDataInShm(FeatureDataBase):
         # print(f"[FeatureDataInShm][__init__] Begun")
 
         # Create the np.ndarray interface to the shared-memory
+        self._shm_path = shm_path
         self._shm_feature = shared_memory.SharedMemory(name=shm_path,
                                                        create=False)
         self._feature = np.ndarray(feature_shape,
@@ -93,6 +94,7 @@ class FeatureDataInShm(FeatureDataBase):
         # print(f"[FeatureDataInShm][__del__] Releasing read lock")
         self._lock.release_read_lock()
         self._shm_feature.close()
+        print(f"[FeatureDataInShm][__del__] closed {self._shm_path}")
         # print(f"[FeatureDataInShm][__del__] Done")
 
     def filter_coords(self, coords):
