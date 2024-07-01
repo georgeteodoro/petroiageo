@@ -163,10 +163,10 @@ class TrialDataSharedBase(TrialDataBase, ABC):
             if is_locked:
                 self._shm_lock.release()
 
-            print(f"[TrialDataSharedBase] get_w_index: {t1-t0:.3f}")
-            print(f"[TrialDataSharedBase] alloc_empty_ring: {t2-t1:.3f}")
-            print(f"[TrialDataSharedBase] update_shm_col: {t3-t2:.3f}")
-            print(f"[TrialDataSharedBase] wait_update: {t4-t3:.3f}")
+            print(f"[TrialDataSharedBase] get_w_index: {t1-t0}")
+            print(f"[TrialDataSharedBase] alloc_empty_ring: {t2-t1}")
+            print(f"[TrialDataSharedBase] update_shm_col: {t3-t2}")
+            print(f"[TrialDataSharedBase] wait_update: {t4-t3}")
 
         # Allocate space for the local single current feature
         for w in self._wells_id_list:
@@ -176,8 +176,8 @@ class TrialDataSharedBase(TrialDataBase, ABC):
             self._alloc_empty_ring_well_last_feature_concrete(
                     len(well_data), ring, w)
             t7 = time()
-            print(f"[TrialDataSharedBase] get_w_index_last_f: {t7-t6:.3f}")
-            print(f"[TrialDataSharedBase] alloc_last_f: {t6-t5:.3f}")
+            print(f"[TrialDataSharedBase] get_w_index_last_f: {t7-t6}")
+            print(f"[TrialDataSharedBase] alloc_last_f: {t6-t5}")
 
     def _update_col_hook(self, r, w, feature_data):
         '''

@@ -128,7 +128,7 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
             shm_object = shared_memory.SharedMemory(
                 create=True, size=(length * self._cur_data_type.itemsize))
             t1=time()
-            print(f"[TrialDataSharedNumpy] shm_alloc: {t1-t0:.3f}")
+            print(f"[TrialDataSharedNumpy] shm_alloc: {t1-t0}")
 
             # Broadcasts the shared memory name to other processes
             # on the same node
