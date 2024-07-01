@@ -112,7 +112,7 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
         if not self._is_resp_rank:
             for i in range(self._max_cache_lines):
                 self._shm_cache_lines.append(
-                    shared_memory.SharedMemory(name=lru_shm_name,
+                    shared_memory.SharedMemory(name=self._shm_feature_name(i),
                                                create=False))
 
         # Create a list of features locks for checking if a feature can be
