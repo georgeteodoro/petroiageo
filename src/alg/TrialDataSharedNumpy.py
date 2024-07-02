@@ -57,6 +57,9 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
             print("[TrialDataSharedBase] _mpi_local_comm is None. "\
                   "Ignore if unittesting.")
 
+        if self._is_resp_rank:
+            print(f"[TrialDataSharedNumpy] resp_rank: {mpi_local_rank}")
+
     def __del__(self):
         self._del_all_concrete()
 

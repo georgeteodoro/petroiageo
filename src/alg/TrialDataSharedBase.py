@@ -67,8 +67,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
                         "_well_concrete] Abstract method not implemented.")
 
     @abstractmethod
-    def _alloc_empty_ring_well_last_feature_concrete(self,
-                                                     length, ring, well):
+    def _alloc_empty_ring_well_last_feature_concrete(self, length, ring, well):
         raise Exception("[TrialDataSharedBase][_alloc_empty_ring_well_last"\
                         "_feature_concrete] Abstract method not implemented.")
 
@@ -129,7 +128,6 @@ class TrialDataSharedBase(TrialDataBase, ABC):
             self._alloc_empty_ring_well_concrete(len(well_data), ring, w)
             t2 = time()
 
-            
             # There may be no data for certain wells. If so, there is no
             # need to fill empty data.
             if len(well_data) == 0:
@@ -143,7 +141,6 @@ class TrialDataSharedBase(TrialDataBase, ABC):
                 self._update_shd_col(ring, w, field_names, well_data)
             t3 = time()
 
-
             # All processes are synced before releasing the lock. This
             # ensures that it is impossible to do the work twice since
             # the lock is only released when all processes already tried
@@ -152,10 +149,9 @@ class TrialDataSharedBase(TrialDataBase, ABC):
                 self._mpi_local_comm.Barrier()
             else:
                 print("[TrialDataSharedBase] _mpi_local_comm is None. "\
-                      "Ignore if unittesting.")
+                      "Or not using DFS for TD. Ignore if unittesting.")
 
             t4 = time()
-
 
             # If the locking process reached this point, then all remaining
             # processes already forfeited the chance to copy the porosity data
@@ -174,7 +170,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
             well_data = data[w]
             t6 = time()
             self._alloc_empty_ring_well_last_feature_concrete(
-                    len(well_data), ring, w)
+                len(well_data), ring, w)
             t7 = time()
             print(f"[TrialDataSharedBase] get_w_index_last_f: {t7-t6}")
             print(f"[TrialDataSharedBase] alloc_last_f: {t6-t5}")
@@ -224,8 +220,8 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         # Update return data with the last column on local
         # memory, if there is data on it.
         if not self._is_last_col_empty:
-            target_well_data[
-                    f'f{self._current_feature_id}'] = self._get_local(r,w, chunk_slice)[:]
+            target_well_data[f'f{self._current_feature_id}'] = self._get_local(
+                r, w, chunk_slice)[:]
 
         return target_well_data
 
@@ -273,7 +269,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
             self._mpi_local_comm.Barrier()
         else:
             print("[TrialDataSharedBase] _mpi_local_comm is None. "\
-                  "Ignore if unittesting.")
+                  "Or not using DFS for TD. Ignore if unittesting.")
 
         self._commiting_feature = False
         self._shm_lock.release()

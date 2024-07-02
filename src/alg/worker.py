@@ -118,19 +118,15 @@ def run(config):
 
         # Update test data: set trial_data size and update coordinates,
         # porosity, and other columns
-        if rank_should_update_td_local:
-            trial_data.prepare_porosity(it)
-        # Sync all processes to begin the iteration only after trial data
-        # has been updated
-        print('waiting...')
-        comm.Barrier()
-
+        trial_data.prepare_porosity(it)
+        
         t1 = time()
         print(f"{beg_str}[it{it}] Prepared trial_data in {t1-t0} secs.")
 
         # REMOVE ==============================================
         # return after prepare porosity, which already have bad performance
         # for high memory pressure
+        comm.Barrier()
         return
 
         it_wait_job_time = 0
