@@ -75,7 +75,7 @@ class FeatureDataInShm(FeatureDataBase):
                 f"Could not get dataset {FEAT_DSET_NAME} of file {feature_path}"
 
             # Pre-fetch all data
-            # print(f"[FeatureDataInShm][__init__] Fetching feature data")
+            print(f"[FeatureDataInShm][__init__] Fetching feature data")
             t0 = time()
             self._feature[:] = feature_dset[:]
             t1 = time()
