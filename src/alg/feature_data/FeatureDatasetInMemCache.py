@@ -248,6 +248,8 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
                                     self._feature_shape, feature_path))
 
         feature = await create_future
+        print(f"[FeatureDatasetInMemCache][_async_get_feature] "
+              f"Feature {feature_idx}:{feature} is ready. Returned.")
         return feature
 
     def get_feature(self, feature):
