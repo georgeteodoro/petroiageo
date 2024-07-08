@@ -77,7 +77,7 @@ class FeatureDataInShm(FeatureDataBase):
             # Pre-fetch all data
             print(f"[FeatureDataInShm][__init__] Fetching feature data")
             t0 = time()
-            self._feature[:] = feature_dset[:]
+            self._feature[:] = feature_dset
             t1 = time()
             print(f"[FeatureDataInShm][__init__] Feature {feature_name} "
                   f"loaded in {t1-t0:.4f}")
