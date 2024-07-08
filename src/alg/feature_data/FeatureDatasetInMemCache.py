@@ -185,7 +185,7 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
             # Check for cache miss
             if feature_idx not in self._lru[self._LRU_F_IDX]:
                 print(f"[FeatureDatasetInMemCache][_async_get_feature] "
-                      f"cache_miss")
+                      f"feature {feature_idx}:{feature} cache_miss")
 
                 # Get the sorted indices of cache lines, ordered by _LRU_TIME
                 preference_list = np.argsort(self._lru[self._LRU_TIME])
@@ -213,7 +213,8 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
                     return None
 
                 print(f"[FeatureDatasetInMemCache][_async_get_feature] "
-                      f"Writing on line {line_idx} of feature "
+                      f"Writing feature {feature_idx}:{feature} on line "
+                      f"{line_idx} of prev feature "
                       f"{self._lru[self._LRU_F_IDX][line_idx]}")
 
                 # The i-th entry can be evicted.
@@ -229,7 +230,8 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
                     self._lru[self._LRU_F_IDX] == feature_idx)[0][0]
 
                 print(f"[FeatureDatasetInMemCache][_async_get_feature] "
-                      f"Cache hit on line {line_idx}")
+                      f"Cache hit of feature {feature_idx}:{feature} on "
+                      f"line {line_idx}")
 
                 # An empty feature path represents a cache hit, i.e., no need
                 # for reloading the feature into memory
