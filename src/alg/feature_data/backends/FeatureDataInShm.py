@@ -88,7 +88,15 @@ class FeatureDataInShm(FeatureDataBase):
 
         # Now it can read
         # print(f"[FeatureDataInShm][__init__] Getting read lock")
+        t2 = time()
         self._lock.acquire_read_lock()
+        t3 = time()
+        if feature_path is None:
+            print(f"[FeatureDataInShm][__init__] Waited {t3-t2:.4f} secs "
+                  f"for Feature {shm_path}")
+        else:
+            print(f"[FeatureDataInShm][__init__] Waited {t3-t2:.4f} secs "
+                  f"(loader) for Feature {shm_path}")
 
     def __del__(self):
         # print(f"[FeatureDataInShm][__del__] Releasing read lock")
