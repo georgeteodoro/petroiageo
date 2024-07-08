@@ -17,11 +17,11 @@ int main(int argc, char const *argv[])
 	
 	printf("alloc size: %ld\n", alloc_size);
 
-	for (int i=0; i<num_allocs; i++) {
+	for (long i=0; i<num_allocs; i++) {
 		printf("alloc-ing: %ld longs\n", alloc_size);
 		allocs[i] = malloc(alloc_size * sizeof(long));
-		for (int j=0; j<alloc_size; j++){
-			allocs[i][j] = 1;
+		for (long j=0; j<alloc_size/10; j++){
+			allocs[i][j*10] = 1;
 		}
 	}
 
