@@ -113,7 +113,7 @@ def run(config):
                 comm.send([new_feature],
                           dest=worker_rank,
                           tag=MPI_TAGS.MANAGER_NEW_JOB.value)
-                # print(f"{beg_str}[it{it}] Sending feature {new_feature}")
+                print(f"{beg_str}[it{it}] Sending feature {new_feature}")
             else:
                 done_workers += 1
                 # print(f"{beg_str}[it{it}] Done workers: w{worker_rank} "
