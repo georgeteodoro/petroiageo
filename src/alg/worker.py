@@ -2,7 +2,7 @@ from datetime import datetime
 import h5py
 from mpi4py import MPI
 from timeit import default_timer as timer
-from time import time
+from time import time, sleep
 import gc
 import psutil
 
@@ -26,8 +26,6 @@ manager_rank = mpi_size - 1
 
 beg_str = f"[worker{rank}]"
 
-# For debugging only
-proc = psutil.Process()
 
 def _load_porosity(config):
     # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
@@ -48,8 +46,10 @@ def _load_porosity(config):
 
     return porosity_cube_file, porosity_cube_dset
 
+
 gc_start = None
 gc_times = []
+
 
 def run(config):
     rank_should_propagate = config.get_param('mpi_should_update_local')
@@ -67,9 +67,9 @@ def run(config):
     def gc_callback(phase, info):
         global gc_start
         global gc_times
-        if phase == 'start':  
-            # this indicates the function is called before garbage collection  
-            gc_start = time()  
+        if phase == 'start':
+            # this indicates the function is called before garbage collection
+            gc_start = time()
         else:
             # phase have only 2 possible values: 'start' and 'stop'
             duration = time() - gc_start
@@ -145,8 +145,6 @@ def run(config):
             t3 = time()
             print(f"{beg_str}[it{it}] msg_wait {t3-t2:.4f}")
             it_wait_job_time += t3 - t2
-
-            print(f"{beg_str}[it{it}] open_FPs: {proc.open_files()}")
 
             # Don't count the original [x,y,z] features
             f_it = len(best_features)

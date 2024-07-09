@@ -66,18 +66,9 @@ class TrialDataSharedBase(TrialDataBase, ABC):
                         "_well_concrete] Abstract method not implemented.")
 
     @abstractmethod
-    def _alloc_empty_ring_well_last_feature_concrete(self,
-                                                     length, ring, well):
+    def _alloc_empty_ring_well_last_feature_concrete(self, length, ring, well):
         raise Exception("[TrialDataSharedBase][_alloc_empty_ring_well_last"\
                         "_feature_concrete] Abstract method not implemented.")
-
-    # @abstractmethod
-    # def _del_all_concrete(self):
-    #     '''
-    #     Clears all data managed by the concrete class.
-    #     '''
-    #     raise Exception("[TrialDataSharedBase][_del_all_concrete] "\
-    #                     "Abstract method not implemented.")
 
     @abstractmethod
     def _get_shd(self, ring, well, chunk_slice=None):
@@ -131,7 +122,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
             well_data = data[w]
             # Create the shared structure on all processes
             self._alloc_empty_ring_well_concrete(len(well_data), ring, w)
-            
+
             # There may be no data for certain wells. If so, there is no
             # need to fill empty data.
             if len(well_data) == 0:
@@ -164,7 +155,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         for w in self._wells_id_list:
             well_data = data[w]
             self._alloc_empty_ring_well_last_feature_concrete(
-                    len(well_data), ring, w)
+                len(well_data), ring, w)
 
     def _update_col_hook(self, r, w, feature_data):
         '''
@@ -211,8 +202,8 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         # Update return data with the last column on local
         # memory, if there is data on it.
         if not self._is_last_col_empty:
-            target_well_data[
-                    f'f{self._current_feature_id}'] = self._get_local(r,w, chunk_slice)[:]
+            target_well_data[f'f{self._current_feature_id}'] = self._get_local(
+                r, w, chunk_slice)[:]
 
         return target_well_data
 

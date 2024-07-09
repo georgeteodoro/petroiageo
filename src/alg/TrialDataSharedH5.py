@@ -1,4 +1,3 @@
-from multiprocessing import shared_memory, resource_tracker
 import numpy as np
 import mpi4py
 import os

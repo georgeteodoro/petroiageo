@@ -146,7 +146,7 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
             # This unregister deals with an obnoxious warning from
             # resource_tracker, which senses leaking shm objects.
             # All shm objects are properly cleaned on __del__().
-            resource_tracker.unregister(shm_object._name, 'shared_memory')
+            # resource_tracker.unregister(shm_object._name, 'shared_memory')
 
         self._shm_objects.append(shm_object)
 
