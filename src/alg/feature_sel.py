@@ -86,11 +86,16 @@ def test_new_feature(trial_data: TrialDataBase, config: Config):
             if profile:
                 print(f"[feature_sel] well[{curr_well_id}] "
                       f"chunk[{chunk_id+1}/{n_training_chunks}] "
-                      f"prep: {t122-t121}")
+                      f"prep: {t122-t121:.4f}")
                 print(f"[feature_sel] well[{curr_well_id}] "
                       f"chunk[{chunk_id+1}/{n_training_chunks}] "
-                      f"train: {t123-t122}")
+                      f"train: {t123-t122:.4f}")
+                print(f"[feature_sel] well[{curr_well_id}] "
+                      f"chunk[{chunk_id+1}/{n_training_chunks}] "
+                      f"len: {len(y_train)}")
 
+        t13 = time()
+        
         # Calculate error metrics
         pred = regressor.predict(X_val)
         rmse = np.sqrt(np.mean((pred - y_val)**2))
@@ -98,11 +103,12 @@ def test_new_feature(trial_data: TrialDataBase, config: Config):
         rmse_list.append(rmse)
         mae_list.append(mae)
 
-        t13 = time()
+        t14 = time()
 
         if profile:
             print(f"[feature_sel] well[{curr_well_id}] prep_val: {t12-t11}")
             print(f"[feature_sel] well[{curr_well_id}] well_final: {t13-t12}")
+            print(f"[feature_sel] well[{curr_well_id}] calc_metrics: {t14-t13}")
 
     t2 = time()
     if profile:
