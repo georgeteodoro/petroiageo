@@ -4,6 +4,7 @@ from mpi4py import MPI
 from timeit import default_timer as timer
 from time import time
 import gc
+import psutil
 
 from mpi_module import MPI_TAGS
 from feature_sel import test_new_feature
@@ -25,6 +26,8 @@ manager_rank = mpi_size - 1
 
 beg_str = f"[worker{rank}]"
 
+# For debugging only
+proc = psutil.Process()
 
 def _load_porosity(config):
     # For MPI_FILE_OPEN, used by hdf5 with mpi, all files must be opened
@@ -142,6 +145,8 @@ def run(config):
             t3 = time()
             print(f"{beg_str}[it{it}] msg_wait {t3-t2:.4f}")
             it_wait_job_time += t3 - t2
+
+            print(f"{beg_str}[it{it}] open_FPs: {proc.open_files()}")
 
             # Don't count the original [x,y,z] features
             f_it = len(best_features)
