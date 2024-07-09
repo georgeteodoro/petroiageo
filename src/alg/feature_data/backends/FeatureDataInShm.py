@@ -56,7 +56,8 @@ class FeatureDataInShm(FeatureDataBase):
 
         if feature_path is not None:
             # print(f"[FeatureDataInShm][__init__] Should read feature data.")
-            # print(f"[FeatureDataInShm][__init__] Getting Write lock...")
+            # print(f"[FeatureDataInShm][__init__] Getting Write lock "
+            #       f"{self._lock.path}")
             self._lock.acquire_write_lock()
             # print(f"[FeatureDataInShm][__init__] Got Write lock")
 
