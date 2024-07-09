@@ -194,7 +194,8 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
                 for i in preference_list:
                     # Perform a try-lock
                     # print(f"[FeatureDatasetInMemCache][_async_get_feature] "
-                    #       f"Checking free cache line with try-lock")
+                    #       f"Checking free cache line {i} with try-lock "
+                    #       f"{self._feature_locks[i].path}")
                     found = self._feature_locks[i].acquire_write_lock(
                         blocking=False)
                     if found:
@@ -205,6 +206,8 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
                         self._feature_locks[i].release_write_lock()
                         line_idx = i
                         break
+                    # print(f"[FeatureDatasetInMemCache][_async_get_feature] "
+                    #       f"Cache line {i} in use")
 
                 # If all cache lines are in use, return and try again
                 if not found:
@@ -243,8 +246,8 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
             # Create the shared-memory FeatureData wrapper asynchronously
             asyncio.create_task(
                 _create_FeatureData(create_future,
-                                    self._shm_feature_name(line_idx),
-                                    self._shm_lock_path(feature_idx),
+                                    self._shm_feature_name(feature_idx),
+                                    self._shm_lock_path(line_idx),
                                     self._feature_shape, feature_path))
 
         feature = await create_future
