@@ -237,14 +237,20 @@ class TrialDataBase(ABC):
                 t115 = time()
 
                 if profile:
-                    print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
-                          f"chunk[{chunk_slice}] p_chunk_load: {t112-t111:.5f}")
-                    print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
-                          f"chunk[{chunk_slice}] p_chunk_satisfy: {t113-t112:.5f}")
-                    print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
-                          f"chunk[{chunk_slice}] p_chunk_filt: {t114-t113:.5f}")
-                    print(f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
-                          f"chunk[{chunk_slice}] p_chunk_extend: {t115-t114:.5f}")
+                    print(
+                        f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
+                        f"chunk[{chunk_slice}] p_chunk_load: {t112-t111:.5f}")
+                    print(
+                        f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
+                        f"chunk[{chunk_slice}] p_chunk_satisfy: {t113-t112:.5f}"
+                    )
+                    print(
+                        f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
+                        f"chunk[{chunk_slice}] p_chunk_filt: {t114-t113:.5f}")
+                    print(
+                        f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
+                        f"chunk[{chunk_slice}] p_chunk_extend: {t115-t114:.5f}"
+                    )
 
             t12 = time()
 
@@ -504,12 +510,14 @@ class TrialDataBase(ABC):
             y = np.concatenate(y)
         t6 = time()
 
-        print(f"[TrialDataBase][_get_values] prep_slice {prep_slice_time:.4f}")
-        print(f"[TrialDataBase][_get_values] "
-              f"_get_values_hook {get_val_hook_time:.4f}")
-        print(f"[TrialDataBase][_get_values] to_list {to_list_time:.4f}")
-        print(f"[TrialDataBase][_get_values] append {append_time:.4f}")
-        print(f"[TrialDataBase][_get_values] concatenate {t6-t5:.4f}")
+        if profile:
+            print(f"[TrialDataBase][_get_values] prep_slice "
+                  f"{prep_slice_time:.4f}")
+            print(f"[TrialDataBase][_get_values] "
+                  f"_get_values_hook {get_val_hook_time:.4f}")
+            print(f"[TrialDataBase][_get_values] to_list {to_list_time:.4f}")
+            print(f"[TrialDataBase][_get_values] append {append_time:.4f}")
+            print(f"[TrialDataBase][_get_values] concatenate {t6-t5:.4f}")
 
         return X, y
 

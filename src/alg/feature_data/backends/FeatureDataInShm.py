@@ -4,6 +4,7 @@ import h5py
 import fasteners  # inter-process, intra-node lock
 from multiprocessing import shared_memory
 from time import time
+import psutil
 
 from feature_data.backends.FeatureDataBase import FeatureDataBase
 import common
@@ -75,12 +76,15 @@ class FeatureDataInShm(FeatureDataBase):
                 f"Could not get dataset {FEAT_DSET_NAME} of file {feature_path}"
 
             # Pre-fetch all data
-            print(f"[FeatureDataInShm][__init__] Fetching feature data")
+            print(f"[FeatureDataInShm][__init__] Fetching feature data: "
+                  f"{psutil.virtual_memory()}")
+
             t0 = time()
             self._feature[:] = feature_dset
             t1 = time()
             print(f"[FeatureDataInShm][__init__] Feature {feature_name} "
-                  f"loaded in {t1-t0:.4f}")
+                  f"loaded in {t1-t0:.4f} - "
+                  f"{psutil.virtual_memory()}")
             feature_file.close()
 
             # print(f"[FeatureDataInShm][__init__] Releasing Write lock")
