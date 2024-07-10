@@ -32,7 +32,7 @@ alg:
   fsel_only: True
   TD_on_memory: True
 
-  feature_cache_lines: 2
+  feature_cache_lines: 1
 
   parallel:
     #max_points_per_chunk: 10
