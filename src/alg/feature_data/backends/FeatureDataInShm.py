@@ -81,7 +81,11 @@ class FeatureDataInShm(FeatureDataBase):
                   f"{psutil.virtual_memory()}")
 
             t0 = time()
-            self._feature[:] = feature_dset
+            # Copy data one plane at a time. This limits memory usage
+            # since feature_dset[i] is fully read to memory before having
+            # its values assigned to self._feature[i, :].
+            for i in range(feature_dset.shape[0]):
+                self._feature[i, :] = feature_dset[i]
             t1 = time()
             print(f"[FeatureDataInShm][__init__] Feature {feature_name} "
                   f"loaded in {t1-t0:.4f} - "
