@@ -1,6 +1,5 @@
 """
-This script transforms .npy features data to hdf5 format so it can be used by 
-the algorithm.
+Enlarges an original numpy feature file to a larger, ANP-sized, file.
 
 Naming convention: A region can be center (c), border (b), rod (r) or cube (q).
 Example for a 2D 5x4x3 region (stack the 3 regions) 
@@ -15,7 +14,6 @@ q r r r q     r b b b r     q r r r q
 
 import argparse
 import numpy as np
-import h5py
 from math import prod
 import pathlib
 
@@ -23,7 +21,6 @@ import sys
 
 sys.path.insert(0, "../..")
 
-from alg.common import FEAT_DSET_NAME
 from alg import config_parser
 
 
@@ -37,13 +34,8 @@ def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path,
     feature_np = np.load(feature_path)
 
     data_shape = feature_np.shape
-    chunk_shape = (data_shape[0] + 2 * disp_window,
-                   data_shape[1] + 2 * disp_window,
-                   data_shape[2] + 2 * disp_window)
     print(f"[seismic_feature_np2hdf5_planar] original shape: {data_shape} "
           f"with length {prod(data_shape)}")
-
-    print(f"[seismic_feature_np2hdf5_planar] chunk shape: {chunk_shape}")
 
     # Generate large data shape for replicating the data
     large_data_shape = [
@@ -75,36 +67,11 @@ def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path,
           f"assigning rods of {feature_name}")
     _fill_rods(feature_full_np, large_data_shape, disp_window)
 
-    _create_feature_hdf5_file(
-        feature_name,
-        output_dir,
-        chunk_shape,
-        large_data_shape,
-        feature_full_np,
-    )
+    np.save(output_dir / f'{feature_name}.npy', feature_full_np, allow_pickle=False)
 
+    
 
 ###############################################################################
-
-
-def _create_feature_hdf5_file(
-    feature_name: str,
-    output_dir: pathlib.Path,
-    chunk_shape,
-    large_data_shape,
-    feature_full_np,
-):
-    print(f"[seismic_feature_np2hdf5_planar] "\
-          f"creating hdf5 of feature {feature_name}")
-    with h5py.File(output_dir / f'{feature_name}.h5', 'w') as h5_f:
-        _ = h5_f.create_dataset(
-            FEAT_DSET_NAME,
-            large_data_shape,
-            dtype=np.float64,
-            #            chunks=chunk_shape,
-            data=feature_full_np.flat,
-        )
-
 
 def _fill_center(feature_full_np, feature_np, data_shape, mult_factor,
                  displacement_window):
@@ -362,7 +329,7 @@ def config_arg_parser() -> argparse.ArgumentParser:
         '--large',
         dest='mult_factor',
         action='store',
-        required=False,
+        required=True,
         help="Return a larger dataset for testing. the 'mult_factor' "
         "represents how much larger the original hypercube should be."
         "It should be a tuple of 3 values, each multiplying one of the"
