@@ -75,6 +75,7 @@ class FeatureDataInShm(FeatureDataBase):
             print(f"[FeatureDataInShm][__init__] Feature {feature_name} "
                   f"loaded in {t1-t0:.4f} - "
                   f"{psutil.virtual_memory()}")
+            del feature_data
             self._close_feature_file()
 
             # print(f"[FeatureDataInShm][__init__] Releasing Write lock")

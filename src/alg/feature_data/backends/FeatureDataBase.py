@@ -45,7 +45,6 @@ class FeatureDataBase(ABC):
                 f"Could not get dataset {FEAT_DSET_NAME} of file {feature_path}"
         elif self._ext == 'npy':
             feature_data = np.load(feature_path)
-            pass
         else:
             raise Exception(f"[FeatureDataBase] Unknown feature extension"
                             f"{ext} for {filename}.")
