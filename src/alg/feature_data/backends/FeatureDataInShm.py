@@ -1,6 +1,5 @@
 import numpy as np
 from abc import ABC, abstractmethod
-import h5py
 import fasteners  # inter-process, intra-node lock
 from multiprocessing import shared_memory
 from time import time
@@ -61,36 +60,22 @@ class FeatureDataInShm(FeatureDataBase):
             self._lock.acquire_write_lock()
             # print(f"[FeatureDataInShm][__init__] Got Write lock")
 
-            # Load H5 File. mpio driver not required here since only one 
-            # process per node need can fill the in-memory cache by opening
-            # and reading the file.
+            # Open feature file
             feature_file_name = feature_path[feature_path.rfind('/') + 1:]
             feature_name = feature_file_name[:feature_file_name.find('.')]
-            feature_file = h5py.File(feature_path, 'r')
-
-            assert feature_file is not None, "[FeatureDataInShm] "\
-                f"Could not open file {feature_path}"
-
-            feature_dset = feature_file[common.FEAT_DSET_NAME]
-
-            assert feature_dset is not None, "[FeatureDataInShm] "\
-                f"Could not get dataset {FEAT_DSET_NAME} of file {feature_path}"
-
-            # Pre-fetch all data
-            print(f"[FeatureDataInShm][__init__] Fetching feature data: "
-                  f"{psutil.virtual_memory()}")
+            feature_data = self._open_feature_file(feature_path)
 
             t0 = time()
             # Copy data one plane at a time. This limits memory usage
-            # since feature_dset[i] is fully read to memory before having
+            # since feature_data[i] is fully read to memory before having
             # its values assigned to self._feature[i, :].
-            for i in range(feature_dset.shape[0]):
-                self._feature[i, :] = feature_dset[i]
+            for i in range(feature_data.shape[0]):
+                self._feature[i, :] = feature_data[i]
             t1 = time()
             print(f"[FeatureDataInShm][__init__] Feature {feature_name} "
                   f"loaded in {t1-t0:.4f} - "
                   f"{psutil.virtual_memory()}")
-            feature_file.close()
+            self._close_feature_file()
 
             # print(f"[FeatureDataInShm][__init__] Releasing Write lock")
             self._lock.release_write_lock()

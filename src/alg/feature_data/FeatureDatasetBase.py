@@ -22,8 +22,8 @@ class FeatureDatasetBase(ABC):
             if (num_features != 0) and (num_features == total_features):
                 # Limit the number of features
                 break
-            if ".h5" not in str(feature_path):
-                # Skip all non-H5 files
+            if (".h5" not in str(feature_path)) and (".npy" not in str(feature_path)):
+                # Skip all non-H5/numpy files
                 continue
 
             self._all_features_path_dict[feature] = str(feature_path)
