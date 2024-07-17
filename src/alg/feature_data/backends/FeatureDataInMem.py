@@ -30,21 +30,13 @@ class FeatureDataInMem(FeatureDataBase):
             print(f"[FeatureDataInMem] WARNING: initializing FeatureDataH5 "
                   f"{feature_name} without mpio. Ignore if unittesting.")
             mpi_kwargs = {}
-        self._feature_file = h5py.File(feature_path, "r", **mpi_kwargs)
 
-        assert self._feature_file is not None, "[FeatureDataInMem] "\
-            f"Could not open file {feature_path}"
-
-        feature_dset = self._feature_file[common.FEAT_DSET_NAME]
-
-        assert feature_dset is not None, "[FeatureDataInMem] "\
-            f"Could not get dataset {FEAT_DSET_NAME} of file {feature_path}"
+        feature_data = self._open_feature_file(feature_path, mpi_kwargs)
 
         # Pre-fetch all data
-        self._feature = feature_dset[:]
+        self._feature = feature_data[:]
 
-    def __del__(self):
-        self._feature_file.close()
+        self._close_feature_file()
 
     def filter_coords(self, coords):
         '''
