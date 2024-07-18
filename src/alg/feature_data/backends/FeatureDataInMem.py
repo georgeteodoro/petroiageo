@@ -15,7 +15,7 @@ class FeatureDataInMem(FeatureDataBase):
     def __init__(self, feature_path, mpi_local_comm):
         super(FeatureDataInMem, self).__init__()
         
-        # Load H5 File
+        # Load feature File
         feature_file_name = feature_path[feature_path.rfind('/') + 1:]
         feature_name = feature_file_name[:feature_file_name.find('.')]
         if mpi_local_comm is not None:
