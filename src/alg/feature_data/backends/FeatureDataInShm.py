@@ -69,13 +69,22 @@ class FeatureDataInShm(FeatureDataBase):
             # Copy data one plane at a time. This limits memory usage
             # since feature_data[i] is fully read to memory before having
             # its values assigned to self._feature[i, :].
+            print(f"[FeatureDataInShm][__init__] Feature {feature_name} "
+                  f"loading... - "
+                  f"{psutil.virtual_memory()}")
             for i in range(feature_data.shape[0]):
                 self._feature[i, :] = feature_data[i]
             t1 = time()
+            time.sleep(5)
             print(f"[FeatureDataInShm][__init__] Feature {feature_name} "
                   f"loaded in {t1-t0:.4f} - "
                   f"{psutil.virtual_memory()}")
+            time.sleep(5)
             del feature_data
+            time.sleep(5)
+            print(f"[FeatureDataInShm][__init__] Feature {feature_name} "
+                  f"after del - "
+                  f"{psutil.virtual_memory()}")
             self._close_feature_file()
 
             # print(f"[FeatureDataInShm][__init__] Releasing Write lock")
