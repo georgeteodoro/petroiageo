@@ -91,7 +91,7 @@ class FeatureDataBase(ABC):
                 f"Could not get dataset {FEAT_DSET_NAME} of file {feature_path}"
         elif self._ext == 'npy':
             # Open numpy as a memory mapped region in memory (lazy)
-            feature_data = np.lib.format.open_memmap(feature_path)
+            feature_data = np.lib.format.open_memmap(feature_path, mode='r')
         else:
             raise Exception(f"[FeatureDataBase] Unknown feature extension"
                             f"{ext} for {filename}.")
