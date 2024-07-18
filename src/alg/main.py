@@ -10,7 +10,7 @@ import manager
 import worker
 
 # Used only for retrieving the shape of a feature
-from feature_data.backends.FeatureDataInMem import FeatureDataInMem
+from feature_data.backends.FeatureDataBase import FeatureDataBase
 
 
 def config_arg_parser():
@@ -305,15 +305,13 @@ def main(args_str=None):
     # should have the same shape. This is kind of hacky. Maybe improve this in
     # the future.
     f_paths = [str(p) for p in config.features_files_paths if '.h5' in str(p)]
-    f_paths += [str(p) for p in config.features_files_paths if '.npy' in str(p)]
+    f_paths += [
+        str(p) for p in config.features_files_paths if '.npy' in str(p)
+    ]
     first_feature_path = str(f_paths[0])
-    feature_h5 = FeatureDataInMem(first_feature_path,
-                               config.get_param('mpi_local_comm'))
-    feature_shape = feature_h5._feature.shape
+    feature_shape = FeatureDataBase.get_shape(
+        first_feature_path, config.get_param('mpi_local_comm'))
     config.add_param('feature_shape', feature_shape)
-
-    # Reclaim memory and close file pointers (and release file cache pages)
-    del feature_h5
 
     if rank == manager_rank:
         manager.run(config)

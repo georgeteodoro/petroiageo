@@ -10,10 +10,55 @@ class FeatureDataBase(ABC):
     Abstract feature_data class. Base for different feature_data backends.
     Feature data should be just a float value for a 3D hypercube space.
     '''
+
     def __init__(self):
         self._feature = None
         self._ext = None
         self._feature_file = None
+
+    def get_shape(feature_path, mpi_local_comm):
+        '''
+        Returns the shape of a feature without actually loading it.
+        '''
+        filename = feature_path.split('/')[-1]
+        feature_name = filename.split('.')[:-1]
+        ext = filename.split('.')[-1]
+        if mpi_local_comm is not None:
+            # Arguments to open the parallel accessible h5 file on the correct
+            # communicator (there is one per node).
+            mpi_kwargs = {
+                'driver': 'mpio',
+                'comm': mpi_local_comm,
+            }
+        else:
+            # This is only used for testing
+            print(f"[FeatureDataBase][get_shape] WARNING: initializing "
+                  f"FeatureDataH5 {feature_name} without mpio. "
+                  f"Ignore if unittesting.")
+            mpi_kwargs = {}
+
+        feature_file = None
+        if ext == 'h5':
+            feature_file = h5py.File(feature_path, 'r', **mpi_kwargs)
+
+            assert feature_file is not None, "[FeatureDataInShm]"\
+                f"[get_shape]Could not open file {feature_path}"
+
+            shape = feature_file[common.FEAT_DSET_NAME].shape
+
+            assert feature_data is not None, "[FeatureDataInShm][get_shape]"\
+                f"Could not get dataset {FEAT_DSET_NAME} of file {feature_path}"
+        elif ext == 'npy':
+            shape = np.load(feature_path).shape
+        else:
+            raise Exception(f"[FeatureDataBase] Unknown feature extension"
+                            f"{ext} for {filename}.")
+
+        if feature_file is not None:
+            feature_file.close()
+            del feature_file
+
+        return shape
 
     @abstractmethod
     def filter_coords(self, coords):
