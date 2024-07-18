@@ -49,7 +49,8 @@ class FeatureDataBase(ABC):
             assert feature_data is not None, "[FeatureDataInShm][get_shape]"\
                 f"Could not get dataset {FEAT_DSET_NAME} of file {feature_path}"
         elif ext == 'npy':
-            shape = np.load(feature_path).shape
+            # Open numpy as a memory mapped region in memory (lazy)
+            shape = np.lib.format.open_memmap(feature_path).shape
         else:
             raise Exception(f"[FeatureDataBase] Unknown feature extension"
                             f"{ext} for {filename}.")
@@ -89,7 +90,8 @@ class FeatureDataBase(ABC):
             assert feature_data is not None, "[FeatureDataInShm] "\
                 f"Could not get dataset {FEAT_DSET_NAME} of file {feature_path}"
         elif self._ext == 'npy':
-            feature_data = np.load(feature_path)
+            # Open numpy as a memory mapped region in memory (lazy)
+            feature_data = np.lib.format.open_memmap(feature_path)
         else:
             raise Exception(f"[FeatureDataBase] Unknown feature extension"
                             f"{ext} for {filename}.")
