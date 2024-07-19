@@ -5,8 +5,9 @@ from multiprocessing import shared_memory
 from time import time, sleep
 import psutil
 
+from tqdm import tqdm
+
 from feature_data.backends.FeatureDataBase import FeatureDataBase
-import common
 
 
 class FeatureDataInShm(FeatureDataBase):
@@ -34,11 +35,8 @@ class FeatureDataInShm(FeatureDataBase):
     blocking, thus, to avoid waiting a possible feature loading process 
     futures are recommended.
     '''
-    def __init__(self,
-                 shm_path,
-                 lock_path,
-                 feature_shape,
-                 feature_path=None):
+
+    def __init__(self, shm_path, lock_path, feature_shape, feature_path=None):
         super(FeatureDataInShm, self).__init__()
 
         # print(f"[FeatureDataInShm][__init__] Begun")
@@ -48,8 +46,8 @@ class FeatureDataInShm(FeatureDataBase):
         self._shm_feature = shared_memory.SharedMemory(name=shm_path,
                                                        create=False)
         self._feature = np.ndarray(feature_shape,
-                                 dtype=np.float64,
-                                 buffer=self._shm_feature.buf)
+                                   dtype=np.float64,
+                                   buffer=self._shm_feature.buf)
 
         self._lock = fasteners.InterProcessReaderWriterLock(lock_path)
 
@@ -69,24 +67,24 @@ class FeatureDataInShm(FeatureDataBase):
             # Copy data one plane at a time. This limits memory usage
             # since feature_data[i] is fully read to memory before having
             # its values assigned to self._feature[i, :].
-            print(f"[FeatureDataInShm][__init__] Feature {feature_name} "
-                  f"loading... - "
-                  f"{psutil.virtual_memory()}")
-            sleep(5)
-            for i in range(feature_data.shape[0]):
+            # print(f"[FeatureDataInShm][__init__] Feature {feature_name} "
+            #       f"loading... - "
+            #       f"{psutil.virtual_memory()}")
+            # sleep(2)
+            for i in tqdm(range(feature_data.shape[0])):
                 self._feature[i, :] = feature_data[i]
             t1 = time()
             print(f"[FeatureDataInShm][__init__] Feature {feature_name} "
-                  f"loaded in {t1-t0:.4f} - "
-                  f"{psutil.virtual_memory()}")
-            sleep(5)
+                  f"loaded in {t1-t0:.4f}")
+                  # f"loaded in {t1-t0:.4f} - "
+                  # f"{psutil.virtual_memory()}")
+            # sleep(2)
             del feature_data
-            sleep(5)
-            print(f"[FeatureDataInShm][__init__] Feature {feature_name} "
-                  f"after del - "
-                  f"{psutil.virtual_memory()}")
-            sleep(5)
-            0/0
+            # sleep(2)
+            # print(f"[FeatureDataInShm][__init__] Feature {feature_name} "
+            #       f"after del - "
+            #       f"{psutil.virtual_memory()}")
+            # sleep(2)
             self._close_feature_file()
 
             # print(f"[FeatureDataInShm][__init__] Releasing Write lock")
@@ -119,9 +117,13 @@ class FeatureDataInShm(FeatureDataBase):
         '''
 
         # Allocate output array
+        print(f'[FeatureDataInShm][filter_coords] alloc len {len(coords)}')
         points = np.empty((len(coords), ), np.float64)
 
+        print(f'[FeatureDataInShm][filter_coords] filtering')
         for (i, c) in enumerate(coords):
             points[i] = self._feature[tuple(c)]
+
+        print(f'[FeatureDataInShm][filter_coords] filtering done')
 
         return points
