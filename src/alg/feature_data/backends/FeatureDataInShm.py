@@ -71,7 +71,8 @@ class FeatureDataInShm(FeatureDataBase):
             #       f"loading... - "
             #       f"{psutil.virtual_memory()}")
             # sleep(2)
-            for i in tqdm(range(feature_data.shape[0])):
+            # for i in tqdm(range(feature_data.shape[0])):
+            for i in range(feature_data.shape[0]):
                 self._feature[i, :] = feature_data[i]
             t1 = time()
             print(f"[FeatureDataInShm][__init__] Feature {feature_name} "
