@@ -66,7 +66,7 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
             # Allocate shared-memory space
             self._shm_lru = shared_memory.SharedMemory(
                 create=True,
-                size=(2 * self._max_cache_lines * np.dtype('int32').itemsize))
+                size=(2 * self._max_cache_lines * np.dtype('int64').itemsize))
 
             # Send the shm region name to all other processes
             self._mpi_local_comm.bcast(self._shm_lru.name, root=mpi_local_rank)
@@ -81,7 +81,7 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
 
         # Create a numpy array which reads from the shared-memory
         self._lru = np.ndarray((2, self._max_cache_lines),
-                               dtype=np.int32,
+                               dtype=np.int64,
                                buffer=self._shm_lru.buf)
 
         # Setup LRU list. It is a combination of two lists. The first row [0]
