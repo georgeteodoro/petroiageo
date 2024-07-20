@@ -118,13 +118,13 @@ class FeatureDataInShm(FeatureDataBase):
         '''
 
         # Allocate output array
-        print(f'[FeatureDataInShm][filter_coords] alloc len {len(coords)}')
+        # print(f'[FeatureDataInShm][filter_coords] alloc len {len(coords)}')
         points = np.empty((len(coords), ), np.float64)
 
-        print(f'[FeatureDataInShm][filter_coords] filtering')
+        # print(f'[FeatureDataInShm][filter_coords] filtering')
         for (i, c) in enumerate(coords):
             points[i] = self._feature[tuple(c)]
 
-        print(f'[FeatureDataInShm][filter_coords] filtering done')
+        # print(f'[FeatureDataInShm][filter_coords] filtering done')
 
         return points
