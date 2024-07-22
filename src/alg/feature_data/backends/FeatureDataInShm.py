@@ -61,7 +61,7 @@ class FeatureDataInShm(FeatureDataBase):
             # Open feature file
             feature_file_name = feature_path[feature_path.rfind('/') + 1:]
             feature_name = feature_file_name[:feature_file_name.find('.')]
-            feature_data = self._open_feature_file(feature_path)
+            # feature_data = self._open_feature_file(feature_path)
 
             t0 = time()
             # Copy data one plane at a time. This limits memory usage
@@ -72,21 +72,22 @@ class FeatureDataInShm(FeatureDataBase):
             #       f"{psutil.virtual_memory()}")
             # sleep(2)
             # for i in tqdm(range(feature_data.shape[0])):
-            for i in range(feature_data.shape[0]):
-                self._feature[i, :] = feature_data[i]
+            for i in range(self._feature.shape[0]):
+                # self._feature[i, :] = feature_data[i]
+                self._feature[i, :] = 0
             t1 = time()
             print(f"[FeatureDataInShm][__init__] Feature {feature_name} "
                   f"loaded in {t1-t0:.4f}")
                   # f"loaded in {t1-t0:.4f} - "
                   # f"{psutil.virtual_memory()}")
             # sleep(2)
-            del feature_data
+            # del feature_data
             # sleep(2)
             # print(f"[FeatureDataInShm][__init__] Feature {feature_name} "
             #       f"after del - "
             #       f"{psutil.virtual_memory()}")
             # sleep(2)
-            self._close_feature_file()
+            # self._close_feature_file()
 
             # print(f"[FeatureDataInShm][__init__] Releasing Write lock")
             self._lock.release_write_lock()
