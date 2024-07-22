@@ -158,9 +158,15 @@ def run(config):
                 results = []
                 for (feature, disp) in new_features:
                     t4 = time()
+                    opn_files = psutil.Process().open_files()
+                    opn_files = [f.path for f in opn_files]
+                    print(f"{beg_str}[it{it}][f_it{f_it}] Updt-feature.")
+                    print(f"{beg_str}[it{it}][f_it{f_it}] open_files: "
+                          f"{opn_files}.")
                     trial_data.update_feature(
                         all_features.get_feature(feature), disp)
                     t5 = time()
+                    print(f"{beg_str}[it{it}][f_it{f_it}] Test-feature.")
                     ret = test_new_feature(trial_data, config)
 
                     # None is returned upon only 1 well propagating.
