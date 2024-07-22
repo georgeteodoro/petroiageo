@@ -158,8 +158,9 @@ def run(config):
                 results = []
                 for (feature, disp) in new_features:
                     t4 = time()
+                    # open files which are not shm
                     opn_files = psutil.Process().open_files()
-                    opn_files = [f.path for f in opn_files]
+                    opn_files = [f.path for f in opn_files if 'shm' not in f.path]
                     print(f"{beg_str}[it{it}][f_it{f_it}] Updt-feature.")
                     print(f"{beg_str}[it{it}][f_it{f_it}] open_files: "
                           f"{opn_files}.")
