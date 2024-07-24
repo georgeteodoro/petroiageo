@@ -85,7 +85,7 @@ def test_new_feature(trial_data: TrialDataBase, config: Config):
 
             if profile:
                 print(f"[feature_sel] train_size: {len(X_train)}")
-                print(f"[feature_sel] train_size: {len(X_val)}")
+                print(f"[feature_sel] val_size: {len(X_val)}")
                 
                 print(f"[feature_sel] well[{curr_well_id}] "
                       f"chunk[{chunk_id+1}/{n_training_chunks}] "
