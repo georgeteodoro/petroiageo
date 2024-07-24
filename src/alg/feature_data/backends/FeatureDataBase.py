@@ -41,13 +41,11 @@ class FeatureDataBase(ABC):
         if ext == 'h5':
             feature_file = h5py.File(feature_path, 'r', **mpi_kwargs)
 
-            assert feature_file is not None, "[FeatureDataInShm]"\
+            assert feature_file is not None, "[FeatureDataBase]"\
                 f"[get_shape]Could not open file {feature_path}"
 
             shape = feature_file[common.FEAT_DSET_NAME].shape
 
-            assert feature_data is not None, "[FeatureDataInShm][get_shape]"\
-                f"Could not get dataset {FEAT_DSET_NAME} of file {feature_path}"
         elif ext == 'npy':
             # Open numpy as a memory mapped region in memory (lazy)
             shape = np.lib.format.open_memmap(feature_path).shape
@@ -82,12 +80,12 @@ class FeatureDataBase(ABC):
         if self._ext == 'h5':
             self._feature_file = h5py.File(feature_path, 'r', **mpi_kwargs)
 
-            assert self._feature_file is not None, "[FeatureDataInShm] "\
+            assert self._feature_file is not None, "[FeatureDataBase] "\
                 f"Could not open file {feature_path}"
 
             feature_data = self._feature_file[common.FEAT_DSET_NAME]
 
-            assert feature_data is not None, "[FeatureDataInShm] "\
+            assert feature_data is not None, "[FeatureDataBase] "\
                 f"Could not get dataset {FEAT_DSET_NAME} of file {feature_path}"
         elif self._ext == 'npy':
             # Open numpy as a memory mapped region in memory (lazy)
