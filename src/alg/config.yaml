@@ -16,7 +16,7 @@ wells: # This is wells related stuff
 #               [236, 113], [250, 315], [287, 242], [230, 194], [344, 276]]
 
 # Directory where every file will be treated as a feature
-features_folder: "../../data/POV/features" 
+features_folder: "../../data/POV/features/2x2x4" 
 
 # Output path for the porosity cube produced (if any)
 porosity_cube_output_path: "./results/porosity.npy" 
