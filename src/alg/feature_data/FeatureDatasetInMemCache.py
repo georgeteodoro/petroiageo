@@ -103,10 +103,21 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
             feature_size = prod(
                 self._feature_shape) * np.dtype('float64').itemsize
             for i in range(self._max_cache_lines):
-                self._shm_cache_lines.append(
-                    shared_memory.SharedMemory(name=self._shm_feature_name(i),
-                                               create=True,
-                                               size=feature_size))
+                shm = shared_memory.SharedMemory(
+                    name=self._shm_feature_name(i),
+                    create=True,
+                    size=feature_size)
+                self._shm_cache_lines.append(shm)
+
+                # Force allocation of shm region
+                shm_array = np.ndarray(self._feature_shape,
+                                       dtype=np.float64,
+                                       buffer=shm.buf)
+                shm_array.fill(0)
+
+            print(f"[FeatureDatasetInMemCache][__init__] "
+                  f"resp_rank allocated all shm lines.")
+
         self._mpi_local_comm.Barrier()
 
         # Remaining processes initialize shared-memory object
