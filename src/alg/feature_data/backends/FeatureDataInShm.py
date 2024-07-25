@@ -49,13 +49,13 @@ class FeatureDataInShm(FeatureDataBase):
                                    dtype=np.float64,
                                    buffer=self._shm_feature.buf)
 
-        self._lock = fasteners.InterProcessReaderWriterLock(lock_path)
+        # self._lock = fasteners.InterProcessReaderWriterLock(lock_path)
 
         if feature_path is not None:
             # print(f"[FeatureDataInShm][__init__] Should read feature data.")
             # print(f"[FeatureDataInShm][__init__] Getting Write lock "
             #       f"{self._lock.path}")
-            self._lock.acquire_write_lock()
+            # self._lock.acquire_write_lock()
             # print(f"[FeatureDataInShm][__init__] Got Write lock")
 
             # Open feature file
@@ -71,8 +71,8 @@ class FeatureDataInShm(FeatureDataBase):
             #       f"loading... - "
             #       f"{psutil.virtual_memory()}")
             # sleep(2)
-            # for i in tqdm(range(feature_data.shape[0])):
-            for i in range(self._feature.shape[0]):
+            for i in tqdm(range(feature_data.shape[0])):
+            # for i in range(self._feature.shape[0]):
                 self._feature[i, :] = feature_data[i]
                 # self._feature[i, :] = 0
             t1 = time()
@@ -90,12 +90,15 @@ class FeatureDataInShm(FeatureDataBase):
             self._close_feature_file()
 
             # print(f"[FeatureDataInShm][__init__] Releasing Write lock")
-            self._lock.release_write_lock()
+            # self._lock.release_write_lock()
+
+        self._mpi_local_comm = lock_path
+        self._mpi_local_comm.Barrier()
 
         # Now it can read
         # print(f"[FeatureDataInShm][__init__] Getting read lock")
         t2 = time()
-        self._lock.acquire_read_lock()
+        # self._lock.acquire_read_lock()
         t3 = time()
         if feature_path is None:
             print(f"[FeatureDataInShm][__init__] Waited {t3-t2:.4f} secs "
@@ -106,7 +109,8 @@ class FeatureDataInShm(FeatureDataBase):
 
     def __del__(self):
         # print(f"[FeatureDataInShm][__del__] Releasing read lock")
-        self._lock.release_read_lock()
+        # self._lock.release_read_lock()
+        self._mpi_local_comm.Barrier()
         self._shm_feature.close()
         print(f"[FeatureDataInShm][__del__] closed {self._shm_path}")
         # print(f"[FeatureDataInShm][__del__] Done")
