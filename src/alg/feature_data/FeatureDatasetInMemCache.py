@@ -129,10 +129,10 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
 
         # Create a list of features locks for checking if a feature can be
         # evicted from cache
-        self._feature_locks = []
-        for i in range(self._max_cache_lines):
-            self._feature_locks.append(
-                fasteners.InterProcessReaderWriterLock(self._shm_lock_path(i)))
+        # self._feature_locks = []
+        # for i in range(self._max_cache_lines):
+        #     self._feature_locks.append(
+        #         fasteners.InterProcessReaderWriterLock(self._shm_lock_path(i)))
 
     def __del__(self):
 
@@ -205,17 +205,19 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
                 # Attempt to find a free cache-line
                 for i in preference_list:
                     # Perform a try-lock
-                    print(f"[FeatureDatasetInMemCache][_async_get_feature] "
-                          f"Checking free cache line {i} with try-lock "
-                          f"{self._feature_locks[i].path}")
-                    found = self._feature_locks[i].acquire_write_lock(
-                        blocking=False)
+                    # print(f"[FeatureDatasetInMemCache][_async_get_feature] "
+                    #       f"Checking free cache line {i} with try-lock "
+                    #       f"{self._feature_locks[i].path}")
+                    # found = self._feature_locks[i].acquire_write_lock(
+                    #     blocking=False)
+                    found = True
                     if found:
                         # Release the try-lock since the FeatureData
                         # also acquires a write lock on creation
                         # print(f"[FeatureDatasetInMemCache][_async_get_feature]"
                         #       f" Found free line, releasing write-lock")
-                        self._feature_locks[i].release_write_lock()
+                        
+                        # self._feature_locks[i].release_write_lock()
                         line_idx = i
                         break
                     print(f"[FeatureDatasetInMemCache][_async_get_feature] "
@@ -259,7 +261,8 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
             asyncio.create_task(
                 _create_FeatureData(create_future,
                                     self._shm_feature_name(line_idx),
-                                    self._shm_lock_path(line_idx),
+                                    # self._shm_lock_path(line_idx),
+                                    self._mpi_local_comm,
                                     self._feature_shape, feature_path))
 
         feature = await create_future
@@ -291,4 +294,4 @@ class FeatureDatasetInMemCache(FeatureDatasetBase):
         return f'{self._shm_lru.name}FeatureDatasetInMemCache.feature{f_id}'
 
     def _shm_lock_path(self, f_id):
-        return f'/tmp/FeatureDatasetInMemCache.CacheLine{f_id}'
+        return f'FeatureDatasetInMemCache.CacheLine{f_id}.lock'
