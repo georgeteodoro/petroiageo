@@ -18,3 +18,4 @@ parameterized
 ddt
 pytest
 fasteners==0.19.0
+posix_ipc
