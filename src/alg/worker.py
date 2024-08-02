@@ -10,7 +10,7 @@ from mpi_module import MPI_TAGS
 from feature_sel import test_new_feature
 from feature_data.FeatureDatasetSimple import FeatureDatasetSimple
 from feature_data.FeatureDatasetInMemAll import FeatureDatasetInMemAll
-from feature_data.FeatureDatasetInMemCache import FeatureDatasetInMemCache
+from feature_data.FeatureDatasetMMapCache import FeatureDatasetMMapCache
 from TrialDataNumpy import TrialDataNumpy
 from TrialDataSharedNumpy import TrialDataSharedNumpy
 from TrialDataH5 import TrialDataH5
@@ -84,7 +84,7 @@ def run(config):
     if is_feature_in_mem:
         all_features = FeatureDatasetInMemAll(config)
     elif is_feature_cache:
-        all_features = FeatureDatasetInMemCache(config)
+        all_features = FeatureDatasetMMapCache(config)
     else:
         all_features = FeatureDatasetSimple(config)
     t1 = time()
