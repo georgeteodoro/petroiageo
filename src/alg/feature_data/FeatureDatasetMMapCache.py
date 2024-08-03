@@ -107,26 +107,33 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
         # per individual node is created, with all processes within it
         # having the same semaphore.
         semaphore_name = '/FeatureDatasetMMapCache.sem'
-        self._free_cache_lines_sem = posix_ipc.Semaphore(
-            semaphore_name,
-            flags=posix_ipc.O_CREAT,
-            initial_value=max_cache_lines)
+        try:
+            posix_ipc.unlink_semaphore(semaphore_name)
+            pass
+        except Exception as e:
+            print(e)
+        if self._is_resp_rank:
+            self._free_cache_lines_sem = posix_ipc.Semaphore(
+                semaphore_name,
+                flags=posix_ipc.O_CREX,
+                initial_value=max_cache_lines)
+            self._mpi_local_comm.Barrier()
+        else:
+            self._mpi_local_comm.Barrier()
+            self._free_cache_lines_sem = posix_ipc.Semaphore(semaphore_name,
+                                                             flags=0)
 
     def __del__(self):
 
-        self._free_cache_lines_sem.unlink()
-        self._free_cache_lines_sem.close()
-
-        for shm in self._shm_cache_lines:
-            shm.close()
         self._shm_lru.close()
         self._mpi_local_comm.Barrier()
 
         if self._is_resp_rank:
             self._shm_lru.unlink()
-            for shm in self._shm_cache_lines:
-                shm.unlink()
+            self._free_cache_lines_sem.unlink()
         self._mpi_local_comm.Barrier()
+
+        self._free_cache_lines_sem.close()
 
     def get_feature(self, feature):
         '''
@@ -146,16 +153,29 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
                 line_idx = np.where(
                     self._lru[self._LRU_F_IDX] == feature_idx)[0][0]
 
+                # print(f"[FeatureDatasetMMapCache][get_feature] hit line "
+                #       f"{line_idx} of feature {feature_idx}")
+
+                # It is possible to hit a feature which has no current
+                # readers. In this case the sem.release() was already called.
+                # Thus, by incrementing the in-use-count of 0, we must also
+                # decrement the free_cache_lines_sem counter
+                if self._lru[self._LRU_COUNT][line_idx] == 0:
+                    self._free_cache_lines_sem.acquire(0)
+
                 # Update LRU value and increment in-use counter
                 self._lru[self._LRU_COUNT][line_idx] += 1
                 self._lru[self._LRU_TIME][line_idx] = monotonic_ns()
 
                 # Done. Release lock and return the feature object
                 self._lru_lock.release()
-                return FeatureDataMMap(feature_path,
-                                       done_feature_callback)
+                return FeatureDataMMap(feature_path, done_feature_callback)
             else:
                 # Cache miss
+                # print(f"[FeatureDatasetMMapCache][get_feature] miss on "
+                #       f"feature {feature_idx} "
+                #       f"sem: {self._free_cache_lines_sem.value}")
+
                 try:
                     # Perform non-blocking acquire
                     self._free_cache_lines_sem.acquire(0)
@@ -168,10 +188,16 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
 
                     # Find best cache line to "evict"
                     for i in preference_list:
+                        # print(f"[FeatureDatasetMMapCache][get_feature] "
+                        #       f"line {i} count "
+                        #       f"{self._lru[self._LRU_COUNT][i]}")
                         if self._lru[self._LRU_COUNT][i] == 0:
                             # Found line i
                             line_idx = i
                             break
+
+                    # print(f"[FeatureDatasetMMapCache][get_feature] replacing "
+                    #       f"line {line_idx}")
 
                     # Update "evicted" cache line
                     self._lru[self._LRU_F_IDX][line_idx] = feature_idx
@@ -179,12 +205,13 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
                     self._lru[self._LRU_TIME][line_idx] = monotonic_ns()
 
                     self._lru_lock.release()
-                    return FeatureDataMMap(feature_path,
-                                           done_feature_callback)
+                    return FeatureDataMMap(feature_path, done_feature_callback)
 
                 except posix_ipc.BusyError:
                     # There are no free cache lines, thus release lock and
                     # try again...
+                    # print(f"[FeatureDatasetMMapCache][get_feature] "
+                    #       f"no free lines")
                     self._lru_lock.release()
 
     def done_reading_callback(self, feature):
@@ -195,6 +222,10 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
 
         feature_idx = list(self._all_features_path_dict.keys()).index(feature)
         line_idx = np.where(self._lru[self._LRU_F_IDX] == feature_idx)[0][0]
+
+        # print(f"[FeatureDatasetMMapCache][done_reading_callback] done with "
+        #       f"feature {feature_idx} on line {line_idx} with count "
+        #       f"{self._lru[self._LRU_COUNT][line_idx]}")
 
         with self._lru_lock:
             # Decrement use counter
