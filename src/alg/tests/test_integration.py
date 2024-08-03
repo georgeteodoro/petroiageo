@@ -106,8 +106,10 @@ class Test_All(unittest.TestCase):
     chunk_test_shape = tuple(chunk_test_shape)
 
     features_path = './tests/test_features'
+    features_npy_path = './tests/test_features_npy'
     features_h5_fname = []
     features_h5_f = []
+    features_npy_fname = []
 
     porosity_data_type = np.dtype([
         ('x', np.int64),
@@ -147,9 +149,9 @@ class Test_All(unittest.TestCase):
                         stderr=PIPE,
                         preexec_fn=os.setsid)
 
-        # time.sleep(10)
+        # time.sleep(2)
 
-        # Send the signal to all the process groups
+        # # Send the signal to all the process groups
         # os.killpg(os.getpgid(process.pid), signal.SIGTERM)
 
         output, error = process.communicate()
@@ -309,6 +311,7 @@ class Test_All(unittest.TestCase):
 
         # ===========================================================
 
+
         # Generate custom config file with sampling
         coords = [
             list(well_coords) for well_coords in self.__class__.wells_list
@@ -328,7 +331,8 @@ class Test_All(unittest.TestCase):
             max_points: 10
             seed: 0
         """
-        yaml_f = open(self.__class__.config_path, 'w')
+        private_config_path = "./tests/config_samp_test.yaml"
+        yaml_f = open(private_config_path, 'w')
         yaml_f.writelines(yaml_str)
 
         # Close all files to allow them to commit to file
@@ -368,7 +372,7 @@ class Test_All(unittest.TestCase):
         porosity_h5_file.close()
 
         # Retrieve CLI arguments
-        args_str = f'--config {self.__class__.config_path} --it 4 '\
+        args_str = f'--config {private_config_path} --it 4 '\
                    f'--nits 1 --nf 1 -w 1 --nsf 3 --ntf 1'
 
         process = Popen('mpirun -np 2 --bind-to core python3 -u main.py ' +
@@ -381,7 +385,7 @@ class Test_All(unittest.TestCase):
 
         # time.sleep(5)
 
-        # Send the signal to all the process groups
+        # # Send the signal to all the process groups
         # os.killpg(os.getpgid(process.pid), signal.SIGTERM)
 
         output, error = process.communicate()
@@ -412,8 +416,10 @@ class Test_All(unittest.TestCase):
         evictions.
         '''
 
+        private_config_path = "./tests/config_caching_test.yaml"
+
         # Retrieve CLI arguments
-        args_str = f'--config {self.__class__.config_path} --it 1 '\
+        args_str = f'--config {private_config_path} --it 1 '\
                    f'--nits 5 --nf 2 -w 1 --sw --nsf 3 --f-cache'
 
         # Generate custom config file with sampling
@@ -424,7 +430,7 @@ class Test_All(unittest.TestCase):
         wells:
           coords: {coords}
           window: 1
-        features_folder: "{self.__class__.features_path}" 
+        features_folder: "{self.__class__.features_npy_path}" 
         starting_porosity_cube_path: "{self.__class__.porosity_h5_path}" 
         alg:
           test_only_wells: [{self.__class__.test_well_id}]
@@ -432,22 +438,22 @@ class Test_All(unittest.TestCase):
             n_training_chunks: 1
           feature_cache_lines: 1
         """
-        yaml_f = open(self.__class__.config_path, 'w')
+        yaml_f = open(private_config_path, 'w')
         yaml_f.writelines(yaml_str)
 
         # Close all files to allow them to commit to file
         yaml_f.close()
 
         process = Popen(
-            'mpirun -np 3 --oversubscribe --bind-to core python3 '\
-            '-u -W ignore main.py ' + args_str,
+            'mpirun -np 3 --tag-output --oversubscribe --bind-to core '\
+            'python3 -u -W ignore main.py ' + args_str,
             shell=True,
             universal_newlines=True,
             stdout=PIPE,
             stderr=PIPE,
             preexec_fn=os.setsid)
 
-        # time.sleep(8)
+        # time.sleep(5)
 
         # # Send the signal to all the process groups
         # os.killpg(os.getpgid(process.pid), signal.SIGTERM)
@@ -479,7 +485,7 @@ class Test_All(unittest.TestCase):
 
         # Retrieve CLI arguments
         args_str = f'--config {self.__class__.config_path} --it 1 '\
-                   f'--nits 5 --nf 2 -w 1 --sw --nsf 3 --t-shd'
+                   f'--nits 5 --nf 2 -w 1 --sw --nsf 3 --t-shd '
 
         process = Popen(
             'mpirun -np 4 --tag-output --bind-to core python3 -u main.py ' +
@@ -521,13 +527,19 @@ class Test_All(unittest.TestCase):
         They aren't updated, so 1 creation per session is enough.
         '''
 
-        # Generate feature files
+        # Generate H5 feature files
         for f in range(3):
             fname = f'{cls.features_path}/test_f{f}.h5'
-            h5_file = cls._generate_random_feature(fname, 2 * f, 2 * f)
+            h5_file = cls._generate_random_feature_h5(fname, 2 * f, 2 * f)
             cls.features_h5_fname.append(fname)
             cls.features_h5_f.append(h5_file)
             h5_file.close()
+
+        # Generate npy files
+        for f in range(3):
+            fname = f'{cls.features_npy_path}/test_f{f}.npy'
+            cls._generate_random_feature_npy(fname, 2 * f, 2 * f)
+            cls.features_npy_fname.append(fname)
 
         # Generate config file
         yaml_str = f"""
@@ -550,7 +562,8 @@ class Test_All(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         for fname in cls.features_h5_fname:
-            print(fname)
+            os.remove(fname)
+        for fname in cls.features_npy_fname:
             os.remove(fname)
         os.remove(cls.config_path)
 
@@ -582,7 +595,7 @@ class Test_All(unittest.TestCase):
     # =========================================================================
 
     @classmethod
-    def _generate_random_feature(cls, f_name, val_sum, val_prod):
+    def _generate_random_feature_h5(cls, f_name, val_sum, val_prod):
         '''
         Generate a feature h5 file with cls.hypercube_shape.
         Each value of the feature is 
@@ -607,6 +620,25 @@ class Test_All(unittest.TestCase):
                     h5_dset[i, j, k] = (i * j * k + val_sum) * val_prod
 
         return h5_file
+
+    @classmethod
+    def _generate_random_feature_npy(cls, f_name, val_sum, val_prod):
+        '''
+        Generate a feature np array with cls.hypercube_shape.
+        Each value of the feature is 
+            = ((i+1) * (j+1) * (k+1) + val_sum) * val_prod
+        Since there is a padding of window=1, i+1-1=i
+        '''
+
+        np_data = np.empty(cls.hypercube_shape_padded, dtype=np.float64)
+        np_data.fill(-1)
+
+        for i in range(1, cls.hypercube_shape[0] + 1):
+            for j in range(1, cls.hypercube_shape[1] + 1):
+                for k in range(1, cls.hypercube_shape[2] + 1):
+                    np_data[i, j, k] = (i * j * k + val_sum) * val_prod
+
+        np.save(f_name, np_data, allow_pickle=False)
 
     @classmethod
     def _generate_random_porosity(cls, val_sum, val_prod):

@@ -53,6 +53,7 @@ class FeatureDataMMap(FeatureDataBase):
         self._mmap_buffer = mmap.mmap(self._file.fileno(),
                                       np_length + np_header_size,
                                       flags=mmap.MAP_PRIVATE
+                                      | mmap.MADV_SEQUENTIAL
                                       | mmap.MAP_POPULATE,
                                       prot=mmap.PROT_READ)
 
