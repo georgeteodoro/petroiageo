@@ -19,7 +19,6 @@ class FeatureDataMMap(FeatureDataBase):
     pages. After the last process, the cache pages are advised to be 
     reclaimed by the kernel.
 
-
     On feature loading, a write lock is acquired, released after the 
     feature is loaded. Before the np.ndarray creation, a read lock is 
     acquired. The read lock is released at destruction. All locking is
@@ -27,7 +26,7 @@ class FeatureDataMMap(FeatureDataBase):
     futures are recommended.
     '''
 
-    def __init__(self, feature_path, done_reading_callback):
+    def __init__(self, feature_path, done_reading_callback=None):
         super(FeatureDataMMap, self).__init__()
 
         # Callback of cache manager to be called at deletion
@@ -73,7 +72,8 @@ class FeatureDataMMap(FeatureDataBase):
         self._mmap_buffer.close()
         self._file.close()
 
-        self._done_reading_callback()
+        if self._done_reading_callback is not None:
+            self._done_reading_callback()
 
     def filter_coords(self, coords):
         '''
