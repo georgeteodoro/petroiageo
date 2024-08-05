@@ -1,5 +1,5 @@
 from feature_data.FeatureDatasetBase import FeatureDatasetBase
-from feature_data.backends.FeatureDataH5 import FeatureDataH5
+from feature_data.backends.FeatureDataMMap import FeatureDataMMap
 
 
 class FeatureDatasetSimple(FeatureDatasetBase):
@@ -18,8 +18,7 @@ class FeatureDatasetSimple(FeatureDatasetBase):
         # Get a list of backend references
         self._features = dict()
         for feature, feature_path in self._all_features_path_dict.items():
-            self._features[feature] = FeatureDataH5(feature_path,
-                                                    mpi_local_comm)
+            self._features[feature] = FeatureDataMMap(feature_path)
 
     def get_feature(self, feature):
         '''

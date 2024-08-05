@@ -320,7 +320,7 @@ class Test_All(unittest.TestCase):
         wells:
           coords: {coords}
           window: 1
-        features_folder: "{self.__class__.features_path}" 
+        features_folder: "{self.__class__.features_npy_path}" 
         starting_porosity_cube_path: "{self.__class__.porosity_h5_path}" 
         alg:
           test_only_wells: [{self.__class__.test_well_id}]
@@ -546,7 +546,7 @@ class Test_All(unittest.TestCase):
         wells:
           coords: {[list(well_coords) for well_coords in cls.wells_list]}
           window: 1
-        features_folder: "{cls.features_path}" 
+        features_folder: "{cls.features_npy_path}" 
         starting_porosity_cube_path: "{cls.porosity_h5_path}"
         alg:
           test_only_wells: [{cls.test_well_id}]
