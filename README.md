@@ -52,6 +52,13 @@ Foi testado com sucesso a compatibilidade das seguintes versões:
      - HDF5 hdf5-1_12_2-3-rc1
      - Cython 3.0.10
      - h5py 3.11.0
+ - python 3.12.4:
+     - mpi4py 3.1.6
+     - HDF5 hdf5-1_12_2-3-rc1
+     - Cython 3.0.10
+     - h5py 3.11.0
+     - openmpi 4.0.1 (sequana for sdumont)
+     - gcc 13.2 (sequana for sdumont)
 
 
 # Requisitos - Dados
