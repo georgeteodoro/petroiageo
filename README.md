@@ -38,7 +38,7 @@ A compilação/instalação do h5py, a ser feita após o HDF5, sendo feita usand
     git clone https://github.com/h5py/h5py.git
     cd h5py
     git checkout 3.7.0
-    pip3 install wheel Cython==3.0.0a11 numpy
+    pip3 install wheel Cython==3.0.0a11 numpy setuptools
     export CC=mpicc; export HDF5_MPI="ON"; export HDF5_DIR="<HDF5_PATH>/build"; pip3 install --no-build-isolation .
 
 O h5py pode ter problemas de incompatibilidade com o mpi4py. Para evitar problemas certificar que a versão do mpi4py seja a 3.1.3. Isso é feito nos comando acima, onde uma versão previamente instalada do mpi4py é removida, sendo instalada a versão esperada.
