@@ -26,7 +26,10 @@ class FeatureDataMMap(FeatureDataBase):
     futures are recommended.
     '''
 
-    def __init__(self, feature_path, done_reading_callback=None):
+    def __init__(self,
+                 feature_path,
+                 done_reading_callback=None,
+                 pre_fetch=False):
         super(FeatureDataMMap, self).__init__()
 
         # Callback of cache manager to be called at deletion
@@ -49,11 +52,12 @@ class FeatureDataMMap(FeatureDataBase):
         np_header_size = 128  # 16 bytes + padding for alignment
 
         # Pre-load the whole data into cache pages
+        flags = mmap.MAP_PRIVATE | mmap.MADV_SEQUENTIAL
+        if pre_fetch:
+            flags |= mmap.MAP_POPULATE
         self._mmap_buffer = mmap.mmap(self._file.fileno(),
                                       np_length + np_header_size,
-                                      flags=mmap.MAP_PRIVATE
-                                      | mmap.MADV_SEQUENTIAL
-                                      | mmap.MAP_POPULATE,
+                                      flags=flags,
                                       prot=mmap.PROT_READ)
 
         # Create a npy array to wrap this memory buffer

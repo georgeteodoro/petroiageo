@@ -18,7 +18,7 @@ class FeatureDatasetSimple(FeatureDatasetBase):
         # Get a list of backend references
         self._features = dict()
         for feature, feature_path in self._all_features_path_dict.items():
-            self._features[feature] = FeatureDataMMap(feature_path)
+            self._features[feature] = FeatureDataMMap(feature_path, pre_fetch=False)
 
     def get_feature(self, feature):
         '''
