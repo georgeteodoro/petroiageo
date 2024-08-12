@@ -108,7 +108,7 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
         # having the same semaphore.
         semaphore_name = '/FeatureDatasetMMapCache.sem'
         try:
-            posix_ipc.unlink_semaphore(semaphore_name)
+            # posix_ipc.unlink_semaphore(semaphore_name)
             pass
         except Exception as e:
             print(e)
@@ -169,7 +169,9 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
 
                 # Done. Release lock and return the feature object
                 self._lru_lock.release()
-                return FeatureDataMMap(feature_path, done_feature_callback)
+                return FeatureDataMMap(feature_path,
+                                       done_feature_callback,
+                                       pre_fetch=True)
             else:
                 # Cache miss
                 # print(f"[FeatureDatasetMMapCache][get_feature] miss on "
@@ -205,7 +207,9 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
                     self._lru[self._LRU_TIME][line_idx] = monotonic_ns()
 
                     self._lru_lock.release()
-                    return FeatureDataMMap(feature_path, done_feature_callback)
+                    return FeatureDataMMap(feature_path,
+                                           done_feature_callback,
+                                           pre_fetch=True)
 
                 except posix_ipc.BusyError:
                     # There are no free cache lines, thus release lock and
