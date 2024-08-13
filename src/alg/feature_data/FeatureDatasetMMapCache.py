@@ -179,9 +179,10 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
                                        pre_fetch=True)
             else:
                 # Cache miss
-                print(f"[FeatureDatasetMMapCache][get_feature] miss on "
-                      f"feature {feature_idx} "
-                      f"sem: {self._free_cache_lines_sem.value}")
+                if not no_free_cache_print:
+                    print(f"[FeatureDatasetMMapCache][get_feature] miss on "
+                          f"feature {feature_idx} "
+                          f"sem: {self._free_cache_lines_sem.value}")
 
                 try:
                     # Perform non-blocking acquire
