@@ -127,6 +127,7 @@ def run(config):
 
         it_wait_job_time = 0
         it_wait_response_time = 0
+        it_get_f_time = 0
         it_update_f_time = 0
         it_commit_f_time = 0
         it_training_time = 0
@@ -164,9 +165,10 @@ def run(config):
                     # print(f"{beg_str}[it{it}][f_it{f_it}] Updt-feature.")
                     # print(f"{beg_str}[it{it}][f_it{f_it}] open_files: "
                     #       f"{opn_files}.")
-                    trial_data.update_feature(
-                        all_features.get_feature(feature), disp)
+                    f_data = all_features.get_feature(feature)
                     t5 = time()
+                    trial_data.update_feature(f_data, disp)
+                    t6 = time()
                     print(f"{beg_str}[it{it}][f_it{f_it}] Test-feature.")
                     ret = test_new_feature(trial_data, config)
 
@@ -182,13 +184,14 @@ def run(config):
                         return
 
                     results.append(((feature, disp), *ret))
-                    t6 = time()
+                    t7 = time()
                     print(f"{beg_str}[it{it}][f_it{f_it}] Trial "
                           f"{best_features + [(feature, disp)]} "
                           f"in {t6-t4:.2f}")
 
-                    it_update_f_time += t5 - t4
-                    it_training_time += t6 - t5
+                    it_get_f_time += t5 - t4
+                    it_update_f_time += t6 - t5
+                    it_training_time += t7 - t6
 
                 # Send response back
                 t7 = time()
@@ -248,6 +251,7 @@ def run(config):
         print(f"{beg_str}[it{it}][fprof] it_wait_job_time {it_wait_job_time}")
         print(f"{beg_str}[it{it}][fprof] it_wait_response_time "
               f"{it_wait_response_time}")
+        print(f"{beg_str}[it{it}][fprof] it_get_f_time {it_get_f_time}")
         print(f"{beg_str}[it{it}][fprof] it_update_f_time {it_update_f_time}")
         print(f"{beg_str}[it{it}][fprof] it_commit_f_time {it_commit_f_time}")
         print(f"{beg_str}[it{it}][fprof] it_training_time {it_training_time}")
