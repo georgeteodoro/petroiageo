@@ -67,8 +67,8 @@ class FeatureDataMMap(FeatureDataBase):
                                    np_type,
                                    buffer=self._mmap_buffer,
                                    offset=np_header_size)
-        print(f"[FeatureDataMMap][__init__] ndarray_done {t2-t1:.4f}")
         t2 = time()
+        print(f"[FeatureDataMMap][__init__] ndarray_done {t2-t1:.4f}")
 
     def __del__(self):
         # Bug fix for interaction with mpi and page caching:
