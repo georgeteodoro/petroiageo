@@ -144,17 +144,22 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
         feature_path = self._all_features_path_dict[feature]
         done_feature_callback = partial(self.done_reading_callback, feature)
 
+        # Flag for debugging: avoid multiple prints of 'no free cache line'
+        no_free_cache_print = False
+
         # Keep trying until a feature is returned
         while True:
             self._lru_lock.acquire()
             if feature_idx in self._lru[self._LRU_F_IDX]:
+                no_free_cache_print = False
+
                 # Cache hit of feature_idx
                 # Retrieve the cache line index of the hit feature
                 line_idx = np.where(
                     self._lru[self._LRU_F_IDX] == feature_idx)[0][0]
 
-                # print(f"[FeatureDatasetMMapCache][get_feature] hit line "
-                #       f"{line_idx} of feature {feature_idx}")
+                print(f"[FeatureDatasetMMapCache][get_feature] hit line "
+                      f"{line_idx} of feature {feature_idx}")
 
                 # It is possible to hit a feature which has no current
                 # readers. In this case the sem.release() was already called.
@@ -174,13 +179,15 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
                                        pre_fetch=True)
             else:
                 # Cache miss
-                # print(f"[FeatureDatasetMMapCache][get_feature] miss on "
-                #       f"feature {feature_idx} "
-                #       f"sem: {self._free_cache_lines_sem.value}")
+                print(f"[FeatureDatasetMMapCache][get_feature] miss on "
+                      f"feature {feature_idx} "
+                      f"sem: {self._free_cache_lines_sem.value}")
 
                 try:
                     # Perform non-blocking acquire
                     self._free_cache_lines_sem.acquire(0)
+
+                    no_free_cache_print = False
 
                     # If passed, there are free cache lines. Count of free
                     # cache lines were decremented as a result
@@ -198,8 +205,8 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
                             line_idx = i
                             break
 
-                    # print(f"[FeatureDatasetMMapCache][get_feature] replacing "
-                    #       f"line {line_idx}")
+                    print(f"[FeatureDatasetMMapCache][get_feature] replacing "
+                          f"line {line_idx}")
 
                     # Update "evicted" cache line
                     self._lru[self._LRU_F_IDX][line_idx] = feature_idx
@@ -214,8 +221,10 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
                 except posix_ipc.BusyError:
                     # There are no free cache lines, thus release lock and
                     # try again...
-                    # print(f"[FeatureDatasetMMapCache][get_feature] "
-                    #       f"no free lines")
+                    if not no_free_cache_print:
+                        no_free_cache_print = True
+                        print(f"[FeatureDatasetMMapCache][get_feature] "
+                              f"no free lines")
                     self._lru_lock.release()
 
     def done_reading_callback(self, feature):
