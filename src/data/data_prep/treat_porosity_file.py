@@ -150,6 +150,8 @@ def agg_porosities(df: pd.DataFrame,
     elif agg_params.agg_strat == AggregationStrategy.M_O_R:
         final_df = aggregate(
             df, agg_wells_dfs_mean_rolling_w(agg_params.rolling_window))
+    elif agg_params.agg_strat == AggregationStrategy.M_O_N:
+        final_df = aggregate(df, agg_wells_dfs_n_meters(agg_params.n_meters))
     else:
         raise ValueError(
             f"agg_strat should be one of {AggregationStrategy.as_list()}")
@@ -174,6 +176,23 @@ def aggregate(df, agg_func):
 
     return final_df
 
+def agg_wells_dfs_n_meters(n_meters:int):
+    """
+    Returns a function that aggregates the porosities every n meters using the mean.
+    
+    """
+    print(f"[LOG]AGG DFS EVERY {n_meters} METERS")
+    def agg_func(df:pd.DataFrame) -> pd.DataFrame:
+        df['group_indicator'] = df['z'].apply(lambda x: x//n_meters)
+
+        grouped = df.groupby(by='group_indicator').mean()
+        grouped = grouped.reset_index()
+        grouped.drop("group_indicator", inplace=True, axis=1)
+
+        # check_for_int_depth_measures(grouped['z'].values)
+        return grouped
+
+    return agg_func
 
 def agg_wells_dfs_mean_rolling_w(rolling_w: int):
     """

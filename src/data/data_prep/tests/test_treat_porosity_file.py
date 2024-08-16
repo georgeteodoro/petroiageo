@@ -36,6 +36,21 @@ class TestAggData(TestCase):
             4.2, 4.35, 4.5
         ]
         self.assertTrue(np.allclose(expected_pors, agg_df['pors']))
+    
+    def test_agg_n_meters(self):
+        n_meters=1
+        agg_params = AggregationParams(AggregationStrategy["M_O_N"], 1,
+                                       n_meters)
+        agg_df = agg_porosities(self.df, agg_params)
+        expected_pors = [0.45, 1.5, 2.4, 3.45, 4.5]
+        self.assertTrue(np.allclose(expected_pors, agg_df['pors']))
+
+        n_meters=2
+        agg_params = AggregationParams(AggregationStrategy["M_O_N"], 1,
+                                       n_meters)
+        agg_df = agg_porosities(self.df, agg_params)
+        expected_pors = [0.9, 3.0, 4.5]
+        self.assertTrue(np.allclose(expected_pors, agg_df['pors']))
 
 
 if __name__ == "__main__":
