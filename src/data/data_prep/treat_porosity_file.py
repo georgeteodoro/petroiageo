@@ -17,7 +17,6 @@ DEFAULT_ROLLING_W = 3
 
 
 class AggregationStrategy(Enum):
-    M_O_M = "mean_of_meter"
     NONE = "None"
     M_O_R = "mean_of_rolling"
     M_O_N = "mean_of_n_meters"
@@ -26,9 +25,7 @@ class AggregationStrategy(Enum):
         return [str(opt.name) for opt in AggregationStrategy]
 
     def explain_str():
-        result_str = "M_O_M: mean_of_meter. For every integer meter of measure, agg " \
-                        "all measurements inside that meter by the mean."
-        result_str += "\n NONE: Dont aggregate the measurements by any means."
+        result_str = "NONE: Dont aggregate the measurements by any means."
         result_str += "\n M_O_R: mean_of_rolling. Calculate the mean of rolling window" \
                         " with the result assigned to the center of window. It uses the" \
                         " rolling_w arg."
@@ -142,9 +139,7 @@ def agg_porosities(df: pd.DataFrame,
     Return:
     pd.DataFrame
     """
-    if agg_params.agg_strat == AggregationStrategy.M_O_M:
-        final_df = aggregate(df, agg_wells_dfs_meter_by_meter())
-    elif agg_params.agg_strat == AggregationStrategy.NONE:
+    if agg_params.agg_strat == AggregationStrategy.NONE:
         print(f"[LOG]DONT AGG POROSITY MEASURES")
         final_df = df
     elif agg_params.agg_strat == AggregationStrategy.M_O_R:
@@ -204,25 +199,6 @@ def agg_wells_dfs_mean_rolling_w(rolling_w: int):
     def agg_func(df: pd.DataFrame) -> pd.DataFrame:
         curr_df = df.rolling(rolling_w, min_periods=1, center=True).mean()
         return curr_df
-
-    return agg_func
-
-
-def agg_wells_dfs_meter_by_meter():
-    """
-    Returns a function that aggregates the porosities by meter using the mean.
-    The porosities measures have resolution below one meter.
-    """
-    print(f"[LOG]AGG DFS PER DEPTH")
-
-    def agg_func(df: pd.DataFrame) -> pd.DataFrame:
-        df['z'] = df['z'].apply(lambda x: int(str(x).split('.')[0]))
-
-        grouped = df.groupby(by='z').mean()
-        grouped = grouped.reset_index()
-
-        check_for_int_depth_measures(grouped['z'].values)
-        return grouped
 
     return agg_func
 
