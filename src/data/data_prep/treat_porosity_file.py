@@ -148,10 +148,29 @@ def agg_porosities(df: pd.DataFrame,
         print(f"[LOG]DONT AGG POROSITY MEASURES")
         final_df = df
     elif agg_params.agg_strat == AggregationStrategy.M_O_R:
-        final_df = agg_wells_dfs_mean_rolling_w(df, agg_params.rolling_window)
+        final_df = aggregate(
+            df, agg_wells_dfs_mean_rolling_w(df, agg_params.rolling_window))
     else:
         raise ValueError(
             f"agg_strat should be one of {AggregationStrategy.as_list()}")
+
+    return final_df
+
+
+def aggregate(df, agg_func):
+    final_df = None
+    wells_coords = sorted(df[['area_x',
+                              'area_y']].value_counts().index.to_list())
+    for well_coord in wells_coords:
+        target_data = df[(df['area_x'] == well_coord[0])
+                         & (df['area_y'] == well_coord[1])].copy()
+
+        grouped = agg_func(target_data)
+
+        if final_df is None:
+            final_df = grouped
+        else:
+            final_df = pd.concat([final_df, grouped])
 
     return final_df
 
@@ -163,20 +182,12 @@ def agg_wells_dfs_mean_rolling_w(por_df: pd.DataFrame,
     Return a DataFrame
     """
     print(f"[LOG]AGG DFS MEAN ROLLING WINDOW {rolling_w}")
-    final_df = None
-    wells_coords = sorted(por_df[['area_x',
-                                  'area_y']].value_counts().index.to_list())
-    for well_coord in wells_coords:
-        target_data = por_df[(por_df['area_x'] == well_coord[0])
-                             & (por_df['area_y'] == well_coord[1])]
-        curr_df = target_data.rolling(rolling_w, min_periods=1,
-                                      center=True).mean()
-        if final_df is None:
-            final_df = curr_df
-        else:
-            final_df = pd.concat([final_df, curr_df])
 
-    return final_df
+    def agg_func(df):
+        curr_df = df.rolling(rolling_w, min_periods=1, center=True).mean()
+        return curr_df
+
+    return agg_func
 
 
 def agg_wells_dfs_meter_by_meter(por_df: pd.DataFrame) -> pd.DataFrame:
