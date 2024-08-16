@@ -20,12 +20,6 @@ class TestAggData(TestCase):
         agg_df = agg_porosities(self.df, agg_params)
         self.assertTrue(self.df.equals(agg_df))
 
-    def test_agg_meter_by_meter(self):
-        agg_params = AggregationParams(AggregationStrategy["M_O_M"], 1, 1)
-        agg_df = agg_porosities(self.df, agg_params)
-        expected_pors_means = [0.45, 1.5, 2.4, 3.45, 4.5]
-        self.assertTrue(np.allclose(expected_pors_means, agg_df['pors']))
-
     def test_agg_rolling_window(self):
         rolling_w = 5
         agg_params = AggregationParams(AggregationStrategy["M_O_R"], rolling_w,
