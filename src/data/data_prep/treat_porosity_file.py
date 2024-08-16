@@ -183,7 +183,7 @@ def agg_wells_dfs_n_meters(n_meters:int):
     """
     print(f"[LOG]AGG DFS EVERY {n_meters} METERS")
     def agg_func(df:pd.DataFrame) -> pd.DataFrame:
-        df['group_indicator'] = df['z'].apply(lambda x: x//n_meters)
+        df['group_indicator'] = df['z'] // n_meters
 
         grouped = df.groupby(by='group_indicator').mean()
         grouped = grouped.reset_index()
