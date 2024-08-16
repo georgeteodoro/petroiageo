@@ -53,22 +53,24 @@ class FeatureDataMMap(FeatureDataBase):
         flags = mmap.MAP_PRIVATE | mmap.MADV_SEQUENTIAL
         if pre_fetch:
             flags |= mmap.MAP_POPULATE
-        print("[FeatureDataMMap][__init__] mmapping...")
+            print("[FeatureDataMMap][__init__] mmapping...")
         t0 = time()
         self._mmap_buffer = mmap.mmap(self._file.fileno(),
                                       np_length + np_header_size,
                                       flags=flags,
                                       prot=mmap.PROT_READ)
-        t1 = time()
-        print(f"[FeatureDataMMap][__init__] mmap_done {t1-t0:.4f}")
+        if pre_fetch:
+            t1 = time()
+            print(f"[FeatureDataMMap][__init__] mmap_done {t1-t0:.4f}")
 
         # Create a npy array to wrap this memory buffer
         self._feature = np.ndarray(np_shape,
                                    np_type,
                                    buffer=self._mmap_buffer,
                                    offset=np_header_size)
-        t2 = time()
-        print(f"[FeatureDataMMap][__init__] ndarray_done {t2-t1:.4f}")
+        if pre_fetch:
+            t2 = time()
+            print(f"[FeatureDataMMap][__init__] ndarray_done {t2-t1:.4f}")
 
     def __del__(self):
         # Bug fix for interaction with mpi and page caching:
