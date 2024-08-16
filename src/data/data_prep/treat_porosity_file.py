@@ -133,16 +133,22 @@ def normalize_resolution(por_df: pd.DataFrame) -> pd.DataFrame:
     return final_df
 
 
-def agg_porosities(porosity_dfs_dict: pd.DataFrame,
+def agg_porosities(df: pd.DataFrame,
                    agg_params: AggregationParams) -> pd.DataFrame:
+    """
+    Aggregate the df based on the mathods defined in agg_params.
+    df: pd.DataFrame
+    agg_params: AggregationParams
+    Return:
+    pd.DataFrame
+    """
     if agg_params.agg_strat == AggregationStrategy.M_O_M:
-        final_df = agg_wells_dfs_meter_by_meter(porosity_dfs_dict)
+        final_df = agg_wells_dfs_meter_by_meter(df)
     elif agg_params.agg_strat == AggregationStrategy.NONE:
         print(f"[LOG]DONT AGG POROSITY MEASURES")
-        final_df = porosity_dfs_dict
+        final_df = df
     elif agg_params.agg_strat == AggregationStrategy.M_O_R:
-        final_df = agg_wells_dfs_mean_rolling_w(porosity_dfs_dict,
-                                                agg_params.rolling_window)
+        final_df = agg_wells_dfs_mean_rolling_w(df, agg_params.rolling_window)
     else:
         raise ValueError(
             f"agg_strat should be one of {AggregationStrategy.as_list()}")
