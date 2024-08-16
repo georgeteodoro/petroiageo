@@ -49,7 +49,8 @@ def print_measurements_per_well(df: pd.DataFrame):
 
 
 def main(aggregated_por_dfs_file_path: str, target_por_file_path: str,
-         min_depth: float, max_depth: float, agg_params: AggregationParams):
+         min_depth: float, max_depth: float, no_interp: bool,
+         agg_params: AggregationParams):
 
     print(f"[LOG]Reading file {aggregated_por_dfs_file_path}")
     por_df = pd.read_csv(aggregated_por_dfs_file_path)
@@ -63,7 +64,11 @@ def main(aggregated_por_dfs_file_path: str, target_por_file_path: str,
 
     print_measurements_per_well(final_df)
 
-    final_df = normalize_resolution(final_df)
+    if no_interp:
+        print("[LOG] Didn't interpolated data!")
+    else:
+        final_df = normalize_resolution(final_df)
+
     final_df.sort_values(['area_x', 'area_y', 'z'],
                          inplace=True,
                          ascending=True)
@@ -171,13 +176,15 @@ def aggregate(df, agg_func):
 
     return final_df
 
-def agg_wells_dfs_n_meters(n_meters:int):
+
+def agg_wells_dfs_n_meters(n_meters: int):
     """
     Returns a function that aggregates the porosities every n meters using the mean.
     
     """
     print(f"[LOG]AGG DFS EVERY {n_meters} METERS")
-    def agg_func(df:pd.DataFrame) -> pd.DataFrame:
+
+    def agg_func(df: pd.DataFrame) -> pd.DataFrame:
         df['group_indicator'] = df['z'] // n_meters
 
         grouped = df.groupby(by='group_indicator').mean()
@@ -188,6 +195,7 @@ def agg_wells_dfs_n_meters(n_meters:int):
         return grouped
 
     return agg_func
+
 
 def agg_wells_dfs_mean_rolling_w(rolling_w: int):
     """
@@ -270,6 +278,12 @@ def config_parser() -> argparse.ArgumentParser:
         "The amount of meters used to take the mean. when aggregating with M_O_N"
         + f" Type: integer. Default: {DEFAULT_N_METERS}")
 
+    parser.add_argument(
+        '--no_interp',
+        action='store_true',
+        required=False,
+        help="Flag that indicates we shouldn't interpolate the data")
+
     return parser
 
 
@@ -280,4 +294,4 @@ if __name__ == "__main__":
                                    args.rolling_w, args.n_meters)
 
     main(args.por_file, args.target_por_file, args.min_depth, args.max_depth,
-         agg_params)
+         args.no_interp, agg_params)
