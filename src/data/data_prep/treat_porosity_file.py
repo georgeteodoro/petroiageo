@@ -143,13 +143,13 @@ def agg_porosities(df: pd.DataFrame,
     pd.DataFrame
     """
     if agg_params.agg_strat == AggregationStrategy.M_O_M:
-        final_df = agg_wells_dfs_meter_by_meter(df)
+        final_df = aggregate(df, agg_wells_dfs_meter_by_meter())
     elif agg_params.agg_strat == AggregationStrategy.NONE:
         print(f"[LOG]DONT AGG POROSITY MEASURES")
         final_df = df
     elif agg_params.agg_strat == AggregationStrategy.M_O_R:
         final_df = aggregate(
-            df, agg_wells_dfs_mean_rolling_w(df, agg_params.rolling_window))
+            df, agg_wells_dfs_mean_rolling_w(agg_params.rolling_window))
     else:
         raise ValueError(
             f"agg_strat should be one of {AggregationStrategy.as_list()}")
@@ -175,51 +175,37 @@ def aggregate(df, agg_func):
     return final_df
 
 
-def agg_wells_dfs_mean_rolling_w(por_df: pd.DataFrame,
-                                 rolling_w: int) -> pd.DataFrame:
+def agg_wells_dfs_mean_rolling_w(rolling_w: int):
     """
-    Apply a rolling window with mean func to the data of every well.
-    Return a DataFrame
+    Returns a function that applies a rolling window with mean func to the 
+    data of every well.
     """
     print(f"[LOG]AGG DFS MEAN ROLLING WINDOW {rolling_w}")
 
-    def agg_func(df):
+    def agg_func(df: pd.DataFrame) -> pd.DataFrame:
         curr_df = df.rolling(rolling_w, min_periods=1, center=True).mean()
         return curr_df
 
     return agg_func
 
 
-def agg_wells_dfs_meter_by_meter(por_df: pd.DataFrame) -> pd.DataFrame:
+def agg_wells_dfs_meter_by_meter():
     """
-    The porosities measures have resolution below one meter. We aggregate 
-    the porosities by meter using the mean.
-
-    Returns a DataFrame
+    Returns a function that aggregates the porosities by meter using the mean.
+    The porosities measures have resolution below one meter.
     """
     print(f"[LOG]AGG DFS PER DEPTH")
 
-    final_df = None
-    wells_coords = sorted(por_df[['area_x',
-                                  'area_y']].value_counts().index.to_list())
-    for well_coord in wells_coords:
-        target_data = por_df[(por_df['area_x'] == well_coord[0])
-                             & (por_df['area_y'] == well_coord[1])].copy()
+    def agg_func(df: pd.DataFrame) -> pd.DataFrame:
+        df['z'] = df['z'].apply(lambda x: int(str(x).split('.')[0]))
 
-        target_data['z'] = target_data['z'].apply(
-            lambda x: int(str(x).split('.')[0]))
-
-        grouped = target_data.groupby(by='z').mean()
+        grouped = df.groupby(by='z').mean()
         grouped = grouped.reset_index()
 
         check_for_int_depth_measures(grouped['z'].values)
+        return grouped
 
-        if final_df is None:
-            final_df = grouped
-        else:
-            final_df = pd.concat([final_df, grouped])
-
-    return final_df
+    return agg_func
 
 
 def check_for_int_depth_measures(depth_values: np.ndarray):
