@@ -12,12 +12,15 @@ from dataclasses import dataclass
 from enum import Enum
 
 REQUIRED_DEPTH_COL_AFTER_AGG = "depth"
+DEFAULT_N_METERS = 1
+DEFAULT_ROLLING_W = 3
 
 
 class AggregationStrategy(Enum):
     M_O_M = "mean_of_meter"
     NONE = "None"
     M_O_R = "mean_of_rolling"
+    M_O_N = "mean_of_n_meters"
 
     def as_list():
         return [str(opt.name) for opt in AggregationStrategy]
@@ -29,13 +32,17 @@ class AggregationStrategy(Enum):
         result_str += "\n M_O_R: mean_of_rolling. Calculate the mean of rolling window" \
                         " with the result assigned to the center of window. It uses the" \
                         " rolling_w arg."
+        result_str += "\n M_O_N: mean_of_n_meters. Calculate the mean of every n" \
+                        " meters with the result assigned to the center of window. It uses the" \
+                        " n_meters arg."
         return result_str
 
 
 @dataclass
 class AggregationParams:
     agg_strat: AggregationStrategy
-    rolling_window: int = 3
+    rolling_window: int = DEFAULT_ROLLING_W
+    n_meters: int = DEFAULT_N_METERS
 
 
 def print_measurements_per_well(df: pd.DataFrame):
@@ -45,8 +52,7 @@ def print_measurements_per_well(df: pd.DataFrame):
 
 
 def main(aggregated_por_dfs_file_path: str, target_por_file_path: str,
-         min_depth: float, max_depth: float, shouldnt_interpolate: bool,
-         agg_params: AggregationParams):
+         min_depth: float, max_depth: float, agg_params: AggregationParams):
 
     print(f"[LOG]Reading file {aggregated_por_dfs_file_path}")
     por_df = pd.read_csv(aggregated_por_dfs_file_path)
@@ -60,11 +66,7 @@ def main(aggregated_por_dfs_file_path: str, target_por_file_path: str,
 
     print_measurements_per_well(final_df)
 
-    if not shouldnt_interpolate:
-        final_df = normalize_resolution(final_df)
-    else:
-        print(f"[LOG] Didn't interpolate data!")
-
+    final_df = normalize_resolution(final_df)
     final_df.sort_values(['area_x', 'area_y', 'z'],
                          inplace=True,
                          ascending=True)
@@ -78,8 +80,7 @@ def main(aggregated_por_dfs_file_path: str, target_por_file_path: str,
     print_measurements_per_well(final_df)
 
     print(f"[LOG]Saving final df at {target_por_file_path}")
-    pathlib.Path(target_por_file_path).parent.mkdir(exist_ok=True,
-                                                    parents=True)
+    pathlib.Path(target_por_file_path).parent.mkdir(exist_ok=True, parents=True)
     final_df.to_csv(target_por_file_path, index=None)
 
 
@@ -254,20 +255,22 @@ def config_parser() -> argparse.ArgumentParser:
         f" Options: {AggregationStrategy.explain_str()}." +
         f" Default: {AggregationStrategy.NONE.name}")
 
-    default_rolling_w = 3
     parser.add_argument(
         "--rolling_w",
         required=False,
         type=int,
-        default=default_rolling_w,
+        default=DEFAULT_ROLLING_W,
         help="The window used for the rolling window aggregation methods." +
-        f"Type: integer. Default: {default_rolling_w}")
+        f"Type: integer. Default: {DEFAULT_ROLLING_W}")
 
     parser.add_argument(
-        '--no_interp',
-        action='store_true',
+        "--n_meters",
         required=False,
-        help="Flag that indicates we shouldn't interpolate the data")
+        type=int,
+        default=DEFAULT_N_METERS,
+        help=
+        "The amount of meters used to take the mean. when aggregating with M_O_N"
+        + f" Type: integer. Default: {DEFAULT_N_METERS}")
 
     return parser
 
@@ -276,7 +279,7 @@ if __name__ == "__main__":
     args = config_parser().parse_args()
 
     agg_params = AggregationParams(AggregationStrategy[args.agg_strat],
-                                   args.rolling_w)
+                                   args.rolling_w, args.n_meters)
 
     main(args.por_file, args.target_por_file, args.min_depth, args.max_depth,
-         args.no_interp, agg_params)
+         agg_params)
