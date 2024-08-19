@@ -37,8 +37,7 @@ def read_wells_porosities(
     column_names = ['depth', 'neutron_por', 'density_por', 'sonic_por']
     for well_name, por_path in target_files.items():
         por_df = pd.read_csv(por_path,
-                             sep=' ',
-                             header=None,
+                             header=0,
                              names=column_names)
         porosity_dfs_dict[well_name] = por_df
 
