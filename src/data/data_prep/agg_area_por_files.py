@@ -4,6 +4,7 @@ for every delimited area into one file for every area.
 See the -h option for more.
 """
 import argparse
+import numpy as np
 import pandas as pd
 import pathlib
 
@@ -34,12 +35,8 @@ def read_wells_porosities(
     )
 
     porosity_dfs_dict = dict()
-    column_names = ['depth', 'neutron_por', 'density_por', 'sonic_por']
     for well_name, por_path in target_files.items():
-        por_df = pd.read_csv(por_path,
-                             header=0,
-                             names=column_names)
-        porosity_dfs_dict[well_name] = por_df
+        porosity_dfs_dict[well_name] = pd.read_csv(por_path)
 
     return porosity_dfs_dict
 
@@ -55,8 +52,7 @@ def main(target_area, area_coords_path: str, wells_info_path: str,
         curr_area = area_data['area']
         print(f"[LOG]CURRENT AREA: {curr_area}")
 
-        area_wells_info = get_target_area_wells_info(area_data,
-                                                     wells_info_path)
+        area_wells_info = get_target_area_wells_info(area_data, wells_info_path)
         print(f"[LOG]TARGET AREA WELLS INFO:\n{area_wells_info}")
 
         target_wells_names = list(set(area_wells_info['Well'].tolist()))
@@ -65,6 +61,13 @@ def main(target_area, area_coords_path: str, wells_info_path: str,
 
         print(f"[LOG]CONCATENATING MULTIPLE DFS INTO ONE")
         final_df = None
+        important_column_names = [
+            'depth', 'neutron_por', 'density_por', 'sonic_por', 'time'
+        ]
+
+        cols_to_keep = important_column_names + [
+            "global_x", "global_y", "area_x", "area_y"
+        ]
         for well_name, well_df in porosity_dfs_dict.items():
             num_meds = len(well_df)
             well_info = area_wells_info[area_wells_info['Well'] ==
@@ -76,7 +79,12 @@ def main(target_area, area_coords_path: str, wells_info_path: str,
             well_df['area_y'] = [well_info['y_coord'] - area_data['min_y']
                                  ] * num_meds
 
-            well_df.rename({"depth": 'z'}, axis=1, inplace=True)
+            for column in important_column_names:
+                if column not in well_df:
+                    well_df[column] = np.nan
+
+            well_df = well_df[cols_to_keep]
+
             if final_df is None:
                 final_df = well_df
             else:
@@ -92,7 +100,7 @@ def main(target_area, area_coords_path: str, wells_info_path: str,
             curr_area)
         print(f"[LOG]SAVING FINAL DF TO: {target_concated_agg_dfs_path}")
 
-        final_df.sort_values(['area_x', 'area_y', 'z'],
+        final_df.sort_values(['area_x', 'area_y', 'depth'],
                              inplace=True,
                              ascending=True)
         final_df.reset_index(inplace=True)
@@ -178,12 +186,11 @@ def config_parser() -> argparse.ArgumentParser:
         help="The path to the dir that have wells porosities files. " +
         "The file names must be equal to uppercasewellname.txt")
 
-    parser.add_argument(
-        '--final_df_dir_path',
-        required=False,
-        type=str,
-        default="../../common_data/ANP/porosity/",
-        help="The path to the dir that will have the final dfs")
+    parser.add_argument('--final_df_dir_path',
+                        required=False,
+                        type=str,
+                        default="../../common_data/ANP/porosity/",
+                        help="The path to the dir that will have the final dfs")
 
     return parser
 
