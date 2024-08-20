@@ -14,7 +14,8 @@ from timeit import default_timer as timer
 def main(por_file_path: str, area_info_file_path: str, target_area: int,
          seismic_file_path: str, seismic_resolution: float,
          seismic_start_depth: float, target_seismic_file_path: str,
-         target_merge_file_path: str, dont_interpolate: bool, by_time: bool):
+         target_merge_file_path: str, dont_interpolate: bool, by_time: bool,
+         dont_merge: bool):
 
     print(
         f"[LOG]Loading target area {target_area} info from {area_info_file_path}"
@@ -87,8 +88,12 @@ def main(por_file_path: str, area_info_file_path: str, target_area: int,
                                                         parents=True)
     np.save(target_seismic_file_path, interp_data)
 
-    merge_well_with_seismic(target_merge_file_path, target_z_col, wells_data,
-                            min_z, interp_data, seismic_resolution)
+    if dont_merge:
+        print("[LOG]Didn't merge porosity and seismic files!")
+    else:
+        merge_well_with_seismic(target_merge_file_path, target_z_col,
+                                wells_data, min_z, interp_data,
+                                seismic_resolution)
 
 
 def merge_well_with_seismic(target_merge_file_path: str, target_z_col: str,
@@ -110,8 +115,8 @@ def merge_well_with_seismic(target_merge_file_path: str, target_z_col: str,
         # So we must fix the well_coord's[target_z_col] column values
         well_zs = ((wells_data[
             (wells_data['area_x'] == well_coord[0])
-            & (wells_data['area_y'] == well_coord[1])][target_z_col] -
-                   min_z) // seismic_res).astype(int)
+            & (wells_data['area_y'] == well_coord[1])][target_z_col] - min_z) //
+                   seismic_res).astype(int)
         well_seismic = well_seismic[well_zs]
         wells_seismic_values = np.concatenate(
             [wells_seismic_values, well_seismic])
@@ -170,12 +175,12 @@ def filter_seismic_and_get_interval(seismic_path: str,
     min_x, max_x = target_x_interval
     min_y, max_y = target_y_interval
 
-    target_z_min_seismic_idx = int(max((min_z - seismic_start_depth) // resolution,
-                                   0))
+    target_z_min_seismic_idx = int(
+        max((min_z - seismic_start_depth) // resolution, 0))
     target_z_max_seismic_idx = min(
         math.ceil((max_z - seismic_start_depth) / resolution),
         seismic_z_count - 1)
-    
+
     z_filtered_seismic_data = seismic_data[
         min_x:max_x + 1, min_y:max_y + 1,
         target_z_min_seismic_idx:target_z_max_seismic_idx + 1]
@@ -234,10 +239,12 @@ def config_parser() -> argparse.ArgumentParser:
 
     parser.add_argument(
         "--target_merge_file",
-        required=True,
+        required=False,
+        default=None,
         type=str,
         help="The target file that will contain the original por file with" +
-        " its respective seismic values. Must be a csv")
+        " its respective seismic values. Used if dont_merge is not set. " +
+        "Must be a csv")
 
     parser.add_argument(
         '--no_interp',
@@ -252,6 +259,13 @@ def config_parser() -> argparse.ArgumentParser:
         help="Flag indicating the seismic file z dimension is in time and so" +
         " we should use the time column of por_file.")
 
+    parser.add_argument(
+        '--dont_merge',
+        action='store_true',
+        required=False,
+        help="Flag indicating we shouldn't generate the merged porosity and " +
+        "seismic file. Basically means we should just filter the seismic data.")
+
     return parser
 
 
@@ -261,4 +275,4 @@ if __name__ == "__main__":
     main(args.por_file, args.area_info_file, args.target_area,
          args.seismic_file, args.seismic_resolution, args.start_seismic_depth,
          args.target_seismic_file, args.target_merge_file, args.no_interp,
-         args.by_time)
+         args.by_time, args.dont_merge)
