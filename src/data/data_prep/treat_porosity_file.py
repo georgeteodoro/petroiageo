@@ -1,7 +1,8 @@
 """
 This script filters the wells porosities data based on the
-depth interval, normalize data resolution via interpolation 
-and possibly aggregate the data based on some strategy.
+depth or time interval, may normalize data resolution via 
+interpolation  and possibly aggregate the data based on 
+some strategy.
 See the -h option for more.
 """
 import argparse
@@ -49,7 +50,8 @@ def print_measurements_per_well(df: pd.DataFrame):
 
 
 def main(aggregated_por_dfs_file_path: str, target_por_file_path: str,
-         min_depth: float, max_depth: float, no_interp: bool,
+         starting_pre_salt_file_path: str, min_depth: float, max_depth: float,
+         no_interp: bool, by_time: bool, wells_info_path: str,
          agg_params: AggregationParams):
 
     print(f"[LOG]Reading file {aggregated_por_dfs_file_path}")
@@ -59,23 +61,28 @@ def main(aggregated_por_dfs_file_path: str, target_por_file_path: str,
         f"[LOG]Found num measures for wells: {por_df[['area_x', 'area_y']].value_counts().to_dict()}"
     )
 
-    print(f"[LOG]Filtering in depth interval [{min_depth}, {max_depth}]")
-    final_df = por_df[(por_df['z'] >= min_depth) & (por_df['z'] <= max_depth)]
+    target_filter_col = "time" if by_time else "depth"
+
+    print(
+        f"[LOG]Filtering in {target_filter_col} interval"
+    )
+    final_df = filter_data(starting_pre_salt_file_path, min_depth, max_depth,
+                           wells_info_path, por_df, target_filter_col)
 
     print_measurements_per_well(final_df)
 
     if no_interp:
         print("[LOG] Didn't interpolated data!")
     else:
-        final_df = normalize_resolution(final_df)
+        final_df = normalize_resolution(final_df, target_filter_col)
 
-    final_df.sort_values(['area_x', 'area_y', 'z'],
+    final_df.sort_values(['area_x', 'area_y', target_filter_col],
                          inplace=True,
                          ascending=True)
 
     print_measurements_per_well(final_df)
 
-    final_df = agg_porosities(final_df, agg_params)
+    final_df = agg_porosities(final_df, agg_params, target_filter_col)
 
     final_df = final_df.round(4)
 
@@ -86,7 +93,79 @@ def main(aggregated_por_dfs_file_path: str, target_por_file_path: str,
     final_df.to_csv(target_por_file_path, index=None)
 
 
-def normalize_resolution(por_df: pd.DataFrame) -> pd.DataFrame:
+def filter_data(starting_pre_salt_file_path: str, min_depth: float,
+                max_depth: float, wells_info_path: str, por_df: pd.DataFrame,
+                target_filter_col: str) -> pd.DataFrame:
+    """
+    Filter data depending on the target_filter_col value.
+    """
+    final_df = None
+    if target_filter_col == 'time':
+        final_df = filter_by_time(starting_pre_salt_file_path, min_depth,
+                                  wells_info_path, por_df)
+    else:
+        final_df = por_df[(por_df[target_filter_col] >= min_depth)
+                          & (por_df[target_filter_col] <= max_depth)]
+
+    return final_df
+
+
+def filter_by_time(starting_pre_salt_file_path: str, min_time: float,
+                   wells_info_path: str, por_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Filter data by time. Each Well may have it's own time start defined in 
+    starting_pre_salt_file_path. Otherwise, min_time is used for every well.
+    """
+    wells_info_df = None
+    starting_pre_salt_per_well_df = None
+    if starting_pre_salt_file_path:
+        starting_pre_salt_per_well_df = pd.read_csv(starting_pre_salt_file_path)
+        try:
+            wells_info_df = pd.read_csv(wells_info_path)
+        except Exception as e:
+            print(
+                "[ERROR] When using --by_time and --starting_pre_salt_file_path "
+                + "is defined, you should define --wells_info")
+            raise e
+
+    wells_coords = por_df[['global_x',
+                           'global_y']].value_counts().index.to_list()
+    final_df = None
+
+    for global_x, global_y in wells_coords:
+        target_data = por_df[(por_df['global_x'] == global_x)
+                             & (por_df['global_y'] == global_y)]
+
+        start_time_pre_salt = get_pre_salt_start(starting_pre_salt_per_well_df,
+                                                 wells_info_df, global_x,
+                                                 global_y, min_time)
+        target_data = target_data[target_data['time'] >= start_time_pre_salt]
+        time_min = target_data['time'].min()
+        time_max = target_data['time'].max()
+        print(f"[LOG]Data time interval: [{time_min},{time_max}]. Total time: {time_max-time_min:.3f}")
+        final_df = pd.concat([final_df, target_data])
+    return final_df
+
+
+def get_pre_salt_start(starting_pre_salt_per_well_df: pd.DataFrame,
+                       wells_info_df: pd.DataFrame, global_x: int,
+                       global_y: int, min_time: float) -> float:
+    time_start = None
+    if starting_pre_salt_per_well_df is not None:
+        well_name = wells_info_df[
+            (wells_info_df['x_coord'] == global_x)
+            & (wells_info_df['y_coord'] == global_y)].head(1)['Well'].item()
+        print(f"[LOG] {well_name}")
+        time_start = starting_pre_salt_per_well_df[
+            starting_pre_salt_per_well_df['Well'] == well_name]['time'].item()
+    else:
+        time_start = min_time
+
+    return time_start
+
+
+def normalize_resolution(por_df: pd.DataFrame,
+                         target_filter_col: str) -> pd.DataFrame:
     """
     Change the resolution of all wells based on the one with the most measurements.
     It uses an interpolation to change resolutions.
@@ -106,7 +185,7 @@ def normalize_resolution(por_df: pd.DataFrame) -> pd.DataFrame:
     final_df = por_df[(por_df['area_x'] == coord_with_max_n_measures[0])
                       & (por_df['area_y'] == coord_with_max_n_measures[1])]
 
-    target_z_measures = final_df['z'].values
+    target_z_measures = final_df[target_filter_col].values
 
     print(f"[LOG]Changing resolution")
     for well_coords in wells_coords_and_counts.keys():
@@ -115,9 +194,9 @@ def normalize_resolution(por_df: pd.DataFrame) -> pd.DataFrame:
                                  & (por_df['area_y'] == well_coords[1])]
 
             cols_with_fixed_values = [
-                'area_x', 'area_y', 'global_x', 'global_y', 'z'
+                'area_x', 'area_y', 'global_x', 'global_y', "depth", "time"
             ]
-            curr_depth_measures = target_data['z'].values
+            curr_depth_measures = target_data[target_filter_col].values
             curr_well_new_data = dict()
             for col in target_data.columns:
                 if col not in cols_with_fixed_values:
@@ -125,18 +204,19 @@ def normalize_resolution(por_df: pd.DataFrame) -> pd.DataFrame:
                                                  curr_depth_measures,
                                                  target_data[col])
                     curr_well_new_data[col] = new_col_measures
-                elif col != "z":
+                elif col not in ["depth", 'time']:
                     curr_well_new_data[col] = [
                         target_data.head(1)[col].values[0]
                     ] * len(target_z_measures)
 
-            curr_well_new_data['z'] = target_z_measures
+            curr_well_new_data[target_filter_col] = target_z_measures
             final_df = pd.concat([pd.DataFrame(curr_well_new_data), final_df])
     return final_df
 
 
 def agg_porosities(df: pd.DataFrame,
-                   agg_params: AggregationParams) -> pd.DataFrame:
+                   agg_params: AggregationParams,
+                   target_filter_col: str = 'depth') -> pd.DataFrame:
     """
     Aggregate the df based on the mathods defined in agg_params.
     df: pd.DataFrame
@@ -151,7 +231,8 @@ def agg_porosities(df: pd.DataFrame,
         final_df = aggregate(
             df, agg_wells_dfs_mean_rolling_w(agg_params.rolling_window))
     elif agg_params.agg_strat == AggregationStrategy.M_O_N:
-        final_df = aggregate(df, agg_wells_dfs_n_meters(agg_params.n_meters))
+        final_df = aggregate(
+            df, agg_wells_dfs_n_meters(agg_params.n_meters, target_filter_col))
     else:
         raise ValueError(
             f"agg_strat should be one of {AggregationStrategy.as_list()}")
@@ -177,21 +258,20 @@ def aggregate(df, agg_func):
     return final_df
 
 
-def agg_wells_dfs_n_meters(n_meters: int):
+def agg_wells_dfs_n_meters(n_meters: int, target_filter_col: str):
     """
     Returns a function that aggregates the porosities every n meters using the mean.
     
     """
-    print(f"[LOG]AGG DFS EVERY {n_meters} METERS")
+    print(f"[LOG]AGG DFS EVERY {n_meters} {target_filter_col.upper()}S")
 
     def agg_func(df: pd.DataFrame) -> pd.DataFrame:
-        df['group_indicator'] = df['z'] // n_meters
+        df['group_indicator'] = df[target_filter_col] // n_meters
 
         grouped = df.groupby(by='group_indicator').mean()
         grouped = grouped.reset_index()
         grouped.drop("group_indicator", inplace=True, axis=1)
 
-        # check_for_int_depth_measures(grouped['z'].values)
         return grouped
 
     return agg_func
@@ -284,6 +364,31 @@ def config_parser() -> argparse.ArgumentParser:
         required=False,
         help="Flag that indicates we shouldn't interpolate the data")
 
+    parser.add_argument(
+        '--by_time',
+        action='store_true',
+        required=False,
+        help="Flag that indicates we should operate on the time column " +
+        "instead of depth column")
+
+    parser.add_argument(
+        "--start_time_pre_salt_path",
+        required=False,
+        type=str,
+        default=None,
+        help="The csv file indicating for every well the pre salt start " +
+        "time. It should have two columns: Well and time. This might be" +
+        " used when using --by_time. If not defined, use the " +
+        "--min_depth value for every well.")
+
+    parser.add_argument(
+        "--wells_info",
+        required=False,
+        type=str,
+        default=None,
+        help="The file with wells info. This is needed when using " +
+        "--by_time and --start_time_pre_salt_path is defined.")
+
     return parser
 
 
@@ -293,5 +398,6 @@ if __name__ == "__main__":
     agg_params = AggregationParams(AggregationStrategy[args.agg_strat],
                                    args.rolling_w, args.n_meters)
 
-    main(args.por_file, args.target_por_file, args.min_depth, args.max_depth,
-         args.no_interp, agg_params)
+    main(args.por_file, args.target_por_file, args.start_time_pre_salt_path,
+         args.min_depth, args.max_depth, args.no_interp, args.by_time,
+         args.wells_info, agg_params)

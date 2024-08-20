@@ -9,7 +9,7 @@ class TestAggData(TestCase):
 
     def setUp(self):
         self.df = pd.DataFrame()
-        self.df['z'] = np.arange(0, 5, 0.3)
+        self.df['depth'] = np.arange(0, 5, 0.3)
         # This column represents every other column beeing aggregated
         self.df['pors'] = np.arange(0, 5, 0.3)
         self.df['area_x'] = 1
