@@ -108,10 +108,10 @@ def merge_well_with_seismic(target_merge_file_path: str, target_z_col: str,
         # wells porosity target_z_col aren't perfectly contiguous
         # We subtract min_z because the seismic_data is already z filtered
         # So we must fix the well_coord's[target_z_col] column values
-        well_zs = (wells_data[
+        well_zs = ((wells_data[
             (wells_data['area_x'] == well_coord[0])
             & (wells_data['area_y'] == well_coord[1])][target_z_col] -
-                   min_z) // seismic_res
+                   min_z) // seismic_res).astype(int)
         well_seismic = well_seismic[well_zs]
         wells_seismic_values = np.concatenate(
             [wells_seismic_values, well_seismic])
@@ -170,12 +170,12 @@ def filter_seismic_and_get_interval(seismic_path: str,
     min_x, max_x = target_x_interval
     min_y, max_y = target_y_interval
 
-    target_z_min_seismic_idx = max((min_z - seismic_start_depth) // resolution,
-                                   0)
+    target_z_min_seismic_idx = int(max((min_z - seismic_start_depth) // resolution,
+                                   0))
     target_z_max_seismic_idx = min(
         math.ceil((max_z - seismic_start_depth) / resolution),
         seismic_z_count - 1)
-
+    
     z_filtered_seismic_data = seismic_data[
         min_x:max_x + 1, min_y:max_y + 1,
         target_z_min_seismic_idx:target_z_max_seismic_idx + 1]
