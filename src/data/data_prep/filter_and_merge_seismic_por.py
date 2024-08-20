@@ -14,7 +14,7 @@ from timeit import default_timer as timer
 def main(por_file_path: str, area_info_file_path: str, target_area: int,
          seismic_file_path: str, seismic_resolution: float,
          seismic_start_depth: float, target_seismic_file_path: str,
-         target_merge_file_path: str, dont_interpolate: bool):
+         target_merge_file_path: str, dont_interpolate: bool, by_time: bool):
 
     print(
         f"[LOG]Loading target area {target_area} info from {area_info_file_path}"
@@ -23,21 +23,25 @@ def main(por_file_path: str, area_info_file_path: str, target_area: int,
     target_area_info = areas_info[areas_info['area'] == target_area]
     print(f"[LOG]Target area info:\n{target_area_info}")
 
+    target_z_col = 'time' if by_time else 'depth'
+    print(f"[LOG]Z dimension is  {target_z_col}")
+
     print(f"[LOG]Loading wells data from {por_file_path}")
     wells_data = pd.read_csv(por_file_path)
-    wells_data.sort_values(by=['area_x', 'area_y', 'z'],
+    wells_data.sort_values(by=['area_x', 'area_y', target_z_col],
                            inplace=True,
                            ascending=True)
 
-    # These depths aren't relative to the z interval, that is, they're the true values
-    depths = wells_data['z'].unique()
-    depths = np.sort(depths)
-    print(f"Wells depths:\n{depths}")
-    print(f"Wells depths shape: {depths.shape}")
+    # These z_values aren't relative to the target_z_col interval, that is,
+    # they're the true values
+    z_values = wells_data[target_z_col].unique()
+    z_values = np.sort(z_values)
+    print(f"Wells {target_z_col}s:\n{z_values}")
+    print(f"Wells {target_z_col}s shape: {z_values.shape}")
 
-    # The wells depths are already treated so this is ok
-    min_z = depths.min()
-    max_z = depths.max()
+    # The wells z_values are already treated so this is ok
+    min_z = z_values.min()
+    max_z = z_values.max()
 
     z_interval = (min_z, max_z)
     x_interval = (target_area_info['min_x'].item(),
@@ -55,20 +59,19 @@ def main(por_file_path: str, area_info_file_path: str, target_area: int,
         seismic_file_path, seismic_start_depth, seismic_resolution, z_interval,
         x_interval, y_interval)
 
-    print(
-        f"[LOG]Filtered seismic data shape:\n{z_filtered_seismic_data.shape}")
+    print(f"[LOG]Filtered seismic data shape:\n{z_filtered_seismic_data.shape}")
 
-    seismic_depths = list(
+    seismic_z_interval = list(
         range(z_idx_interval[0] * seismic_resolution,
               z_idx_interval[1] * seismic_resolution + 1, seismic_resolution))
 
-    print(f"Seismic depths:\n{seismic_depths}")
-    print(f"Seismic depths len:\n{len(seismic_depths)}")
+    print(f"[LOG]Seismic z interval:\n{seismic_z_interval}")
+    print(f"[LOG]Seismic z interval len:\n{len(seismic_z_interval)}")
 
     if not dont_interpolate:
         print(f"[LOG]Interpolating seismic data")
         start_time = timer()
-        interp_data = interpolate_data(depths, seismic_depths,
+        interp_data = interpolate_data(z_values, seismic_z_interval,
                                        z_filtered_seismic_data)
         end_time = timer()
         # Clear memory
@@ -84,6 +87,13 @@ def main(por_file_path: str, area_info_file_path: str, target_area: int,
                                                         parents=True)
     np.save(target_seismic_file_path, interp_data)
 
+    merge_well_with_seismic(target_merge_file_path, target_z_col, wells_data,
+                            min_z, interp_data, seismic_resolution)
+
+
+def merge_well_with_seismic(target_merge_file_path: str, target_z_col: str,
+                            wells_data: pd.DataFrame, min_z: float,
+                            seismic_data: np.ndarray, seismic_res: int):
     print(f"[LOG]Merging wells data with its seismic data")
     unique_area_wells_coords = sorted(
         list(wells_data[['area_x', 'area_y']].value_counts().index))
@@ -91,27 +101,25 @@ def main(por_file_path: str, area_info_file_path: str, target_area: int,
     unique_area_wells_coords = [(int(c[0]), int(c[1]))
                                 for c in unique_area_wells_coords]
     print(f"[LOG]Unique wells coords found: {unique_area_wells_coords}")
-    wells_seismic_values = None
+    wells_seismic_values = np.empty(0)
     for well_coord in unique_area_wells_coords:
-        well_seismic = interp_data[well_coord[0], well_coord[1], :]
+        well_seismic = seismic_data[well_coord[0], well_coord[1], :]
         # On the case that we have "broken" data. That is
-        # wells porosity depths aren't perfectly contiguous
-        # We subtract min_z because the wells_data is already z filtered
-        # So we must fix the well_coord's['z'] column values
-        well_zs = wells_data[
+        # wells porosity target_z_col aren't perfectly contiguous
+        # We subtract min_z because the seismic_data is already z filtered
+        # So we must fix the well_coord's[target_z_col] column values
+        well_zs = (wells_data[
             (wells_data['area_x'] == well_coord[0])
-            & (wells_data['area_y'] == well_coord[1])]['z'] - min_z
+            & (wells_data['area_y'] == well_coord[1])][target_z_col] -
+                   min_z) // seismic_res
         well_seismic = well_seismic[well_zs]
-        if wells_seismic_values is None:
-            wells_seismic_values = well_seismic
-        else:
-            wells_seismic_values = np.concatenate(
-                [wells_seismic_values, well_seismic])
+        wells_seismic_values = np.concatenate(
+            [wells_seismic_values, well_seismic])
 
     # Clear memory
-    interp_data = None
+    seismic_data = None
     wells_data['seismic'] = wells_seismic_values
-    wells_data['area_z'] = wells_data['z'] - min_z
+    wells_data[f'area_{target_z_col}'] = wells_data[target_z_col] - min_z
 
     print(f"[LOG]Saving merged wells data at {target_merge_file_path}")
     pathlib.Path(target_merge_file_path).parent.mkdir(exist_ok=True,
@@ -122,7 +130,7 @@ def main(por_file_path: str, area_info_file_path: str, target_area: int,
 def interpolate_data(target_depths: np.ndarray, curr_depths: np.ndarray,
                      data: np.ndarray) -> np.ndarray:
     """
-    Interpolate the seismic data on the z/depth axis (third one).
+    Interpolate the seismic data on the z/depth/time axis (third one).
     target_depths: The target points at where we want to calc new values
     curr_depths: The current depths for the data z axis
     data: The data to interpolate
@@ -139,8 +147,7 @@ def interpolate_data(target_depths: np.ndarray, curr_depths: np.ndarray,
 
 def filter_seismic_and_get_interval(seismic_path: str,
                                     seismic_start_depth: float,
-                                    resolution: float,
-                                    target_z_interval: tuple,
+                                    resolution: float, target_z_interval: tuple,
                                     target_x_interval: tuple,
                                     target_y_interval: tuple) -> tuple:
     """
@@ -148,8 +155,8 @@ def filter_seismic_and_get_interval(seismic_path: str,
     
     seismic_path: The seismic data npy path
     seismic_start_depth: The starting z depth of the seismic data
-    resolution: Seismic data z axis resolution in meters
-    target_z_interval: A tuple of (min_z, max_z) indicated in meters
+    resolution: Seismic data z axis resolution in meters or time
+    target_z_interval: A tuple of (min_z, max_z)
     target_x_interval: A tuple of (min_x, max_x)
     target_y_interval: A tuple of (min_y, max_y)
 
@@ -163,8 +170,8 @@ def filter_seismic_and_get_interval(seismic_path: str,
     min_x, max_x = target_x_interval
     min_y, max_y = target_y_interval
 
-    target_z_min_seismic_idx = max(
-        int((min_z - seismic_start_depth) / resolution), 0)
+    target_z_min_seismic_idx = max((min_z - seismic_start_depth) // resolution,
+                                   0)
     target_z_max_seismic_idx = min(
         math.ceil((max_z - seismic_start_depth) / resolution),
         seismic_z_count - 1)
@@ -182,7 +189,7 @@ def config_parser() -> argparse.ArgumentParser:
         description=
         "This script interpolates the required seismic data for a given area \
         based on the area limits and the depths of the area's well's porosities \
-        measurements."                                                                                        )
+        measurements.")
 
     parser.add_argument(
         "--por_file",
@@ -210,10 +217,11 @@ def config_parser() -> argparse.ArgumentParser:
         "--seismic_resolution",
         required=True,
         type=int,
-        help="The seismic file depth resolution. Must be an integer")
+        help="The seismic file z resolution. Must be an integer")
 
     parser.add_argument("--start_seismic_depth",
-                        required=True,
+                        required=False,
+                        default=0,
                         type=float,
                         help="The seismic data starting depth.")
 
@@ -237,6 +245,13 @@ def config_parser() -> argparse.ArgumentParser:
         required=False,
         help="Flag that indicates we shouldn't interpolate the data")
 
+    parser.add_argument(
+        '--by_time',
+        action='store_true',
+        required=False,
+        help="Flag indicating the seismic file z dimension is in time and so" +
+        " we should use the time column of por_file.")
+
     return parser
 
 
@@ -245,4 +260,5 @@ if __name__ == "__main__":
 
     main(args.por_file, args.area_info_file, args.target_area,
          args.seismic_file, args.seismic_resolution, args.start_seismic_depth,
-         args.target_seismic_file, args.target_merge_file, args.no_interp)
+         args.target_seismic_file, args.target_merge_file, args.no_interp,
+         args.by_time)
