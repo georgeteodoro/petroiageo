@@ -10,8 +10,7 @@ def apply_and_save(func, save_path, *args, **kwargs):
     print(f"Calculando {func.__name__}")
     try:
         print(
-            f'Começando cálculo {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}'
-        )
+            f'Começando cálculo {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
         start = timer()
         result = func(*args, **kwargs)
         end = timer()
@@ -28,8 +27,9 @@ def apply_and_save(func, save_path, *args, **kwargs):
         print(f"Salvo em {end-start} segundos")
 
 
-def calc_curvature_features(algs, f, results_folder, seismic) -> None:
-    curvature_features = [
+def calc_curvature_features(algs: set, f: str, results_folder: pathlib.Path,
+                            seismic: np.ndarray) -> None:
+    curvature_features = {
         "dip_angle",
         "azimuth",
         "mean_curvature",
@@ -42,9 +42,11 @@ def calc_curvature_features(algs, f, results_folder, seismic) -> None:
         "dip_curvature",
         "contour_curvature",
         "curvedness",
-    ]
+    }
+
+    all = {"all"} == algs
     # So don't calc curvature_parameters if don't have to
-    if any([feature in algs for feature in curvature_features]):
+    if any([feature in algs for feature in curvature_features]) or all:
         try:
             print("Calculando dados curvatura")
             start = timer()
@@ -57,69 +59,68 @@ def calc_curvature_features(algs, f, results_folder, seismic) -> None:
             )
             print(f"Continuando para as próximas categorias de features")
         else:
-            if "dip_angle" in algs:
-                apply_and_save(
-                    dip_angle, results_folder / f"{f}_dip-angle_.npy", curvature
-                )
-            if "azimuth" in algs:
-                apply_and_save(
-                    azimuth, results_folder / f"{f}_azimuth_.npy", curvature
-                )
-            if "mean_curvature" in algs:
+            if "dip_angle" in algs or all:
+                apply_and_save(dip_angle,
+                               results_folder / f"{f}_dip-angle_.npy",
+                               curvature)
+            if "azimuth" in algs or all:
+                apply_and_save(azimuth, results_folder / f"{f}_azimuth_.npy",
+                               curvature)
+            if "mean_curvature" in algs or all:
                 apply_and_save(
                     mean_curvature,
                     results_folder / f"{f}_mean-curvature_.npy",
                     curvature,
                 )
-            if "gaussian_curvature" in algs:
+            if "gaussian_curvature" in algs or all:
                 apply_and_save(
                     gaussian_curvature,
                     results_folder / f"{f}_gaussian-curvature_.npy",
                     curvature,
                 )
-            if "max_curvature" in algs:
+            if "max_curvature" in algs or all:
                 apply_and_save(
                     max_curvature,
                     results_folder / f"{f}_max-curvature_.npy",
                     curvature,
                 )
-            if "min_curvature" in algs:
+            if "min_curvature" in algs or all:
                 apply_and_save(
                     min_curvature,
                     results_folder / f"{f}_min-curvature_.npy",
                     curvature,
                 )
-            if "most_positive_curvature" in algs:
+            if "most_positive_curvature" in algs or all:
                 apply_and_save(
                     most_positive_curvature,
                     results_folder / f"{f}_most-positive-curvature_.npy",
                     curvature,
                 )
-            if "most_negative_curvature" in algs:
+            if "most_negative_curvature" in algs or all:
                 apply_and_save(
                     most_negative_curvature,
                     results_folder / f"{f}_most-negative-curvature_.npy",
                     curvature,
                 )
-            if "shape_index" in algs:
+            if "shape_index" in algs or all:
                 apply_and_save(
                     shape_index,
                     results_folder / f"{f}_shape-index_.npy",
                     curvature,
                 )
-            if "dip_curvature" in algs:
+            if "dip_curvature" in algs or all:
                 apply_and_save(
                     dip_curvature,
                     results_folder / f"{f}_dip-curvature_.npy",
                     curvature,
                 )
-            if "contour_curvature" in algs:
+            if "contour_curvature" in algs or all:
                 apply_and_save(
                     contour_curvature,
                     results_folder / f"{f}_contur-curvature_.npy",
                     curvature,
                 )
-            if "curvedness" in algs:
+            if "curvedness" in algs or all:
                 apply_and_save(
                     curvedness,
                     results_folder / f"{f}_curvedness_.npy",
@@ -127,10 +128,13 @@ def calc_curvature_features(algs, f, results_folder, seismic) -> None:
                 )
 
 
-def calc_analitic_features(algs, f, results_folder, seismic) -> None:
+def calc_analitic_features(algs: set, f: str, results_folder: pathlib.Path,
+                           seismic: np.ndarray) -> None:
     analitic_features = ["envelope", "instFrequency"]
+
+    all = {"all"} == algs
     # So don't calc analitic cube if dont have to
-    if any([feature in algs for feature in analitic_features]):
+    if any([feature in algs for feature in analitic_features]) or all:
         try:
             print("Calculando cubo analítico")
             start = timer()
@@ -143,14 +147,14 @@ def calc_analitic_features(algs, f, results_folder, seismic) -> None:
             )
             print(f"Continuando para as próximas categorias de features")
         else:
-            if "envelope" in algs:
+            if "envelope" in algs or all:
                 apply_and_save(
                     envelopeOf,
                     results_folder / f"{f}_envelope_.npy",
                     analiticCube,
                 )
 
-            if "instFrequency" in algs:
+            if "instFrequency" in algs or all:
                 apply_and_save(
                     instantaneousFrequencyOf,
                     results_folder / f"{f}_instantaneous-frequency_.npy",
@@ -158,12 +162,13 @@ def calc_analitic_features(algs, f, results_folder, seismic) -> None:
                 )
 
 
-def calc_3d_window_features(
-    n_cpu, windows_3D, algs, f, results_folder, seismic
-):
+def calc_3d_window_features(n_cpu: int, windows_3D: list, algs: set, f: str,
+                            results_folder: pathlib.Path,
+                            seismic: np.ndarray) -> None:
+    all = {"all"} == algs
     for w in windows_3D:
         print(f"Window 3D: {w}")
-        if "marfurt" in algs:
+        if "marfurt" in algs or all:
             print("Calculating marfurt")
             apply_and_save(
                 moving_window,
@@ -173,7 +178,7 @@ def calc_3d_window_features(
                 marfurt_semblance,
                 n_cpu,
             )
-        if "gersz" in algs:
+        if "gersz" in algs or all:
             print("Calculating gersz")
             apply_and_save(
                 moving_window,
@@ -183,19 +188,16 @@ def calc_3d_window_features(
                 gersztenkorn,
                 n_cpu,
             )
-        if "gst" in algs:
-            apply_and_save(
-                gst_coherence,
-                results_folder / f"{f}_gst_{w}.npy",
-                seismic,
-                w,
-                sigma=1
-            )
-        if "sobel" in algs:
-            apply_and_save(
-                gersz_sobel, results_folder / f"{f}_sobel_{w}.npy", seismic, w
-            )
-        if "median" in algs:
+        if "gst" in algs or all:
+            apply_and_save(gst_coherence,
+                           results_folder / f"{f}_gst_{w}.npy",
+                           seismic,
+                           w,
+                           sigma=1)
+        if "sobel" in algs or all:
+            apply_and_save(gersz_sobel, results_folder / f"{f}_sobel_{w}.npy",
+                           seismic, w)
+        if "median" in algs or all:
             print("Calculating median")
             apply_and_save(
                 moving_window,
@@ -205,7 +207,7 @@ def calc_3d_window_features(
                 np.median,
                 n_cpu,
             )
-        if "mean" in algs:
+        if "mean" in algs or all:
             print("Calculating mean")
             apply_and_save(
                 moving_window,
@@ -215,7 +217,7 @@ def calc_3d_window_features(
                 np.mean,
                 n_cpu,
             )
-        if "min" in algs:
+        if "min" in algs or all:
             print("Calculating min")
             apply_and_save(
                 moving_window,
@@ -225,7 +227,7 @@ def calc_3d_window_features(
                 np.min,
                 n_cpu,
             )
-        if "max" in algs:
+        if "max" in algs or all:
             print("Calculating max")
             apply_and_save(
                 moving_window,
@@ -235,7 +237,7 @@ def calc_3d_window_features(
                 np.max,
                 n_cpu,
             )
-        if "sum" in algs:
+        if "sum" in algs or all:
             print("Calculating sum")
             apply_and_save(
                 moving_window,
@@ -247,16 +249,18 @@ def calc_3d_window_features(
             )
 
 
-def calc_1d_window_features(windows_1D, algs, f, results_folder, seismic):
+def calc_1d_window_features(windows_1D: list, algs: set, f: str,
+                            results_folder: pathlib.Path,
+                            seismic: np.ndarray) -> None:
+    all = {"all"} == algs
     for w in windows_1D:
         print(f"Window 1d: {w}")
-        if "rms" in algs:
-            apply_and_save(
-                rms, results_folder / f"{f}_rms-{str(w)}_.npy", w, seismic
-            )
+        if "rms" in algs or all:
+            apply_and_save(rms, results_folder / f"{f}_rms-{str(w)}_.npy", w,
+                           seismic)
 
 
-def load_seismic_data(current_file):
+def load_seismic_data(current_file: pathlib.Path) -> np.ndarray:
     data_file_path = current_file
     if not data_file_path.exists() or not data_file_path.is_file():
         print(f"{data_file_path} não é um caminho de arquivo sísmico aceito!")
@@ -285,7 +289,11 @@ if __name__ == "__main__":
     parser.add_argument('algorithm', nargs="+")
     parser.add_argument('-o', '--output', type=str, default=".")
     parser.add_argument('-w1', '--window1d', type=int, default=5)
-    parser.add_argument('-w3', '--window3d', type=int, default=(3,3,9), nargs="+")
+    parser.add_argument('-w3',
+                        '--window3d',
+                        type=int,
+                        default=(3, 3, 9),
+                        nargs="+")
     parser.add_argument('-n_cpu', type=int, default=1)
     args = parser.parse_args()
 
@@ -304,17 +312,12 @@ if __name__ == "__main__":
     results.mkdir(exist_ok=True)
     data_load = args.filename.split("/")[-1].split(".")[0]
 
-    calc_curvature_features(
-        algs_to_run, data_load, results, seismic_data
-    )
+    calc_curvature_features(algs_to_run, data_load, results, seismic_data)
 
-    calc_analitic_features(
-        algs_to_run, data_load, results, seismic_data
-    )
+    calc_analitic_features(algs_to_run, data_load, results, seismic_data)
 
-    calc_1d_window_features(
-        windows_1D, algs_to_run, data_load, results, seismic_data
-    )
+    calc_1d_window_features(windows_1D, algs_to_run, data_load, results,
+                            seismic_data)
 
     calc_3d_window_features(
         N_CPU,
