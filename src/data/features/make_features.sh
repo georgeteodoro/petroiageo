@@ -20,4 +20,4 @@ WINDOW_1D=9
 ALGS=all
 N_CPUS=-1
 
-make_features.py -o $OUTPUT -w1 $WINDOW_1D -n_cpu $N_CPUS $FILENAME $ALGS
+python3 make_features.py -o $OUTPUT -w1 $WINDOW_1D -n_cpu $N_CPUS $FILENAME $ALGS
