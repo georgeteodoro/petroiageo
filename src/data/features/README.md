@@ -37,6 +37,8 @@ Basicamente, `FILENAME` é o caminho para o arquivo sísmico do qual devemos com
 ### *Feature* com janela 1D
 - rms
 
+Obs: Passar a lista de algoritmos como um elemento igual a all irá computar todas as features disponíveis.
+
 ## Passo 2 - Atualizar o formato do arquivo
 Os arquivos de *features* gerados no passo anterior estão no formato `.npy`. Devemos alterar esse formato para `.h5`. Para isso, execute seguinte comando: `seismic_data3_hdf5.py -f FEATURE_DIR -o OUTPUT_DIR --large MULT_FACTOR -config CONFIG_FILE_PATH`. Mais informações sobre cada parâmetro podem ser vistas com o comando `python3 make_features.py -h`.
 
