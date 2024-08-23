@@ -27,8 +27,7 @@ from alg.common import FEAT_DSET_NAME
 from alg import config_parser
 
 
-def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path,
-                                   disp_window:int,
+def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path, disp_window: int,
                                    output_dir: pathlib.Path, mult_factor):
     feature_name = feature_path.stem
 
@@ -49,8 +48,7 @@ def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path,
     large_data_shape = [
         mult_factor[i] * data_shape[i] for i in range(len(data_shape))
     ]
-    large_data_shape = (np.array(large_data_shape) +
-                        (2 * disp_window)).tolist()
+    large_data_shape = (np.array(large_data_shape) + (2 * disp_window)).tolist()
 
     print(f"[seismic_feature_np2hdf5_planar] new shape: {large_data_shape} "
           f"with length {prod(large_data_shape)}")
@@ -400,7 +398,9 @@ if __name__ == '__main__':
 
     complete_files_path = list(base_features_dir.glob("*.npy"))
 
-    print(f"[LOG] Feature files found: {complete_files_path}")
+    print(
+        f"[LOG] Feature files found: {[file.stem for file in complete_files_path]}"
+    )
 
     disp_window = config_parser.YAMLConfig(
         args.config_file_path).wells['window']
