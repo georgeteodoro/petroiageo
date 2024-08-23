@@ -40,7 +40,7 @@ Basicamente, `FILENAME` é o caminho para o arquivo sísmico do qual devemos com
 Obs: Passar a lista de algoritmos como um elemento igual a all irá computar todas as features disponíveis.
 
 ## Passo 2 - Atualizar o formato do arquivo
-Os arquivos de *features* gerados no passo anterior estão no formato `.npy`. Devemos alterar esse formato para `.h5`. Para isso, execute seguinte comando: `seismic_data3_hdf5.py -f FEATURE_DIR -o OUTPUT_DIR --large MULT_FACTOR -config CONFIG_FILE_PATH`. Mais informações sobre cada parâmetro podem ser vistas com o comando `python3 make_features.py -h`.
+Os arquivos de *features* gerados no passo anterior estão no formato `.npy`. Devemos alterar esse formato para `.h5`. Para isso, execute seguinte comando: `seismic_data3_hdf5.py -f FEATURE_DIR -o OUTPUT_DIR --large MULT_FACTOR --config CONFIG_FILE_PATH`. Mais informações sobre cada parâmetro podem ser vistas com o comando `python3 make_features.py -h`.
 
 Basicamente, `FEATURE_DIR` é o caminho da pasta que recebeu os arquivos de *features* gerados no passo anterior; `OUTPUT_DIR` é o caminho da pasta que deverá receber os novos arquivos de *features*; o parâmetro `large MULT_FACTOR` é opcional; `CONFIG_FILE_PATH` é o caminho para o arquivo de configuração `YAML` do algoritmo. Nesse ponto do *pipeline*, só precisamos das seção `wells` desse arquivo de configuração que indica as coordenadas dos poços na área alvo e o `window`.
 

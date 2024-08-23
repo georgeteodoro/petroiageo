@@ -389,13 +389,12 @@ if __name__ == '__main__':
     if args.output_dir is None:
         args.output_dir = args.feature_dir
 
+    print(f"[LOG] Output dir: {args.output_dir}")
     # Base mult_factor is 1, thus returning the original data
     # without enlarging it
     mult_factor = (1, 1, 1)
     if args.mult_factor:
         mult_factor = eval(args.mult_factor)
-
-    print(args.output_dir, type(args.output_dir))
 
     base_features_dir = pathlib.Path(args.feature_dir)
 
