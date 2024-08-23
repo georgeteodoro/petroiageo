@@ -113,10 +113,10 @@ def merge_well_with_seismic(target_merge_file_path: str, target_z_col: str,
         # wells porosity target_z_col aren't perfectly contiguous
         # We subtract min_z because the seismic_data is already z filtered
         # So we must fix the well_coord's[target_z_col] column values
-        well_zs = ((wells_data[
-            (wells_data['area_x'] == well_coord[0])
-            & (wells_data['area_y'] == well_coord[1])][target_z_col] - min_z) //
-                   seismic_res).astype(int)
+        target_well_data = wells_data[(wells_data['area_x'] == well_coord[0])
+                                      & (wells_data['area_y'] == well_coord[1])]
+        well_zs = ((target_well_data[target_z_col] // seismic_res) -
+                   (min_z // seismic_res)).astype(int)
         well_seismic = well_seismic[well_zs]
         wells_seismic_values = np.concatenate(
             [wells_seismic_values, well_seismic])
@@ -124,8 +124,8 @@ def merge_well_with_seismic(target_merge_file_path: str, target_z_col: str,
     # Clear memory
     seismic_data = None
     wells_data['seismic'] = wells_seismic_values
-    wells_data[f'area_z'] = ((wells_data[target_z_col] - min_z) //
-                             seismic_res).astype(int)
+    wells_data[f'area_z'] = ((wells_data[target_z_col] // seismic_res) -
+                             (min_z // seismic_res)).astype(int)
 
     print(f"[LOG]Saving merged wells data at {target_merge_file_path}")
     pathlib.Path(target_merge_file_path).parent.mkdir(exist_ok=True,
