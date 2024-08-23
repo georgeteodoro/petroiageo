@@ -1,15 +1,12 @@
 wells: # This is wells related stuff
   coords: # These are the original (pre-padding) coords (x, y)
-    - [134, 227]
-    - [146, 500]
-    - [167, 186]
-    - [174, 365]
-    - [200, 102]
-    - [236, 113]
-    - [250, 315]
-    - [287, 242]
-    - [230, 194]
-    - [344, 276]
+    - [15,192] #7-BUZ-10-RJS
+    - [25,172] #7-BUZ-29D-RJS
+    - [52,60] #8-BUZ-26-RJS
+    - [81,272] #7-BUZ-23-RJS
+    - [116,202] #3-BRSA-1053-RJS
+    - [118,225] #8-BUZ-20-RJS
+
   window: 3 # window size for which the hypercube is/was padded
 
 # Directory where every file will be treated as a feature
