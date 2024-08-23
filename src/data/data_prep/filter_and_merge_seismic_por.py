@@ -124,7 +124,8 @@ def merge_well_with_seismic(target_merge_file_path: str, target_z_col: str,
     # Clear memory
     seismic_data = None
     wells_data['seismic'] = wells_seismic_values
-    wells_data[f'area_{target_z_col}'] = wells_data[target_z_col] - min_z
+    wells_data[f'area_z'] = ((wells_data[target_z_col] - min_z) //
+                             seismic_res).astype(int)
 
     print(f"[LOG]Saving merged wells data at {target_merge_file_path}")
     pathlib.Path(target_merge_file_path).parent.mkdir(exist_ok=True,
