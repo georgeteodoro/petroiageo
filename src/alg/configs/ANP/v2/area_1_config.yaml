@@ -4,7 +4,7 @@ wells: # This is wells related stuff
     - [25,172] #7-BUZ-29D-RJS
     - [52,60] #8-BUZ-26-RJS
     - [81,272] #7-BUZ-23-RJS
-    - [116,202] #3-BRSA-1053-RJS
+    - [64,200] #3-BRSA-1053-RJS
     - [118,225] #8-BUZ-20-RJS
 
   window: 3 # window size for which the hypercube is/was padded
