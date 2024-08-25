@@ -362,11 +362,13 @@ if __name__ == '__main__':
     if args.mult_factor:
         mult_factor = eval(args.mult_factor)
 
-    print(args.output_dir, type(args.output_dir))
-
     base_features_dir = pathlib.Path(args.feature_dir)
 
     complete_files_path = list(base_features_dir.glob("*.npy"))
+
+    print(
+        f"[LOG] Feature files found: {[file.stem for file in complete_files_path]}"
+    )
 
     print(f"[LOG] Feature files found: {complete_files_path}")
 
