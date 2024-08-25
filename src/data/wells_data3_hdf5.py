@@ -4,7 +4,6 @@ algorithm. It requires the wells coordinates information along with the
 wells porosity file.
 """
 import argparse
-import h5py
 from math import prod
 import numpy as np
 import pandas as pd
