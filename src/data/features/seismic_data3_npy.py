@@ -329,7 +329,7 @@ def config_arg_parser() -> argparse.ArgumentParser:
         '--large',
         dest='mult_factor',
         action='store',
-        required=True,
+        required=False,
         help="Return a larger dataset for testing. the 'mult_factor' "
         "represents how much larger the original hypercube should be."
         "It should be a tuple of 3 values, each multiplying one of the"
