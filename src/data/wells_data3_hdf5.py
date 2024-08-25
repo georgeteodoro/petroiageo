@@ -45,7 +45,16 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
 
     # Hypercube shape from feature file contains the padding for the
     # displacement. This is unnecessary here
-    hypercube_shape = h5py.File(pathlib.Path(feat_file_path), 'r')['f'].shape
+    feat_file_path = pathlib.Path(feat_file_path)
+    if feat_file_path.suffix == ".h5":
+        hypercube_shape = h5py.File(pathlib.Path(feat_file_path),
+                                    'r')['f'].shape
+    elif feat_file_path.suffix == ".npy":
+        hypercube_shape = np.load(feat_file_path).shape
+    else:
+        raise ValueError("Feature file extension must be .h5 or .npy " +
+                         f"but got {feat_file_path.suffix} instead!")
+
     hypercube_shape = (hypercube_shape[0] - 2 * disp_window,
                        hypercube_shape[1] - 2 * disp_window,
                        hypercube_shape[2] - 2 * disp_window)
@@ -183,7 +192,8 @@ def config_arg_parser() -> argparse.ArgumentParser:
         dest='feat_file_path',
         action='store',
         required=True,
-        help="A base h5 feat file path to get the hypercube shape from",
+        help="A base feat file path to get the hypercube shape from. " +
+        "Can be a hdf5 or npy file",
     )
     parser.add_argument(
         '-p',
