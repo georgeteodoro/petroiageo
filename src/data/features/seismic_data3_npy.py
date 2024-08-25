@@ -24,8 +24,7 @@ sys.path.insert(0, "../..")
 from alg import config_parser
 
 
-def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path,
-                                   disp_window:int,
+def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path, disp_window: int,
                                    output_dir: pathlib.Path, mult_factor):
     feature_name = feature_path.stem
 
@@ -41,8 +40,7 @@ def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path,
     large_data_shape = [
         mult_factor[i] * data_shape[i] for i in range(len(data_shape))
     ]
-    large_data_shape = (np.array(large_data_shape) +
-                        (2 * disp_window)).tolist()
+    large_data_shape = (np.array(large_data_shape) + (2 * disp_window)).tolist()
 
     print(f"[seismic_feature_np2hdf5_planar] new shape: {large_data_shape} "
           f"with length {prod(large_data_shape)}")
@@ -67,11 +65,13 @@ def seismic_feature_np2hdf5_planar(feature_path: pathlib.Path,
           f"assigning rods of {feature_name}")
     _fill_rods(feature_full_np, large_data_shape, disp_window)
 
-    np.save(output_dir / f'{feature_name}.npy', feature_full_np, allow_pickle=False)
+    np.save(output_dir / f'{feature_name}.npy',
+            feature_full_np,
+            allow_pickle=False)
 
-    
 
 ###############################################################################
+
 
 def _fill_center(feature_full_np, feature_np, data_shape, mult_factor,
                  displacement_window):
@@ -313,7 +313,7 @@ def config_arg_parser() -> argparse.ArgumentParser:
         dest='feature_dir',
         type=pathlib.Path,
         required=True,
-        help="The base features directory to read files from.",
+        help="The base features directory to read .npy files from.",
     )
 
     parser.add_argument(
@@ -366,41 +366,9 @@ if __name__ == '__main__':
 
     base_features_dir = pathlib.Path(args.feature_dir)
 
-    target_features_files_names_with_extension = [
-        # 'NEAR.npy', 'NEAR_envelope_.npy', 'NEAR_gersztenkorn_5-5-9.npy',
-        # 'NEAR_instantaneous-frequency_.npy', 'NEAR_rms-5_.npy', 'MID.npy',
-        # 'NEAR_gaussian-curvature_.npy', 'NEAR_gst_3-3-11.npy',
-        # 'NEAR_max-curvature_.npy', 'NEAR_shape-index_.npy',
-        # 'NEAR_azimuth_.npy', 'NEAR_gersztenkorn_3-3-11.npy',
-        # 'NEAR_gst_3-3-7.npy', 'NEAR_mean-curvature_.npy',
-        # 'NEAR_sobel_5-5-11.npy', 'NEAR_contour-curvature_.npy',
-        # 'NEAR_gersztenkorn_3-3-7.npy', 'NEAR_gst_3-3-9.npy',
-        # 'NEAR_min-curvature_.npy', 'UFAR.npy', 'NEAR_curvedness_.npy',
-        # 'NEAR_gersztenkorn_3-3-9.npy', 'NEAR_gst_5-5-11.npy',
-        # 'NEAR_most-negative-curvature_.npy', 'NEAR_dip-angle_.npy',
-        # 'NEAR_gersztenkorn_5-5-11.npy', 'NEAR_gst_5-5-7.npy',
-        # 'NEAR_most-positive-curvature_.npy', 'NEAR_dip-curvature_.npy',
-        # 'NEAR_gersztenkorn_5-5-7.npy', 'NEAR_gst_5-5-9.npy',
-        # 'FAR.npy',
-        'all'
-    ]
-    if target_features_files_names_with_extension[0] == "all":
-        complete_files_path = list(base_features_dir.glob("*.npy"))
-    else:
-        complete_files_path = [
-            base_features_dir / file
-            for file in target_features_files_names_with_extension
-        ]
+    complete_files_path = list(base_features_dir.glob("*.npy"))
 
-    for file in complete_files_path:
-        if not file.exists():
-            raise FileExistsError(f"File {file} doesn't exists!")
-
-        if not file.is_file():
-            raise ValueError(f"{file} is not a file!")
-
-        if not file.suffix == '.npy':
-            raise ValueError(f"{file} is not a .npy file!")
+    print(f"[LOG] Feature files found: {complete_files_path}")
 
     disp_window = config_parser.YAMLConfig(
         args.config_file_path).wells['window']
