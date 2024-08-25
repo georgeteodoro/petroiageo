@@ -12,6 +12,8 @@ import worker
 # Used only for retrieving the shape of a feature
 from feature_data.backends.FeatureDataBase import FeatureDataBase
 
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
 
 def config_arg_parser():
     parser = argparse.ArgumentParser(description="Modelagem de "
@@ -305,19 +307,25 @@ def main(args_str=None):
     # should have the same shape. This is kind of hacky. Maybe improve this in
     # the future.
     f_paths = [str(p) for p in config.features_files_paths if '.h5' in str(p)]
-    f_paths += [
-        str(p) for p in config.features_files_paths if '.npy' in str(p)
-    ]
+    f_paths += [str(p) for p in config.features_files_paths if '.npy' in str(p)]
     first_feature_path = str(f_paths[0])
     feature_shape = FeatureDataBase.get_shape(
         first_feature_path, config.get_param('mpi_local_comm'))
     config.add_param('feature_shape', feature_shape)
 
     if rank == manager_rank:
-        manager.run(config)
-        # print(f"[manager][configs]{config}")
+        try:
+            manager.run(config)
+        except Exception as e:
+            print(f"[manager][main] Exception detected on main:\n{e}")
+            raise e
+            # print(f"[manager][configs]{config}")
     else:
-        worker.run(config)
+        try:
+            worker.run(config)
+        except Exception as e:
+            print(f"[worker-{rank}][main] Exception detected on main:\n{e}")
+            raise e
 
 
 if __name__ == "__main__":
