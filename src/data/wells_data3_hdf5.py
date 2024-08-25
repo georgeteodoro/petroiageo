@@ -47,8 +47,10 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
     # displacement. This is unnecessary here
     feat_file_path = pathlib.Path(feat_file_path)
     if feat_file_path.suffix == ".h5":
-        hypercube_shape = h5py.File(pathlib.Path(feat_file_path),
-                                    'r')['f'].shape
+        # hypercube_shape = h5py.File(pathlib.Path(feat_file_path),
+                                    # 'r')['f'].shape
+        raise ValueError("A feature of extension .h5 is no longer supported!"+
+                         " In this version, it must be a npy file!")
     elif feat_file_path.suffix == ".npy":
         hypercube_shape = np.load(feat_file_path).shape
     else:
@@ -193,7 +195,7 @@ def config_arg_parser() -> argparse.ArgumentParser:
         action='store',
         required=True,
         help="A base feat file path to get the hypercube shape from. " +
-        "Can be a hdf5 or npy file",
+        "Must be a npy file",
     )
     parser.add_argument(
         '-p',
