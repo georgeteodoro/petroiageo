@@ -2,14 +2,12 @@ from dataclasses import dataclass
 from h5py import Dataset
 import lightgbm as lgb
 import numpy as np
-import os
 from sklearn.metrics import mean_absolute_error
 
 import common
 from config_parser import Config
 from TrialDataBase import TrialDataBase
 from TrialDataNumpy import TrialDataNumpy
-from data_filter import WellsDataFilter
 
 
 @dataclass
