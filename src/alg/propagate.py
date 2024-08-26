@@ -1,14 +1,23 @@
+from dataclasses import dataclass
 from h5py import Dataset
-import numpy as np
 import lightgbm as lgb
-from sklearn.metrics import mean_absolute_error
+import numpy as np
 import os
+from sklearn.metrics import mean_absolute_error
 
 import common
 from config_parser import Config
 from TrialDataBase import TrialDataBase
 from TrialDataNumpy import TrialDataNumpy
 from data_filter import WellsDataFilter
+
+
+@dataclass
+class ModelEval:
+    full_rmse: float
+    full_mae: float
+    wells_rmse: dict
+    wells_mae: dict
 
 
 def _train_model(trial_data: TrialDataBase):
@@ -35,14 +44,17 @@ def _train_model(trial_data: TrialDataBase):
     return model
 
 
-def _eval_model(model, test_data: TrialDataBase, test_wells_ids: list):
+def _eval_model(model, test_data: TrialDataBase,
+                test_wells_ids: list) -> ModelEval:
     """
     Evaluate the model on the test_data based on the test_wells_ids.
     The model must have a predict(X_test) method.
-    Return the rmse and mae.
+    Return the an instance of ModelEval
     """
-    mse = None
+    mse = list()
     mae = list()
+    rmse_per_well = dict()
+    mae_per_well = dict()
     for well_id in test_wells_ids:
         X_test, Y_test = test_data.get_val_values(well_id)
 
@@ -52,15 +64,20 @@ def _eval_model(model, test_data: TrialDataBase, test_wells_ids: list):
         assert len(X_test) > 0, msg
 
         pred = model.predict(X_test)
-        if mse is None:
-            mse = [np.mean((pred - Y_test)**2)]
-        else:
-            mse.append(np.mean((pred - Y_test)**2))
-        mae.append(mean_absolute_error(Y_test, pred))
+
+        well_mse = np.mean((pred - Y_test)**2)
+        rmse_per_well[well_id] = np.sqrt(well_mse)
+        mse.append(well_mse)
+
+        well_mae = mean_absolute_error(Y_test, pred)
+        mae_per_well[well_id] = well_mae
+        mae.append(well_mae)
 
     # Sqrt of means is different from mean of sqrts. The former is correct
     rmse = np.sqrt(np.mean(mse))
-    return rmse, np.mean(mae)
+
+    model_eval = ModelEval(rmse, np.mean(mae), rmse_per_well, mae_per_well)
+    return model_eval
 
 
 def _predict_data(model, all_features, best_features, coords_to_update):
@@ -83,8 +100,7 @@ def _predict_data(model, all_features, best_features, coords_to_update):
 
         # Zip the coords, from a tuple of 3 arrays, one for each coord,
         # to an array of (x,y,z) tuples.
-        feature_coords_np = np.array(list(zip(*feature_coords)),
-                                     dtype=np.int64)
+        feature_coords_np = np.array(list(zip(*feature_coords)), dtype=np.int64)
 
         # Filter features values for current chunk coords
         to_predict_np[:, f_id] = all_features.get_feature(
@@ -135,8 +151,12 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
     for (feature, disp) in best_features:
         test_data.commit_feature(all_features.get_feature(feature), disp)
 
-    rmse, mae = _eval_model(model, test_data, config.test_wells_ids)
-    print(f"[propagation][it{it}] Test errors: RMSE: {rmse} MAE: {mae}")
+    model_eval = _eval_model(model, test_data, config.test_wells_ids)
+    print(f"[propagation][it{it}] Test errors: RMSE: {model_eval.full_rmse} " +
+          f"MAE: {model_eval.full_mae}")
+    print(
+        f"[propagation][it{it}] Test wells performance: RMSE: {model_eval.wells_rmse} "
+        + f" MAE: {model_eval.wells_mae}")
 
     # Count of propagated points for checking if it was correct
     n_propagated_points = 0
