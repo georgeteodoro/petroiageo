@@ -19,98 +19,6 @@ class ModelEval:
     wells_mae: dict
 
 
-def _train_model(trial_data: TrialDataBase):
-    '''
-    Generate a LightGBM model for estimating porosity.
-    '''
-    model = None
-    chunk_id = 0  # No incremental learning yet, so just return the first chunk
-
-    # Generate a training dataset for all data
-    X_train_np, y_train_np = trial_data.get_train_values(well_id=-1,
-                                                         chunk_id=chunk_id)
-    lgb_train_dataset = lgb.Dataset(X_train_np, y_train_np)
-
-    # Perform training
-    model = lgb.train(
-        common.training_params,
-        lgb_train_dataset,
-        init_model=model,
-        num_boost_round=100,
-        keep_training_booster=True,
-    )
-
-    return model
-
-
-def _eval_model(model, test_data: TrialDataBase,
-                test_wells_ids: list) -> ModelEval:
-    """
-    Evaluate the model on the test_data based on the test_wells_ids.
-    The model must have a predict(X_test) method.
-    Return the an instance of ModelEval
-    """
-    mse = list()
-    mae = list()
-    rmse_per_well = dict()
-    mae_per_well = dict()
-    for well_id in test_wells_ids:
-        X_test, Y_test = test_data.get_val_values(well_id)
-
-        # There are no data from this well on test data for some reason
-        msg = "[propagate][_eval_model] There are no test data"
-        msg += f" for well id {well_id}"
-        assert len(X_test) > 0, msg
-
-        pred = model.predict(X_test)
-
-        well_mse = np.mean((pred - Y_test)**2)
-        rmse_per_well[well_id] = np.sqrt(well_mse)
-        mse.append(well_mse)
-
-        well_mae = mean_absolute_error(Y_test, pred)
-        mae_per_well[well_id] = well_mae
-        mae.append(well_mae)
-
-    # Sqrt of means is different from mean of sqrts. The former is correct
-    rmse = np.sqrt(np.mean(mse))
-
-    model_eval = ModelEval(rmse, np.mean(mae), rmse_per_well, mae_per_well)
-    return model_eval
-
-
-def _predict_data(model, all_features, best_features, coords_to_update):
-    '''
-    Generate the porosity values of 'coords_to_update'.
-    '''
-
-    # Create an ndarray for keeping all features
-    n_points_to_propagate = len(coords_to_update[0])
-    to_predict_np = np.empty((n_points_to_propagate, len(best_features)),
-                             dtype=np.float64)
-
-    # Fill the values of each feature
-    for f_id, (feature, disp) in enumerate(best_features):
-        # Apply the displacement one coord at a time
-        # feature_coords = coords_to_update.copy()
-        feature_coords = []
-        for d_id, coords in enumerate(coords_to_update):
-            feature_coords.append(coords + disp[d_id])
-
-        # Zip the coords, from a tuple of 3 arrays, one for each coord,
-        # to an array of (x,y,z) tuples.
-        feature_coords_np = np.array(list(zip(*feature_coords)), dtype=np.int64)
-
-        # Filter features values for current chunk coords
-        to_predict_np[:, f_id] = all_features.get_feature(
-            feature).filter_coords(feature_coords_np)
-
-    # Perform porosity estimation
-    estimated_phi = model.predict(to_predict_np)
-
-    return estimated_phi
-
-
 def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
               all_features: FeatureDatasetBase, best_features: list, it: int,
               config: Config) -> int:
@@ -253,6 +161,62 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
     return n_propagated_points
 
 
+def _train_model(trial_data: TrialDataBase):
+    '''
+    Generate a LightGBM model for estimating porosity.
+    '''
+    model = None
+    chunk_id = 0  # No incremental learning yet, so just return the first chunk
+
+    # Generate a training dataset for all data
+    X_train_np, y_train_np = trial_data.get_train_values(well_id=-1,
+                                                         chunk_id=chunk_id)
+    lgb_train_dataset = lgb.Dataset(X_train_np, y_train_np)
+
+    # Perform training
+    model = lgb.train(
+        common.training_params,
+        lgb_train_dataset,
+        init_model=model,
+        num_boost_round=100,
+        keep_training_booster=True,
+    )
+
+    return model
+
+
+def _predict_data(model, all_features, best_features, coords_to_update):
+    '''
+    Generate the porosity values of 'coords_to_update'.
+    '''
+
+    # Create an ndarray for keeping all features
+    n_points_to_propagate = len(coords_to_update[0])
+    to_predict_np = np.empty((n_points_to_propagate, len(best_features)),
+                             dtype=np.float64)
+
+    # Fill the values of each feature
+    for f_id, (feature, disp) in enumerate(best_features):
+        # Apply the displacement one coord at a time
+        # feature_coords = coords_to_update.copy()
+        feature_coords = []
+        for d_id, coords in enumerate(coords_to_update):
+            feature_coords.append(coords + disp[d_id])
+
+        # Zip the coords, from a tuple of 3 arrays, one for each coord,
+        # to an array of (x,y,z) tuples.
+        feature_coords_np = np.array(list(zip(*feature_coords)), dtype=np.int64)
+
+        # Filter features values for current chunk coords
+        to_predict_np[:, f_id] = all_features.get_feature(
+            feature).filter_coords(feature_coords_np)
+
+    # Perform porosity estimation
+    estimated_phi = model.predict(to_predict_np)
+
+    return estimated_phi
+
+
 def _test_model(data: Dataset, all_features: FeatureDatasetBase,
                 best_features: list, config: Config, model) -> ModelEval:
     """
@@ -270,3 +234,39 @@ def _test_model(data: Dataset, all_features: FeatureDatasetBase,
         test_data.commit_feature(all_features.get_feature(feature), disp)
 
     return _eval_model(model, test_data, config.test_wells_ids)
+
+
+def _eval_model(model, test_data: TrialDataBase,
+                test_wells_ids: list) -> ModelEval:
+    """
+    Evaluate the model on the test_data based on the test_wells_ids.
+    The model must have a predict(X_test) method.
+    Return the an instance of ModelEval
+    """
+    mse = list()
+    mae = list()
+    rmse_per_well = dict()
+    mae_per_well = dict()
+    for well_id in test_wells_ids:
+        X_test, Y_test = test_data.get_val_values(well_id)
+
+        # There are no data from this well on test data for some reason
+        msg = "[propagate][_eval_model] There are no test data"
+        msg += f" for well id {well_id}"
+        assert len(X_test) > 0, msg
+
+        pred = model.predict(X_test)
+
+        well_mse = np.mean((pred - Y_test)**2)
+        rmse_per_well[well_id] = np.sqrt(well_mse)
+        mse.append(well_mse)
+
+        well_mae = mean_absolute_error(Y_test, pred)
+        mae_per_well[well_id] = well_mae
+        mae.append(well_mae)
+
+    # Sqrt of means is different from mean of sqrts. The former is correct
+    rmse = np.sqrt(np.mean(mse))
+
+    model_eval = ModelEval(rmse, np.mean(mae), rmse_per_well, mae_per_well)
+    return model_eval
