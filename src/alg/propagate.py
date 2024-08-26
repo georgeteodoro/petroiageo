@@ -113,7 +113,8 @@ def _predict_data(model, all_features, best_features, coords_to_update):
 
 
 def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
-              all_features, best_features: list, it: int, config: Config):
+              all_features, best_features: list, it: int,
+              config: Config) -> int:
     '''
     Propagates the wavefront a single ring. Initial data have no 
     'expanded' data.
