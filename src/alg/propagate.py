@@ -6,6 +6,7 @@ from sklearn.metrics import mean_absolute_error
 
 import common
 from config_parser import Config
+from feature_data.FeatureDatasetBase import FeatureDatasetBase
 from TrialDataBase import TrialDataBase
 from TrialDataNumpy import TrialDataNumpy
 
@@ -111,7 +112,7 @@ def _predict_data(model, all_features, best_features, coords_to_update):
 
 
 def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
-              all_features, best_features: list, it: int,
+              all_features: FeatureDatasetBase, best_features: list, it: int,
               config: Config) -> int:
     '''
     Propagates the wavefront a single ring. Initial data have no 
@@ -140,17 +141,8 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
     # Prepare the model and evaluate its performance metrics
     model = _train_model(trial_data)
 
-    #Create and prepare the test data
-    test_data = TrialDataNumpy(config.test_wells_ids,
-                               porosity_data_h5,
-                               config,
-                               should_consider_sampling=False)
-    # As test data dont propagate, the test data is always at the prep_it=1
-    test_data.prepare_porosity(1)
-    for (feature, disp) in best_features:
-        test_data.commit_feature(all_features.get_feature(feature), disp)
-
-    model_eval = _eval_model(model, test_data, config.test_wells_ids)
+    model_eval = _test_model(porosity_data_h5, all_features, best_features,
+                             config, model)
     print(f"[propagation][it{it}] Test errors: RMSE: {model_eval.full_rmse} " +
           f"MAE: {model_eval.full_mae}")
     print(
@@ -259,3 +251,22 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
                              cur_slice[2]] = cur_chunk_np["phi"]
 
     return n_propagated_points
+
+
+def _test_model(data: Dataset, all_features: FeatureDatasetBase,
+                best_features: list, config: Config, model) -> ModelEval:
+    """
+    Apply the model on the test data inside data.
+    Return a ModelEval instance
+    """
+    #Create and prepare the test data
+    test_data = TrialDataNumpy(config.test_wells_ids,
+                               data,
+                               config,
+                               should_consider_sampling=False)
+    # As test data dont propagate, the test data is always at the prep_it=1
+    test_data.prepare_porosity(1)
+    for (feature, disp) in best_features:
+        test_data.commit_feature(all_features.get_feature(feature), disp)
+
+    return _eval_model(model, test_data, config.test_wells_ids)
