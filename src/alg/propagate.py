@@ -258,11 +258,11 @@ def _eval_model(model, test_data: TrialDataBase,
         pred = model.predict(X_test)
 
         well_mse = np.mean((pred - Y_test)**2)
-        rmse_per_well[well_id] = np.sqrt(well_mse)
+        rmse_per_well[well_id] = float(np.sqrt(well_mse))
         mse.append(well_mse)
 
         well_mae = mean_absolute_error(Y_test, pred)
-        mae_per_well[well_id] = well_mae
+        mae_per_well[well_id] = float(well_mae)
         mae.append(well_mae)
 
     # Sqrt of means is different from mean of sqrts. The former is correct
