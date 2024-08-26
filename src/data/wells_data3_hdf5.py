@@ -48,8 +48,8 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
     feat_file_path = pathlib.Path(feat_file_path)
     if feat_file_path.suffix == ".h5":
         # hypercube_shape = h5py.File(pathlib.Path(feat_file_path),
-                                    # 'r')['f'].shape
-        raise ValueError("A feature of extension .h5 is no longer supported!"+
+        # 'r')['f'].shape
+        raise ValueError("A feature of extension .h5 is no longer supported!" +
                          " In this version, it must be a npy file!")
     elif feat_file_path.suffix == ".npy":
         hypercube_shape = np.load(feat_file_path).shape
@@ -105,6 +105,11 @@ def porosity_points_py2hdf5(porosity_file: str, por_col: str,
     print(f"[porosity_points_py2hdf5] Loading porosity file")
     porosity_file_path = pathlib.Path(porosity_file)
     porosity_np = pd.read_csv(porosity_file_path)
+
+    # Dont consider rows with NaN values on por_col
+    porosity_np.dropna(subset=[por_col], axis='rows', inplace=True)
+    assert len(
+        porosity_np) > 0, 'ERRO! porosity_np ficou vazio após retirar os NaNs!'
 
     try:
         # Define the well id for every point
