@@ -55,7 +55,7 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
           f"MAE: {model_eval.full_mae}")
     print(
         f"[propagation][it{it}] Test wells performance: RMSE: {model_eval.wells_rmse} "
-        + f" MAE: {model_eval.wells_mae}")
+        + f"MAE: {model_eval.wells_mae}")
 
     # Count of propagated points for checking if it was correct
     n_propagated_points = 0

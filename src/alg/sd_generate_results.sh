@@ -6,7 +6,8 @@
 # 1: SD log file path
 # 2: The target expected error file
 # 3: The target test error file
-# 4: The target time file
+# 4: The target wells performance error file
+# 5: The target time file
 
 # Create a temp file for the next 3 scripts
 TMP_FILE=filtered_log.log
@@ -25,12 +26,18 @@ awk -v OFS=$FIELD_SEP -v FS=$FIELD_SEP 'BEGIN{print "iteration", "RMSE", "MAE", 
 grep 'Test errors:' $TMP_FILE | tr -d "[]" |
 sed -e 's/propagationit//' -e "s/ Test errors: RMSE: /$FIELD_SEP/" \
 -e "s/ MAE: /$FIELD_SEP/" |
-awk -v FS=$FIELD_SEP -v OFS=$FIELD_SEP 'BEGIN{print "iteration", "RMSE", "MAE"} {print $0}' | uniq >  $3  
+awk -v FS=$FIELD_SEP -v OFS=$FIELD_SEP 'BEGIN{print "iteration", "RMSE", "MAE"} {print $0}' | uniq >  $3
+
+# Get the test performances per well
+grep 'Test errors:' $TMP_FILE | tr -d "[]" |
+sed -e 's/propagationit//' -e "s/ Test wells performance: RMSE: /$FIELD_SEP/" \
+-e "s/ MAE: /$FIELD_SEP/" |
+awk -v FS=$FIELD_SEP -v OFS=$FIELD_SEP 'BEGIN{print "iteration", "RMSE", "MAE"} {print $0}' | uniq >  $4
 
 # Get the total time per it
 grep '\[1,0\]' $1 | cut --d ":" -f 1 --complement | grep 'Iteration total time(s)' | tr -d "[]" |
 sed -e 's/worker[[:digit:]]*it//' -e "s/ Iteration total time(s): /$FIELD_SEP/" |
-awk -v FS=$FIELD_SEP -v OFS=$FIELD_SEP 'BEGIN{print "iteration", "seconds"} {print $0}' > $4
+awk -v FS=$FIELD_SEP -v OFS=$FIELD_SEP 'BEGIN{print "iteration", "seconds"} {print $0}' > $5
 
 # Dont need it anymore
 rm $TMP_FILE
