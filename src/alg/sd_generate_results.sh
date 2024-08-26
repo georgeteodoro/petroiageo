@@ -29,7 +29,7 @@ sed -e 's/propagationit//' -e "s/ Test errors: RMSE: /$FIELD_SEP/" \
 awk -v FS=$FIELD_SEP -v OFS=$FIELD_SEP 'BEGIN{print "iteration", "RMSE", "MAE"} {print $0}' | uniq >  $3
 
 # Get the test performances per well
-grep 'Test errors:' $TMP_FILE | tr -d "[]" |
+grep 'Test wells performance:' $TMP_FILE | tr -d "[]" |
 sed -e 's/propagationit//' -e "s/ Test wells performance: RMSE: /$FIELD_SEP/" \
 -e "s/ MAE: /$FIELD_SEP/" |
 awk -v FS=$FIELD_SEP -v OFS=$FIELD_SEP 'BEGIN{print "iteration", "RMSE", "MAE"} {print $0}' | uniq >  $4
