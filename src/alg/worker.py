@@ -2,9 +2,8 @@ from datetime import datetime
 import h5py
 from mpi4py import MPI
 from timeit import default_timer as timer
-from time import time, sleep
+from time import time
 import gc
-import psutil
 
 from mpi_module import MPI_TAGS
 from feature_sel import test_new_feature
@@ -15,7 +14,6 @@ from TrialDataNumpy import TrialDataNumpy
 from TrialDataSharedNumpy import TrialDataSharedNumpy
 from TrialDataH5 import TrialDataH5
 from TrialDataSharedH5 import TrialDataSharedH5
-from data_filter import WellsSingleRingDataFilter
 from propagate import propagate
 import common
 
