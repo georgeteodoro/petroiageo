@@ -184,3 +184,39 @@ class ChunkSamplerV1(AbstractChunkSampler):
                                           n_samp_points_per_well)
 
         return n_samp_points_per_well
+
+
+def target_based_sampler(interval_acc_data: list,
+                         interval_well_data: list,
+                         config: Config,
+                         rng: np.random.Generator = None):
+    """
+    Performs target based sampling on the interval_well_data. It assumes that
+    every data in interval_well_data is on the interval represented by the
+    interval_acc_data.
+    interval_acc_data: Current target interval acumulated data
+    interval_well_data: Current well data on the right interval to be sampled
+    rng: Numpy random generator. If None, one is constructed based on the config.seed
+
+    Returns:
+    Updated interval_acc_data
+    """
+    if interval_well_data is None or len(interval_well_data) == 0:
+        print(
+            "[TargetBasedSampler][sample] Well data is None or empty! Returning"
+        )
+        return None
+
+    if rng is None:
+        rng = np.random.default_rng(seed=config.alg['sampling']['seed'])
+
+    m_max = config.alg['sampling']['target_based']['m_max']
+    for data in interval_well_data:
+        if len(interval_acc_data) < m_max:
+            interval_acc_data.append(data)
+        else:
+            if rng.random() < config.alg['sampling']['target_based']['alpha']:
+                random_idx = rng.integers(low=0, high=m_max + 1)
+                interval_acc_data[random_idx] = data
+
+    return interval_acc_data
