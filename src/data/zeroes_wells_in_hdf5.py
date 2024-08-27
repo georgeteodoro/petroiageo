@@ -44,9 +44,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config = config_parser.YAMLConfig(pathlib.Path(args.config))
-    data = h5py.File(pathlib.Path(args.input), 'w')[common.POROSITY_DSET_NAME]
+    data = h5py.File(pathlib.Path(args.input), 'r+')[common.POROSITY_DSET_NAME]
     print(f"Data shape: {data.shape}")
 
     # MODIFIES THE INPUPT FILE INPLACE
-    for (x,y) in config.get_coords_of_target_wells_ids(args.wells_idx):
+    for (x,y) in config.get_coords_of_target_wells_ids(args.wells_idxs):
         data[x,y,:] = (0, common.RealValues.empty, -1, -1)
