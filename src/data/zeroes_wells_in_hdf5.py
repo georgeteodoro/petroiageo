@@ -43,7 +43,7 @@ if __name__ == "__main__":
     parser = config_arg_parser()
     args = parser.parse_args()
 
-    config = config_parser.Config(pathlib.Path(args.config))
+    config = config_parser.YAMLConfig(pathlib.Path(args.config))
     data = h5py.File(pathlib.Path(args.input), 'w')[common.POROSITY_DSET_NAME]
     print(f"Data shape: {data.shape}")
 
