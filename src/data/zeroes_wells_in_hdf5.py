@@ -47,6 +47,10 @@ if __name__ == "__main__":
     data = h5py.File(pathlib.Path(args.input), 'r+')[common.POROSITY_DSET_NAME]
     print(f"Data shape: {data.shape}")
 
-    # MODIFIES THE INPUPT FILE INPLACE
+    z_shape = data.shape[2]
+    # MODIFIES THE INPUT FILE INPLACE
     for (x,y) in config.get_coords_of_target_wells_ids(args.wells_idxs):
-        data[x,y,:] = (0, common.RealValues.empty, -1, -1)
+        all_z = [() for _ in range(z_shape)]
+        for z in range(z_shape):
+            all_z[z] = (x, y, z, 0, common.RealValues.empty, -1, -1)
+        data[x, ...] = all_z
