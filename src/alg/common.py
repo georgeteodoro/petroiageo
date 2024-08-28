@@ -47,6 +47,8 @@ def enum(*sequential, **named):
 RealValues = enum("real", "propagated", "canal", "canal_expanded", "expanded",
                   "empty", "none")
 
+PointDtypeIdx = enum('x', 'y', 'z', 'phi', 'real', 'ring','well_id')
+
 
 def has_points_within_chunk(wells_list, ring, chunk_slice, return_list=False):
     '''

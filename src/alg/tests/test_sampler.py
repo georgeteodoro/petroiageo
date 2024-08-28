@@ -1,8 +1,9 @@
 from unittest import TestCase, main
 import numpy as np
 
-from sampler import AbstractChunkSampler, ChunkSamplerV1
+from common import PointDtypeIdx
 from config_parser import YAMLConfig
+from sampler import AbstractChunkSampler, ChunkSamplerV1, target_based_sampler
 
 
 class TestAbstractChunkSampler(TestCase):
@@ -339,3 +340,183 @@ class TestChunkSamplerV1(TestCase):
         data = np.array([])
         sampled_data = sampler.sample(data, 100, 1, 0)
         self.assertIsNone(sampled_data)
+
+
+class TestTargetBasedSampler(TestCase):
+
+    def _get_n_points_with_pors(
+            self, pors_and_qts: list[tuple[float, int]]) -> list[list]:
+        points = list()
+        count = 0
+        for por, n_points in pors_and_qts:
+            for _ in range(n_points):
+                new_p = [count] * 7
+                new_p[PointDtypeIdx.phi] = por
+                points.append(new_p)
+                count += 1
+        return points
+
+    def test_dont_sample_empty_propagated_points(self):
+        propagated_points = list()
+        buckets_len = {i: i for i in range(3)}
+        expected_buckets_len = {i: i for i in range(3)}
+        buckets_max_size = 4
+        alpha = 0.1
+        sampled_must_add, sampled_for_update = target_based_sampler(
+            propagated_points, buckets_len, buckets_max_size, alpha)
+
+        self.assertDictEqual(buckets_len, expected_buckets_len)
+        self.assertTrue(len(sampled_must_add) == 0)
+        self.assertTrue(len(sampled_for_update) == 0)
+
+    def test_add_points_to_empty_buckets(self):
+        propagated_points = list()
+        propagated_points = self._get_n_points_with_pors([(1.1, 1), (2.2, 2),
+                                                          (3.3, 3)])
+
+        buckets_len = dict()
+        buckets_max_size = 4
+        alpha = 0.1
+        sampled_must_add, sampled_for_update = target_based_sampler(
+            propagated_points, buckets_len, buckets_max_size, alpha)
+
+        expected_buckets_len = {1: 1, 2: 2, 3: 3}
+        self.assertDictEqual(buckets_len, expected_buckets_len)
+        self.assertTrue(len(sampled_for_update) == 0)
+        expected_sampled_must_add = {
+            1: [propagated_points[0]],
+            2: propagated_points[1:3],
+            3: propagated_points[3:]
+        }
+        self.assertDictEqual(sampled_must_add, expected_sampled_must_add)
+
+    def test_add_points_to_not_empty_buckets(self):
+        propagated_points = list()
+        propagated_points = self._get_n_points_with_pors([(1.1, 1), (2.2, 2),
+                                                          (3.3, 3)])
+
+        buckets_len = {1: 1, 2: 1, 3: 1}
+        buckets_max_size = 4
+        alpha = 0.1
+        sampled_must_add, sampled_for_update = target_based_sampler(
+            propagated_points, buckets_len, buckets_max_size, alpha)
+
+        expected_buckets_len = {1: 2, 2: 3, 3: 4}
+        self.assertDictEqual(buckets_len, expected_buckets_len)
+        self.assertTrue(len(sampled_for_update) == 0)
+        expected_sampled_must_add = {
+            1: [propagated_points[0]],
+            2: propagated_points[1:3],
+            3: propagated_points[3:]
+        }
+        self.assertDictEqual(sampled_must_add, expected_sampled_must_add)
+
+    def test_add_points_to_full_buckets_alpha_1(self):
+        propagated_points = list()
+        propagated_points = self._get_n_points_with_pors([(1.1, 1), (2.2, 2),
+                                                          (3.3, 3)])
+
+        buckets_max_size = 4
+        buckets_len = {
+            1: buckets_max_size,
+            2: buckets_max_size,
+            3: buckets_max_size
+        }
+        alpha = 1
+        sampled_must_add, sampled_for_update = target_based_sampler(
+            propagated_points, buckets_len, buckets_max_size, alpha)
+
+        expected_buckets_len = {
+            1: buckets_max_size,
+            2: buckets_max_size,
+            3: buckets_max_size
+        }
+        self.assertDictEqual(buckets_len, expected_buckets_len)
+        expected_sampled_for_update = {
+            1: [propagated_points[0]],
+            2: propagated_points[1:3],
+            3: propagated_points[3:]
+        }
+        self.assertDictEqual(sampled_for_update, expected_sampled_for_update)
+        self.assertTrue(len(sampled_must_add) == 0)
+
+    def test_fills_almost_full_bucket(self):
+        propagated_points = list()
+        propagated_points = self._get_n_points_with_pors([(1.1, 1), (2.2, 2),
+                                                          (3.3, 3)])
+
+        buckets_max_size = 4
+        buckets_len = {1: buckets_max_size, 2: 3, 3: 3}
+        alpha = 0.1
+        sampled_must_add, sampled_for_update = target_based_sampler(
+            propagated_points, buckets_len, buckets_max_size, alpha)
+
+        expected_buckets_len = {
+            1: buckets_max_size,
+            2: buckets_max_size,
+            3: buckets_max_size
+        }
+        self.assertDictEqual(buckets_len, expected_buckets_len)
+        expected_sampled_must_add = {
+            2: [propagated_points[1]],
+            3: [propagated_points[3]]
+        }
+        self.assertDictEqual(sampled_must_add, expected_sampled_must_add)
+
+    def test_dont_sample_alpha_0(self):
+        propagated_points = list()
+        propagated_points = self._get_n_points_with_pors([(1.1, 1), (2.2, 2),
+                                                          (3.3, 3)])
+
+        buckets_max_size = 4
+        buckets_len = {
+            1: buckets_max_size,
+            2: buckets_max_size,
+            3: buckets_max_size
+        }
+        alpha = 0
+        sampled_must_add, sampled_for_update = target_based_sampler(
+            propagated_points, buckets_len, buckets_max_size, alpha)
+        expected_buckets_len = {
+            1: buckets_max_size,
+            2: buckets_max_size,
+            3: buckets_max_size
+        }
+        self.assertDictEqual(buckets_len, expected_buckets_len)
+        self.assertTrue(len(sampled_must_add) == 0)
+        self.assertTrue(len(sampled_for_update) == 0)
+
+    def test_generate_sample_for_update(self):
+        propagated_points = list()
+        propagated_points = self._get_n_points_with_pors([(1.1, 1), (2.2, 2),
+                                                          (3.3, 3)])
+
+        buckets_max_size = 4
+        buckets_len = {1: buckets_max_size, 2: 3, 3: 3}
+        alpha = 0.7
+        seed = 42
+        sampled_must_add, sampled_for_update = target_based_sampler(
+            propagated_points, buckets_len, buckets_max_size, alpha, seed=seed)
+
+        expected_buckets_len = {
+            1: buckets_max_size,
+            2: buckets_max_size,
+            3: buckets_max_size
+        }
+        self.assertDictEqual(buckets_len, expected_buckets_len)
+        expected_sampled_must_add = {
+            2: [propagated_points[1]],
+            3: [propagated_points[3]]
+        }
+        self.assertDictEqual(sampled_must_add, expected_sampled_must_add)
+
+        # If alpha or seed changes this might not pass anymore
+        expected_sampled_for_update = {
+            2: [propagated_points[2]],
+            3: [propagated_points[5]]
+        }
+        self.assertDictEqual(sampled_for_update, expected_sampled_for_update)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
-from config_parser import Config
+import numpy as np
 from scipy import stats
 
-import numpy as np
+from config_parser import Config
+from common import PointDtypeIdx
 
 BETA_DIST_RING_START = 0
 
@@ -186,37 +187,46 @@ class ChunkSamplerV1(AbstractChunkSampler):
         return n_samp_points_per_well
 
 
-def target_based_sampler(interval_acc_data: list,
-                         interval_well_data: list,
-                         config: Config,
-                         rng: np.random.Generator = None):
+def target_based_sampler(propagated_points: list,
+                         buckets_len: dict,
+                         bucket_max_size: int,
+                         alpha: float,
+                         rng: np.random.Generator = None,
+                         seed: int = 42):
     """
-    Performs target based sampling on the interval_well_data. It assumes that
-    every data in interval_well_data is on the interval represented by the
-    interval_acc_data.
-    interval_acc_data: Current target interval acumulated data
-    interval_well_data: Current well data on the right interval to be sampled
-    rng: Numpy random generator. If None, one is constructed based on the config.seed
+    Performs target based sampling on the propagated_points. It selects points based on 
+    its respective buckets size. Updates bucket_len inplace.
+    
+    propagated_points: List of points with dtype ('x', 'y', 'z', 'phi', 'real', 'ring',
+      'well_id')
+    buckets_len: Dict of bucket id as key and its current size as value
+    bucket_max_size: Int representing the max size every bucket could be
+    alpha: Float on the interval [0,1] represeting the buckets update rate
+    rng: Numpy random generator. If None, one is constructed based on the seed
+    seed: Int representing the seed for the rng if needed
 
     Returns:
-    Updated interval_acc_data
+    sampled_must_add: Dict with buckets ids as keys and a list of points as values. 
+    Represents points that should be added first to its bucket as they were selected when
+     the bucket size was less than bucket_max_size
+    sampled_for_update: Dict with buckets ids as keys and a list of points as values.
+    Represents points that were selected after its bucket was already full. Should be
+    added to the bucket after the points in sampled_must_add.
     """
-    if interval_well_data is None or len(interval_well_data) == 0:
-        print(
-            "[TargetBasedSampler][sample] Well data is None or empty! Returning"
-        )
-        return None
+    sampled_must_add = dict()
+    sampled_for_update = dict()
 
     if rng is None:
-        rng = np.random.default_rng(seed=config.alg['sampling']['seed'])
+        rng = np.random.default_rng(seed=seed)
 
-    m_max = config.alg['sampling']['target_based']['m_max']
-    for data in interval_well_data:
-        if len(interval_acc_data) < m_max:
-            interval_acc_data.append(data)
+    for point in propagated_points:
+        point_por = point[PointDtypeIdx.phi]
+        bucket_id = int(point_por)
+        if buckets_len.setdefault(bucket_id, 0) < bucket_max_size:
+            sampled_must_add.setdefault(bucket_id, list()).append(point)
+            buckets_len[bucket_id] += 1
         else:
-            if rng.random() < config.alg['sampling']['target_based']['alpha']:
-                random_idx = rng.integers(low=0, high=m_max + 1)
-                interval_acc_data[random_idx] = data
+            if rng.random() < alpha:
+                sampled_for_update.setdefault(bucket_id, list()).append(point)
 
-    return interval_acc_data
+    return sampled_must_add, sampled_for_update
