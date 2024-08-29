@@ -36,21 +36,27 @@ alg:
 
   sampling: # Sampling strategy stuff
     sampler: "v1"
+    #V1 PARAMS
     # Num of layers as window size. If negative, use max num of 
     # layers possible. Default: -1
     layers_window_size: 100
     # Max num of points for the sampling. If negative, use all data 
     # available. Default: -1
     max_points: 10000000
-    #Seed used by the rng to sample points when needed. Default: 42
-    seed: 42
-
     # Function to penalize data from earlier iterations
     # following the beta distribution.
     # Set alpha=1 and beta=1 for no penalty. Default: alpha=1 and beta=1
     beta_dist:
       alpha: 1
       beta: 1
+
+    #V2 PARAMS
+    bucket_max_size: 100
+    alpha: 0.3
+    
+    #USED BY ALL VERSIONS
+    #Seed used by the rng to sample points when needed. Default: 42
+    seed: 42
 
   
   # If you want to really generate the porosity cube in the end. Default is true

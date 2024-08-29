@@ -144,7 +144,9 @@ class ConfigTypeCaster:
         key_func_to_apply_dict = {
             "layers_window_size": int,
             "max_points": int,
-            "seed": int
+            "seed": int,
+            'alpha': float,
+            'bucket_max_size': int
         }
 
         cls._apply_key_func_mapping_to_dict_and_modify_target_dict(
@@ -389,6 +391,14 @@ class ConfigValidator:
             raise ValueError(
                 f"alg.sampling.seed: Seed value can't be negative!")
 
+        if samp_config_dict['alpha'] < 0 or samp_config_dict['alpha'] > 1:
+            raise ValueError(
+                f"alg.sampling.alpha: Alpha value must be in range [0,1]!")
+
+        if samp_config_dict['bucket_max_size'] <= 0:
+            raise ValueError(
+                f"alg.sampling.bucket_max_size: Must be a positive integer!")
+
     @staticmethod
     def _raise_if_beta_dist_params_invalid(samp_config_dict: dict):
         beta_dist_dict = samp_config_dict["beta_dist"]
@@ -544,6 +554,8 @@ class Config:
         base_config["max_points"] = -1
         base_config["seed"] = 42
         base_config["beta_dist"] = self._base_penalty_sampling_func_config()
+        base_config["alpha"] = 0.1
+        base_config["bucket_max_size"] = 100
         return base_config
 
     def _base_parallel_config(self) -> dict:

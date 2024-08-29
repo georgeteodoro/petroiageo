@@ -571,6 +571,60 @@ class TestYAMLConfig(TestCase):
                 my_config = config_parser.YAMLConfig(
                     config_str=yaml_str_fmt.format(alpha, beta))
 
+    def test_update_target_based_sampling_params(self):
+        sampler = "v2"
+        bucket_max_size = 50
+        alpha = 0.5
+        yaml_str_fmt = """
+        wells:
+          coords: [[1,1],[2,2]]
+          window: 0
+        alg:
+          sampling:
+            sampler: {}
+            bucket_max_size: {}
+            alpha: {}
+        """.format(sampler, bucket_max_size, alpha)
+        my_config = config_parser.YAMLConfig(config_str=yaml_str_fmt)
+        self.assertEqual(my_config.alg['sampling']['sampler'], sampler)
+        self.assertEqual(my_config.alg['sampling']['bucket_max_size'],
+                         bucket_max_size)
+        self.assertEqual(my_config.alg['sampling']['alpha'], alpha)
+
+    def test_can_get_base_target_based_sampling_values(self):
+        yaml_str = """
+        wells:
+          coords: [[1,1]]
+          window: 0
+        """
+        config = config_parser.YAMLConfig(config_str=yaml_str)
+        self.assertNotEqual(config.alg['sampling']['alpha'], None)
+        self.assertNotEqual(config.alg['sampling']['bucket_max_size'], None)
+    
+    def test_raises_on_invalid_target_based_sampling_params(self):
+        invalid_params = [
+            (-1, 50),
+            (1, -50),
+            (-2, -2),
+            (1, "a"),
+            ("a", 1),
+            ("a", -1),
+        ]
+        yaml_str_fmt = """
+        wells:
+          coords: [[1,1]]
+          window: 0
+
+        alg:
+          sampling:
+            alpha: {}
+            bucket_max_size: {}
+        """
+        for alpha, bucket_max_size in invalid_params:
+            with self.assertRaises(ValueError):
+                my_config = config_parser.YAMLConfig(
+                    config_str=yaml_str_fmt.format(alpha, bucket_max_size))
+
     def test_can_add_new_attribute(self):
         yaml_str = """
         wells:
