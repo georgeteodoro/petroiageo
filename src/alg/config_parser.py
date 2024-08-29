@@ -635,8 +635,7 @@ class Config:
         Returns a list of tuples with the wells coords:
         [(1, 2),(3, 4),(5, 6)...]
         """
-        return [(well["x"], well["y"])
-                for well in self.config["wells"]["coords"]]
+        return self.get_coords_of_target_wells_ids(range(len(self.wells)+1))
 
     @property
     def train_wells_coords(self) -> List[Tuple[int, int]]:
