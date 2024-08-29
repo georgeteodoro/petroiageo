@@ -53,4 +53,4 @@ if __name__ == "__main__":
         all_z = [() for _ in range(z_shape)]
         for z in range(z_shape):
             all_z[z] = (x, y, z, 0, common.RealValues.empty, -1, -1)
-        data[x, ...] = all_z
+        data[x, y, ...] = all_z

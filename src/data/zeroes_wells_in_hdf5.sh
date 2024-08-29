@@ -15,8 +15,8 @@ python3 --version
 which python3
 python3 -m pip list -v
 
-INPUT='/petrobr/parceirosbr/petrobrasiageo/daniel.campos/data/ANP/v2/area1/cube/cube_4_train_wells_baseline.h5'
-WELLS_IDXS=5
+INPUT='/petrobr/parceirosbr/petrobrasiageo/daniel.campos/data/ANP/v2/area1/cube/cube_2_train_wells_baseline.h5'
+WELLS_IDXS=(5 3 2)
 CONFIG='/petrobr/parceirosbr/petrobrasiageo/daniel.campos/petroiageo/src/alg/configs/ANP/v2/area1/exp2/area_1_config.yaml'
 
-python3 zeroes_wells_in_hdf5.py --input $INPUT --config $CONFIG --wells_idxs $WELLS_IDXS
+python3 zeroes_wells_in_hdf5.py --input $INPUT --config $CONFIG --wells_idxs ${WELLS_IDXS[@]}

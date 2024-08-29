@@ -6,11 +6,11 @@
 #SBATCH --account=petrobrasiageo
 #SBATCH --exclusive		#Utilização exclusiva dos nós
 
-module load python/3.9.6
+module load python/3.9.1
 
-source ../../../../venv/bin/activate
-FEATS_FOLDER='/petrobr/parceirosbr/petrobrasiageo/daniel.campos/data/ANP/v2/area1/npy'
-TARGET_FOLDER='/petrobr/parceirosbr/petrobrasiageo/daniel.campos/data/ANP/v2/area1/hdf5'
-CONFIG_FILE='/petrobr/parceirosbr/petrobrasiageo/daniel.campos/petroiageo/src/alg/configs/ANP/v2/area_1_config.yaml'
+source ../../../../venv-py3.9.1/bin/activate
+FEATS_FOLDER='/petrobr/parceirosbr/petrobrasiageo/daniel.campos/data/ANP/v2/area2/npy'
+TARGET_FOLDER='/petrobr/parceirosbr/petrobrasiageo/daniel.campos/data/ANP/v2/area2/npy_disp/'
+CONFIG_FILE='/petrobr/parceirosbr/petrobrasiageo/daniel.campos/petroiageo/src/alg/configs/ANP/v2/area_2_config.yaml'
 
-python3 seismic_data3_hdf5.py -f $FEATS_FOLDER -o $TARGET_FOLDER --config $CONFIG_FILE
+python3 seismic_data3_npy.py -f $FEATS_FOLDER -o $TARGET_FOLDER --config $CONFIG_FILE
