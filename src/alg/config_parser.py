@@ -669,9 +669,7 @@ class Config:
         test_only_wells: [1]
         returns: [(3, 4)]
         """
-        return [(w['x'], w['y'])
-                for id, w in enumerate(self.config['wells']['coords'])
-                if id in self.alg['test_only_wells']]
+        return self.get_coords_of_target_wells_ids(self.test_wells_ids)
 
     @property
     def test_wells_ids(self) -> List[int]:
