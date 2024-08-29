@@ -635,7 +635,7 @@ class Config:
         Returns a list of tuples with the wells coords:
         [(1, 2),(3, 4),(5, 6)...]
         """
-        return self.get_coords_of_target_wells_ids(range(len(self.wells)+1))
+        return self.get_coords_of_target_wells_ids(range(len(self.wells) + 1))
 
     @property
     def train_wells_coords(self) -> List[Tuple[int, int]]:
@@ -645,9 +645,7 @@ class Config:
         test_only_wells: [1]
         returns: [(1, 2), (5, 6)]
         """
-        return [(w['x'], w['y'])
-                for id, w in enumerate(self.config['wells']['coords'])
-                if id not in self.alg['test_only_wells']]
+        return self.get_coords_of_target_wells_ids(self.train_wells_ids)
 
     @property
     def train_wells_ids(self) -> List[int]:
