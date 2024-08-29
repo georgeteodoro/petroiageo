@@ -10,10 +10,6 @@ except ImportError:
     from yaml import BaseLoader as Loader
 
 
-class InvalidNewParamError(Exception):
-    pass
-
-
 class FeatureSelection(enum.Enum):
     FORWARD = 0
     NONE = 1
@@ -575,8 +571,7 @@ class Config:
         if param_name not in Config.TOP_LEVEL_BASE_CONFIGS:
             self.config[param_name] = param_value
         else:
-            raise InvalidNewParamError(
-                "This new param's name is equal to a base param!")
+            raise ValueError("This new param's name is equal to a base param!")
 
     def remove_param(self, param_name: str):
         """
@@ -586,8 +581,7 @@ class Config:
         if param_name not in Config.TOP_LEVEL_BASE_CONFIGS:
             del self.config[param_name]
         else:
-            raise InvalidNewParamError(
-                "This new param's name is equal to a base param!")
+            raise ValueError("This new param's name is equal to a base param!")
 
     def get_param(self, param_name: str):
         """

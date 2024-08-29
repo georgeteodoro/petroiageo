@@ -592,7 +592,7 @@ class TestYAMLConfig(TestCase):
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
         for base_param in config_parser.Config.TOP_LEVEL_BASE_CONFIGS:
             new_value = "new_value"
-            with self.assertRaises(config_parser.InvalidNewParamError):
+            with self.assertRaises(ValueError):
                 my_config.add_param(base_param, new_value)
 
     def test_can_remove_new_param(self):
@@ -616,7 +616,7 @@ class TestYAMLConfig(TestCase):
         """
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
         for base_param in config_parser.Config.TOP_LEVEL_BASE_CONFIGS:
-            with self.assertRaises(config_parser.InvalidNewParamError):
+            with self.assertRaises(ValueError):
                 my_config.remove_param(base_param)
 
     def test_can_get_max_chunk_size(self):
