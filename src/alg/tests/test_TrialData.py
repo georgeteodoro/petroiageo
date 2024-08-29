@@ -9,7 +9,6 @@ from TrialDataNumpy import TrialDataNumpy
 from TrialDataSharedNumpy import TrialDataSharedNumpy
 from TrialDataH5 import TrialDataH5
 from TrialDataSharedH5 import TrialDataSharedH5
-from data_filter import WellsSingleRingDataFilter
 from feature_data.backends.FeatureDataH5 import FeatureDataH5
 from config_parser import YAMLConfig
 import common

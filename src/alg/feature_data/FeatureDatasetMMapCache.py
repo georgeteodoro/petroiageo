@@ -2,9 +2,8 @@ from multiprocessing import shared_memory
 import fasteners  # inter-process, intra-node lock
 import posix_ipc
 from mpi4py import MPI
-from time import monotonic_ns, sleep
+from time import monotonic_ns
 import numpy as np
-from math import prod
 from functools import partial
 
 from feature_data.FeatureDatasetBase import FeatureDatasetBase
