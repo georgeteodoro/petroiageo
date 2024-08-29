@@ -24,10 +24,13 @@ class FeatureDataMMap(FeatureDataBase):
     futures are recommended.
     '''
 
-    def __init__(self,
-                 feature_path,
-                 done_reading_callback=None,
-                 pre_fetch=False):
+    def __init__(
+        self,
+        feature_path,
+        disp_window: int,
+        done_reading_callback=None,
+        pre_fetch=False,
+    ):
         super(FeatureDataMMap, self).__init__()
 
         debug = False
@@ -36,6 +39,8 @@ class FeatureDataMMap(FeatureDataBase):
         # This signals that this current object is no longer
         # reading the input feature.
         self._done_reading_callback = done_reading_callback
+
+        self._disp_window = disp_window
 
         # Open file
         ext = feature_path.split('/')[-1].split('.')[-1]
@@ -102,8 +107,10 @@ class FeatureDataMMap(FeatureDataBase):
         points = np.empty((len(coords), ), np.float64)
 
         # print(f'[FeatureDataMMap][filter_coords] filtering')
-        for (i, c) in enumerate(coords):
-            points[i] = self._feature[tuple(c)]
+        for (i, (x, y, z)) in enumerate(coords):
+            points[i] = self._feature[(x + self._disp_window,
+                                       y + self._disp_window,
+                                       z + self._disp_window)]
 
         # print(f'[FeatureDataMMap][filter_coords] filtering done')
 

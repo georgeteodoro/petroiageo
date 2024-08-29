@@ -48,6 +48,7 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
         self._mpi_local_comm = config.get_param('mpi_local_comm')
         mpi_local_rank = self._mpi_local_comm.Get_rank()
         max_cache_lines = int(config.alg['feature_cache_lines'])
+        self._disp_window = config.wells['window']
 
         # The LRU list is shared across all FeatureDatasetInMemCache within the
         # same node. LRU resolution needs to be thread-safe.
@@ -178,6 +179,7 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
                 self._lru_lock.release()
                 return FeatureDataMMap(feature_path,
                                        done_feature_callback,
+                                       disp_window=self._disp_window,
                                        pre_fetch=True)
             else:
                 # Cache miss
@@ -220,6 +222,7 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
                     self._lru_lock.release()
                     return FeatureDataMMap(feature_path,
                                            done_feature_callback,
+                                           disp_window=self._disp_window,
                                            pre_fetch=True)
 
                 except posix_ipc.BusyError:

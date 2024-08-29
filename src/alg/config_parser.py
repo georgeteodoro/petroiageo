@@ -212,14 +212,13 @@ class ConfigTypeCaster:
 
         if "coords" in wells_configs:
             treated_coords_configs = cls._treat_wells_coords_configs(
-                wells_configs["coords"], treated_wells_configs['window'])
+                wells_configs["coords"])
             treated_wells_configs["coords"] = treated_coords_configs
 
         return treated_wells_configs
 
     @classmethod
-    def _treat_wells_coords_configs(cls, coords_configs: list,
-                                    window: int) -> list:
+    def _treat_wells_coords_configs(cls, coords_configs: list) -> list:
         """
         Wells coords is a list composed of (x, y) tuples, [x, y] lists or
         {'x':value, 'y':value} dicts. They can all be present.
@@ -231,13 +230,13 @@ class ConfigTypeCaster:
         # treated_coords_configs = func_to_apply(coords_configs)
 
         treated_coords_configs = [
-            cls._treats_every_coord(c, window) for c in coords_configs
+            cls._treats_every_coord(c) for c in coords_configs
         ]
 
         return treated_coords_configs
 
     @classmethod
-    def _treats_every_coord(cls, coords, window):
+    def _treats_every_coord(cls, coords):
         """
         Assumes the coordnates are x and y integers.
         The window displacement is applied here.
@@ -250,10 +249,10 @@ class ConfigTypeCaster:
                 )
 
             x, y = coords
-            return {"x": int(x) + window, "y": int(y) + window}
+            return {"x": int(x), "y": int(y)}
         # its a dict with x and y keys
         elif isinstance(coords, dict):
-            return {key: int(value) + window for key, value in coords.items()}
+            return {key: int(value) for key, value in coords.items()}
 
     @staticmethod
     def _which_python_bool_value(yaml_bool: str) -> bool:

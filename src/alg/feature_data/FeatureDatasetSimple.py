@@ -8,6 +8,7 @@ class FeatureDatasetSimple(FeatureDatasetBase):
     A backend reference for each feature is maintained within it, being
     directly accessed when needed. The backend can be configurable.
     '''
+
     def __init__(self, config):
         super(FeatureDatasetSimple, self).__init__(config)
 
@@ -17,8 +18,11 @@ class FeatureDatasetSimple(FeatureDatasetBase):
 
         # Get a list of backend references
         self._features = dict()
+        disp_window = config.wells['window']
         for feature, feature_path in self._all_features_path_dict.items():
-            self._features[feature] = FeatureDataMMap(feature_path, pre_fetch=False)
+            self._features[feature] = FeatureDataMMap(feature_path,
+                                                      pre_fetch=False,
+                                                      disp_window=disp_window)
 
     def get_feature(self, feature):
         '''
