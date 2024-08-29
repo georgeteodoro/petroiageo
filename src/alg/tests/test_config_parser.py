@@ -243,9 +243,10 @@ class TestYAMLConfig(TestCase):
           - [1,1]
           - [2,2]
           - [3,3]
+          - [4,4]
           window: 0
         """
-        expected_list = [(1, 1), (2, 2), (3, 3)]
+        expected_list = [(1, 1), (2, 2), (3, 3), (4, 4)]
         my_config = config_parser.YAMLConfig(config_str=yaml_str)
         self.assertListEqual(my_config.wells_as_simple_list, expected_list)
 
