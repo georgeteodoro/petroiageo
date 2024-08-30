@@ -1,6 +1,18 @@
 """
 The goal of this script is to zero out porosities measures through
 x and y coords of selected wells of a cube inside a h5 file.
+The other wells points are fixed so that their well_id correspond
+to their new well_id.
+Example:
+wells:
+    coords:
+        - [1,1]
+        - [2,2]
+        - [3,3]
+
+--wells_idxs 2
+
+Than all points belonging to the well [3,3] should now have well_id == 1
 
 IMPORTANT: THIS SCRIPT MODIFIES THE INPUT H5 FILE INPLACE.
 SO YOU SHOULD PASS A COPY OF THE ORIGINAL FILE AS INPUT SO THIS
@@ -49,8 +61,25 @@ if __name__ == "__main__":
 
     z_shape = data.shape[2]
     # MODIFIES THE INPUT FILE INPLACE
-    for (x,y) in config.get_coords_of_target_wells_ids(args.wells_idxs):
-        all_z = [() for _ in range(z_shape)]
-        for z in range(z_shape):
-            all_z[z] = (x, y, z, 0, common.RealValues.empty, -1, -1)
-        data[x, y, ...] = all_z
+    new_well_id = 0
+    for original_well_id, (x,y) in enumerate(config.wells_as_simple_list):
+        print(f"Curr well: Orig id: {original_well_id}, coords: {x}, {y}")
+        if original_well_id in args.wells_idxs:
+            print(f"Zeroing it out!")
+            all_z = [() for _ in range(z_shape)]
+            for z in range(z_shape):
+                all_z[z] = (x, y, z, 0, common.RealValues.empty, -1, -1)
+            data[x, y, ...] = all_z    
+        else:
+            print(f"It is not on wells idxs!")
+            if new_well_id != original_well_id:
+                print(f"Should update its well id!")
+                original_data = data[x,y]
+                original_data['well_id'] = new_well_id
+                data[x,y] = original_data
+                print(f"NEW DATA:\n {data[x,y]}")
+            else:
+                print(f"As its original id is iqual to the new id ({new_well_id}) "+
+                      "we dont do anything")
+        
+        new_well_id+=1
