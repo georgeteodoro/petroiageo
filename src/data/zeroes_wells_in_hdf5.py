@@ -28,6 +28,7 @@ sys.path.insert(0, "..")
 
 from alg import common, config_parser
 
+
 def config_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -47,9 +48,9 @@ def config_arg_parser() -> argparse.ArgumentParser:
                         nargs="+",
                         required=True,
                         help="The wells indexes in config file to zero out")
-    
 
     return parser
+
 
 if __name__ == "__main__":
     parser = config_arg_parser()
@@ -62,24 +63,31 @@ if __name__ == "__main__":
     z_shape = data.shape[2]
     # MODIFIES THE INPUT FILE INPLACE
     new_well_id = 0
-    for original_well_id, (x,y) in enumerate(config.wells_as_simple_list):
+    for original_well_id, (x, y) in enumerate(config.wells_as_simple_list):
         print(f"Curr well: Orig id: {original_well_id}, coords: {x}, {y}")
         if original_well_id in args.wells_idxs:
             print(f"Zeroing it out!")
             all_z = [() for _ in range(z_shape)]
             for z in range(z_shape):
                 all_z[z] = (x, y, z, 0, common.RealValues.empty, -1, -1)
-            data[x, y, ...] = all_z    
+            data[x, y, ...] = all_z
         else:
             print(f"It is not on wells idxs!")
             if new_well_id != original_well_id:
                 print(f"Should update its well id!")
-                original_data = data[x,y]
+                original_data = data[x, y]
+                original_data = original_data[original_data['real'] ==
+                                              common.RealValues.real]
                 original_data['well_id'] = new_well_id
-                data[x,y] = original_data
+                for point in original_data:
+                    x = point['x']
+                    y = point['y']
+                    z = point['z']
+                    data[x, y, z] = point
                 print(f"NEW DATA:\n {data[x,y]}")
             else:
-                print(f"As its original id is iqual to the new id ({new_well_id}) "+
-                      "we dont do anything")
-        
-            new_well_id+=1
+                print(
+                    f"As its original id is iqual to the new id ({new_well_id}) "
+                    + "we dont do anything")
+
+            new_well_id += 1
