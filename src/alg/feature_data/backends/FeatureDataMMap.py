@@ -109,7 +109,7 @@ class FeatureDataMMap(FeatureDataBase):
         for (i, (x, y, z)) in enumerate(coords):
             points[i] = self._feature[(x + self._disp_window,
                                        y + self._disp_window,
-                                       z + self._disp_window)]
+                                       z)]
 
         # print(f'[FeatureDataMMap][filter_coords] filtering done')
 
