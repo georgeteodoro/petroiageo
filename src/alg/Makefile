@@ -19,3 +19,6 @@ test_trial_data:
 
 test_sampler:
 	python3 -m unittest tests.test_sampler
+
+test_propagate:
+	python3 -m unittest tests.test_propagate
