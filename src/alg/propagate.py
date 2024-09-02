@@ -89,15 +89,12 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
         #       f"cur_chunk_np hash: {hash(cur_chunk_np.data.tobytes())}")
 
         # Propagate the points of each well
-        window_size = config.alg["window"]
-        hypercube_shape = porosity_data_h5.shape
         for w_x, w_y in wells_to_update:
             # print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
             #       f"well: {(w_x, w_y)}")
 
-            coords_to_update = _get_coords_to_propagate(window_size,
-                                                        hypercube_shape, ring,
-                                                        cur_chunk_np, w_x, w_y)
+            coords_to_update = _get_coords_to_propagate(ring, cur_chunk_np, w_x,
+                                                        w_y)
 
             n_propagated_points += len(coords_to_update[0])
 
@@ -126,8 +123,7 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
     return n_propagated_points
 
 
-def _get_coords_to_propagate(window_size: int, hypercube_shape: tuple,
-                             ring: int, data: np.ndarray, w_x: int,
+def _get_coords_to_propagate(ring: int, data: np.ndarray, w_x: int,
                              w_y: int) -> np.ndarray:
     # Calculate the coordinates of the current well-ring
     well_ring_x_left = w_x - ring
@@ -149,22 +145,12 @@ def _get_coords_to_propagate(window_size: int, hypercube_shape: tuple,
                      & (d['x'] <= well_ring_x_right)
                      & (d['x'] >= well_ring_x_left))
 
-    # Condition to avoid padding region since the displacement
-    # may result in out of bounds access.
-    not_on_padding = (lambda d: (d['z'] >= window_size) &
-                      (d['z'] < hypercube_shape[2] - window_size) &
-                      (d['y'] >= window_size) &
-                      (d['y'] < hypercube_shape[1] - window_size) &
-                      (d['x'] >= window_size) &
-                      (d['x'] < hypercube_shape[0] - window_size))
-
     # Only empty points can be propagated
     filter_fun = lambda d: (d['real'] == common.RealValues.empty) \
                                  & (left_wall_cond(d) \
                                   | right_wall_cond(d) \
                                   | top_wall_cond(d) \
-                                  | bot_wall_cond(d)) \
-                                 & not_on_padding(d)
+                                  | bot_wall_cond(d))
     coords_to_update = np.where(filter_fun(data))
     return coords_to_update
 
