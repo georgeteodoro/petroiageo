@@ -245,9 +245,8 @@ class FeatSelectionTrainDataFilter(DataFilter):
 
 class WellsDataFilter(DataFilter):
     """
-    The Test data filter. As test data is defined based only the well id,
-    it requires a well_ids_list. It automatically adds the  
-    add_in_well_list_filter to itself.
+    This is a DataFilter based on the informed wells ids in which automatically 
+    adds the  add_in_well_list_filter to itself.
     This is the only filter needed for testing data as testing wells
     are not expanded/propagated so they always have 'real' points.
 
@@ -262,11 +261,8 @@ class WellsDataFilter(DataFilter):
 
 class WellsSingleRingDataFilter(WellsDataFilter):
     """
-    The Test data filter. As test data is defined based only the well id,
-    it requires a well_ids_list. It automatically adds the  
-    add_in_well_list_filter to itself.
-    This is the only filter needed for testing data as testing wells
-    are not expanded/propagated so they always have 'real' points.
+    This is a WellsDataFilter based on the informed wells ids in which automatically 
+    adds the  add_in_well_list_filter to itself.
     Also adds a ring filter, which is configurable after initialization.
     """
 
