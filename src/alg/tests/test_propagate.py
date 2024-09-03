@@ -73,9 +73,11 @@ class TestPropagate(TestCase):
                 [1] * 5 + [2] * 5,  # Second dim
                 [0, 1, 2, 3, 4] * 8
             ],  # Third dim
-            1: [[3] * 15 + [4] * 10, # First dim
-                [2] * 5 + [3] * 5 + [4] * 5 + [2] * 5 + [4] * 5, # Secong dim
-                [0, 1, 2, 3, 4] * 5] # Third dim
+            1: [
+                [3] * 15 + [4] * 10,  # First dim
+                [2] * 5 + [3] * 5 + [4] * 5 + [2] * 5 + [4] * 5,  # Secong dim
+                [0, 1, 2, 3, 4] * 5
+            ]  # Third dim
         }
         for well_id, (well_x, well_y) in enumerate(self.wells_coords):
             #Mark first depth of well as not real
@@ -95,6 +97,32 @@ class TestPropagate(TestCase):
                 np.array_equal(
                     target_coords[2],
                     np.array(well_to_expected_target_coords[well_id][2])))
+
+    def test_dont_get_coords_to_propagate_ring_after_limits(self):
+        ring_to_expand = 5
+        for well_x, well_y in self.wells_coords:
+            target_coords = _get_coords_to_propagate(ring_to_expand, self.data,
+                                                     well_x, well_y)
+            self.assertTrue(len(target_coords[0]) == 0)
+
+    def test_only_get_coords_that_dont_overlap(self):
+        rings_to_expand = 2
+        target_coords = None
+        for ring in range(1, rings_to_expand + 1):
+            for well_x, well_y in self.wells_coords:
+                target_coords = _get_coords_to_propagate(
+                    ring, self.data, well_x, well_y)
+                self.data['real'][target_coords] = RealValues.propagated
+
+        #At this point, we have the target_coords for the
+        #well id 1 when ring=2
+        expected_target_coords = [
+            [2] * 5 + [4] * 5,  #First dim
+            [4] * 5 + [1] * 5,  #Second dim
+            [0, 1, 2, 3, 4] * 2
+        ]  #Third dim
+        self.assertTrue(
+            np.array_equal(target_coords, np.array(expected_target_coords)))
 
 
 if __name__ == "__main__":
