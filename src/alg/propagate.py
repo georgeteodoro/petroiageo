@@ -123,13 +123,28 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
     return n_propagated_points
 
 
-def _get_coords_to_propagate(ring: int, data: np.ndarray, w_x: int,
+def _get_coords_to_propagate(target_ring: int, data: np.ndarray, w_x: int,
                              w_y: int) -> np.ndarray:
+    """
+    Get data's point's coordinates suitable for propagation on ring target_ring 
+    relative to the well in w_x, w_y
+
+    target_ring: Integer representing the ring starting from the well position
+    where to look for suitable points for propagation
+    data: The data containing the points
+    w_x: Integer with the well's x location
+    w_y: Integer with the well's y location
+
+    Return:
+    3 dimensional np.ndarray with the coordinates of point's suitable for propagation.
+    The dimensions are relative to the x,y and z dimensions respectively
+    
+    """
     # Calculate the coordinates of the current well-ring
-    well_ring_x_left = w_x - ring
-    well_ring_x_right = w_x + ring
-    well_ring_y_top = w_y - ring
-    well_ring_y_bot = w_y + ring
+    well_ring_x_left = w_x - target_ring
+    well_ring_x_right = w_x + target_ring
+    well_ring_y_top = w_y - target_ring
+    well_ring_y_bot = w_y + target_ring
 
     # Conditions for points on each ring wall
     left_wall_cond = (lambda d: (d['x'] == well_ring_x_left)
@@ -158,6 +173,7 @@ def _get_coords_to_propagate(ring: int, data: np.ndarray, w_x: int,
 def _train_model(trial_data: TrialDataBase):
     '''
     Generate a LightGBM model for estimating porosity.
+    Return the model
     '''
     model = None
     chunk_id = 0  # No incremental learning yet, so just return the first chunk
@@ -179,9 +195,21 @@ def _train_model(trial_data: TrialDataBase):
     return model
 
 
-def _predict_data(model, all_features, best_features, coords_to_update):
+def _predict_data(model, all_features: FeatureDatasetBase, best_features: list,
+                  coords_to_update: np.ndarray):
     '''
-    Generate the porosity values of 'coords_to_update'.
+    Use the model to predict the porosity values based on the best_features at 
+    coords_to_update.
+
+    model: The model used to predict the porosities. The model must have a
+    predict() function.
+    all_features: FeatureDatasetBase that has access to all features
+    best_features: List of features to select from all_features to be used
+    by the model
+    coords_to_update: Target coords where to get the best_features from
+    
+    Return
+    The predicted porosity measures
     '''
 
     # Create an ndarray for keeping all features
