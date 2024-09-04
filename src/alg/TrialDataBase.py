@@ -198,12 +198,12 @@ class TrialDataBase(ABC):
 
             # TODO: deprecate _clear_trial_data_hook() since it is the
             # sampler's job to define which data should be available
-
         t1 = time()
 
         # Load rings, one at a time
         # Suposes that a it only propagates one ring
-        for ring_to_load in range(start_ring_idx_to_load, prep_it):
+        end_ring_idx_to_load = prep_it if prep_it > 0 else 1
+        for ring_to_load in range(start_ring_idx_to_load, end_ring_idx_to_load):
 
             t11 = time()
 
