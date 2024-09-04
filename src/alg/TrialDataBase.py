@@ -153,15 +153,18 @@ class TrialDataBase(ABC):
         Allocate data required for the current iteration it.
         Fill coordinates, phi and well_id (when necessary).
         It also resets the internal current column.
-        First iteration is 1. Iteration 0 does not exists.
+        First iteration is 0.
+
+        prep_it: Integer representing the iteration whose data we should prepare
         '''
 
         profile = self._config.get_param('prof_trial_prep_porosity')
 
         t0 = time()
 
-        assert prep_it>0, f"[TrialDataBase][prepare_porosity] "\
-            f"First iteration is 1, but received current iteration {prep_it}."
+        # Retirar esse assert ou alterar para >=0
+        assert prep_it>=0, f"[TrialDataBase][prepare_porosity] "\
+            f"First iteration is 0, but received current iteration {prep_it}."
 
         # Set the first feature, even if it's empty
         self._current_feature_id = 0
@@ -169,17 +172,25 @@ class TrialDataBase(ABC):
         self._current_features.append(f'f{self._current_feature_id}')
 
         # Load all rings if this is a continued iteration
-        it_init = 0 if self._current_ring < 0 else prep_it - 1
+        # As each iteration it propagates the ring = it, at the start of an it
+        # we should load the ring propagated in the last it, that is
+        # prep_it - 1 if this is a continued iteration. Otherwise, load all
+        start_ring_idx_to_load = 0 if self._current_ring < 0 else prep_it - 1
 
         # If the sampler is used, all rings data should be purged and
         # generated again. Also, only the last '_rings_to_keep' rings
         # are generated
         if self._sampler != None:
 
+            # TODO: This should be checked independent of _sampler being None or not
             if self._rings_to_keep > 0:
-                it_init = max(prep_it - self._rings_to_keep, 0)
+                start_ring_idx_to_load = max(prep_it - self._rings_to_keep, 0)
+            # TODO: This else should be elif self._current_ring < 0, otherwise,
+            # in continued iteration, even if we already loaded the previous rings,
+            # we would load them again. This should be done only if it is not a
+            # continued iteration
             else:
-                it_init = 0
+                start_ring_idx_to_load = 0
 
             # Remove all rings data
             self._rings_list.clear()
@@ -191,16 +202,17 @@ class TrialDataBase(ABC):
         t1 = time()
 
         # Load rings, one at a time
-        for it in range(it_init, prep_it):
+        # Suposes that a it only propagates one ring
+        for ring_to_load in range(start_ring_idx_to_load, prep_it):
 
             t11 = time()
 
             # Set ring to be filtered
-            self._f_sel_filter.set_ring(it)
+            self._f_sel_filter.set_ring(ring_to_load)
 
             # Create new ring data
-            self._rings_list.append(it)
-            self._new_ring_hook(it)
+            self._rings_list.append(ring_to_load)
+            self._new_ring_hook(ring_to_load)
 
             # Prepare a dict of points per well_id
             points_dict = {wid: list() for wid in self._wells_id_list}
@@ -212,8 +224,8 @@ class TrialDataBase(ABC):
                 t111 = time()
 
                 # Skip this chunk if there are not any points withing it
-                if not common.has_points_within_chunk(target_wells_coords, it,
-                                                      chunk_slice):
+                if not common.has_points_within_chunk(
+                        target_wells_coords, ring_to_load, chunk_slice):
                     continue
 
                 # Load porosity data chunk
@@ -238,19 +250,18 @@ class TrialDataBase(ABC):
 
                 if profile:
                     print(
-                        f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
+                        f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}]"
                         f"chunk[{chunk_slice}] p_chunk_load: {t112-t111:.5f}")
                     print(
-                        f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
+                        f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}]"
                         f"chunk[{chunk_slice}] p_chunk_satisfy: {t113-t112:.5f}"
                     )
                     print(
-                        f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
+                        f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}]"
                         f"chunk[{chunk_slice}] p_chunk_filt: {t114-t113:.5f}")
                     print(
-                        f"[TrialDataBase][prepare_porosity] ring[{it+1}]"
-                        f"chunk[{chunk_slice}] p_chunk_extend: {t115-t114:.5f}"
-                    )
+                        f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}]"
+                        f"chunk[{chunk_slice}] p_chunk_extend: {t115-t114:.5f}")
 
             t12 = time()
 
@@ -263,20 +274,20 @@ class TrialDataBase(ABC):
             # not required. I.e., less memory needed. For numpy implementation
             # a temporary list may still be required within it, which is
             # converted to ndarray at the first access.
-            self._set_ring_hook(it, points_dict)
+            self._set_ring_hook(ring_to_load, points_dict)
 
             t13 = time()
             if profile:
-                print(f"[TrialDataBase][prepare_porosity] ring[{it+1}] "
+                print(f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}] "
                       f"chunk_total: {t12-t11:.4f}")
-                print(f"[TrialDataBase][prepare_porosity] ring[{it+1}] "
+                print(f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}] "
                       f"ring_update: {t13-t12:.4f}")
 
-        self._current_ring = prep_it - 1
+        self._current_ring = prep_it
 
         # Check if it is necessary to perform sampling
         if self._sampler != None:
-            self._perf_sampling(it + 1)
+            self._perf_sampling(ring_to_load)
 
         t2 = time()
         if profile:
@@ -329,6 +340,7 @@ class TrialDataBase(ABC):
         filter_coords_time = 0
         update_col_time = 0
 
+        #Isso está certo
         # Fill data, one ring at a time
         for r in self._rings_list:
             for w in self._wells_id_list:
@@ -530,19 +542,26 @@ class TrialDataBase(ABC):
         # first compiled and then sampled. Maybe later change the sampler to
         # receive as input the points from a ring/well pair.
 
-        for ring in self._rings_list:
+        for ring_being_sampled in self._rings_list:
             # Compile all points from a ring
             ring_points = []
             for well_id in self._wells_id_list:
-                ring_points.extend(self._get_values_hook(ring, well_id))
+                ring_points.extend(
+                    self._get_values_hook(ring_being_sampled, well_id))
 
             assert_msg = f"[TrialDataBase][perf_sampling][it{it}] "\
-                         f"Ring {ring} points is empty!"
+                         f"Ring {ring_being_sampled} points is empty!"
             assert len(ring_points) > 0, assert_msg
 
             # Perform sampling
+            #Tem que usar o Config.ring_range_to_expand e passar o start_ring
+            # no lugar do it. O ring está certo
+            first_ring_to_prop_this_it, _ = self._config.ring_range_to_expand(
+                it)
             new_ring_points = self._sampler.sample(np.array(ring_points),
-                                                   total_n_points, it, ring)
+                                                   total_n_points,
+                                                   first_ring_to_prop_this_it,
+                                                   ring_being_sampled)
 
             assert_msg = f"[TrialDataBase][perf_sampling][it{it}] New "\
                          f"ring points is empty!"
@@ -558,7 +577,7 @@ class TrialDataBase(ABC):
 
             # Update the internal concrete data with the sampled points
             # Existing points are deleted
-            self._set_ring_hook(ring, new_rings_dict, True)
+            self._set_ring_hook(ring_being_sampled, new_rings_dict, True)
 
             # # Used for getting the sampled coords for
             # # sampling integration testing.

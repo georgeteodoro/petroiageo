@@ -311,8 +311,9 @@ class ConfigValidator:
     def _raise_if_alg_config_invalid(cls, config_dict: dict):
         alg_configs = config_dict["alg"]
         if alg_configs["starting_it"] < 0:
+            # Mudar mensagem para must be an integer
             raise ValueError(
-                f"alg.starting_it must be a positive integer! {alg_configs['starting_it']} was given!"
+                f"alg.starting_it must be a non negative integer! {alg_configs['starting_it']} was given!"
             )
 
         if alg_configs["num_its"] < 1:
@@ -599,12 +600,13 @@ class Config:
         """
         Returns the exact ring range [start, end] to expand/predict based on
         the it and the num of layers we must expand/predict on each iteration.
+        This assumes that iterations starts at 0
         Example:
         it: 3
         layers_to_predict: 3
         return (7, 9)
         """
-        start_ring = ((it - 1) * self.get_param('alg')['layers_to_predict']) + 1
+        start_ring = it * self.get_param('alg')['layers_to_predict']
         end_ring = start_ring + self.get_param('alg')['layers_to_predict'] - 1
         return start_ring, end_ring
 
