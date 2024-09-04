@@ -700,11 +700,11 @@ class TestYAMLConfig(TestCase):
         alg:
           layers_to_predict: {}
         """
-        layers_to_predict = [1, 2, 5]
-        curr_it = [1, 3, 7]
+        layers_to_predict = [1, 2, 1, 2, 5]
+        curr_it = [0, 0, 1, 3, 7]
 
-        expected_start_ring = [1, 5, 31]
-        expected_end_ring = [1, 6, 35]
+        expected_start_ring = [0, 0,  1, 6, 35]
+        expected_end_ring = [0, 1, 1, 7, 39]
 
         for test_idx, (layer, it) in enumerate(zip(layers_to_predict, curr_it)):
             config = config_parser.YAMLConfig(config_str=yaml_str.format(layer))

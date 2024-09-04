@@ -223,7 +223,8 @@ def update_config_file_params_with_args(config: config_parser.Config,
                                         args) -> config_parser.Config:
 
     config.alg['it'] = int(args.load_it)
-    assert config.alg['it'] > 0, f"First iteration is 1, "\
+    # Tirar esse assert ou mudar para >=0
+    assert config.alg['it'] >= 0, f"First iteration is 0, "\
                                  f"but received --it {config.alg['it']}"
     config.alg['num_its'] = int(args.num_its)
     assert config.alg['num_its'] > 0, f"At least 1 iteration should be run, "\
