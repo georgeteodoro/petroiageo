@@ -13,6 +13,12 @@ from TrialDataNumpy import TrialDataNumpy
 
 @dataclass
 class ModelEval:
+    """
+    full_rmse: RMSE of data
+    full_mae: MAE of data
+    wells_rmse: Dict of well idx as key and its RMSE as value
+    wells_mae: Dict of well idx as key and its MAE as value
+    """
     full_rmse: float
     full_mae: float
     wells_rmse: dict
@@ -263,15 +269,16 @@ def _eval_model(model, test_data: TrialDataBase,
     """
     Evaluate the model on the test_data based on the test_wells_ids.
     The model must have a predict(X_test) method.
-    Return the an instance of ModelEval
+    Return an instance of ModelEval
     """
-    mse = list()
-    mae = list()
     rmse_per_well = dict()
     mae_per_well = dict()
+    n_instances=0
+    sse=0
+    sum_abs_errors=0
     for well_id in test_wells_ids:
         X_test, Y_test = test_data.get_val_values(well_id)
-
+        n_instances+=len(Y_test)
         # There are no data from this well on test data for some reason
         msg = "[propagate][_eval_model] There are no test data"
         msg += f" for well id {well_id}"
@@ -279,16 +286,24 @@ def _eval_model(model, test_data: TrialDataBase,
 
         pred = model.predict(X_test)
 
-        well_mse = np.mean((pred - Y_test)**2)
+        #RMSE
+        curr_sse=np.sum((Y_test-pred)**2)
+        
+        sse+=curr_sse
+
+        well_mse = curr_sse/len(Y_test)
         rmse_per_well[well_id] = float(np.sqrt(well_mse))
-        mse.append(well_mse)
+
+        #MAE
+        curr_abs=np.abs(Y_test-pred)
+        sum_abs_errors+=np.sum(curr_abs)
 
         well_mae = mean_absolute_error(Y_test, pred)
         mae_per_well[well_id] = float(well_mae)
-        mae.append(well_mae)
 
-    # Sqrt of means is different from mean of sqrts. The former is correct
-    rmse = np.sqrt(np.mean(mse))
+    # Sqrt of means is different from mean of sqrts. The former is what we want
+    rmse = np.sqrt(sse/n_instances)
+    mae = sum_abs_errors/n_instances
 
-    model_eval = ModelEval(rmse, np.mean(mae), rmse_per_well, mae_per_well)
+    model_eval = ModelEval(rmse, mae, rmse_per_well, mae_per_well)
     return model_eval
