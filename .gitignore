@@ -1,24 +1,15 @@
 teste.py
 teste.csv
 
-data/POV/features/*.npy 
-data/*/o*
-data/*/v*
-data/*/w-*
-data/*/p
-data/*/wells-*
-data/*/*.npy
-dados/*.h5
-
+data/ANP/*
+data/POV/*
+*.png
+src/alg/*.txt
+src/alg/*.h5
 .h5rank.loc
-pocos_ANP/
+
 __MACOSX/
 
-coherence_features/*.npy
-
-*.h5
-
-pocos_ANP/
 __MACOSX/
 
 *__pycache__*
