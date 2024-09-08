@@ -174,7 +174,8 @@ class TrialDataBase(ABC):
         # Load all rings if this is a continued iteration
         # As each iteration it propagates the ring = it, at the start of an it
         # we should load the ring propagated in the last it, that is
-        # prep_it - 1 if this is a continued iteration. Otherwise, load all
+        # prep_it - 1 if this is a continued iteration. Otherwise, load all.
+        # This logic only applies if each it propagates only 1 ring
         start_ring_idx_to_load = 0 if self._current_ring < 0 else prep_it - 1
 
         # If the sampler is used, all rings data should be purged and
@@ -182,7 +183,7 @@ class TrialDataBase(ABC):
         # are generated
         if self._sampler != None:
 
-            # TODO: This should be checked independent of _sampler being None or not
+            # TODO: This should be checked only if the sampler is 'v1'
             if self._rings_to_keep > 0:
                 start_ring_idx_to_load = max(prep_it - self._rings_to_keep, 0)
             # TODO: This else should be elif self._current_ring < 0, otherwise,
@@ -287,7 +288,7 @@ class TrialDataBase(ABC):
 
         # Check if it is necessary to perform sampling
         if self._sampler != None:
-            self._perf_sampling(ring_to_load)
+            self._perf_sampling(prep_it)
 
         t2 = time()
         if profile:
