@@ -177,8 +177,8 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
                 # Done. Release lock and return the feature object
                 self._lru_lock.release()
                 return FeatureDataMMap(feature_path,
+                                       self._disp_window,
                                        done_feature_callback,
-                                       disp_window=self._disp_window,
                                        pre_fetch=True)
             else:
                 # Cache miss
@@ -220,8 +220,8 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
 
                     self._lru_lock.release()
                     return FeatureDataMMap(feature_path,
+                                           self._disp_window,
                                            done_feature_callback,
-                                           disp_window=self._disp_window,
                                            pre_fetch=True)
 
                 except posix_ipc.BusyError:
