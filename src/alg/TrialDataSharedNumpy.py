@@ -102,6 +102,7 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
         '''
         Updates the last column on the local data structure.
         '''
+        print(f'--- np updating on {ring},{well}')
         self._data_local[ring][well][:] = data
 
 

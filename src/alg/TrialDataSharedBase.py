@@ -50,6 +50,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
             '/tmp/TrialDataSharedBase.lock')
 
         self._is_last_col_empty = True
+        print(f'init _is_last_col_empty: {self._is_last_col_empty}')
         self._commiting_feature = False
 
     # =========================================================================
@@ -169,11 +170,14 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         data goes to shared memory.
         '''
 
+        print(f'updating {r},{w} with len {feature_data.shape}')
+
         if self._commiting_feature:
             f_str = [f'f{self._current_feature_id}']
             self._update_shd_col(r, w, f_str, feature_data)
         else:
             self._is_last_col_empty = False
+            print(f'_update_col_hook _is_last_col_empty: {self._is_last_col_empty}')
             self._update_local_col(r, w, feature_data)
 
     def _get_values_hook(self, r, w, chunk_slice=None):
@@ -202,8 +206,9 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         # Update return data with the last column on local
         # memory, if there is data on it.
         if not self._is_last_col_empty:
-            target_well_data[f'f{self._current_feature_id}'] = self._get_local(
-                r, w, chunk_slice)[:]
+            local_data = self._get_local(r, w, chunk_slice)[:]
+            print(f'{r},{w}: {local_data}')
+            target_well_data[f'f{self._current_feature_id}'] = local_data
 
         return target_well_data
 
@@ -235,7 +240,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
 
         # Since a feature is being committed, the last column is invalid
         self._is_last_col_empty = True
-
+        print(f'_should_commit_feature_hook _is_last_col_empty: {self._is_last_col_empty}')
         return True
 
     def _done_commit_feature_hook(self):

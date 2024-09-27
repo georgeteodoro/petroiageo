@@ -353,6 +353,8 @@ class TrialDataBase(ABC):
         filter_coords_time = 0
         update_col_time = 0
 
+        print(f'============updating feature {feature}')
+
         #Isso está certo
         # Fill data, one ring at a time
         for r in self._rings_list:
@@ -671,6 +673,11 @@ class TrialDataBase(ABC):
             alpha = 0.4
             bucket_max_size = 10000
 
+            print('before----------------')
+            for r in self._rings_list:
+                for w in self._wells_id_list:
+                    print(f'{r},{w}: {self._get_values_hook(r,w).shape}')
+
             # list of all available buckets to fit porosity points
             buckets_list = [x * poros_width + poros_min for x in 
                 range(int((poros_max - poros_min)/poros_width))]
@@ -690,6 +697,7 @@ class TrialDataBase(ABC):
                         if points_within > 0:
                             buckets_origin[p].append((ring, well_id))
 
+            print(f'======= before sampling len: {len(self)}')
             print(f'======= before sampling: {buckets_len}')
             print(f'======= before sampling: {sum(buckets_len.values())}')
 
@@ -708,9 +716,9 @@ class TrialDataBase(ABC):
                     prop_points, buckets_len, poros_width, bucket_max_size, 
                     alpha, rng)
 
-                print(f'--- prop_points {len(prop_points)}')
-                print(f'--- add {len(points_to_add)}')
-                print(f'--- rem {sum(points_to_remove.values())}')
+                # print(f'--- prop_points {len(prop_points)}')
+                # print(f'--- add {len(points_to_add)}')
+                # print(f'--- rem {sum(points_to_remove.values())}')
 
                 # Update the last ring for the current well_id
                 updated_dict = defaultdict(list)
@@ -751,7 +759,7 @@ class TrialDataBase(ABC):
                         # them to avoid taking only consecutive points
                         np.random.shuffle(filt_points)
 
-                        print(f'+++++++ removing {num_to_rem} from {len(filt_points)}')
+                        # print(f'+++++++ removing {num_to_rem} from {len(filt_points)}')
                         
                         # Update ring/well data
                         sampled_points = np.concatenate((filt_points[:-num_to_rem], 
@@ -762,6 +770,13 @@ class TrialDataBase(ABC):
 
 
             print(f'======= after sampling: {sum(buckets_len.values())}')
+            print(f'======= after sampling len: {len(self)}')
+
+            print('after----------------')
+            for r in self._rings_list:
+                for w in self._wells_id_list:
+                    print(f'{r},{w}: {self._get_values_hook(r,w).shape}')
+
             return 
 
                 # [1,0]<stdout>:======= before sampling: 157821

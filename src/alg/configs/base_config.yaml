@@ -35,8 +35,8 @@ alg:
     n_training_chunks: 1
 
   sampling: # Sampling strategy stuff
-    #sampler: "v1"
-    sampler: "v2"
+    sampler: "v1"
+    #sampler: "v2"
     #V1 PARAMS
     # Num of layers as window size. If negative, use max num of 
     # layers possible. Default: -1
