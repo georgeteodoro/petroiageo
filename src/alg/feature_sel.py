@@ -7,8 +7,15 @@ from TrialDataBase import TrialDataBase
 from config_parser import Config
 import common
 
+def _do_test()
+    '''
+    Single trial given only the base input data and hyperparams.
+    Required for HPO.
+    '''
 
-def test_new_feature(trial_data: TrialDataBase, config: Config):
+    pass
+
+def test_new_feature(trial_data: TrialDataBase, config: Config, hyperparams=None):
     '''
     Trains a model with trial_data, returning the metric values for the
     trained model.
@@ -17,6 +24,9 @@ def test_new_feature(trial_data: TrialDataBase, config: Config):
     not required. It is possible to configure n_training_chunks=1 to disable
     the incremental learning.
     '''
+
+    if hyperparams is None:
+        hyperparams = common.training_params
 
     assert len(
         trial_data) > 0, "[feature_sel][test_new_feature] Empty TrialData"
@@ -70,7 +80,7 @@ def test_new_feature(trial_data: TrialDataBase, config: Config):
             t122 = time()
 
             regressor = lgb.train(
-                common.training_params,
+                hyperparams,
                 lgb_train_dataset,
                 init_model=regressor,
                 num_boost_round=100,
