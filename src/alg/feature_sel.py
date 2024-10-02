@@ -7,13 +7,43 @@ from TrialDataBase import TrialDataBase
 from config_parser import Config
 import common
 
-def _do_test()
+def _train_regr(X_train, y_train, X_val, y_val, hyperparams, regressor=None):
     '''
     Single trial given only the base input data and hyperparams.
     Required for HPO.
     '''
 
-    pass
+    lgb_train_dataset = lgb.Dataset(X_train, y_train)
+    lgb_eval_dataset = lgb.Dataset(
+        X_val,
+        y_val,
+        reference=lgb_train_dataset,
+    )
+
+    t122 = time()
+
+    regressor = lgb.train(
+        hyperparams,
+        lgb_train_dataset,
+        init_model=regressor,
+        num_boost_round=100,
+        valid_sets=lgb_eval_dataset,
+        keep_training_booster=True,
+        callbacks=[
+            lgb.early_stopping(stopping_rounds=30, verbose=False)
+        ],
+    )
+
+    return regressor
+
+def _full_train(X_train, y_train, X_val, y_val, hyperparams):
+    regressor = _train_regr(X_train, y_train, X_val, y_val, hyperparams)
+
+    pred = regressor.predict(X_val)
+    rmse = np.sqrt(np.mean((pred - y_val)**2))
+    mae = mean_absolute_error(y_val, pred)
+
+    return rmse, mae
 
 def test_new_feature(trial_data: TrialDataBase, config: Config, hyperparams=None):
     '''
@@ -70,27 +100,9 @@ def test_new_feature(trial_data: TrialDataBase, config: Config, hyperparams=None
             if len(X_train) == 0:
                 return None
 
-            lgb_train_dataset = lgb.Dataset(X_train, y_train)
-            lgb_eval_dataset = lgb.Dataset(
-                X_val,
-                y_val,
-                reference=lgb_train_dataset,
-            )
-
-            t122 = time()
-
-            regressor = lgb.train(
-                hyperparams,
-                lgb_train_dataset,
-                init_model=regressor,
-                num_boost_round=100,
-                valid_sets=lgb_eval_dataset,
-                keep_training_booster=True,
-                callbacks=[
-                    lgb.early_stopping(stopping_rounds=30, verbose=False)
-                ],
-            )
-
+            regressor = _train_regr(X_train, y_train, 
+                X_val, y_val, hyperparams, regressor)
+            
             t123 = time()
 
             if profile:

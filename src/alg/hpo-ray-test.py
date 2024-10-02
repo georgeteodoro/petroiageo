@@ -5,6 +5,10 @@ import h5py
 from ray import train, tune
 from ray.tune.schedulers import ASHAScheduler
 from ray.tune.search.optuna import OptunaSearch
+from ray.tune.schedulers import PopulationBasedTraining
+
+import matplotlib.pyplot as plt
+import os
 
 import feature_sel
 import config_parser
@@ -60,16 +64,57 @@ def initialize_tunner(obj_function):
     search_space = {
         'num_leaves': tune.randint(5, 100),
         'min_data_in_leaf': tune.randint(1, 100),
-        'max_depth': tune.randint(25, 10000)
+        'max_depth': tune.randint(1, 10000)
     }
 
+    trainable_with_resources = tune.with_resources(obj_function, {"cpu": 1})
+
+    perturbation_interval = 5
+    scheduler = PopulationBasedTraining(
+        time_attr="training_iteration",
+        perturbation_interval=perturbation_interval,
+        # metric="mean_accuracy",
+        # mode="max",
+        metric="rmse",
+        mode="min",
+        hyperparam_mutations={
+            # distribution for resampling
+            "lr": tune.uniform(0.0001, 1),
+            # allow perturbations within this set of categorical values
+            "momentum": [0.8, 0.9, 0.99],
+        },
+    )
+
+    num_samples = 4
+
+    # tuner = tune.Tuner(
+    #     trainable_with_resources,
+    #     run_config=train.RunConfig(
+    #         stop={'training_iteration': 50},
+    #         checkpoint_config=train.CheckpointConfig(
+    #             checkpoint_score_attribute="rmse",
+    #             num_to_keep=4,
+    #         ),
+    #     ),
+    #     tune_config = tune.TuneConfig(
+    #         scheduler = scheduler,
+    #         num_samples = num_samples,
+    #         max_concurrent_trials=40,
+    #     ),
+    #     param_space = search_space,
+    # )
+
     tuner = tune.Tuner(
-        obj_function,
+        trainable_with_resources,
+        run_config=train.RunConfig(
+            stop={'training_iteration': 50},
+        ),
         tune_config = tune.TuneConfig(
             search_alg = OptunaSearch(),
-            num_samples = 10,
-            metric = 'loss',
+            num_samples = num_samples,
+            metric = 'rmse',
             mode = 'min',
+            max_concurrent_trials=40,
         ),
         param_space = search_space,
     )
@@ -92,42 +137,32 @@ def main():
 
     print(feature_sel.test_new_feature(trial_data, config))
 
+    curr_well_id = config.train_wells_ids[0]
+    X_val, y_val = trial_data.get_val_values(curr_well_id)
+    X_train, y_train = trial_data.get_train_values(curr_well_id, 0)
+
     def obj_function(trial_conf):
-        rmse, mae = feature_sel.test_new_feature(trial_data, config, trial_conf)
-        return {"score": rmse}
+        rmse, mae = feature_sel._full_train(X_train, y_train, X_val, 
+            y_val, trial_conf)
+        return {"rmse": rmse}
 
     tuner = initialize_tunner(obj_function)
     results = tuner.fit()
-    print(results.get_best_result(metric="score", mode="min").config)
+    print(results.get_best_result(metric="rmse", mode="min").config)
 
-    # # Load data.
-    # dataset = ray.data.read_csv("s3://anonymous@air-example-data/breast_cancer.csv")
 
-    # # Split data into train and validation.
-    # train_dataset, valid_dataset = dataset.train_test_split(test_size=0.3)
+    # # Plot the learning curve for the best trial
+    # best_result = results.get_best_result(metric="rmse", mode="min")
+    # df = best_result.metrics_dataframe
+    # print(df.columns.tolist())
+    # # Deduplicate, since PBT might introduce duplicate data
+    # # df = df.drop_duplicates(subset="training_iteration", keep="last")
+    # df.plot("num_samples", "rmse")
+    # plt.xlabel("Training Iterations")
+    # plt.ylabel("Test rmse")
+    # plt.show()
 
-    # trainer = LightGBMTrainer(
-    #     scaling_config=ScalingConfig(
-    #         # Number of workers to use for data parallelism.
-    #         num_workers=4,
-    #         # Whether to use GPU acceleration. Set to True to schedule GPU workers.
-    #         use_gpu=False,
-    #     ),
-    #     label_column="target",
-    #     num_boost_round=20,
-    #     params={
-    #         # LightGBM specific params
-    #         "objective": "binary",
-    #         "metric": ["binary_logloss", "binary_error"],
-    #     },
-    #     datasets={"train": train_dataset, "valid": valid_dataset},
-    #     # If running in a multi-node cluster, this is where you
-    #     # should configure the run's persistent storage that is accessible
-    #     # across all worker nodes.
-    #     # run_config=ray.train.RunConfig(storage_path="s3://..."),
-    # )
-    # result = trainer.fit()
-    # print(result.metrics)
+
 
 
 if __name__ == '__main__':
