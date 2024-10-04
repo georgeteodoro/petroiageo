@@ -165,33 +165,5 @@ def main():
     AppTuner.main(opt_args)
 
 
-    # curr_well_id = config.train_wells_ids[0]
-    # X_val, y_val = trial_data.get_val_values(curr_well_id)
-    # X_train, y_train = trial_data.get_train_values(curr_well_id, 0)
-
-    # def obj_function(trial_conf):
-    #     rmse, mae = feature_sel._full_train(X_train, y_train, X_val, 
-    #         y_val, trial_conf)
-    #     return {"rmse": rmse}
-
-    # tuner = initialize_tunner(obj_function)
-    # results = tuner.fit()
-    # print(results.get_best_result(metric="rmse", mode="min").config)
-
-
-    # # Plot the learning curve for the best trial
-    # best_result = results.get_best_result(metric="rmse", mode="min")
-    # df = best_result.metrics_dataframe
-    # print(df.columns.tolist())
-    # # Deduplicate, since PBT might introduce duplicate data
-    # # df = df.drop_duplicates(subset="training_iteration", keep="last")
-    # df.plot("num_samples", "rmse")
-    # plt.xlabel("Training Iterations")
-    # plt.ylabel("Test rmse")
-    # plt.show()
-
-
-
-
 if __name__ == '__main__':
     main()
