@@ -294,11 +294,11 @@ class TrialDataBase(ABC):
                 print(f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}] "
                       f"ring_update: {t13-t12:.4f}")
 
-        self._current_ring = prep_it
-
         # Check if it is necessary to perform sampling
         if self._sampler != None:
             self._perf_sampling(prep_it)
+
+        self._current_ring = prep_it
 
         t2 = time()
         if profile:
@@ -676,7 +676,7 @@ class TrialDataBase(ABC):
             print('before----------------')
             for r in self._rings_list:
                 for w in self._wells_id_list:
-                    print(f'{r},{w}: {self._get_values_hook(r,w).shape}')
+                    print(f'r{r},w{w}: {self._get_values_hook(r,w).shape}')
 
             # list of all available buckets to fit porosity points
             buckets_list = [x * poros_width + poros_min for x in 
@@ -701,9 +701,13 @@ class TrialDataBase(ABC):
             print(f'======= before sampling: {buckets_len}')
             print(f'======= before sampling: {sum(buckets_len.values())}')
 
-
             rng = np.random.default_rng(seed=42)
             field_names = [i for i, j in self._base_data_type]
+
+            if self._current_ring == -1:
+                print('should sample all rings')
+            else:
+                print('should only sample last ring')
 
             # Only add new points from last ring
             ring_being_sampled = self._rings_list[-1]
@@ -721,8 +725,8 @@ class TrialDataBase(ABC):
                 # print(f'--- rem {sum(points_to_remove.values())}')
 
                 # Update the last ring for the current well_id
-                updated_dict = defaultdict(list)
-                updated_dict[well_id] = points_to_add
+                # updated_dict = defaultdict(list)
+                updated_dict = {well_id: points_to_add}
                 self._set_ring_hook(ring_being_sampled, updated_dict)
 
                 # Remove points from the remaining iterations
@@ -764,8 +768,9 @@ class TrialDataBase(ABC):
                         # Update ring/well data
                         sampled_points = np.concatenate((filt_points[:-num_to_rem], 
                             remaining_points))
-                        updated_dict = defaultdict(list)
-                        updated_dict[well_id] = sampled_points
+                        # updated_dict = defaultdict(list)
+                        # updated_dict[well_id] = sampled_points
+                        updated_dict = {well_id: sampled_points}
                         self._set_ring_hook(ring, updated_dict)
 
 

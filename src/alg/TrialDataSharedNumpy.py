@@ -102,13 +102,14 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
         '''
         Updates the last column on the local data structure.
         '''
-        print(f'--- np updating on {ring},{well}')
         self._data_local[ring][well][:] = data
 
 
     def _alloc_empty_ring_well_last_feature_concrete(self,
                                                      length, ring, well):
         # Only the space for a single column is allocated.
+        print(f'--- alloc last {ring},{well}: len {length}')
+
         self._data_local[ring][well] = np.zeros((length), dtype=np.float64)
 
     def _alloc_empty_ring_well_concrete(self, length, ring, well):
@@ -156,6 +157,9 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
                           dtype=self._cur_data_type,
                           buffer=shm_object.buf)
 
+        print(f'--- alloc r{ring},w{well}: len {length}')
+
+
     def _new_ring_hook(self, ring):
         '''
         A new ring is a dict of data by well_id
@@ -193,6 +197,7 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
         if self._mpi_local_comm is None or self._is_resp_rank:
             for shm_object in self._shm_objects:
                 shm_object.unlink()
+            self._shm_objects = []
 
         # Clear shm objects list, otherwise other calls to _del_all_concrete
         # may attempt to unlink already unlinked shm objects

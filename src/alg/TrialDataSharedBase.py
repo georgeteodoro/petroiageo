@@ -120,6 +120,12 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         # Allocate space for all features which should be used for training
         # for shared access.
         for w in self._wells_id_list:
+
+            # 'data' parameter can have an incomplete dict of wells.
+            # If well 'w' is not available at 'data' just skip it
+            if data.get(w) is None:
+                continue
+
             well_data = data[w]
             # Create the shared structure on all processes
             self._alloc_empty_ring_well_concrete(len(well_data), ring, w)
@@ -154,6 +160,11 @@ class TrialDataSharedBase(TrialDataBase, ABC):
 
         # Allocate space for the local single current feature
         for w in self._wells_id_list:
+            # 'data' parameter can have an incomplete dict of wells.
+            # If well 'w' is not available at 'data' just skip it
+            if data.get(w) is None:
+                continue
+
             well_data = data[w]
             self._alloc_empty_ring_well_last_feature_concrete(
                 len(well_data), ring, w)
@@ -207,7 +218,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         # memory, if there is data on it.
         if not self._is_last_col_empty:
             local_data = self._get_local(r, w, chunk_slice)[:]
-            print(f'{r},{w}: {local_data}')
+            print(f'upd: r{r},w{w}, chk {chunk_slice}: {local_data}')
             target_well_data[f'f{self._current_feature_id}'] = local_data
 
         return target_well_data
