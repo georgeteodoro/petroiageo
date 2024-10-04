@@ -35,7 +35,9 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
 
         # Shared memory objects used to get data for numpy objects
         # (self._data_shr). This is necessary for cleanup on __del__().
-        self._shm_objects = []
+        # Dict of (ring, well) pairs is used to allow deleting a single
+        # shared memory region for sampling.
+        self._shm_objects = dict()
 
         self._mpi_local_comm = config.get_param('mpi_local_comm')
         if self._mpi_local_comm is not None:
@@ -108,8 +110,6 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
     def _alloc_empty_ring_well_last_feature_concrete(self,
                                                      length, ring, well):
         # Only the space for a single column is allocated.
-        print(f'--- alloc last {ring},{well}: len {length}')
-
         self._data_local[ring][well] = np.zeros((length), dtype=np.float64)
 
     def _alloc_empty_ring_well_concrete(self, length, ring, well):
@@ -150,15 +150,12 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
             # All shm objects are properly cleaned on __del__().
             resource_tracker.unregister(shm_object._name, 'shared_memory')
 
-        self._shm_objects.append(shm_object)
+        self._shm_objects[(ring, well)] = shm_object
 
         # Store the array data which wraps a shared memory region
         self._data_shr[ring][well]= np.ndarray((length),
                           dtype=self._cur_data_type,
                           buffer=shm_object.buf)
-
-        print(f'--- alloc r{ring},w{well}: len {length}')
-
 
     def _new_ring_hook(self, ring):
         '''
@@ -181,6 +178,11 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
         # implementation.
         self._del_all_concrete()
 
+    def _del_single_ring_well(self, ring, well):
+        shm = self._shm_objects.pop((ring, well))
+        shm.close()
+        shm.unlink()
+
     def _del_all_concrete(self):
         '''
         Clears all data managed by the concrete class.
@@ -188,16 +190,16 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
         the barrier.
         This implementation is idempotent.
         '''
-        for shm_object in self._shm_objects:
+        for shm_object in self._shm_objects.values():
             shm_object.close()
 
         if self._mpi_local_comm is not None:
             self._mpi_local_comm.Barrier()
 
         if self._mpi_local_comm is None or self._is_resp_rank:
-            for shm_object in self._shm_objects:
+            for shm_object in self._shm_objects.values():
                 shm_object.unlink()
-            self._shm_objects = []
+            self._shm_objects = dict()
 
         # Clear shm objects list, otherwise other calls to _del_all_concrete
         # may attempt to unlink already unlinked shm objects

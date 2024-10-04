@@ -105,6 +105,14 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         raise Exception("[TrialDataSharedBase][_update_local_col] "\
                         "Abstract method not implemented.")
 
+    @abstractmethod
+    def _del_single_ring_well(self, ring, well):
+        '''
+        Deletes the concrete data for a ring,well pair.
+        '''
+        raise Exception("[TrialDataSharedBase][_del_single_ring_well] "\
+                        "Abstract method not implemented.")
+
     # =========================================================================
     # === Implementations of TrialDataBase ====================================
     # =========================================================================
@@ -115,6 +123,11 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         storage. Adds data organized by ring and by well_id.
 
         This data is shared among all processes.
+
+        Parameter 'overwite': if True, then the ring data has already been
+        allocated. This is the case for sampling, when a large ring should be
+        reduced to a sampled one. In this case, the old data region is deleted
+        and a new region with the correct size is allocated.
         '''
 
         # Allocate space for all features which should be used for training
@@ -126,7 +139,14 @@ class TrialDataSharedBase(TrialDataBase, ABC):
             if data.get(w) is None:
                 continue
 
+
             well_data = data[w]
+            # If data was already allocated, remove it first
+            if overwite:
+                self._del_single_ring_well(ring, w)
+
+            # print(f'\t_set_ring_hook for r{ring}w{w}: {len(well_data)}')
+
             # Create the shared structure on all processes
             self._alloc_empty_ring_well_concrete(len(well_data), ring, w)
 
@@ -181,14 +201,11 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         data goes to shared memory.
         '''
 
-        print(f'updating {r},{w} with len {feature_data.shape}')
-
         if self._commiting_feature:
             f_str = [f'f{self._current_feature_id}']
             self._update_shd_col(r, w, f_str, feature_data)
         else:
             self._is_last_col_empty = False
-            print(f'_update_col_hook _is_last_col_empty: {self._is_last_col_empty}')
             self._update_local_col(r, w, feature_data)
 
     def _get_values_hook(self, r, w, chunk_slice=None):
@@ -218,7 +235,6 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         # memory, if there is data on it.
         if not self._is_last_col_empty:
             local_data = self._get_local(r, w, chunk_slice)[:]
-            print(f'upd: r{r},w{w}, chk {chunk_slice}: {local_data}')
             target_well_data[f'f{self._current_feature_id}'] = local_data
 
         return target_well_data

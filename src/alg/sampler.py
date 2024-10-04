@@ -203,7 +203,7 @@ def target_based_sampler(propagated_points: list,
     propagated_points: List of points with dtype ('x', 'y', 'z', 'phi', 'real', 'ring',
       'well_id')
     buckets_len: Dict of bucket id as key and its current size as value
-    bucket_max_size: Int representing the max size every bucket could be
+    bucket_max_size: Int representing the max size every bucket should be
     alpha: Float on the interval [0,1] represeting the buckets update rate
     rng: Numpy random generator. If None, one is constructed based on the seed
     seed: Int representing the seed for the rng if needed
