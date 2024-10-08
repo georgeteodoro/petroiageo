@@ -41,8 +41,9 @@ def enum(*sequential, **named):
 
 
 # expanded = to be propagated
+# none = match no points (used for skipping propagation)
 RealValues = enum("real", "propagated", "canal", "canal_expanded", "expanded",
-                  "empty")
+                  "empty", "none")
 
 
 def has_points_within_chunk(wells_list, ring, chunk_slice, return_list=False):

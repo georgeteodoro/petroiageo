@@ -41,7 +41,7 @@ def _load_porosity(config):
 
     return porosity_cube_file, porosity_cube_dset
 
-def initialize_training_data(config, base_features):
+def initialize_training_data(config, sel_features):
     # Loading porosity file
     train_wells_ids = config.train_wells_ids
     porosity_h5_f, porosity_h5_dset = _load_porosity(config)
@@ -53,13 +53,20 @@ def initialize_training_data(config, base_features):
 
     # Prepping feature data
     all_features = FeatureDatasetMMapCache(config)
+    print(all_features)
 
-    # Add a single feature
-    feature0 = all_features.get_feature(base_features[0])
-    feature1 = all_features.get_feature(base_features[1])
-    trial_data.commit_feature(feature0, (0,0,0))
-    trial_data.commit_feature(feature1, (0,1,0))
-    trial_data.commit_feature(feature0, (-1,1,0))
+    # Add features
+    print(sel_features)
+    for f_name, disp in sel_features:
+        print(f'adding {f_name}: {disp}')
+        f = all_features.get_feature(f_name)
+        trial_data.commit_feature(f, disp)
+
+    # feature0 = all_features.get_feature(base_features[0])
+    # feature1 = all_features.get_feature(base_features[1])
+    # trial_data.commit_feature(feature0, (0,0,0))
+    # trial_data.commit_feature(feature1, (0,1,0))
+    # trial_data.commit_feature(feature0, (-1,1,0))
 
     return trial_data
 
@@ -149,16 +156,19 @@ def main():
         print("usage: python3 hpo-test.py CONFIG_PATH")
         return
 
+    # Features to be used
+    sel_features = [('FAR', (0,1,0)), ('FAR', (1,2,0))]
+
     # Parse config
     global config
     config = config_parser.YAMLConfig(unknown[0])
-    config.alg['max_num_features'] = 4
+    config.alg['max_num_features'] = len(sel_features)
     base_features = config.features_files_names
     base_features = [f for f in base_features if f != ".gitkeep"]
     mpi_module.initialize(config)
-    
+
     global trial_data
-    trial_data = initialize_training_data(config, base_features)
+    trial_data = initialize_training_data(config, sel_features)
 
     print(feature_sel.test_new_feature(trial_data, config))
 
