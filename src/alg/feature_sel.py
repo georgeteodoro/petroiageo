@@ -19,9 +19,6 @@ def _train_regr(X_train, y_train, X_val, y_val, hyperparams, regressor=None):
         y_val,
         reference=lgb_train_dataset,
     )
-
-    t122 = time()
-
     regressor = lgb.train(
         hyperparams,
         lgb_train_dataset,
@@ -99,6 +96,8 @@ def test_new_feature(trial_data: TrialDataBase, config: Config, hyperparams=None
             # only happen if there is only 1 well being propagated.
             if len(X_train) == 0:
                 return None
+
+            t122 = time()
 
             regressor = _train_regr(X_train, y_train, 
                 X_val, y_val, hyperparams, regressor)

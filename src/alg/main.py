@@ -216,6 +216,29 @@ def config_arg_parser():
         "shared trial data file.",
     )
 
+    parser.add_argument(
+        '--pov',
+        dest='pov_canal_path',
+        action='store',
+        default=None,
+        required=False,
+        type=str,
+        help="Configures propagation and validation for POV. Input path "
+        "is from canal data. Canal data should be an h5 file. This file "
+        "is opened in read-only mode.",
+    )
+
+    parser.add_argument(
+        '--pov-no-prop',
+        dest='pov_should_prop',
+        action='store_false',
+        default=True,
+        required=False,
+        help="Only usable with --pov. When propagating, estimated porosity "
+        "will only be used for test. Afterward, original canal points are "
+        "reloaded int the H5 porosity structure.",
+    )
+
     return parser
 
 
@@ -256,11 +279,15 @@ def update_config_file_params_with_args(config: config_parser.Config,
     config.add_param('is_shared_trial_data', args.is_shared_trial_data)
     config.add_param('is_h5_trial_data', args.is_h5_trial_data)
     config.add_param('is_h5_shared_trial_data', args.is_h5_shared_trial_data)
+    
+    # POV exec
+    config.add_param('pov_canal_path', args.pov_canal_path)
+    config.add_param('pov_should_prop', args.pov_should_prop)
 
     # Profiling
     #config.add_param('prof_trial_prep_porosity', True)
     # config.add_param('prof_trial_update_feature', True)
-    config.add_param('prof_feature_sel', True)
+    # config.add_param('prof_feature_sel', True)
     # config.add_param('prof_TD_get_values', True)
 
     # Debug info

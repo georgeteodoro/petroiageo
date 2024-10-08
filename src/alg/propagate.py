@@ -3,6 +3,8 @@ from h5py import Dataset
 import lightgbm as lgb
 import numpy as np
 from sklearn.metrics import mean_absolute_error
+import h5py
+from math import prod
 
 import common
 from config_parser import Config
@@ -52,22 +54,22 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
     # Prepare the model and evaluate its performance metrics
     model = _train_model(trial_data)
 
-    model_eval = _test_model(porosity_data_h5, all_features, best_features,
-                             config, model)
+    pov_canal_path = config.get_param('pov_canal_path')
+
+    if pov_canal_path == None:
+        model_eval = _test_model(porosity_data_h5, all_features, best_features,
+                                 config, model)
+    else:
+        model_eval = _pov_test_model(pov_canal_path, all_features, best_features,
+                                 config, model, it)
     print(f"[propagation][it{it}] Test errors: RMSE: {model_eval.full_rmse} " +
           f"MAE: {model_eval.full_mae}")
-    print(
-        f"[propagation][it{it}] Test wells performance: RMSE: {model_eval.wells_rmse} "
+    print(f"[propagation][it{it}] Test wells performance: RMSE: "
+          f"{model_eval.wells_rmse} "
         + f"MAE: {model_eval.wells_mae}")
 
     # Count of propagated points for checking if it was correct
     n_propagated_points = 0
-
-    # # File used for debugging, should be empty at the beginning of the iteration
-    # import os
-    # cur_chunk_np_filename = f'cur_chunk_np-w{rank}.txt'
-    # if os.path.exists(cur_chunk_np_filename):
-    #     os.remove(cur_chunk_np_filename)
 
     # Propagate on all chunks from porosity_data
     for chunk_n, cur_slice in enumerate(porosity_data_h5.iter_chunks()):
@@ -100,7 +102,7 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
             #       f"well: {(w_x, w_y)}")
 
             coords_to_update = _get_coords_to_propagate(ring, cur_chunk_np, w_x,
-                                                        w_y)
+                                                        w_y, config)
 
             n_propagated_points += len(coords_to_update[0])
 
@@ -130,7 +132,7 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
 
 
 def _get_coords_to_propagate(target_ring: int, data: np.ndarray, w_x: int,
-                             w_y: int) -> np.ndarray:
+                             w_y: int, config) -> np.ndarray:
     """
     Get data's point's coordinates suitable for propagation on ring target_ring 
     relative to the well in w_x, w_y
@@ -142,8 +144,9 @@ def _get_coords_to_propagate(target_ring: int, data: np.ndarray, w_x: int,
     w_y: Integer with the well's y location
 
     Return:
-    3 dimensional np.ndarray with the coordinates of point's suitable for propagation.
-    The dimensions are relative to the x,y and z dimensions respectively
+    3 dimensional np.ndarray with the coordinates of point's suitable for 
+    propagation. The dimensions are relative to the x,y and z dimensions 
+    respectively
     
     """
     # Calculate the coordinates of the current well-ring
@@ -166,8 +169,17 @@ def _get_coords_to_propagate(target_ring: int, data: np.ndarray, w_x: int,
                      & (d['x'] <= well_ring_x_right)
                      & (d['x'] >= well_ring_x_left))
 
+    r_val = common.RealValues.empty
+    
+    pov_canal_path = config.get_param('pov_canal_path')
+    pov_should_prop = config.get_param('pov_should_prop')
+    if pov_canal_path != None:
+        r_val = common.RealValues.canal
+        if not pov_should_prop:
+            r_val = common.RealValues.none
+
     # Only empty points can be propagated
-    filter_fun = lambda d: (d['real'] == common.RealValues.empty) \
+    filter_fun = lambda d: (d['real'] == r_val) \
                                  & (left_wall_cond(d) \
                                   | right_wall_cond(d) \
                                   | top_wall_cond(d) \
@@ -307,3 +319,77 @@ def _eval_model(model, test_data: TrialDataBase,
 
     model_eval = ModelEval(rmse, mae, rmse_per_well, mae_per_well)
     return model_eval
+
+def _get_ring_values(canal_dset: Dataset, ring, well):
+    '''
+    How to avoid adding duplicate points: 
+    for instance for a 4x4 area: 
+    top(t), bottom(b), left(l), right(r)
+    l t t t
+    l     r
+    l     r
+    b b b r
+    '''
+
+    # Retrieve ring values
+    x, y = well
+    top = canal_dset[x-ring+1 : x+ring+1, y-ring]
+    bottom = canal_dset[x-ring : x+ring, y+ring+1]
+    left = canal_dset[x-ring, y-ring : y+ring]
+    right = canal_dset[x+ring+1, y-ring+1 : y+ring+1]
+
+    # Reshape to a 1D array
+    top.reshape(prod(top.shape))
+    bottom.reshape(prod(bottom.shape))
+    left.reshape(prod(left.shape))
+    right.reshape(prod(right.shape))
+
+    ring_points = np.concatenate([top, bottom, left, right])
+
+    # Filter only canal points
+    ring_points = ring_points[ring_points['real'] == common.RealValues.canal]
+
+    return ring_points
+
+def _pov_test_model(pov_canal_path: str, all_features: FeatureDatasetBase,
+                best_features: list, config: Config, model, ring) -> ModelEval:
+
+    canal_h5 = h5py.File(pov_canal_path)
+    canal_dset = canal_h5['p']
+
+    # Get test data for current ring and all wells
+    test_data = []
+    for well in config.train_wells_coords:
+        test_data.append(_get_ring_values(canal_dset, ring, well))
+    test_data = np.concatenate(test_data)
+
+    # Retrieve Y
+    Y_test = test_data['phi']
+    
+    # Generate the input features
+    X_test = []
+    X_test_coords = test_data[['x', 'y', 'z']]
+    for feature, disp in best_features:
+        for i in range(len(X_test_coords)):
+            x, y, z = X_test_coords[i]
+            X_test_coords[i] = (x+disp[0], y+disp[1], z+disp[2])
+
+        f_values = all_features.get_feature(feature
+            ).filter_coords(X_test_coords)
+
+        X_test.append(f_values)
+
+    # Merge X_test and reshape it to the features shape
+    X_test = np.concatenate(X_test).reshape((len(X_test[0]), len(X_test)))
+
+    pred = model.predict(X_test)
+
+    #RMSE
+    sse=np.sum((Y_test-pred)**2)
+    mse = sse/len(Y_test)
+    rmse = float(np.sqrt(mse))
+
+    #MAE
+    mae = mean_absolute_error(Y_test, pred)
+
+    return ModelEval(rmse, mae, None, None)
