@@ -30,6 +30,8 @@ class FeatureDataMMap(FeatureDataBase):
                  pre_fetch=False):
         super(FeatureDataMMap, self).__init__()
 
+        debug = False
+
         # Callback of cache manager to be called at deletion
         # This signals that this current object is no longer
         # reading the input feature.
@@ -53,7 +55,8 @@ class FeatureDataMMap(FeatureDataBase):
         flags = mmap.MAP_PRIVATE | mmap.MADV_SEQUENTIAL
         if pre_fetch:
             flags |= mmap.MAP_POPULATE
-            print("[FeatureDataMMap][__init__] mmapping...")
+            if debug:
+                print("[FeatureDataMMap][__init__] mmapping...")
         t0 = time()
         self._mmap_buffer = mmap.mmap(self._file.fileno(),
                                       np_length + np_header_size,
@@ -61,7 +64,8 @@ class FeatureDataMMap(FeatureDataBase):
                                       prot=mmap.PROT_READ)
         if pre_fetch:
             t1 = time()
-            print(f"[FeatureDataMMap][__init__] mmap_done {t1-t0:.4f}")
+            if debug:
+                print(f"[FeatureDataMMap][__init__] mmap_done {t1-t0:.4f}")
 
         # Create a npy array to wrap this memory buffer
         self._feature = np.ndarray(np_shape,
@@ -70,7 +74,8 @@ class FeatureDataMMap(FeatureDataBase):
                                    offset=np_header_size)
         if pre_fetch:
             t2 = time()
-            print(f"[FeatureDataMMap][__init__] ndarray_done {t2-t1:.4f}")
+            if debug:
+                print(f"[FeatureDataMMap][__init__] ndarray_done {t2-t1:.4f}")
 
     def __del__(self):
         # Bug fix for interaction with mpi and page caching:

@@ -301,7 +301,9 @@ class TrialDataBase(ABC):
         assert self._current_feature_id >= 0, "[TrialDataBase][commit_feature] "\
             "Committing feature before prepare_porosity."
         assert self._current_feature_id < self._n_features, \
-            "[TrialDataBase][commit_feature] Committing beyond last feature."
+            "[TrialDataBase][commit_feature] Committing beyond last feature: "\
+            f"cur_feature={self._current_feature_id} "\
+            f"n_features={self._n_features}."
 
         # Hook used by concurrent implementations of TrialDataBase.
         # Default behavior is: return True, i.e., all processes perform

@@ -142,7 +142,7 @@ def run(config):
             msg_tag = status.Get_tag()
 
             t3 = time()
-            print(f"{beg_str}[it{it}] msg_wait {t3-t2:.4f}")
+            # print(f"{beg_str}[it{it}] msg_wait {t3-t2:.4f}")
             it_wait_job_time += t3 - t2
 
             # Don't count the original [x,y,z] features
@@ -167,7 +167,7 @@ def run(config):
                     t5 = time()
                     trial_data.update_feature(f_data, disp)
                     t6 = time()
-                    print(f"{beg_str}[it{it}][f_it{f_it}] Test-feature.")
+                    # print(f"{beg_str}[it{it}][f_it{f_it}] Test-feature.")
                     ret = test_new_feature(trial_data, config)
 
                     # None is returned upon only 1 well propagating.
@@ -245,14 +245,14 @@ def run(config):
                 raise Exception(f"{beg_str} Bad MPI tag: {msg_tag}")
 
         t14 = time()
-        print(f"{beg_str}[it{it}][fprof] feature_sel_total {t14-t0}")
-        print(f"{beg_str}[it{it}][fprof] it_wait_job_time {it_wait_job_time}")
-        print(f"{beg_str}[it{it}][fprof] it_wait_response_time "
-              f"{it_wait_response_time}")
-        print(f"{beg_str}[it{it}][fprof] it_get_f_time {it_get_f_time}")
-        print(f"{beg_str}[it{it}][fprof] it_update_f_time {it_update_f_time}")
-        print(f"{beg_str}[it{it}][fprof] it_commit_f_time {it_commit_f_time}")
-        print(f"{beg_str}[it{it}][fprof] it_training_time {it_training_time}")
+        # print(f"{beg_str}[it{it}][fprof] feature_sel_total {t14-t0}")
+        # print(f"{beg_str}[it{it}][fprof] it_wait_job_time {it_wait_job_time}")
+        # print(f"{beg_str}[it{it}][fprof] it_wait_response_time "
+        #       f"{it_wait_response_time}")
+        # print(f"{beg_str}[it{it}][fprof] it_get_f_time {it_get_f_time}")
+        # print(f"{beg_str}[it{it}][fprof] it_update_f_time {it_update_f_time}")
+        # print(f"{beg_str}[it{it}][fprof] it_commit_f_time {it_commit_f_time}")
+        # print(f"{beg_str}[it{it}][fprof] it_training_time {it_training_time}")
 
         # Propagation
         # Only one rank per node actually commits data to the hdf5 file,
