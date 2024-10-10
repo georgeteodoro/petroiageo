@@ -482,10 +482,9 @@ class TrialDataBase(ABC):
                     beg = chunk_id * points_per_rw
                     end = (chunk_id + 1) * points_per_rw
                     end = min(end, points_per_well)
-                    cur_slice = chunk_slice = slice(int(beg), int(end))
+                    cur_slice = slice(int(beg), int(end))
                 else:
-                    cur_slice = chunk_slice = slice(0,
-                                                    self._well_size_hook(r, w))
+                    cur_slice = slice(0,self._well_size_hook(r, w))
                 t1 = time()
                 prep_slice_time += t1 - t0
 
