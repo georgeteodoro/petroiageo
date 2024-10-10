@@ -7,6 +7,9 @@ import h5py
 from math import prod
 import argparse
 import ast
+import pandas as pd 
+from tqdm import tqdm
+from collections import defaultdict
 
 import common
 import mpi_module
@@ -447,6 +450,7 @@ def main(args_str=None):
         '--gab',
         dest='gab',
         action='store',
+        default=None,
         required=False,
         type=str,
         help="Gabarito.",
@@ -529,8 +533,46 @@ def main(args_str=None):
         it += 1
         trial_data.prepare_porosity(it)
 
+    # Validate propagated data
+    if args.gab != None:
+        gab = pd.read_csv(args.gab)
+
+        print("Filtering propagated points")
+        prop_points = porosity_h5_dset[
+            porosity_h5_dset['real'] == common.RealValues.propagated]
+        
+        print("Preparing gab")
+        gab = gab[['x', 'y', 'z', 'phi']].to_numpy()
+        
+        # Index gab
+        hier_gab = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
+        for x, y, z, phi in tqdm(gab, total=len(gab)):
+            hier_gab[x][y][z] = phi
+
+
+        diffs = np.empty(len(prop_points))
+        for i, (x, y, z, phi) in tqdm(enumerate(
+                                        prop_points[['x', 'y', 'z', 'phi']]),
+                                      total=len(prop_points)):
+            diffs[i] = phi - hier_gab[x][y][z]
+
+
+        # # Slow
+        # diffs = np.empty(len(gab))
+        # gab = gab[['x', 'y', 'z', 'phi']].to_numpy()
+
+        # for i, (x, y, z, Y) in tqdm(enumerate(gab), total=len(gab)):
+        #     diffs[i] = porosity_h5_dset[(int(x), int(y), int(z))]['phi'] - Y
+
+        # with open('diffs.txt', 'w') as d_file:
+        #     for i in range(len(diffs)):
+        #         d_file.write(f'{diffs[i]}\n')
+
     porosity_h5_f.close()
 
+def wrapper(p_hp5, c):
+    x, y, z, Y = c
+    return Y - p_hp5[(int(x), int(y), int(z))]['phi']
 
 if __name__ == '__main__':
     main()
