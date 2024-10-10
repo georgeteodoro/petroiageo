@@ -5,13 +5,16 @@ import numpy as np
 from sklearn.metrics import mean_absolute_error
 import h5py
 from math import prod
+import argparse
+import ast
 
 import common
-from config_parser import Config
+import mpi_module
+import config_parser
 from feature_data.FeatureDatasetBase import FeatureDatasetBase
 from TrialDataBase import TrialDataBase
 from TrialDataNumpy import TrialDataNumpy
-
+from feature_data.FeatureDatasetMMapCache import FeatureDatasetMMapCache
 
 @dataclass
 class ModelEval:
@@ -29,7 +32,7 @@ class ModelEval:
 
 def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
               all_features: FeatureDatasetBase, best_features: list, it: int,
-              config: Config) -> int:
+              config: config_parser.Config) -> int:
     '''
     Propagates the wavefront a single ring. Initial data have no 
     'expanded' data.
@@ -42,6 +45,8 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
     '''
 
     rank = config.get_param('mpi_rank')
+
+    print(f"[propagation][it{it}] Propagating with: {best_features}")
 
     # Only train coords should be propagated, test wells shouldn't
     wells_coords = config.train_wells_coords
@@ -258,7 +263,8 @@ def _predict_data(model, all_features: FeatureDatasetBase, best_features: list,
 
 
 def _test_model(data: Dataset, all_features: FeatureDatasetBase,
-                best_features: list, config: Config, model) -> ModelEval:
+                best_features: list, config: config_parser.Config, 
+                model) -> ModelEval:
     """
     Apply the model on the test data inside data.
     Return a ModelEval instance
@@ -270,8 +276,11 @@ def _test_model(data: Dataset, all_features: FeatureDatasetBase,
                                should_consider_sampling=False)
     # As test data dont propagate, the test data is always at the prep_it=1
     test_data.prepare_porosity(1)
-    for (feature, disp) in best_features:
+    for (feature, disp) in best_features[:-1]:
         test_data.commit_feature(all_features.get_feature(feature), disp)
+    (feature, disp) = best_features[-1]
+    test_data.update_feature(
+        all_features.get_feature(feature), disp)
 
     return _eval_model(model, test_data, config.test_wells_ids)
 
@@ -352,7 +361,8 @@ def _get_ring_values(canal_dset: Dataset, ring, well):
     return ring_points
 
 def _pov_test_model(pov_canal_path: str, all_features: FeatureDatasetBase,
-                best_features: list, config: Config, model, ring) -> ModelEval:
+                best_features: list, config: config_parser.Config, 
+                model, ring) -> ModelEval:
 
     canal_h5 = h5py.File(pov_canal_path)
     canal_dset = canal_h5['p']
@@ -393,3 +403,134 @@ def _pov_test_model(pov_canal_path: str, all_features: FeatureDatasetBase,
     mae = mean_absolute_error(Y_test, pred)
 
     return ModelEval(rmse, mae, None, None)
+
+
+def main(args_str=None):
+    parser = argparse.ArgumentParser(description="Ferramenta de propagação")
+    parser.add_argument(
+        '--config',
+        dest='config_file',
+        action='store',
+        required=True,
+        type=str,
+        help="The yaml config file path to be read",
+    )
+    parser.add_argument(
+        '--features',
+        dest='features_sets',
+        action='store',
+        required=True,
+        type=str,
+        help="Path of the features sets to execute. For each line, a "
+        "propagation iteration will be ran, except if asked to run fewer "
+        "iterations.",
+    )
+    parser.add_argument(
+        '--it',
+        dest='start_it',
+        action='store',
+        required=False,
+        type=int,
+        default=0,
+        help="Initial iteration to begin (inclusive) (default=0).",
+    )
+    parser.add_argument(
+        '--nits',
+        dest='num_its',
+        action='store',
+        required=False,
+        type=int,
+        default=0,
+        help="Number of iterations to run (default=0, i.e., all).",
+    )
+    parser.add_argument(
+        '--gab',
+        dest='gab',
+        action='store',
+        required=False,
+        type=str,
+        help="Gabarito.",
+    )
+    parser.add_argument(
+        '--pov',
+        dest='pov_canal_path',
+        action='store',
+        default=None,
+        required=False,
+        type=str,
+        help="Configures propagation and validation for POV. Input path "
+        "is from canal data. Canal data should be an h5 file. This file "
+        "is opened in read-only mode. POV must start on it=1.",
+    )
+    parser.add_argument(
+        '--pov-no-prop',
+        dest='pov_should_prop',
+        action='store_false',
+        default=True,
+        required=False,
+        help="Only usable with --pov. When propagating, estimated porosity "
+        "will only be used for test. Afterward, original canal points are "
+        "reloaded int the H5 porosity structure.",
+    )
+
+    if args_str is None:
+        args = parser.parse_args()
+    else:
+        args = parser.parse_args(args_str.split(' '))
+
+    config = config_parser.YAMLConfig(args.config_file)
+    config.add_param('pov_canal_path', args.pov_canal_path)
+    config.add_param('pov_should_prop', args.pov_should_prop)
+    mpi_module.initialize(config)
+
+    # Parse propagations to be ran
+    features_sets = []
+    with open(args.features_sets) as f_sets:
+        for f_set in f_sets:
+            features_sets.append(ast.literal_eval(f_set))
+
+    # Find largest number of features required
+    n_features = 0
+    for f_set in features_sets:
+        n_features = max(len(f_set), n_features)
+    config.alg['max_num_features'] = n_features
+
+    # Create TrialData
+    porosity_h5_f = h5py.File(config.starting_porosity_cube_path, 'r+')
+    porosity_h5_dset = porosity_h5_f[common.POROSITY_DSET_NAME]
+    trial_data = TrialDataNumpy(config.train_wells_ids, 
+                                porosity_h5_dset, config)
+    trial_data.prepare_porosity(0)
+    
+    all_features = FeatureDatasetMMapCache(config)
+
+    # Set initial and end 'it' to be ran
+    it = args.start_it
+    features_sets = features_sets[it:]
+    if args.num_its > 0:
+        features_sets = features_sets[:args.num_its]
+
+    # Run propagations
+    for f_set in features_sets:
+        # Add features. Last feature needs to be added without a commit
+        # since commit increments the features' counter of trial_data. E.g.,
+        # if 2 features were used on a trial_data with up to 4 features, the
+        # feature counter would end on 3 if only commit_feature was used.
+        for (feature, disp) in f_set[:-1]:
+            trial_data.commit_feature(
+                all_features.get_feature(feature), disp)
+        (feature, disp) = f_set[-1]
+        trial_data.update_feature(
+            all_features.get_feature(feature), disp)
+
+        n_prop_points = propagate(porosity_h5_dset, trial_data, 
+                  all_features, f_set, it, config)
+        print(f"[propagation][it{it}] propagated {n_prop_points} points")
+        it += 1
+        trial_data.prepare_porosity(it)
+
+    porosity_h5_f.close()
+
+
+if __name__ == '__main__':
+    main()

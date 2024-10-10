@@ -146,6 +146,7 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
 
         # Flag for debugging: avoid multiple prints of 'no free cache line'
         no_free_cache_print = False
+        debug = False
 
         # Keep trying until a feature is returned
         while True:
@@ -158,8 +159,9 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
                 line_idx = np.where(
                     self._lru[self._LRU_F_IDX] == feature_idx)[0][0]
 
-                print(f"[FeatureDatasetMMapCache][get_feature] hit line "
-                      f"{line_idx} of feature {feature_idx}")
+                if debug:
+                    print(f"[FeatureDatasetMMapCache][get_feature] hit line "
+                          f"{line_idx} of feature {feature_idx}")
 
                 # It is possible to hit a feature which has no current
                 # readers. In this case the sem.release() was already called.
@@ -206,8 +208,9 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
                             line_idx = i
                             break
 
-                    print(f"[FeatureDatasetMMapCache][get_feature] replacing "
-                          f"line {line_idx}")
+                    if debug:
+                        print(f"[FeatureDatasetMMapCache][get_feature] replacing "
+                              f"line {line_idx}")
 
                     # Update "evicted" cache line
                     self._lru[self._LRU_F_IDX][line_idx] = feature_idx
@@ -224,8 +227,9 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
                     # try again...
                     if not no_free_cache_print:
                         no_free_cache_print = True
-                        print(f"[FeatureDatasetMMapCache][get_feature] "
-                              f"no free lines")
+                        if debug:
+                            print(f"[FeatureDatasetMMapCache][get_feature] "
+                                  f"no free lines")
                     self._lru_lock.release()
 
     def done_reading_callback(self, feature):
