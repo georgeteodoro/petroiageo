@@ -4,7 +4,7 @@ import lightgbm as lgb
 import numpy as np
 from sklearn.metrics import mean_absolute_error
 import h5py
-from math import prod
+from math import prod, sqrt
 import argparse
 import ast
 import pandas as pd 
