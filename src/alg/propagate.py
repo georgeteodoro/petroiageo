@@ -562,6 +562,7 @@ def main(args_str=None):
             hier_gab[x][y][z] = phi
 
 
+        print("Calculating diffs")
         diffs = np.empty(len(prop_points))
         for i, (x, y, z, phi) in tqdm(enumerate(
                                         prop_points[['x', 'y', 'z', 'phi']]),
@@ -576,9 +577,16 @@ def main(args_str=None):
         # for i, (x, y, z, Y) in tqdm(enumerate(gab), total=len(gab)):
         #     diffs[i] = porosity_h5_dset[(int(x), int(y), int(z))]['phi'] - Y
 
+        sae = 0
+        sse = 0
         with open('diffs.txt', 'w') as d_file:
             for i in range(len(diffs)):
+                sae += abs(diffs[i])
+                sse += diffs[i] ** 2
                 d_file.write(f'{diffs[i]}\n')
+
+        print(f"mae: {sae/len(diffs)}")
+        print(f"rmse: {sqrt(sse/len(diffs))}")
 
     porosity_h5_f.close()
 
