@@ -476,6 +476,14 @@ def main(args_str=None):
         "will only be used for test. Afterward, original canal points are "
         "reloaded int the H5 porosity structure.",
     )
+    parser.add_argument(
+        '--jv',
+        dest='just_validate',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Just validate the propagated results. (don't propagate).",
+    )
 
     if args_str is None:
         args = parser.parse_args()
@@ -514,24 +522,28 @@ def main(args_str=None):
     if args.num_its > 0:
         features_sets = features_sets[:args.num_its]
 
-    # Run propagations
-    for f_set in features_sets:
-        # Add features. Last feature needs to be added without a commit
-        # since commit increments the features' counter of trial_data. E.g.,
-        # if 2 features were used on a trial_data with up to 4 features, the
-        # feature counter would end on 3 if only commit_feature was used.
-        for (feature, disp) in f_set[:-1]:
-            trial_data.commit_feature(
+    if args.just_validate:
+        trial_data.prepare_porosity(it + args.num_its)
+    else:
+        # Run propagations
+        for f_set in features_sets:
+            # Add features. Last feature needs to be added without a commit
+            # since commit increments the features' counter of trial_data. 
+            # E.g., if 2 features were used on a trial_data with up to 4 
+            # features, the feature counter would end on 3 if only 
+            # commit_feature was used.
+            for (feature, disp) in f_set[:-1]:
+                trial_data.commit_feature(
+                    all_features.get_feature(feature), disp)
+            (feature, disp) = f_set[-1]
+            trial_data.update_feature(
                 all_features.get_feature(feature), disp)
-        (feature, disp) = f_set[-1]
-        trial_data.update_feature(
-            all_features.get_feature(feature), disp)
 
-        n_prop_points = propagate(porosity_h5_dset, trial_data, 
-                  all_features, f_set, it, config)
-        print(f"[propagation][it{it}] propagated {n_prop_points} points")
-        it += 1
-        trial_data.prepare_porosity(it)
+            n_prop_points = propagate(porosity_h5_dset, trial_data, 
+                      all_features, f_set, it, config)
+            print(f"[propagation][it{it}] propagated {n_prop_points} points")
+            it += 1
+            trial_data.prepare_porosity(it)
 
     # Validate propagated data
     if args.gab != None:
