@@ -576,9 +576,9 @@ def main(args_str=None):
         # for i, (x, y, z, Y) in tqdm(enumerate(gab), total=len(gab)):
         #     diffs[i] = porosity_h5_dset[(int(x), int(y), int(z))]['phi'] - Y
 
-        # with open('diffs.txt', 'w') as d_file:
-        #     for i in range(len(diffs)):
-        #         d_file.write(f'{diffs[i]}\n')
+        with open('diffs.txt', 'w') as d_file:
+            for i in range(len(diffs)):
+                d_file.write(f'{diffs[i]}\n')
 
     porosity_h5_f.close()
 
