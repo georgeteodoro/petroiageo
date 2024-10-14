@@ -108,7 +108,7 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
         # having the same semaphore.
         semaphore_name = '/FeatureDatasetMMapCache.sem'
         try:
-            # posix_ipc.unlink_semaphore(semaphore_name)
+            posix_ipc.unlink_semaphore(semaphore_name)
             pass
         except Exception as e:
             print(e)
