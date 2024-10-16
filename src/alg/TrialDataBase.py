@@ -699,26 +699,9 @@ class TrialDataBase(ABC):
             if samp_debug:
                 print(f'=============== sampling ring {ring_being_sampled}')
 
-            # Prepare buckets_len, which counts how many points are within a
-            # porosity bucket, also preparing the list of (ring,well_id) pairs
-            # from which points are within a given bucket.
-            buckets_len = defaultdict(int)
-            buckets_origin = defaultdict(list)
-            for ring in available_rings_to_shrink:
-                for well_id in self._wells_id_list:
-                    # Only account for removable points from the
-                    # previous rings.
-                    if ring >= ring_being_sampled:
-                        continue
-
-                    chunk_data = self._get_values_hook(ring, well_id)
-                    for p in buckets_list:
-                        points_within = sum((chunk_data['phi'] >= p)
-                                            & (chunk_data['phi'] < p +
-                                               poros_width))
-                        buckets_len[p] += points_within
-                        if points_within > 0:
-                            buckets_origin[p].append((ring, well_id))
+            buckets_len, buckets_origin = self._get_buckets_len(
+                poros_width, buckets_list, available_rings_to_shrink,
+                ring_being_sampled)
 
             # The sampling of 'ring_being_sampled' is done one well at a time
             # to reduce the memory footprint
@@ -806,6 +789,47 @@ class TrialDataBase(ABC):
                         # updated_dict[well_id] = sampled_points
                         updated_dict = {well_id: sampled_points}
                         self._set_ring_hook(ring, updated_dict, True)
+
+    def _get_buckets_len(self, poros_width: float, buckets_starts: list[float],
+                         available_rings_to_shrink: list[int],
+                         ring_being_sampled: int) -> tuple[dict, dict]:
+        """
+        Counts how many points are within each bucket and which
+        (ring, well_id) pairs make the buckets
+        
+        args: 
+            poros_width (float): The buckets porosity width
+            buckets_starts (list[float]): The porosity start 
+            for every bucket
+            available_rings_to_shrink (list[int]): The rings where
+            to remove points from if needed when adding sampled 
+            points to the buckets
+            ring_being_sampled (int): The current ring to where sample
+            points from  
+
+        return:
+            A tuple (buckets_len, buckets_origin) where buckets_len is a dict with
+            bucket porosity start as keys and num of items in it as values and 
+            buckets_origin: Dict with bucket porosity start as keys and a list
+            of (ring, well_id) pairs
+        """
+        buckets_len = defaultdict(int)
+        buckets_origin = defaultdict(list)
+        for ring in available_rings_to_shrink:
+            for well_id in self._wells_id_list:
+                # Only account for removable points from the
+                # previous rings.
+                if ring >= ring_being_sampled:
+                    continue
+
+                chunk_data = self._get_values_hook(ring, well_id)
+                for p in buckets_starts:
+                    points_within = sum((chunk_data['phi'] >= p)
+                                        & (chunk_data['phi'] < p + poros_width))
+                    buckets_len[p] += points_within
+                    if points_within > 0:
+                        buckets_origin[p].append((ring, well_id))
+        return buckets_len, buckets_origin
 
     def _perf_sampling(self, it):
         if self._sampler == 'v2':
