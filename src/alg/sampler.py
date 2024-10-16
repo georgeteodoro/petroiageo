@@ -189,32 +189,32 @@ class ChunkSamplerV1(AbstractChunkSampler):
         return n_samp_points_per_well
 
 
-def target_based_sampler(propagated_points: list,
+def target_based_sampler(propagated_points: list[tuple],
                          buckets_len: dict,
                          poros_width: Decimal,
                          bucket_max_size: int,
                          alpha: float,
                          rng: np.random.Generator = None,
-                         seed: int = 42) -> tuple[list, dict]:
+                         seed: int = 42) -> tuple[list, dict[Decimal, int]]:
     """
     Performs target based sampling on the propagated_points. It selects points based on 
     its respective buckets size. Updates bucket_len inplace.
     
-    propagated_points: List of points with dtype ('x', 'y', 'z', 'phi', 'real', 'ring',
-      'well_id')
-    buckets_len: Dict of bucket id as key and its current size as value
-    bucket_max_size: Int representing the max size every bucket should be
-    alpha: Float on the interval [0,1] represeting the buckets update rate
-    rng: Numpy random generator. If None, one is constructed based on the seed
-    seed: Int representing the seed for the rng if needed
+    Args:
+        propagated_points: List of points with dtype ('x', 'y', 'z', 'phi', 'real', 
+            'ring', 'well_id')
+        buckets_len: Dict of bucket id as key and its current size as value
+        bucket_max_size: Int representing the max size every bucket should be
+        alpha: Float on the interval [0,1] represeting the buckets update rate
+        rng: Numpy random generator. If None, one is constructed based on the seed
+        seed: Int representing the seed for the rng if needed
 
     Returns:
-    points_to_add: list of points from the last ring which should be added 
-    to the sampled database.
-
-    points_to_remove: dict of how many points from a given bucket should be 
-    removed from the current sample of points to accommodate the new points 
-    from the last ring.
+        A tuple of (points_to_add, points_to_remove) where points_to_add is a list
+        of points from the last ring which should be added to the sampled database
+        and points_to_remove is a dict of how many points from a given bucket should
+        be removed from the current sample of points to accommodate the new points 
+        from the last ring.
     """
 
     points_to_add = []
@@ -224,7 +224,7 @@ def target_based_sampler(propagated_points: list,
         rng = np.random.default_rng(seed=seed)
 
     for point in propagated_points:
-        point_por = point[PointDtypeIdx.phi]
+        point_por: float = point[PointDtypeIdx.phi]
         bucket_id = Decimal(point_por) - (Decimal(point_por) % poros_width)
         if buckets_len[bucket_id] < bucket_max_size:
             points_to_add.append(point)
