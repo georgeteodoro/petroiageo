@@ -657,19 +657,18 @@ class TrialDataBase(ABC):
 
     def _perf_sampling_v2(self):
         # Points of a bucket are: buckets_len[p] => poros of [p, p+width)
-        # TODO: get these values from config
         # Values are Decimal to escape from python float imprecision, which
         # would screw the buckets indexing system. Also, must use string as
         # input instead of a number, which would be converted to float.
-        poros_width = Decimal('0.02')
-        poros_min = Decimal('0')
-        poros_max = Decimal('0.3')
-        alpha = 0.4
-        bucket_max_size = 10000
+        poros_width = Decimal(str(self._config.alg['sampling']['poros_width']))
+        poros_min = Decimal(str(self._config.alg['sampling']['poros_min']))
+        poros_max = Decimal(str(self._config.alg['sampling']['poros_max']))
+        alpha = self._config.alg['sampling']['alpha']
+        bucket_max_size = self._config.alg['sampling']['bucket_max_size']
 
         samp_debug = False
 
-        rng = np.random.default_rng(seed=42)
+        rng = np.random.default_rng(seed=self._config.alg['sampling']['seed'])
 
         # Base columns names, e.g., x,y,x,phi,...
         field_names = [i for i, j in self._base_data_type]
