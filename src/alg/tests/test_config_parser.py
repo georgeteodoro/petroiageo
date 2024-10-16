@@ -575,6 +575,9 @@ class TestYAMLConfig(TestCase):
     def test_update_target_based_sampling_params(self):
         sampler = "v2"
         bucket_max_size = 50
+        poros_width = 2
+        poros_min = 10
+        poros_max = 45
         alpha = 0.5
         yaml_str_fmt = """
         wells:
@@ -585,12 +588,19 @@ class TestYAMLConfig(TestCase):
             sampler: {}
             bucket_max_size: {}
             alpha: {}
-        """.format(sampler, bucket_max_size, alpha)
+            poros_width: {}
+            poros_min: {}
+            poros_max: {}
+        """.format(sampler, bucket_max_size, alpha, poros_width, poros_min,
+                   poros_max)
         my_config = config_parser.YAMLConfig(config_str=yaml_str_fmt)
         self.assertEqual(my_config.alg['sampling']['sampler'], sampler)
         self.assertEqual(my_config.alg['sampling']['bucket_max_size'],
                          bucket_max_size)
         self.assertEqual(my_config.alg['sampling']['alpha'], alpha)
+        self.assertEqual(my_config.alg['sampling']['poros_width'], poros_width)
+        self.assertEqual(my_config.alg['sampling']['poros_min'], poros_min)
+        self.assertEqual(my_config.alg['sampling']['poros_max'], poros_max)
 
     def test_can_get_base_target_based_sampling_values(self):
         yaml_str = """
@@ -601,16 +611,12 @@ class TestYAMLConfig(TestCase):
         config = config_parser.YAMLConfig(config_str=yaml_str)
         self.assertNotEqual(config.alg['sampling']['alpha'], None)
         self.assertNotEqual(config.alg['sampling']['bucket_max_size'], None)
-    
-    def test_raises_on_invalid_target_based_sampling_params(self):
-        invalid_params = [
-            (-1, 50),
-            (1, -50),
-            (-2, -2),
-            (1, "a"),
-            ("a", 1),
-            ("a", -1),
-        ]
+        self.assertNotEqual(config.alg['sampling']['poros_width'], None)
+        self.assertNotEqual(config.alg['sampling']['poros_min'], None)
+        self.assertNotEqual(config.alg['sampling']['poros_max'], None)
+
+    def test_raises_on_invalid_target_based_sampling_alpha(self):
+        invalid_params = [0, 'a', -1, 2, 1.1]
         yaml_str_fmt = """
         wells:
           coords: [[1,1]]
@@ -619,12 +625,92 @@ class TestYAMLConfig(TestCase):
         alg:
           sampling:
             alpha: {}
-            bucket_max_size: {}
         """
-        for alpha, bucket_max_size in invalid_params:
+        for alpha in invalid_params:
             with self.assertRaises(ValueError):
                 my_config = config_parser.YAMLConfig(
-                    config_str=yaml_str_fmt.format(alpha, bucket_max_size))
+                    config_str=yaml_str_fmt.format(alpha))
+
+    def test_raises_on_invalid_target_based_sampling_bucket_max_size(self):
+        invalid_params = [-1, 'a', 0, 50.5, 0.5]
+        yaml_str_fmt = """
+        wells:
+          coords: [[1,1]]
+          window: 0
+
+        alg:
+          sampling:
+            bucket_max_size: {}
+        """
+        for bucket_max_size in invalid_params:
+            with self.assertRaises(ValueError):
+                my_config = config_parser.YAMLConfig(
+                    config_str=yaml_str_fmt.format(bucket_max_size))
+
+    def test_raises_on_invalid_target_based_sampling_poros_width(self):
+        invalid_params = [-1, 'a', 0]
+        yaml_str_fmt = """
+        wells:
+          coords: [[1,1]]
+          window: 0
+
+        alg:
+          sampling:
+            poros_width: {}
+        """
+        for poros_width in invalid_params:
+            with self.assertRaises(ValueError):
+                my_config = config_parser.YAMLConfig(
+                    config_str=yaml_str_fmt.format(poros_width))
+
+    def test_raises_on_invalid_target_based_sampling_poros_min(self):
+        invalid_params = [-1, 'a', '100']
+        yaml_str_fmt = """
+        wells:
+          coords: [[1,1]]
+          window: 0
+
+        alg:
+          sampling:
+            poros_min: {}
+        """
+        for poros_min in invalid_params:
+            with self.assertRaises(ValueError):
+                my_config = config_parser.YAMLConfig(
+                    config_str=yaml_str_fmt.format(poros_min))
+
+    def test_raises_on_invalid_target_based_sampling_poros_max(self):
+        invalid_params = [-1, 'a', 0]
+        yaml_str_fmt = """
+        wells:
+          coords: [[1,1]]
+          window: 0
+
+        alg:
+          sampling:
+            poros_max: {}
+        """
+        for poros_max in invalid_params:
+            with self.assertRaises(ValueError):
+                my_config = config_parser.YAMLConfig(
+                    config_str=yaml_str_fmt.format(poros_max))
+
+    def test_raises_on_poros_max_less_equal_poros_min(self):
+        invalid_params = [(0, 0), (10, 10), (10, 11)]
+        yaml_str_fmt = """
+        wells:
+          coords: [[1,1]]
+          window: 0
+
+        alg:
+          sampling:
+            poros_max: {}
+            poros_min: {}
+        """
+        for poros_max, poros_min in invalid_params:
+            with self.assertRaises(ValueError):
+                my_config = config_parser.YAMLConfig(
+                    config_str=yaml_str_fmt.format(poros_max, poros_min))
 
     def test_can_add_new_attribute(self):
         yaml_str = """
@@ -758,7 +844,7 @@ class TestYAMLConfig(TestCase):
         layers_to_predict = [1, 2, 1, 2, 5]
         curr_it = [0, 0, 1, 3, 7]
 
-        expected_start_ring = [0, 0,  1, 6, 35]
+        expected_start_ring = [0, 0, 1, 6, 35]
         expected_end_ring = [0, 1, 1, 7, 39]
 
         for test_idx, (layer, it) in enumerate(zip(layers_to_predict, curr_it)):

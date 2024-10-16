@@ -52,8 +52,16 @@ alg:
       beta: 1
 
     #V2 PARAMS
+    #Max size per porosity bucket. Must be an integer. Default: 100
     bucket_max_size: 100
-    alpha: 0.3
+    #Bucket porosity width. Must be a positive float. Default: 1
+    poros_width: 1
+    #Min porosity. Must be non-negative. Default: 0
+    poros_min: 0
+    #Max porosity. Must be non-negative and greater than poros_min. Default: 100
+    poros_max: 100
+    #Update rate. Must be a float in the interval (0,1]. Default: 0.6
+    alpha: 0.6
     
     #USED BY ALL VERSIONS
     #Seed used by the rng to sample points when needed. Default: 42

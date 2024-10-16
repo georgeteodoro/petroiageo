@@ -146,7 +146,10 @@ class ConfigTypeCaster:
             "max_points": int,
             "seed": int,
             'alpha': float,
-            'bucket_max_size': int
+            'bucket_max_size': int,
+            'poros_min': float,
+            'poros_max': float,
+            'poros_width': float
         }
 
         cls._apply_key_func_mapping_to_dict_and_modify_target_dict(
@@ -391,13 +394,30 @@ class ConfigValidator:
             raise ValueError(
                 f"alg.sampling.seed: Seed value can't be negative!")
 
-        if samp_config_dict['alpha'] < 0 or samp_config_dict['alpha'] > 1:
+        if samp_config_dict['alpha'] <= 0 or samp_config_dict['alpha'] > 1:
             raise ValueError(
-                f"alg.sampling.alpha: Alpha value must be in range [0,1]!")
+                f"alg.sampling.alpha: Alpha value must be in range (0,1]!")
 
         if samp_config_dict['bucket_max_size'] <= 0:
             raise ValueError(
                 f"alg.sampling.bucket_max_size: Must be a positive integer!")
+
+        if samp_config_dict['poros_min'] < 0:
+            raise ValueError(
+                f"alg.sampling.poros_min: poros_min can't be negative!")
+
+        if samp_config_dict['poros_max'] < 0:
+            raise ValueError(
+                f"alg.sampling.poros_max: poros_max can't be negative!")
+
+        if samp_config_dict['poros_min'] >= samp_config_dict['poros_max']:
+            raise ValueError(
+                f"alg.sampling.poros_min: poros_min must be less than poros_max!"
+            )
+
+        if samp_config_dict['poros_width'] <= 0:
+            raise ValueError(
+                f"alg.sampling.poros_width: poros_width can't be negative!")
 
     @staticmethod
     def _raise_if_beta_dist_params_invalid(samp_config_dict: dict):
@@ -554,8 +574,11 @@ class Config:
         base_config["max_points"] = -1
         base_config["seed"] = 42
         base_config["beta_dist"] = self._base_penalty_sampling_func_config()
-        base_config["alpha"] = 0.1
+        base_config["alpha"] = 0.6
         base_config["bucket_max_size"] = 100
+        base_config["poros_width"] = 1
+        base_config["poros_min"] = 0
+        base_config["poros_max"] = 100
         return base_config
 
     def _base_parallel_config(self) -> dict:
@@ -641,7 +664,8 @@ class Config:
         Returns a list of tuples with the wells coords:
         [(1, 2),(3, 4),(5, 6)...]
         """
-        return self.get_coords_of_target_wells_ids(range(len(self.wells['coords'])))
+        return self.get_coords_of_target_wells_ids(
+            range(len(self.wells['coords'])))
 
     @property
     def train_wells_coords(self) -> List[Tuple[int, int]]:
