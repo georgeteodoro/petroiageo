@@ -790,9 +790,19 @@ class TrialDataBase(ABC):
                         updated_dict = {well_id: sampled_points}
                         self._set_ring_hook(ring, updated_dict, True)
 
-    def _get_buckets_len(self, poros_width: float, buckets_starts: list[float],
-                         available_rings_to_shrink: list[int],
-                         ring_being_sampled: int) -> tuple[dict, dict]:
+            rank_should_propagate = self._config.get_param(
+                'mpi_should_update_local')
+            if rank_should_propagate:
+                buckets_origin_count = self._get_buckets_origin_count(
+                    poros_width, buckets_list, available_rings_to_shrink,
+                    ring_being_sampled)
+                beg_str = f"[buckets_len][ring-{ring_being_sampled}]"
+                print(beg_str, buckets_origin_count)
+
+    def _get_buckets_len(
+        self, poros_width: float, buckets_starts: list[Decimal],
+        available_rings_to_shrink: list[int], ring_being_sampled: int
+    ) -> tuple[dict[Decimal, int], dict[Decimal, list[tuple[int, int]]]]:
         """
         Counts how many points are within each bucket and which
         (ring, well_id) pairs make the buckets
@@ -808,10 +818,10 @@ class TrialDataBase(ABC):
             points from  
 
         return:
-            A tuple (buckets_len, buckets_origin) where buckets_len is a dict with
-            bucket porosity start as keys and num of items in it as values and 
-            buckets_origin: Dict with bucket porosity start as keys and a list
-            of (ring, well_id) pairs
+            A tuple (buckets_len, buckets_origin) where 
+            buckets_len is a dict with bucket porosity start as keys and num of
+            items in it as values, buckets_origin is a dict with bucket porosity
+            start as keys and a list of (ring, well_id) pairs as values 
         """
         buckets_len = defaultdict(int)
         buckets_origin = defaultdict(list)
@@ -830,6 +840,47 @@ class TrialDataBase(ABC):
                     if points_within > 0:
                         buckets_origin[p].append((ring, well_id))
         return buckets_len, buckets_origin
+
+    def _get_buckets_origin_count(
+            self, poros_width: float, buckets_starts: list[float],
+            available_rings_to_shrink: list[int],
+            ring_being_sampled: int) -> dict[Decimal, dict[tuple, int]]:
+        """
+        Counts how many points are within each (ring, well_id) pairs that make the buckets.
+        This is for logging purposes.
+        
+        args: 
+            poros_width (float): The buckets porosity width
+            buckets_starts (list[float]): The porosity start 
+            for every bucket
+            available_rings_to_shrink (list[int]): The rings where
+            to remove points from if needed when adding sampled 
+            points to the buckets
+            ring_being_sampled (int): The current ring to where sample
+            points from .
+        
+        return:
+            A dict of dicts with bucket starting porosity as keys and the inside dicts with
+            (ring, well_id) as keys and the num of points in the bucket as a value.
+            Example: {0.2: {(1,1):10, (1,2):5}, 0.4: {(1,1):10, (1,2):5}}
+        """
+        buckets_origin_count = dict()
+        for ring in available_rings_to_shrink:
+            for well_id in self._wells_id_list:
+                # Only account for removable points from the
+                # previous rings.
+                if ring >= ring_being_sampled:
+                    continue
+
+                chunk_data = self._get_values_hook(ring, well_id)
+                for p in buckets_starts:
+                    points_within = sum((chunk_data['phi'] >= p)
+                                        & (chunk_data['phi'] < p + poros_width))
+                    if points_within > 0:
+                        origin_pair = (ring, well_id)
+                        buckets_origin_count.setdefault(
+                            p, dict())[origin_pair] = points_within
+        return buckets_origin_count
 
     def _perf_sampling(self, it):
         if self._sampler == 'v2':
