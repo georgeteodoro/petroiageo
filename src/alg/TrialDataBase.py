@@ -684,11 +684,6 @@ class TrialDataBase(ABC):
         # be available for shrinking
         available_rings_to_shrink = self._rings_list[:-1]
 
-        # If this is the first sampling, then rings should be added one by one,
-        # starting with the first ring.
-        if self._current_ring == -1:
-            available_rings_to_update = available_rings_to_shrink[:1]
-
         # List of rings which will be sampled. We assume that the first 
         # ring was 'already sampled'. However, we don't sample it since
         # later sampling passes will shrink the first ring
