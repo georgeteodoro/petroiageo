@@ -1,3 +1,4 @@
+from collections import defaultdict
 from unittest import TestCase, main
 import numpy as np
 
@@ -348,9 +349,10 @@ class TestTargetBasedSampler(TestCase):
             self, pors_and_qts: list[tuple[float, int]]) -> list[list]:
         points = list()
         count = 0
+        n_cols = 7
         for por, n_points in pors_and_qts:
             for _ in range(n_points):
-                new_p = [count] * 7
+                new_p = [count] * n_cols
                 new_p[PointDtypeIdx.phi] = por
                 points.append(new_p)
                 count += 1
@@ -358,58 +360,61 @@ class TestTargetBasedSampler(TestCase):
 
     def test_dont_sample_empty_propagated_points(self):
         propagated_points = list()
-        buckets_len = {i: i for i in range(3)}
+        buckets_len = defaultdict(int)
+        for i in range(3):
+            buckets_len[i] = i
+
         expected_buckets_len = {i: i for i in range(3)}
         buckets_max_size = 4
         alpha = 0.1
-        sampled_must_add, sampled_for_update = target_based_sampler(
-            propagated_points, buckets_len, buckets_max_size, alpha)
+        poros_width = 1
+        points_to_add, points_to_remove = target_based_sampler(
+            propagated_points, buckets_len, poros_width, buckets_max_size,
+            alpha)
 
         self.assertDictEqual(buckets_len, expected_buckets_len)
-        self.assertTrue(len(sampled_must_add) == 0)
-        self.assertTrue(len(sampled_for_update) == 0)
+        self.assertTrue(len(points_to_add) == 0)
+        self.assertDictEqual(points_to_remove, dict())
 
     def test_add_points_to_empty_buckets(self):
         propagated_points = list()
         propagated_points = self._get_n_points_with_pors([(1.1, 1), (2.2, 2),
                                                           (3.3, 3)])
 
-        buckets_len = dict()
+        buckets_len = defaultdict(int)
         buckets_max_size = 4
         alpha = 0.1
-        sampled_must_add, sampled_for_update = target_based_sampler(
-            propagated_points, buckets_len, buckets_max_size, alpha)
+        poros_width = 1
+        points_to_add, points_to_remove = target_based_sampler(
+            propagated_points, buckets_len, poros_width, buckets_max_size,
+            alpha)
 
         expected_buckets_len = {1: 1, 2: 2, 3: 3}
         self.assertDictEqual(buckets_len, expected_buckets_len)
-        self.assertTrue(len(sampled_for_update) == 0)
-        expected_sampled_must_add = {
-            1: [propagated_points[0]],
-            2: propagated_points[1:3],
-            3: propagated_points[3:]
-        }
-        self.assertDictEqual(sampled_must_add, expected_sampled_must_add)
+        self.assertDictEqual(points_to_remove, dict())
+        self.assertListEqual(propagated_points, points_to_add)
 
     def test_add_points_to_not_empty_buckets(self):
         propagated_points = list()
         propagated_points = self._get_n_points_with_pors([(1.1, 1), (2.2, 2),
                                                           (3.3, 3)])
 
-        buckets_len = {1: 1, 2: 1, 3: 1}
+        buckets_len = defaultdict(int)
+        buckets_len[1] = 1
+        buckets_len[2] = 1
+        buckets_len[3] = 1
+
         buckets_max_size = 4
         alpha = 0.1
-        sampled_must_add, sampled_for_update = target_based_sampler(
-            propagated_points, buckets_len, buckets_max_size, alpha)
+        poros_width = 1
+        points_to_add, points_to_remove = target_based_sampler(
+            propagated_points, buckets_len, poros_width, buckets_max_size,
+            alpha)
 
         expected_buckets_len = {1: 2, 2: 3, 3: 4}
         self.assertDictEqual(buckets_len, expected_buckets_len)
-        self.assertTrue(len(sampled_for_update) == 0)
-        expected_sampled_must_add = {
-            1: [propagated_points[0]],
-            2: propagated_points[1:3],
-            3: propagated_points[3:]
-        }
-        self.assertDictEqual(sampled_must_add, expected_sampled_must_add)
+        self.assertListEqual(propagated_points, points_to_add)
+        self.assertDictEqual(points_to_remove, dict())
 
     def test_add_points_to_full_buckets_alpha_1(self):
         propagated_points = list()
@@ -417,14 +422,15 @@ class TestTargetBasedSampler(TestCase):
                                                           (3.3, 3)])
 
         buckets_max_size = 4
-        buckets_len = {
-            1: buckets_max_size,
-            2: buckets_max_size,
-            3: buckets_max_size
-        }
+        buckets_len = defaultdict(int)
+        for i in range(1, 4):
+            buckets_len[i] = buckets_max_size
+
         alpha = 1
-        sampled_must_add, sampled_for_update = target_based_sampler(
-            propagated_points, buckets_len, buckets_max_size, alpha)
+        poros_width = 1
+        points_to_add, points_to_remove = target_based_sampler(
+            propagated_points, buckets_len, poros_width, buckets_max_size,
+            alpha)
 
         expected_buckets_len = {
             1: buckets_max_size,
@@ -432,13 +438,9 @@ class TestTargetBasedSampler(TestCase):
             3: buckets_max_size
         }
         self.assertDictEqual(buckets_len, expected_buckets_len)
-        expected_sampled_for_update = {
-            1: [propagated_points[0]],
-            2: propagated_points[1:3],
-            3: propagated_points[3:]
-        }
-        self.assertDictEqual(sampled_for_update, expected_sampled_for_update)
-        self.assertTrue(len(sampled_must_add) == 0)
+        self.assertListEqual(propagated_points, points_to_add)
+        expected_points_to_remove = {1: 1, 2: 2, 3: 3}
+        self.assertDictEqual(expected_points_to_remove, points_to_remove)
 
     def test_fills_almost_full_bucket(self):
         propagated_points = list()
@@ -446,10 +448,15 @@ class TestTargetBasedSampler(TestCase):
                                                           (3.3, 3)])
 
         buckets_max_size = 4
-        buckets_len = {1: buckets_max_size, 2: 3, 3: 3}
+        buckets_len = defaultdict(int)
+        buckets_len[1] = buckets_max_size
+        buckets_len[2] = 3
+        buckets_len[3] = 3
         alpha = 0.1
-        sampled_must_add, sampled_for_update = target_based_sampler(
-            propagated_points, buckets_len, buckets_max_size, alpha)
+        poros_width = 1
+        points_to_add, points_to_remove = target_based_sampler(
+            propagated_points, buckets_len, poros_width, buckets_max_size,
+            alpha)
 
         expected_buckets_len = {
             1: buckets_max_size,
@@ -457,11 +464,10 @@ class TestTargetBasedSampler(TestCase):
             3: buckets_max_size
         }
         self.assertDictEqual(buckets_len, expected_buckets_len)
-        expected_sampled_must_add = {
-            2: [propagated_points[1]],
-            3: [propagated_points[3]]
-        }
-        self.assertDictEqual(sampled_must_add, expected_sampled_must_add)
+        expected_must_add_for_sure = [
+            propagated_points[1], propagated_points[3]
+        ]
+        self.assertListEqual(expected_must_add_for_sure, points_to_add[:2])
 
     def test_dont_sample_alpha_0(self):
         propagated_points = list()
@@ -469,22 +475,23 @@ class TestTargetBasedSampler(TestCase):
                                                           (3.3, 3)])
 
         buckets_max_size = 4
-        buckets_len = {
-            1: buckets_max_size,
-            2: buckets_max_size,
-            3: buckets_max_size
-        }
+        buckets_len = defaultdict(int)
+        for i in range(1, 4):
+            buckets_len[i] = buckets_max_size
+
         alpha = 0
-        sampled_must_add, sampled_for_update = target_based_sampler(
-            propagated_points, buckets_len, buckets_max_size, alpha)
+        poros_width = 1
+        points_to_add, points_to_remove = target_based_sampler(
+            propagated_points, buckets_len, poros_width, buckets_max_size,
+            alpha)
         expected_buckets_len = {
             1: buckets_max_size,
             2: buckets_max_size,
             3: buckets_max_size
         }
         self.assertDictEqual(buckets_len, expected_buckets_len)
-        self.assertTrue(len(sampled_must_add) == 0)
-        self.assertTrue(len(sampled_for_update) == 0)
+        self.assertTrue(len(points_to_add) == 0)
+        self.assertDictEqual(points_to_remove, dict())
 
     def test_generate_sample_for_update(self):
         propagated_points = list()
@@ -492,11 +499,20 @@ class TestTargetBasedSampler(TestCase):
                                                           (3.3, 3)])
 
         buckets_max_size = 4
-        buckets_len = {1: buckets_max_size, 2: 3, 3: 3}
+        buckets_len = defaultdict(int)
+        buckets_len[1] = buckets_max_size
+        buckets_len[2] = 3
+        buckets_len[3] = 3
         alpha = 0.7
         seed = 42
-        sampled_must_add, sampled_for_update = target_based_sampler(
-            propagated_points, buckets_len, buckets_max_size, alpha, seed=seed)
+        poros_width = 1
+        points_to_add, points_to_remove = target_based_sampler(
+            propagated_points,
+            buckets_len,
+            poros_width,
+            buckets_max_size,
+            alpha,
+            seed=seed)
 
         expected_buckets_len = {
             1: buckets_max_size,
@@ -504,18 +520,12 @@ class TestTargetBasedSampler(TestCase):
             3: buckets_max_size
         }
         self.assertDictEqual(buckets_len, expected_buckets_len)
-        expected_sampled_must_add = {
-            2: [propagated_points[1]],
-            3: [propagated_points[3]]
-        }
-        self.assertDictEqual(sampled_must_add, expected_sampled_must_add)
+        #If alfa or seed changes, this may not pass anymore
+        #But, for sure, it must add at least 2 new points
+        self.assertTrue(len(points_to_add) == 4)
 
-        # If alpha or seed changes this might not pass anymore
-        expected_sampled_for_update = {
-            2: [propagated_points[2]],
-            3: [propagated_points[5]]
-        }
-        self.assertDictEqual(sampled_for_update, expected_sampled_for_update)
+        expected_points_to_remove = {2: 1, 3: 1}
+        self.assertDictEqual(expected_points_to_remove, points_to_remove)
 
 
 if __name__ == "__main__":
