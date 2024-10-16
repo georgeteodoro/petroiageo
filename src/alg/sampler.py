@@ -195,7 +195,7 @@ def target_based_sampler(propagated_points: list,
                          bucket_max_size: int,
                          alpha: float,
                          rng: np.random.Generator = None,
-                         seed: int = 42):
+                         seed: int = 42) -> tuple[list, dict]:
     """
     Performs target based sampling on the propagated_points. It selects points based on 
     its respective buckets size. Updates bucket_len inplace.
@@ -212,7 +212,7 @@ def target_based_sampler(propagated_points: list,
     points_to_add: list of points from the last ring which should be added 
     to the sampled database.
 
-    points_to_remove: list of how many points from a given bucket should be 
+    points_to_remove: dict of how many points from a given bucket should be 
     removed from the current sample of points to accommodate the new points 
     from the last ring.
     """
