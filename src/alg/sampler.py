@@ -209,23 +209,13 @@ def target_based_sampler(propagated_points: list,
     seed: Int representing the seed for the rng if needed
 
     Returns:
-       points_to_add: list of points from the last ring which should be added 
+    points_to_add: list of points from the last ring which should be added 
     to the sampled database.
-       points_to_remove: list of how many points from a given bucket should be 
+
+    points_to_remove: list of how many points from a given bucket should be 
     removed from the current sample of points to accommodate the new points 
     from the last ring.
-
-    OLD=============================
-    Returns:
-    sampled_must_add: Dict with buckets ids as keys and a list of points as values. 
-    Represents points that should be added first to its bucket as they were selected when
-     the bucket size was less than bucket_max_size
-    sampled_for_update: Dict with buckets ids as keys and a list of points as values.
-    Represents points that were selected after its bucket was already full. Should be
-    added to the bucket after the points in sampled_must_add.
     """
-    # sampled_must_add = dict()
-    # sampled_for_update = dict()
 
     points_to_add = []
     points_to_remove = defaultdict(int)
@@ -237,14 +227,11 @@ def target_based_sampler(propagated_points: list,
         point_por = point[PointDtypeIdx.phi]
         bucket_id = Decimal(point_por) - (Decimal(point_por) % poros_width)
         if buckets_len[bucket_id] < bucket_max_size:
-            # sampled_must_add.setdefault(bucket_id, list()).append(point)
             points_to_add.append(point)
             buckets_len[bucket_id] += 1
         else:
             if rng.random() < alpha:
                 points_to_add.append(point)
                 points_to_remove[bucket_id] += 1
-                # sampled_for_update.setdefault(bucket_id, list()).append(point)
 
-    # return sampled_must_add, sampled_for_update
     return points_to_add, points_to_remove
