@@ -22,7 +22,7 @@ starting_porosity_cube_path: "../../data/POV/porosity_data.h5"
 
 
 alg:
-  num_its: 10 # Num of iterations to run. Default: 10
+  num_its: 20 # Num of iterations to run. Default: 10
 
   seismic_on_memory: True
   fsel_only: True

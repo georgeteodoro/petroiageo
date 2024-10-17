@@ -2,6 +2,7 @@ import sys
 import numpy as np
 import h5py
 import argparse
+import ast
 
 # import adddeps  # fix sys.path
 import opentuner
@@ -49,7 +50,7 @@ def initialize_training_data(config, sel_features):
     # Prepping trial data
     trial_data = TrialDataSharedNumpy(train_wells_ids, porosity_h5_dset,
                                       config)
-    trial_data.prepare_porosity(5)
+    trial_data.prepare_porosity(config.alg['num_its']-1)
 
     # Prepping feature data
     all_features = FeatureDatasetMMapCache(config)
@@ -152,11 +153,15 @@ def main():
     #     print("usage: python3 hpo-test.py CONFIG_PATH")
     #     return
 
-    if len(unknown) != 1:
-        print("usage: python3 hpo-test.py CONFIG_PATH")
+    if len(unknown) != 2:
+        print("usage: python3 hpo-test.py CONFIG_PATH FEATURES_PATH")
         return
 
     # Features to be used
+    with open(unknown[1]) as f_sets:
+        sel_features = ast.literal_eval(f_sets.readline())
+        print(f"Features: {sel_features}")
+    
     sel_features = [('FAR', (0,1,0)), ('FAR', (1,2,0))]
 
     # Parse config
@@ -166,6 +171,8 @@ def main():
     base_features = config.features_files_names
     base_features = [f for f in base_features if f != ".gitkeep"]
     mpi_module.initialize(config)
+
+    print(f"Running it {config.alg['num_its']}")
 
     global trial_data
     trial_data = initialize_training_data(config, sel_features)

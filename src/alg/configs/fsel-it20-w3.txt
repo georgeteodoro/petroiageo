@@ -1,0 +1,1 @@
+[('FAR', (3, 0, 0)), ('NEAR_azimuth_', (-1, 0, 1)), ('NEAR_dip-angle_', (1, 2, -2)), ('NEAR_azimuth_', (3, -1, 2)), ('NEAR_gaussian-curvature_', (2, -2, -1)), ('NEAR_curvedness_', (1, 2, -1)), ('NEAR_dip-angle_', (0, 3, 1)), ('MID', (-1, -3, 1)), ('NEAR', (1, -1, 0)), ('NEAR_curvedness_', (2, 2, 3))]
