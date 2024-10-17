@@ -155,7 +155,9 @@ class TrialDataBase(ABC):
         It also resets the internal current column.
         First iteration is 0.
 
-        prep_it: Integer representing the iteration whose data we should prepare
+        prep_it: Integer representing the iteration whose data we should 
+                 prepare. For running iteration 20 (will propagate ring 20)
+                 prep_it should be 19.
         '''
 
         profile = self._config.get_param('prof_trial_prep_porosity')
