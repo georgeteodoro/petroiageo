@@ -127,8 +127,9 @@ def run(config):
                     # or if this is just the end of a f_it.
                     if len(best_features) < n_features_to_select:
                         # Send best current feature to all workers
-                        # print(f"{beg_str}[it{it}] New best feature "
-                        #       f"{cur_best_feature}")
+                        print(f"{beg_str}[it{it}] New best feature "
+                              f"{cur_best_feature} rmse {cur_best_rmse} "
+                              f"mae {cur_best_mae}")
                         for worker_rank in range(workers_size):
                             comm.send(
                                 cur_best_feature,
