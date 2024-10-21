@@ -13,6 +13,9 @@ def _train_regr(X_train, y_train, X_val, y_val, hyperparams, regressor=None):
     Required for HPO.
     '''
 
+    hp = hyperparams.copy()
+    num_iterations = hp.pop('num_iterations')
+
     lgb_train_dataset = lgb.Dataset(X_train, y_train)
     lgb_eval_dataset = lgb.Dataset(
         X_val,
@@ -20,10 +23,10 @@ def _train_regr(X_train, y_train, X_val, y_val, hyperparams, regressor=None):
         reference=lgb_train_dataset,
     )
     regressor = lgb.train(
-        hyperparams,
+        hp,
         lgb_train_dataset,
         init_model=regressor,
-        num_boost_round=100,
+        num_boost_round=num_iterations,
         valid_sets=lgb_eval_dataset,
         keep_training_booster=True,
         callbacks=[
