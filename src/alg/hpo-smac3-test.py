@@ -15,6 +15,7 @@ from feature_data.FeatureDatasetMMapCache import FeatureDatasetMMapCache
 from ConfigSpace import Configuration, ConfigurationSpace
 from smac import HyperparameterOptimizationFacade, Scenario
 from ConfigSpace.hyperparameters import UniformIntegerHyperparameter as HPInt
+from smac.runhistory.dataclasses import TrialValue
 
 ################
 # Requirements:
@@ -66,13 +67,10 @@ def initialize_training_data(config, sel_features):
 trial_data = None
 config = None
 
-# ===================================================================
-
 # min, max, default
 config_space = {'num_leaves': (5, 100, 20),
                 'min_data_in_leaf': (1, 100, 20),
                 'max_depth': (1, 10000, 10),}
-
 
 def main():
     # parser = argparse.ArgumentParser(parents=opentuner.argparsers())
@@ -120,16 +118,31 @@ def main():
         HPInt('max_depth', lower=1, upper=10000, default_value=10),
     ])
 
+    max_trials = 3
     scenario = Scenario(smac_config_space, deterministic=False, 
-                        n_trials=20, n_workers=1)
+                        n_trials=max_trials, n_workers=1)
     smac = HyperparameterOptimizationFacade(scenario, train, overwrite=True)
-    incumbent = smac.optimize()
+    trials = [smac.ask() for _ in range(max_trials)]
+
+    for trial in trials:
+        print(dict(trial.config))
+        rmse, mae = feature_sel.test_new_feature(trial_data, 
+                config, hyperparams=dict(trial.config))
+        print(rmse)
+        smac.tell(trial, TrialValue(cost=rmse), save=True)
+
+    # Parallel smac.optimize() uses dask and pickles the train function.
+    # We use h5py and mpi object which cannot be pickled, thus no parallelism
+    # incumbent = smac.optimize()
 
     # # Get cost of default configuration
     # default_cost = smac.validate(None)
     # print(f"Default cost: {default_cost}")
 
+    print(smac.runhistory.get_configs())
+
     # Let's calculate the cost of the incumbent
+    incumbent = smac.optimize() # No more trials, just get the results
     best_rmse = smac.validate(incumbent)
     print(f"Best error: {best_rmse}")
     print(f"best config: {dict(incumbent)}")
