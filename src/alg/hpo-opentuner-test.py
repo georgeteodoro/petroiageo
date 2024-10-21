@@ -71,13 +71,6 @@ def initialize_training_data(config, sel_features):
 
     return trial_data
 
-def initialize_tunner(obj_function):
-    search_space = {
-        'num_leaves': tune.randint(5, 100),
-        'min_data_in_leaf': tune.randint(1, 100),
-        'max_depth': tune.randint(1, 10000)
-    }
-
 # ===================================================================
 
 trial_data = None
@@ -131,7 +124,7 @@ class AppTuner(MeasurementInterface):
         # run_result = self.call_program(run_cmd)
         # assert run_result['returncode'] == 0
 
-        return Result(time=rmse)
+        return Result(acuracy=1/rmse)
 
     def save_final_config(self, configuration):
         """called at the end of tuning"""

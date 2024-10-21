@@ -52,8 +52,9 @@ def test_new_feature(trial_data: TrialDataBase, config: Config, hyperparams=None
     the incremental learning.
     '''
 
-    if hyperparams is None:
-        hyperparams = common.training_params
+    trial_hyperparams = common.training_params
+    if hyperparams is not None:
+        trial_hyperparams.update(hyperparams)
 
     assert len(
         trial_data) > 0, "[feature_sel][test_new_feature] Empty TrialData"
@@ -100,7 +101,7 @@ def test_new_feature(trial_data: TrialDataBase, config: Config, hyperparams=None
             t122 = time()
 
             regressor = _train_regr(X_train, y_train, 
-                X_val, y_val, hyperparams, regressor)
+                X_val, y_val, trial_hyperparams, regressor)
             
             t123 = time()
 
