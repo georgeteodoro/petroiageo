@@ -14,6 +14,7 @@ from feature_data.FeatureDatasetMMapCache import FeatureDatasetMMapCache
 
 from ConfigSpace import Configuration, ConfigurationSpace
 from smac import HyperparameterOptimizationFacade, Scenario
+from ConfigSpace.hyperparameters import UniformIntegerHyperparameter as HPInt
 
 ################
 # Requirements:
@@ -67,9 +68,11 @@ config = None
 
 # ===================================================================
 
-config_space = {'num_leaves': (5, 100),
-                'min_data_in_leaf': (1, 100),
-                'max_depth': (1, 10000),}
+# min, max, default
+config_space = {'num_leaves': (5, 100, 20),
+                'min_data_in_leaf': (1, 100, 20),
+                'max_depth': (1, 10000, 10),}
+
 
 def main():
     # parser = argparse.ArgumentParser(parents=opentuner.argparsers())
@@ -102,15 +105,21 @@ def main():
     trial_data = initialize_training_data(config, sel_features)
 
     print(f"Running single trial")
-    print(feature_sel.test_new_feature(trial_data, config))
+    default_rmse = feature_sel.test_new_feature(trial_data, config)[0]
+    print()
 
     def train(trial_hyperparams: Configuration, seed: int = 0) -> float:
         rmse, mae = feature_sel.test_new_feature(trial_data, 
             config, hyperparams=trial_hyperparams)
         return rmse
 
+    smac_config_space = ConfigurationSpace()
+    smac_config_space.add([
+        HPInt('num_leaves', lower=5, upper=100, default_value=20),
+        HPInt('min_data_in_leaf', lower=1, upper=100, default_value=20),
+        HPInt('max_depth', lower=1, upper=10000, default_value=10),
+    ])
 
-    smac_config_space = ConfigurationSpace(config_space)
     scenario = Scenario(smac_config_space, deterministic=False, 
                         n_trials=20, n_workers=1)
     smac = HyperparameterOptimizationFacade(scenario, train, overwrite=True)
@@ -121,12 +130,11 @@ def main():
     # print(f"Default cost: {default_cost}")
 
     # Let's calculate the cost of the incumbent
-    incumbent_cost = smac.validate(incumbent)
-    print(f"Best error: {incumbent_cost}")
-
-    print(dict(incumbent))
-    print(type(incumbent))
-    print(incumbent)
+    best_rmse = smac.validate(incumbent)
+    print(f"Best error: {best_rmse}")
+    print(f"best config: {dict(incumbent)}")
+    print(f"improved by {default_rmse - best_rmse:.6f} - "
+          f"{default_rmse/best_rmse:.2f}x")
 
 if __name__ == '__main__':
     main()
