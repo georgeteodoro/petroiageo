@@ -3,6 +3,7 @@ import numpy as np
 import h5py
 import argparse
 import ast
+from mpi4py import MPI
 
 import feature_sel
 import config_parser
@@ -106,11 +107,6 @@ def main():
     default_rmse = feature_sel.test_new_feature(trial_data, config)[0]
     print()
 
-    def train(trial_hyperparams: Configuration, seed: int = 0) -> float:
-        rmse, mae = feature_sel.test_new_feature(trial_data, 
-            config, hyperparams=trial_hyperparams)
-        return rmse
-
     smac_config_space = ConfigurationSpace()
     smac_config_space.add([
         HPInt('num_leaves', lower=5, upper=100, default_value=20),
@@ -121,31 +117,32 @@ def main():
     max_trials = 3
     scenario = Scenario(smac_config_space, deterministic=False, 
                         n_trials=max_trials, n_workers=1)
-    smac = HyperparameterOptimizationFacade(scenario, train, overwrite=True)
+    smac = HyperparameterOptimizationFacade(scenario, "empty", overwrite=True)
     trials = [smac.ask() for _ in range(max_trials)]
 
+    best_rmse = float('inf')
+    best_conf = None
     for trial in trials:
         print(dict(trial.config))
         rmse, mae = feature_sel.test_new_feature(trial_data, 
                 config, hyperparams=dict(trial.config))
+        
         print(rmse)
         smac.tell(trial, TrialValue(cost=rmse), save=True)
+        
+        if rmse < best_rmse:
+            best_rmse = rmse
+            best_conf = dict(trial.config)
+
 
     # Parallel smac.optimize() uses dask and pickles the train function.
     # We use h5py and mpi object which cannot be pickled, thus no parallelism
     # incumbent = smac.optimize()
 
-    # # Get cost of default configuration
-    # default_cost = smac.validate(None)
-    # print(f"Default cost: {default_cost}")
-
     print(smac.runhistory.get_configs())
 
-    # Let's calculate the cost of the incumbent
-    incumbent = smac.optimize() # No more trials, just get the results
-    best_rmse = smac.validate(incumbent)
     print(f"Best error: {best_rmse}")
-    print(f"best config: {dict(incumbent)}")
+    print(f"best config: {best_conf}")
     print(f"improved by {default_rmse - best_rmse:.6f} - "
           f"{default_rmse/best_rmse:.2f}x")
 
