@@ -55,8 +55,9 @@ def initialize_training_data(config, sel_features):
     print(all_features)
     print(sel_features)
 
-    for f_name, disp in sel_features:
-        print(f'adding {f_name}: {disp}')
+    for i, (f_name, disp) in enumerate(sel_features):
+        if rank == 0:
+            print(f'adding [{i}/{len(sel_features)}] {f_name}: {disp}')
         f = all_features.get_feature(f_name)
         trial_data.commit_feature(f, disp)
 
@@ -80,18 +81,18 @@ def worker(trial_data, config):
         if trial is None:
             return
         
-        print(f"[worker] got {dict(trial.config)}")
+        #print(f"[worker] got {dict(trial.config)}")
 
         t0 = time()
         rmse, mae = feature_sel.test_new_feature(trial_data, 
             config, hyperparams=dict(trial.config))
         t1 = time()
 
-        print(f"[worker] run result: {rmse}")
+        #print(f"[worker] run result: {rmse}")
 
         comm.send((trial, t1-t0, rmse), dest=manager_rank)
 
-    print("[worker] done...")
+    #print("[worker] done...")
 
 
 
@@ -102,10 +103,12 @@ def main():
 
     # Features to be used
     with open(sys.argv[2]) as f_sets:
-        sel_features = ast.literal_eval(f_sets.readline())
-        print(f"Features: {sel_features}")
+        sel_features = ast.literal_eval(f_sets.readlines()[-1])
+        #sel_features = ast.literal_eval(f_sets.readline())
+        if rank == 0:
+            print(f"Features: {sel_features}")
     
-    sel_features = [('FAR', (0,1,0)), ('FAR', (1,2,0))]
+    #sel_features = [('FAR', (0,1,0)), ('FAR', (1,2,0))]
 
     # Parse config
     config = config_parser.YAMLConfig(sys.argv[1])
@@ -116,7 +119,8 @@ def main():
 
     # Prepare porosity only on workers
     if rank != manager_rank:
-        print(f"Prepping it {config.alg['num_its']}")
+        if rank == 0:
+            print(f"Prepping it {config.alg['num_its']}")
         trial_data = initialize_training_data(config, sel_features)
         
     # Run default config a single time and return result to manager
@@ -157,7 +161,7 @@ def main():
         assert(max_trials >= mpi_size-2)
         for r in range(mpi_size-1):
             trial = smac.ask()
-            print(f"[manager] sending {dict(trial.config)} to w{r}")
+            #print(f"[manager] sending {dict(trial.config)} to w{r}")
             comm.send(trial, dest=r)
 
         # Do remaining trials
@@ -177,7 +181,7 @@ def main():
 
             # Send next trial
             new_trial = smac.ask()
-            print(f"[manager] sending new {dict(new_trial.config)}")
+            #print(f"[manager] sending new {dict(new_trial.config)}")
             comm.send(new_trial, dest=status.Get_source())
 
         # Finish all remaining workers
@@ -191,7 +195,7 @@ def main():
                 best_rmse = rmse
                 best_conf = dict(trial.config)
 
-            print(f"[manager] sending none to {status.Get_source()}")
+            #print(f"[manager] sending none to {status.Get_source()}")
             comm.send(None, dest=status.Get_source())
 
 
