@@ -172,7 +172,7 @@ def main():
             # Get trial results
             (trial, trial_time, rmse) = comm.recv(status=status)
             print(f"[manager] got trial {dict(trial.config)} "
-                  f"with rmse {rmse:.6f}")
+                  f"with rmse {rmse:.6f} in {trial_time:.2f} secs")
             smac.tell(trial, TrialValue(cost=rmse, time=trial_time), save=True)
             
             if rmse < best_rmse:
@@ -189,7 +189,7 @@ def main():
             (trial, trial_time, rmse) = comm.recv(status=status)
             smac.tell(trial, TrialValue(cost=rmse, time=trial_time), save=True)
             print(f"[manager] ending, got trial {dict(trial.config)} "
-                  f"with rmse {rmse:.6f}")
+                  f"with rmse {rmse:.6f} in {trial_time:.2f} secs")
 
             if rmse < best_rmse:
                 best_rmse = rmse
