@@ -127,8 +127,10 @@ def main():
     # Run default config a single time and return result to manager
     if rank == 0: 
         print(f"[r{rank}] Running default trial")
+        t0 = time()
         default_rmse, _ = feature_sel.test_new_feature(trial_data, config)
-        print(f"[r{rank}] Done default trial: {default_rmse}")
+        t1 = time()
+        print(f"[r{rank}] Done default trial: {default_rmse} in {t1-t0} secs")
         comm.send(default_rmse, dest=manager_rank)
     if rank == manager_rank:
         default_rmse = comm.recv()
