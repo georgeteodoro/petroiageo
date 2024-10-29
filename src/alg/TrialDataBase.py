@@ -40,6 +40,7 @@ class TrialDataBase(ABC):
             ('z', np.int64),
             ('phi', np.float64),
             ('well_id', np.int64),
+            ('real', np.int64),
         ]
         self._cur_data_type = self._base_data_type + [
             (f'f{f}', np.float64) for f in range(self._n_features + 1)
@@ -245,7 +246,7 @@ class TrialDataBase(ABC):
                 # Extend points_dict by each well_id
                 for w in self._wells_id_list:
                     well_data = filt_data[filt_data['well_id'] == w]
-                    well_data = well_data[['x', 'y', 'z', 'phi', 'well_id']]
+                    well_data = well_data[['x', 'y', 'z', 'phi', 'well_id', 'real']]
 
                     points_dict[w].extend(well_data.tolist())
 
@@ -498,6 +499,10 @@ class TrialDataBase(ABC):
 
                 # Assuming that new_points is a np.ndarray
                 if new_points.size > 0:
+                    # Only real points should be used for validation
+                    if len(wells_to_retrieve) == 1:
+                        new_points = new_points[new_points['real'] == common.RealValues.real]
+
                     # Split X from y
                     new_points_X = new_points[self._current_features]
                     new_points_y = new_points['phi']
