@@ -52,8 +52,9 @@ def initialize_training_data(config, sel_features):
 
     # Prepping feature data
     all_features = FeatureDatasetMMapCache(config)
-    print(all_features)
-    print(sel_features)
+    if rank == 0:
+        print(all_features)
+        print(sel_features)
 
     for i, (f_name, disp) in enumerate(sel_features):
         if rank == 0:
