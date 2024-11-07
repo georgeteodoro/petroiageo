@@ -218,6 +218,8 @@ def _train_model(trial_data: TrialDataBase):
         keep_training_booster=True,
     )
 
+    # model.save_model('model.txt')
+
     return model
 
 
