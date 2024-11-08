@@ -239,6 +239,26 @@ def config_arg_parser():
         "reloaded int the H5 porosity structure.",
     )
 
+    parser.add_argument(
+        '--tr-chunk',
+        dest='training_chunks',
+        action='store',
+        default=1,
+        required=False,
+        help="Number of training chunks for incremental learning "
+        "(default=1).",
+    )
+
+    parser.add_argument(
+        '--tr-chunk-seq',
+        dest='training_chunks_seq',
+        action='store',
+        default=None,
+        required=False,
+        help="Number of training chunks for incremental learning "
+        "using sequential chunking. This overwrites --tr-chunk (default=1).",
+    )
+
     return parser
 
 
@@ -264,6 +284,11 @@ def update_config_file_params_with_args(config: config_parser.Config,
 
     if args.fsched_loc is not None:
         config.add_param('fsched_loc', args.fsched_loc)
+
+    config.add_param('n_training_chunks', int(args.training_chunks))
+    if args.training_chunks_seq is not None:
+        config.add_param('sequential_chunking', True)
+        config.add_param('n_training_chunks', int(args.training_chunks_seq))
 
     config.add_param('full_depth_chunks', True)
 

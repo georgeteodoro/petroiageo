@@ -63,7 +63,7 @@ def test_new_feature(trial_data: TrialDataBase, config: Config, hyperparams=None
         trial_data) > 0, "[feature_sel][test_new_feature] Empty TrialData"
     profile = config.get_param('prof_feature_sel')
 
-    n_training_chunks = int(config.alg['parallel']['n_training_chunks'])
+    n_training_chunks = config.get_param('n_training_chunks')
     train_wells_ids = config.train_wells_ids
 
     # Initialize metrics lists
