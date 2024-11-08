@@ -186,6 +186,10 @@ def run(config):
                     print(f"{beg_str}[it{it}][f_it{f_it}] Trial "
                           f"{best_features + [(feature, disp)]} "
                           f"rmse {ret[0]} in {t7-t4:.2f}")
+                    
+                    print(f"{beg_str}[it{it}][trialProf] get_feature {t5-t4}")
+                    print(f"{beg_str}[it{it}][trialProf] update_feature {t6-t5}")
+                    print(f"{beg_str}[it{it}][trialProf] training {t7-t6}")
 
                     it_get_f_time += t5 - t4
                     it_update_f_time += t6 - t5
