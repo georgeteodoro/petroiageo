@@ -82,7 +82,7 @@ class FeatureDataMMap(FeatureDataBase):
         # Sometimes unused cache pages are not reclaimed by kernel,
         # resulting in bus errors when reading a new feature.
         # Ideally, self._mmap_buffer.close() should be enough.
-        self._mmap_buffer.madvise(mmap.MADV_DONTNEED)
+        # self._mmap_buffer.madvise(mmap.MADV_DONTNEED)
 
         self._mmap_buffer.close()
         self._file.close()
