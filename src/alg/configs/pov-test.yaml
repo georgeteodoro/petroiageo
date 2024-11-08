@@ -32,7 +32,7 @@ alg:
 
   parallel: #parallelism stuff
     #max_points_per_chunk: 10
-    n_training_chunks: 1
+    #n_training_chunks: 1
 
   sampling: # Sampling strategy stuff
     #sampler: "v1"

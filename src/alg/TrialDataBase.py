@@ -454,9 +454,10 @@ class TrialDataBase(ABC):
         Data is retrieved by ring and well_id until a chunk is reached.
         '''
 
-        n_training_chunks = int(
-            self._config.alg['parallel']['n_training_chunks'])
+        
+        n_training_chunks = self._config.get_param('n_training_chunks')
         profile = self._config.get_param('prof_TD_get_values')
+        sequential_chunking = self._config.get_param('sequential_chunking')
 
         prep_slice_time = 0
         get_val_hook_time = 0
@@ -469,60 +470,164 @@ class TrialDataBase(ABC):
         X = []
         y = []
 
-        # Fill training data, one ring at a time, one well at a time
-        for r in self._rings_list:
-            for w in wells_to_retrieve:
-                t0 = time()
-                # If chunking is used (i.e., not validation or test data)
-                if chunk_id >= 0:
-                    # Calculate how many points from a ring/well_id pair
-                    # this chunk should have
-                    points_per_well = self._well_size_hook(r, w)
-                    points_per_rw = int(
-                        ceil(points_per_well / n_training_chunks))
+        def _update_X_Y(new_points, cur_features, is_val, X, Y):
+            # Assuming that new_points is a np.ndarray
+            if new_points.size > 0:
+                # Only real points should be used for validation
+                # if len(wells_to_retrieve) == 1:
+                if is_val:
+                    new_points = new_points[new_points['real'
+                                ] == common.RealValues.real]
 
-                    # Generate a chunk slice for the ring/well pair
-                    beg = chunk_id * points_per_rw
-                    end = (chunk_id + 1) * points_per_rw
-                    end = min(end, points_per_well)
-                    cur_slice = slice(int(beg), int(end))
-                else:
-                    cur_slice = slice(0,self._well_size_hook(r, w))
-                t1 = time()
-                prep_slice_time += t1 - t0
+                # Split X from y
+                new_points_X = new_points[cur_features]
+                new_points_y = new_points['phi']
 
-                # Retrieve current chunk slice from the backend storage
-                new_points = self._get_values_hook(r, w, cur_slice)
+                # This conversion removes the structured array information,
+                # converting to a simple 2D ndarray (lines, fields). Now
+                # the conversion does not require expensive copying/moving
+                # the whole data points multiple times just to be
+                # compatible with lgb.train().
+                new_points_X = rfn.structured_to_unstructured(new_points_X)
 
-                t2 = time()
-                get_val_hook_time += t2 - t1
+                # t3 = time()
+                # to_list_time += t3 - t2
 
-                # Assuming that new_points is a np.ndarray
-                if new_points.size > 0:
-                    # Only real points should be used for validation
-                    if len(wells_to_retrieve) == 1:
-                        new_points = new_points[new_points['real'] == common.RealValues.real]
+                # Add them to output arrays
+                X.append(new_points_X)
+                y.append(new_points_y)
 
-                    # Split X from y
-                    new_points_X = new_points[self._current_features]
-                    new_points_y = new_points['phi']
+                # t4 = time()
+                # append_time += t4 - t3
 
-                    # This conversion removes the structured array information,
-                    # converting to a simple 2D ndarray (lines, fields). Now
-                    # the conversion does not require expensive copying/moving
-                    # the whole data points multiple times just to be
-                    # compatible with lgb.train().
-                    new_points_X = rfn.structured_to_unstructured(new_points_X)
+        # Sequential chunking is the simplest solution if there is no
+        # hierarchical storage (ring,well). This should not be used,
+        # only here for publication experiments.
+        if sequential_chunking and chunk_id >= 0:
+            points_per_chunk = int(ceil(len(self) / n_training_chunks))
+            cur_chunk_id = 0
+            cur_chunk_len = 0
+            prev_rw = None
+            prev_beg = -1
+            prev_remaining = 0
+            for r in self._rings_list:
+                for w in wells_to_retrieve:
 
-                    t3 = time()
-                    to_list_time += t3 - t2
+                    # Chunk was assembled
+                    if cur_chunk_len >= points_per_chunk:
+                        if cur_chunk_id == chunk_id:
+                            # The expected chunk was filled, then nothing 
+                            # else to do
+                            break
+                        else:
+                            # Resets the chunk and try to get a new one
+                            cur_chunk_id += 1
+                            cur_chunk_len = 0
 
-                    # Add them to output arrays
-                    X.append(new_points_X)
-                    y.append(new_points_y)
+                    # First, check if the previous ring,well have some 
+                    # leftover points. We assume that it is IMPOSSIBLE 
+                    # for a ring,well array to be larger than 
+                    # two points_per_chunk.
+                    if prev_rw is not None:
+                        cur_chunk_len += prev_remaining
+                        cur_slice = slice(prev_beg, None)
 
-                    t4 = time()
-                    append_time += t4 - t3
+                        # All chunks are symbolically filled until the expected 
+                        # chunk needs to be filled. Only then data is read.
+                        if cur_chunk_id == chunk_id:
+                            # Retrieve current chunk slice from the backend storage
+                            t1 = time()
+                            # print(f'rem slice: {cur_slice}')
+                            new_points = self._get_values_hook(*prev_rw, cur_slice)
+
+                            t2 = time()
+                            get_val_hook_time += t2 - t1
+                            
+                            # Update X and Y with the new points to be returned for
+                            # the current chunk_id
+                            _update_X_Y(new_points, self._current_features, 
+                                        len(wells_to_retrieve) == 1, X, y)
+
+                        # Reset prev ring,well with points
+                        prev_remaining = 0
+                        prev_beg = -1
+                        prev_rw = None
+
+                    # Trying to add the current ring,well
+                    rw_len = self._well_size_hook(r, w)
+                    
+                    if cur_chunk_len + rw_len <= points_per_chunk:
+                        # The current ring,well is not enough for the 
+                        # full chunk. Then add it entirely.
+
+                        cur_chunk_len += rw_len
+
+                        # Generate a chunk slice for the ring/well pair
+                        # with all points
+                        cur_slice = slice(0,rw_len)
+                    else:
+                        # The current ring,well overfills the full chunk.
+                        # Then only add enough.
+                        expected_len = points_per_chunk - cur_chunk_len
+                        
+                        cur_chunk_len += expected_len
+                        cur_slice = slice(0,expected_len)
+                        
+                        prev_beg = expected_len
+                        prev_remaining = rw_len - expected_len
+                        prev_rw = (r, w)
+         
+                    # All chunks are symbolically filled until the expected 
+                    # chunk needs to be filled. Only then data is read.
+                    if cur_chunk_id == chunk_id:
+                        # Retrieve current chunk slice from the backend storage
+                        t1 = time()
+                        # print(f'slice: {cur_slice}')
+                        new_points = self._get_values_hook(r, w, cur_slice)
+
+                        t2 = time()
+                        get_val_hook_time += t2 - t1
+                        
+                        # Update X and Y with the new points to be returned for
+                        # the current chunk_id
+                        _update_X_Y(new_points, self._current_features, 
+                                    len(wells_to_retrieve) == 1, X, y)
+
+        else:
+            # Fill training data, one ring at a time, one well at a time
+            for r in self._rings_list:
+                for w in wells_to_retrieve:
+                    t0 = time()
+                    # If chunking is used (i.e., not validation or test data)
+                    if chunk_id >= 0:
+                        # Calculate how many points from a ring/well_id pair
+                        # this chunk should have
+                        rw_len = self._well_size_hook(r, w)
+                        points_per_rw = int(
+                            ceil(rw_len / n_training_chunks))
+
+                        # Generate a chunk slice for the ring/well pair
+                        beg = chunk_id * points_per_rw
+                        end = (chunk_id + 1) * points_per_rw
+                        end = min(end, rw_len)
+                        cur_slice = slice(int(beg), int(end))
+                    else:
+                        cur_slice = slice(0,self._well_size_hook(r, w))
+                    t1 = time()
+                    prep_slice_time += t1 - t0
+
+                    # Retrieve current chunk slice from the backend storage
+                    new_points = self._get_values_hook(r, w, cur_slice)
+
+                    t2 = time()
+                    get_val_hook_time += t2 - t1
+                    
+                    # Update X and Y with the new points to be returned for
+                    # the current chunk_id
+                    _update_X_Y(new_points, self._current_features, 
+                                len(wells_to_retrieve) == 1, X, y)
+
+                    
 
         # Concatenate all temporary arrays into a single output array
         t5 = time()
@@ -536,8 +641,8 @@ class TrialDataBase(ABC):
                   f"{prep_slice_time:.4f}")
             print(f"[TrialDataBase][_get_values] "
                   f"_get_values_hook {get_val_hook_time:.4f}")
-            print(f"[TrialDataBase][_get_values] to_list {to_list_time:.4f}")
-            print(f"[TrialDataBase][_get_values] append {append_time:.4f}")
+            # print(f"[TrialDataBase][_get_values] to_list {to_list_time:.4f}")
+            # print(f"[TrialDataBase][_get_values] append {append_time:.4f}")
             print(f"[TrialDataBase][_get_values] concatenate {t6-t5:.4f}")
 
         return X, y
