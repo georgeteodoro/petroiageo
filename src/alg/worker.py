@@ -173,7 +173,7 @@ def run(config):
                     # None is returned upon only 1 well propagating.
                     # If so, propagation is halted.
                     if not ret:
-                        print(f"{beg_str}[it{it}][f_it{f_it}] Only one"
+                        print(f"{beg_str}[it{it}][f_it{f_it}] Only one "
                               f"remaining well on trial data. Aborting.")
                         comm.send(results,
                                   dest=manager_rank,
