@@ -41,7 +41,7 @@ alg:
     layers_window_size: 100
     # Max num of points for the sampling. If negative, use all data 
     # available. Default: -1
-    max_points: 10000000
+    #max_points: 10000000
     #Seed used by the rng to sample points when needed. Default: 42
     seed: 42
 
@@ -68,7 +68,7 @@ alg:
   # Indicates the wells that should be used for testing only. 
   # Index starts at 0. Default is an empty list
   test_only_wells: [0, 1]
-  # test_only_wells: []
+    #test_only_wells: []
 
   
   # Feature selection type. Options: ['FORWARD', 'NONE']. Default: FORWARD

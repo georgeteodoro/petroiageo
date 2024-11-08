@@ -453,7 +453,6 @@ class TrialDataBase(ABC):
         Helper function for filtering trial_data.
         Data is retrieved by ring and well_id until a chunk is reached.
         '''
-
         
         n_training_chunks = self._config.get_param('n_training_chunks')
         profile = self._config.get_param('prof_TD_get_values')
@@ -474,7 +473,6 @@ class TrialDataBase(ABC):
             # Assuming that new_points is a np.ndarray
             if new_points.size > 0:
                 # Only real points should be used for validation
-                # if len(wells_to_retrieve) == 1:
                 if is_val:
                     new_points = new_points[new_points['real'
                                 ] == common.RealValues.real]
@@ -504,7 +502,14 @@ class TrialDataBase(ABC):
         # hierarchical storage (ring,well). This should not be used,
         # only here for publication experiments.
         if sequential_chunking and chunk_id >= 0:
-            points_per_chunk = int(ceil(len(self) / n_training_chunks))
+            # Total number of points is related to the actual points for
+            # wells_to_retrieve
+            wells_len = 0
+            for r in self._rings_list:
+                for w in wells_to_retrieve:
+                    wells_len += self._well_size_hook(r,w)
+
+            points_per_chunk = int(ceil(wells_len / n_training_chunks))
             cur_chunk_id = 0
             cur_chunk_len = 0
             prev_rw = None
@@ -537,7 +542,6 @@ class TrialDataBase(ABC):
                         if cur_chunk_id == chunk_id:
                             # Retrieve current chunk slice from the backend storage
                             t1 = time()
-                            # print(f'rem slice: {cur_slice}')
                             new_points = self._get_values_hook(*prev_rw, cur_slice)
 
                             t2 = time()
@@ -582,7 +586,6 @@ class TrialDataBase(ABC):
                     if cur_chunk_id == chunk_id:
                         # Retrieve current chunk slice from the backend storage
                         t1 = time()
-                        # print(f'slice: {cur_slice}')
                         new_points = self._get_values_hook(r, w, cur_slice)
 
                         t2 = time()
@@ -626,8 +629,6 @@ class TrialDataBase(ABC):
                     # the current chunk_id
                     _update_X_Y(new_points, self._current_features, 
                                 len(wells_to_retrieve) == 1, X, y)
-
-                    
 
         # Concatenate all temporary arrays into a single output array
         t5 = time()
