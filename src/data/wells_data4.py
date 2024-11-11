@@ -122,10 +122,8 @@ def porosity_points_py2hdf5(porosity_file: str, hdf5_file_path: str,
         for x in range(mult_factor[0]):
             for y in range(mult_factor[1]):
                 large_chunks_xy.append((x, y))
-                for z in range(mult_factor[2]):
-                    large_chunks.append((x, y, z))
-    else:
-        large_chunks = [(0, 0, 0)]
+                # for z in range(mult_factor[2]):
+                #     large_chunks.append((x, y, z))
 
     # Copy all porosity initial points to h5
     print(f"[porosity_points_py2hdf5] Updating {len(porosity_np)} values")
@@ -144,64 +142,68 @@ def porosity_points_py2hdf5(porosity_file: str, hdf5_file_path: str,
 
     # Copy-paste the whole initial sub-region multiple times, if mult_factor
     if mult_factor is not None:
-        large_chunks.remove((0, 0, 0))
         new_wells_coords = real_points.copy()
-        print(f"[porosity_points_py2hdf5] multi {len(large_chunks)} chunks")
-        print(large_chunks)
+        # large_chunks.remove((0, 0, 0))
+        # print(f"[porosity_points_py2hdf5] multi {len(large_chunks)} chunks")
+        # print(large_chunks)
         (x_len, y_len, z_len) = original_hypercube_shape
-        for chk_z in tqdm(range(mult_factor[2]),
-                          total=mult_factor[2],
-                          position=1):
+        # for chk_z in tqdm(range(mult_factor[2]),
+        #                   total=mult_factor[2],
+        #                   position=1):
             # print(f'z level: {chk_z}')
-            for count, (chk_x, chk_y) in tqdm(enumerate(large_chunks_xy),
-                                              total=len(large_chunks_xy),
-                                              position=0):
-                if (chk_x, chk_y, chk_z) == (0, 0, 0):
-                    # This is the original chunk, no work required
-                    continue
 
-                # print(f"updating {chk_x, chk_y, chk_z}")
-                xi = chk_x * x_len
-                yi = chk_y * y_len
-                zi = chk_z * z_len
+        for count, (chk_x, chk_y) in tqdm(enumerate(large_chunks_xy),
+                                          total=len(large_chunks_xy),
+                                          position=0):
+            # if (chk_x, chk_y, chk_z) == (0, 0, 0):
+            if (chk_x, chk_y) == (0, 0):
+                # This is the original chunk, no work required
+                continue
 
-                xo = (chk_x + 1) * x_len
-                yo = (chk_y + 1) * y_len
-                zo = (chk_z + 1) * z_len
+            # print(f"updating {chk_x, chk_y, chk_z}")
+            xi = chk_x * x_len
+            yi = chk_y * y_len
+            # zi = chk_z * z_len
+            zi = 0
 
-                # print(f'[{xi}:{xo}, {yi}:{yo}, {zi}:{zo}]')
-                # print(f'[0:{x_len}, 0:{y_len}, 0:{z_len}]')
-                # print('')
-                # return
+            xo = (chk_x + 1) * x_len
+            yo = (chk_y + 1) * y_len
+            # zo = (chk_z + 1) * z_len
+            zo = hypercube_shape[2] # full depth
 
-                # Copy base info
-                porosity_h5_dset[xi:xo, yi:yo, zi:zo, 'phi', 'real', 'ring',
-                                 'well_id'] = porosity_h5_dset[0:x_len,
-                                                               0:y_len,
-                                                               0:z_len, 'phi',
-                                                               'real', 'ring',
-                                                               'well_id']
+            # print(f'[{xi}:{xo}, {yi}:{yo}, {zi}:{zo}]')
+            # print(f'[0:{x_len}, 0:{y_len}, 0:{z_len}]')
+            # print('')
+            # return
 
-                # Increment well_id
-                porosity_h5_dset[xi:xo, yi:yo, zi:zo,
-                                 'well_id'] += count * len(real_points)
+            # Copy base info
+            porosity_h5_dset[xi:xo, yi:yo, zi:zo, 'phi', 'real', 'ring',
+                             'well_id'] = porosity_h5_dset[0:x_len,
+                                                           0:y_len,
+                                                           0:z_len, 'phi',
+                                                           'real', 'ring',
+                                                           'well_id']
 
-                # Reset well_id from empty points
-                wid_tmp_real = porosity_h5_dset[xi:xo, yi:yo, zi:zo, 'real']
-                wid_tmp_well_id = porosity_h5_dset[xi:xo, yi:yo, zi:zo,
-                                                   'well_id']
+            # Increment well_id
+            porosity_h5_dset[xi:xo, yi:yo, zi:zo,
+                             'well_id'] += count * len(real_points)
 
-                wid_tmp_well_id[wid_tmp_real != common.RealValues.real] = -1
-                porosity_h5_dset[xi:xo, yi:yo, zi:zo,
-                                 'well_id'] = wid_tmp_well_id
+            # Reset well_id from empty points
+            wid_tmp_real = porosity_h5_dset[xi:xo, yi:yo, zi:zo, 'real']
+            wid_tmp_well_id = porosity_h5_dset[xi:xo, yi:yo, zi:zo,
+                                               'well_id']
 
-                # Do nothing about coordinates since all points are filled first
+            wid_tmp_well_id[wid_tmp_real != common.RealValues.real] = -1
+            porosity_h5_dset[xi:xo, yi:yo, zi:zo,
+                             'well_id'] = wid_tmp_well_id
 
-                # Add new well coords
-                new_wells_coords += [
-                    tuple([x + y for x, y in zip(a, b)])
-                    for a, b in zip(real_points, [(xi, yi)] * len(real_points))
-                ]
+            # Do nothing about coordinates since all points are filled first
+
+            # Add new well coords
+            new_wells_coords += [
+                tuple([x + y for x, y in zip(a, b)])
+                for a, b in zip(real_points, [(xi, yi)] * len(real_points))
+            ]
 
         print("New wells for large hypercube:")
         print(new_wells_coords)
