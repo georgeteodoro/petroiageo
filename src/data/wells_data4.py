@@ -170,13 +170,9 @@ def porosity_points_py2hdf5(porosity_file: str, hdf5_file_path: str,
             # print(f"updating {chk_x, chk_y, chk_z}")
             xi = chk_x * x_len
             yi = chk_y * y_len
-            # zi = chk_z * z_len
-            zi = 0
 
             xo = (chk_x + 1) * x_len
             yo = (chk_y + 1) * y_len
-            # zo = (chk_z + 1) * z_len
-            zo = hypercube_shape[2] # full depth
 
             # print(f'[{xi}:{xo}, {yi}:{yo}, {zi}:{zo}]')
             # print(f'[0:{x_len}, 0:{y_len}, 0:{z_len}]')
@@ -186,13 +182,20 @@ def porosity_points_py2hdf5(porosity_file: str, hdf5_file_path: str,
             print(f'large {chk_x},{chk_y}, well_id: {count * len(real_points)}')
 
             if not simulate:
-                # Copy base info
-                porosity_h5_dset[xi:xo, yi:yo, zi:zo, 'phi', 'real', 'ring',
-                                 'well_id'] = porosity_h5_dset[0:x_len,
-                                                               0:y_len,
-                                                               0:z_len, 'phi',
-                                                               'real', 'ring',
-                                                               'well_id']
+                # Copy base info, one depth segment at a time
+                for chk_z in range(mult_factor[2]):
+                    zi = chk_z * z_len
+                    zo = (chk_z + 1) * z_len
+
+                    porosity_h5_dset[xi:xo, yi:yo, zi:zo, 'phi', 'real', 'ring',
+                                     'well_id'] = porosity_h5_dset[0:x_len,
+                                                                   0:y_len,
+                                                                   0:z_len, 'phi',
+                                                                   'real', 'ring',
+                                                                   'well_id']
+                # Remaining updates are for the full depth
+                zi = 0
+                zo = hypercube_shape[2]
 
                 # Increment well_id
                 porosity_h5_dset[xi:xo, yi:yo, zi:zo,
