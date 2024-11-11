@@ -29,6 +29,18 @@ def config_arg_parser():
     )
 
     parser.add_argument(
+        '--poros-file',
+        dest='porosity_file',
+        action='store',
+        required=False,
+        type=str,
+        default=None,
+        help="Path for the porosity file (h5) to be used. If not specified "
+        "the one from the config file is used. If specified overwrites the "
+        "one in the config file.",
+    )
+
+    parser.add_argument(
         '--it',
         dest='load_it',
         action='store',
@@ -289,6 +301,9 @@ def update_config_file_params_with_args(config: config_parser.Config,
     if args.training_chunks_seq is not None:
         config.add_param('sequential_chunking', True)
         config.add_param('n_training_chunks', int(args.training_chunks_seq))
+
+    if args.porosity_file is not None:
+        config.starting_porosity_cube_path = args.porosity_file
 
     config.add_param('full_depth_chunks', True)
 
