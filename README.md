@@ -19,7 +19,9 @@ A aplicação foi testada com o OpenMPI, porém podem ser usadas outras implemen
 
 ## Requisitos - Libs - HDF5 e h5py
 
-Para a gestão de arquivos grandes por meio de execução Out-of-Core são usadas as libs hdf5 e h5py. Para permitir seu uso em conjunto ao MPI é necessária a compilação manual dessas duas ferramentas. Para a instalação dessas libs não e necessário acesso *root*, exceto para os comandos *pip3*. Porém é possível fazê-los usando um ambiente virtual, como *anaconda* ou *venv*, sem permissões *root*.
+Para a gestão de arquivos grandes por meio de execução Out-of-Core são usadas as libs hdf5 e h5py. Para permitir seu uso em conjunto ao MPI é necessária a compilação manual dessas duas ferramentas. Para a instalação dessas libs não e necessário acesso *root*, exceto para os comandos *pip3*. Porém é possível fazê-los usando um ambiente virtual, como *anaconda* ou *venv*, sem permissões *root*
+
+Essas libs possuem 2 scripts para auxiliar a sua instalaçã: latest_install.sh e prep_env.sh. O segundo script auxilia na geração de um venv caso não haja acesso root. Abaixo vem as operações explicadas passo a passo.
 
 A compilação do HDF5 pode ser feita da seguinte forma:
 
@@ -34,19 +36,25 @@ A compilação do HDF5 pode ser feita da seguinte forma:
 A compilação/instalação do h5py, a ser feita após o HDF5, sendo feita usando os comandos:
 
     pip3 uninstall mpi4py
-    pip3 install mpi4py==3.1.3
+    pip3 install mpi4py==4.0.1
     git clone https://github.com/h5py/h5py.git
     cd h5py
-    git checkout 3.7.0
-    pip3 install wheel Cython==3.0.0a11 numpy setuptools
+    git checkout 3.11.0
+    pip3 install wheel Cython==3.1.0a1
     export CC=mpicc; export HDF5_MPI="ON"; export HDF5_DIR="<HDF5_PATH>/build"; pip3 install --no-build-isolation .
 
-O h5py pode ter problemas de incompatibilidade com o mpi4py. Para evitar problemas certificar que a versão do mpi4py seja a 3.1.3. Isso é feito nos comando acima, onde uma versão previamente instalada do mpi4py é removida, sendo instalada a versão esperada.
+O h5py pode ter problemas de incompatibilidade com o mpi4py. Para evitar problemas certificar que a versão do mpi4py seja a acima. Isso é feito nos comando acima, onde uma versão previamente instalada do mpi4py é removida, sendo instalada a versão esperada.
 
 ### Lista de compatibilidade
 
 Foi testado com sucesso a compatibilidade das seguintes versões:
 
+ - python 3.12.7:
+     - openmpi 4.1.6
+     - mpi4py 4.0.1
+     - HDF5 hdf5-1_12_2-3-rc1
+     - Cython 3.1.0a1
+     - h5py 3.11.0
  - python 3.12.3:
      - mpi4py 3.1.6
      - HDF5 hdf5-1_12_2-3-rc1
@@ -60,6 +68,7 @@ Foi testado com sucesso a compatibilidade das seguintes versões:
      - openmpi 4.0.1 (sequana for sdumont)
      - gcc 13.2 (sequana for sdumont)
 
+Note que usar combinações de versões mais cerentes é recomendado dado que podem ter havido problemas com combinações anteriores, o que tornou necessária a criação de uma nova combinação.
 
 # Requisitos - Dados
 
