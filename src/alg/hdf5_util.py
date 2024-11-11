@@ -5,7 +5,7 @@ import h5py
 from time import time
 import argparse
 import sys
-from alg import common
+import common
 from random import random
 from tqdm import tqdm
 
