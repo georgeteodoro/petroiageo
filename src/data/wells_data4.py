@@ -91,54 +91,61 @@ def porosity_points_py2hdf5(porosity_file: str, hdf5_file_path: str,
         f"[porosity_points_py2hdf5] Target cube shape: {porosity_h5_dset.shape}"
     )
 
-    print(f"[porosity_points_py2hdf5] Filling coordinates")
-    (x_len, y_len, z_len) = hypercube_shape
-    for i in tqdm(range(x_len)):
-        # Batching of yz coordinates for writing on hdf5 file
-        all_yz = []
-        for j in range(y_len):
-            # Batching of z coordinates for writing on hdf5 file
-            all_z = []
-            for k in range(z_len):
-                all_z = all_z + [(i, j, k, 0, common.RealValues.empty, -1, -1)]
-            all_yz = all_yz + [all_z]
-        # Commit all points for a given x coordinate
-        porosity_h5_dset[i, ...] = all_yz
+    # If true, it will not commit data, just check if the propper chunks are 
+    # being generated
+    simulate = False
 
-    print(f"[porosity_points_py2hdf5] Loading porosity file")
-    porosity_file_path = pathlib.Path(porosity_file)
-    porosity_np = np.load(porosity_file_path)
-    porosity_np = np.core.records.fromarrays(porosity_np.transpose(),
-                                             names='x, y, z, phi',
-                                             formats='i8, i8, i8, f8')
+    if not simulate:
+        print(f"[porosity_points_py2hdf5] Filling coordinates")
+        (x_len, y_len, z_len) = hypercube_shape
+        for i in tqdm(range(x_len)):
+            # Batching of yz coordinates for writing on hdf5 file
+            all_yz = []
+            for j in range(y_len):
+                # Batching of z coordinates for writing on hdf5 file
+                all_z = []
+                for k in range(z_len):
+                    all_z = all_z + [(i, j, k, 0, common.RealValues.empty, -1, -1)]
+                all_yz = all_yz + [all_z]
+            # Commit all points for a given x coordinate
+            porosity_h5_dset[i, ...] = all_yz
+
+        print(f"[porosity_points_py2hdf5] Loading porosity file")
+        porosity_file_path = pathlib.Path(porosity_file)
+        porosity_np = np.load(porosity_file_path)
+        porosity_np = np.core.records.fromarrays(porosity_np.transpose(),
+                                                 names='x, y, z, phi',
+                                                 formats='i8, i8, i8, f8')
 
     if mult_factor is not None:
         print(f"[porosity_points_py2hdf5] Adding extra "\
                "well points for large data")
 
         # Create a list of chunks of the initial size
-        large_chunks = []
+        # large_chunks = []
         large_chunks_xy = []
         for x in range(mult_factor[0]):
             for y in range(mult_factor[1]):
                 large_chunks_xy.append((x, y))
                 # for z in range(mult_factor[2]):
                 #     large_chunks.append((x, y, z))
+        print(f'chunks to generate: {large_chunks_xy}')
 
-    # Copy all porosity initial points to h5
-    print(f"[porosity_points_py2hdf5] Updating {len(porosity_np)} values")
-    for row in tqdm(porosity_np.tolist()):
-        x, y, z, p = row
-        ring = 0
+    if not simulate:
+        # Copy all porosity initial points to h5
+        print(f"[porosity_points_py2hdf5] Updating {len(porosity_np)} values")
+        for row in tqdm(porosity_np.tolist()):
+            x, y, z, p = row
+            ring = 0
 
-        if (x, y) in real_points:
-            real = common.RealValues.real
-            well_id = real_points.index((x, y))
-        else:
-            real = common.RealValues.canal
-            well_id = -1
+            if (x, y) in real_points:
+                real = common.RealValues.real
+                well_id = real_points.index((x, y))
+            else:
+                real = common.RealValues.canal
+                well_id = -1
 
-        porosity_h5_dset[x, y, z] = (x, y, z, p, real, ring, well_id)
+            porosity_h5_dset[x, y, z] = (x, y, z, p, real, ring, well_id)
 
     # Copy-paste the whole initial sub-region multiple times, if mult_factor
     if mult_factor is not None:
@@ -176,26 +183,29 @@ def porosity_points_py2hdf5(porosity_file: str, hdf5_file_path: str,
             # print('')
             # return
 
-            # Copy base info
-            porosity_h5_dset[xi:xo, yi:yo, zi:zo, 'phi', 'real', 'ring',
-                             'well_id'] = porosity_h5_dset[0:x_len,
-                                                           0:y_len,
-                                                           0:z_len, 'phi',
-                                                           'real', 'ring',
-                                                           'well_id']
+            print(f'large {chk_x},{chk_y}, well_id: {count * len(real_points)}')
 
-            # Increment well_id
-            porosity_h5_dset[xi:xo, yi:yo, zi:zo,
-                             'well_id'] += count * len(real_points)
+            if not simulate:
+                # Copy base info
+                porosity_h5_dset[xi:xo, yi:yo, zi:zo, 'phi', 'real', 'ring',
+                                 'well_id'] = porosity_h5_dset[0:x_len,
+                                                               0:y_len,
+                                                               0:z_len, 'phi',
+                                                               'real', 'ring',
+                                                               'well_id']
 
-            # Reset well_id from empty points
-            wid_tmp_real = porosity_h5_dset[xi:xo, yi:yo, zi:zo, 'real']
-            wid_tmp_well_id = porosity_h5_dset[xi:xo, yi:yo, zi:zo,
-                                               'well_id']
+                # Increment well_id
+                porosity_h5_dset[xi:xo, yi:yo, zi:zo,
+                                 'well_id'] += count * len(real_points)
 
-            wid_tmp_well_id[wid_tmp_real != common.RealValues.real] = -1
-            porosity_h5_dset[xi:xo, yi:yo, zi:zo,
-                             'well_id'] = wid_tmp_well_id
+                # Reset well_id from empty points
+                wid_tmp_real = porosity_h5_dset[xi:xo, yi:yo, zi:zo, 'real']
+                wid_tmp_well_id = porosity_h5_dset[xi:xo, yi:yo, zi:zo,
+                                                   'well_id']
+
+                wid_tmp_well_id[wid_tmp_real != common.RealValues.real] = -1
+                porosity_h5_dset[xi:xo, yi:yo, zi:zo,
+                                 'well_id'] = wid_tmp_well_id
 
             # Do nothing about coordinates since all points are filled first
 
