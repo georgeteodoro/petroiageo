@@ -36,7 +36,7 @@ def _load_porosity(config):
 
     return porosity_cube_file, porosity_cube_dset
 
-def initialize_training_data(config, sel_features):
+def initialize_training_data(config, it, sel_features):
     # Loading porosity file
     train_wells_ids = config.train_wells_ids
     porosity_h5_f, porosity_h5_dset = _load_porosity(config)
@@ -45,7 +45,7 @@ def initialize_training_data(config, sel_features):
     trial_data = TrialDataSharedNumpy(train_wells_ids, porosity_h5_dset,
                                       config)
 
-    trial_data.prepare_porosity(config.alg['num_its']-1)
+    trial_data.prepare_porosity(it)
 
     # # Add features
     # if rank == manager_rank:
@@ -98,21 +98,70 @@ def worker(trial_data, config):
 
 
 def main():
-    if len(sys.argv) != 3:
-        print("usage: python3 hpo-test.py CONFIG_PATH FEATURES_PATH")
-        return
+    parser = argparse.ArgumentParser(description="HPO POV")
+
+    parser.add_argument(
+        '--config',
+        dest='config_file',
+        action='store',
+        required=True,
+        type=str,
+        help="The yaml config file path to be read",
+    )
+
+    parser.add_argument(
+        '--best-f',
+        dest='best_features_file',
+        action='store',
+        required=True,
+        type=str,
+        help="Best features selection file.",
+    )
+
+    parser.add_argument(
+        '--it',
+        dest='load_it',
+        action='store',
+        required=False,
+        default=20,
+        type=int,
+        help="Number of rings to load for testing. (default=20)",
+    )
+
+    parser.add_argument(
+        '--nfs',
+        dest='num_features',
+        action='store',
+        required=False,
+        default=10,
+        type=int,
+        help="Number of features to use for training. (default=10)",
+    )
+
+    parser.add_argument(
+        '--n-trials',
+        dest='num_trials',
+        action='store',
+        required=False,
+        default=25600,
+        type=int,
+        help="Number of HPO trials to run. (default=25,600)",
+    )
+
+    args = parser.parse_args()
 
     # Features to be used
-    with open(sys.argv[2]) as f_sets:
-        sel_features = ast.literal_eval(f_sets.readlines()[-1])
+    it = int(args.load_it)
+    with open(args.best_features_file) as f_sets:
+        sel_features = ast.literal_eval(f_sets.readlines()[it])
         #sel_features = ast.literal_eval(f_sets.readline())
         if rank == 0:
             print(f"Features: {sel_features}")
     
-    #sel_features = [('FAR', (0,1,0)), ('FAR', (1,2,0))]
+    # sel_features = [('FAR', (0,1,0)), ('FAR', (1,2,0))]
 
     # Parse config
-    config = config_parser.YAMLConfig(sys.argv[1])
+    config = config_parser.YAMLConfig(args.config_file)
     config.alg['max_num_features'] = len(sel_features)
     base_features = config.features_files_names
     base_features = [f for f in base_features if f != ".gitkeep"]
@@ -121,8 +170,8 @@ def main():
     # Prepare porosity only on workers
     if rank != manager_rank:
         if rank == 0:
-            print(f"Prepping it {config.alg['num_its']}")
-        trial_data = initialize_training_data(config, sel_features)
+            print(f"Prepping it {it}")
+        trial_data = initialize_training_data(config, it, sel_features)
         
     # Run default config a single time and return result to manager
     if rank == 0: 
@@ -149,7 +198,7 @@ def main():
             HPInt('num_iterations', lower=1, upper=1000, default_value=100),
         ])
 
-        max_trials = 20000
+        max_trials = args.num_trials
         scenario = Scenario(smac_config_space, deterministic=True, 
                             n_trials=max_trials, n_workers=1)
         intensifier = HyperparameterOptimizationFacade.get_intensifier(
