@@ -181,6 +181,7 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
         Clears all data managed by the concrete class.
         All processes should call this method to avoid being locked at 
         the barrier.
+        This implementation is idempotent.
         '''
         for shm_object in self._shm_objects:
             shm_object.close()
@@ -191,6 +192,10 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
         if self._mpi_local_comm is None or self._is_resp_rank:
             for shm_object in self._shm_objects:
                 shm_object.unlink()
+
+        # Clear shm objects list, otherwise other calls to _del_all_concrete
+        # may attempt to unlink already unlinked shm objects
+        self._shm_objects = []
 
         if self._mpi_local_comm is not None:
             self._mpi_local_comm.Barrier()
