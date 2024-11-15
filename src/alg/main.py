@@ -387,6 +387,7 @@ def main(args_str=None):
         except Exception as e:
             print(f"[manager][main] Exception detected on main:\n{e}")
             raise e
+            MPI.COMM_WORLD.Abort()
             # print(f"[manager][configs]{config}")
     else:
         try:
@@ -394,6 +395,7 @@ def main(args_str=None):
         except Exception as e:
             print(f"[worker-{rank}][main] Exception detected on main:\n{e}")
             raise e
+            MPI.COMM_WORLD.Abort()
 
 
 if __name__ == "__main__":
