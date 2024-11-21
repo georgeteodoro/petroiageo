@@ -494,6 +494,7 @@ def main(args_str=None):
 
     config = config_parser.YAMLConfig(args.config_file)
     config.add_param('pov_canal_path', args.pov_canal_path)
+    config.add_param('n_training_chunks', 1)
     config.add_param('pov_should_prop', args.pov_should_prop)
     mpi_module.initialize(config)
 
