@@ -510,7 +510,7 @@ def main(args_str=None):
         n_features = max(len(f_set), n_features)
     config.alg['max_num_features'] = n_features
 
-    print(f'[propagation][it{it}] preparing trial data')
+    print(f'[propagation] preparing trial data')
 
     # Create TrialData
     porosity_h5_f = h5py.File(config.starting_porosity_cube_path, 'r+')
