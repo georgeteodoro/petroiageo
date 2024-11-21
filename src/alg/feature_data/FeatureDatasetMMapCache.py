@@ -111,7 +111,9 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
             posix_ipc.unlink_semaphore(semaphore_name)
             pass
         except Exception as e:
-            print(e)
+            print(
+                f"[FeatureDatasetMMapCache] couldn't unlink with exception {e}"
+            )
         if self._is_resp_rank:
             self._free_cache_lines_sem = posix_ipc.Semaphore(
                 semaphore_name,
@@ -209,8 +211,9 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
                             break
 
                     if debug:
-                        print(f"[FeatureDatasetMMapCache][get_feature] replacing "
-                              f"line {line_idx}")
+                        print(
+                            f"[FeatureDatasetMMapCache][get_feature] replacing "
+                            f"line {line_idx}")
 
                     # Update "evicted" cache line
                     self._lru[self._LRU_F_IDX][line_idx] = feature_idx
