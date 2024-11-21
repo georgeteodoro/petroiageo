@@ -509,12 +509,14 @@ def main(args_str=None):
         n_features = max(len(f_set), n_features)
     config.alg['max_num_features'] = n_features
 
+    print(f'[propagation][it{it}] preparing trial data')
+
     # Create TrialData
     porosity_h5_f = h5py.File(config.starting_porosity_cube_path, 'r+')
     porosity_h5_dset = porosity_h5_f[common.POROSITY_DSET_NAME]
     trial_data = TrialDataNumpy(config.train_wells_ids, 
                                 porosity_h5_dset, config)
-    trial_data.prepare_porosity(0)
+    trial_data.prepare_porosity(it)
     
     all_features = FeatureDatasetMMapCache(config)
 
@@ -523,6 +525,8 @@ def main(args_str=None):
     features_sets = features_sets[it:]
     if args.num_its > 0:
         features_sets = features_sets[:args.num_its]
+
+    print(f'[propagation][it{it}] starting propagations...')
 
     if args.just_validate:
         trial_data.prepare_porosity(it + args.num_its)
@@ -534,6 +538,7 @@ def main(args_str=None):
             # E.g., if 2 features were used on a trial_data with up to 4 
             # features, the feature counter would end on 3 if only 
             # commit_feature was used.
+            print(f'[propagation][it{it}] committing features')
             for (feature, disp) in f_set[:-1]:
                 trial_data.commit_feature(
                     all_features.get_feature(feature), disp)
@@ -541,6 +546,7 @@ def main(args_str=None):
             trial_data.update_feature(
                 all_features.get_feature(feature), disp)
 
+            print(f'[propagation][it{it}] performing propagation')
             n_prop_points = propagate(porosity_h5_dset, trial_data, 
                       all_features, f_set, it, config)
             print(f"[propagation][it{it}] propagated {n_prop_points} points")
