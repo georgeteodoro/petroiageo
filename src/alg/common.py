@@ -18,7 +18,7 @@ training_params = {
     'max_depth': 10,
     'num_leaves': 20,
     'seed': 0,
-    'num_iterations': 100,
+    'num_iterations': 10,
     # 'tree_learner': 'data',
 }
 
