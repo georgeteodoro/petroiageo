@@ -15,6 +15,7 @@ from feature_data.backends.FeatureDataBase import FeatureDataBase
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 
+
 def config_arg_parser():
     parser = argparse.ArgumentParser(description="Modelagem de "
                                      "Aprendizado Invertido")
@@ -319,13 +320,13 @@ def update_config_file_params_with_args(config: config_parser.Config,
     config.add_param('is_shared_trial_data', args.is_shared_trial_data)
     config.add_param('is_h5_trial_data', args.is_h5_trial_data)
     config.add_param('is_h5_shared_trial_data', args.is_h5_shared_trial_data)
-    
+
     # POV exec
     config.add_param('pov_canal_path', args.pov_canal_path)
     config.add_param('pov_should_prop', args.pov_should_prop)
 
     # Profiling
-    #config.add_param('prof_trial_prep_porosity', True)
+    config.add_param('prof_trial_prep_porosity', True)
     # config.add_param('prof_trial_update_feature', True)
     # config.add_param('prof_feature_sel', True)
     # config.add_param('prof_TD_get_values', True)
@@ -375,7 +376,9 @@ def main(args_str=None):
     # should have the same shape. This is kind of hacky. Maybe improve this in
     # the future.
     f_paths = [str(p) for p in config.features_files_paths if '.h5' in str(p)]
-    f_paths += [str(p) for p in config.features_files_paths if '.npy' in str(p)]
+    f_paths += [
+        str(p) for p in config.features_files_paths if '.npy' in str(p)
+    ]
     first_feature_path = str(f_paths[0])
     feature_shape = FeatureDataBase.get_shape(
         first_feature_path, config.get_param('mpi_local_comm'))
