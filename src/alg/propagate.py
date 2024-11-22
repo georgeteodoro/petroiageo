@@ -7,7 +7,7 @@ import h5py
 from math import prod, sqrt
 import argparse
 import ast
-import pandas as pd 
+import pandas as pd
 from tqdm import tqdm
 from collections import defaultdict
 
@@ -18,6 +18,7 @@ from feature_data.FeatureDatasetBase import FeatureDatasetBase
 from TrialDataBase import TrialDataBase
 from TrialDataNumpy import TrialDataNumpy
 from feature_data.FeatureDatasetMMapCache import FeatureDatasetMMapCache
+
 
 @dataclass
 class ModelEval:
@@ -68,13 +69,12 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
         model_eval = _test_model(porosity_data_h5, all_features, best_features,
                                  config, model)
     else:
-        model_eval = _pov_test_model(pov_canal_path, all_features, best_features,
-                                 config, model, it)
+        model_eval = _pov_test_model(pov_canal_path, all_features,
+                                     best_features, config, model, it)
     print(f"[propagation][it{it}] Test errors: RMSE: {model_eval.full_rmse} " +
           f"MAE: {model_eval.full_mae}")
     print(f"[propagation][it{it}] Test wells performance: RMSE: "
-          f"{model_eval.wells_rmse} "
-        + f"MAE: {model_eval.wells_mae}")
+          f"{model_eval.wells_rmse} " + f"MAE: {model_eval.wells_mae}")
 
     # Count of propagated points for checking if it was correct
     n_propagated_points = 0
@@ -109,8 +109,8 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
             # print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
             #       f"well: {(w_x, w_y)}")
 
-            coords_to_update = _get_coords_to_propagate(ring, cur_chunk_np, w_x,
-                                                        w_y, config)
+            coords_to_update = _get_coords_to_propagate(
+                ring, cur_chunk_np, w_x, w_y, config)
 
             n_propagated_points += len(coords_to_update[0])
 
@@ -155,7 +155,7 @@ def _get_coords_to_propagate(target_ring: int, data: np.ndarray, w_x: int,
     3 dimensional np.ndarray with the coordinates of point's suitable for 
     propagation. The dimensions are relative to the x,y and z dimensions 
     respectively
-    
+
     """
     # Calculate the coordinates of the current well-ring
     well_ring_x_left = w_x - target_ring
@@ -178,7 +178,7 @@ def _get_coords_to_propagate(target_ring: int, data: np.ndarray, w_x: int,
                      & (d['x'] >= well_ring_x_left))
 
     r_val = common.RealValues.empty
-    
+
     pov_canal_path = config.get_param('pov_canal_path')
     pov_should_prop = config.get_param('pov_should_prop')
     if pov_canal_path != None:
@@ -235,7 +235,7 @@ def _predict_data(model, all_features: FeatureDatasetBase, best_features: list,
     best_features: List of features to select from all_features to be used
     by the model
     coords_to_update: Target coords where to get the best_features from
-    
+
     Return
     The predicted porosity measures
     '''
@@ -255,7 +255,8 @@ def _predict_data(model, all_features: FeatureDatasetBase, best_features: list,
 
         # Zip the coords, from a tuple of 3 arrays, one for each coord,
         # to an array of (x,y,z) tuples.
-        feature_coords_np = np.array(list(zip(*feature_coords)), dtype=np.int64)
+        feature_coords_np = np.array(list(zip(*feature_coords)),
+                                     dtype=np.int64)
 
         # Filter features values for current chunk coords
         to_predict_np[:, f_id] = all_features.get_feature(
@@ -268,7 +269,7 @@ def _predict_data(model, all_features: FeatureDatasetBase, best_features: list,
 
 
 def _test_model(data: Dataset, all_features: FeatureDatasetBase,
-                best_features: list, config: config_parser.Config, 
+                best_features: list, config: config_parser.Config,
                 model) -> ModelEval:
     """
     Apply the model on the test data inside data.
@@ -284,8 +285,7 @@ def _test_model(data: Dataset, all_features: FeatureDatasetBase,
     for (feature, disp) in best_features[:-1]:
         test_data.commit_feature(all_features.get_feature(feature), disp)
     (feature, disp) = best_features[-1]
-    test_data.update_feature(
-        all_features.get_feature(feature), disp)
+    test_data.update_feature(all_features.get_feature(feature), disp)
 
     return _eval_model(model, test_data, config.test_wells_ids)
 
@@ -299,12 +299,12 @@ def _eval_model(model, test_data: TrialDataBase,
     """
     rmse_per_well = dict()
     mae_per_well = dict()
-    n_instances=0
-    sse=0
-    sum_abs_errors=0
+    n_instances = 0
+    sse = 0
+    sum_abs_errors = 0
     for well_id in test_wells_ids:
         X_test, Y_test = test_data.get_val_values(well_id)
-        n_instances+=len(Y_test)
+        n_instances += len(Y_test)
         # There are no data from this well on test data for some reason
         msg = "[propagate][_eval_model] There are no test data"
         msg += f" for well id {well_id}"
@@ -313,26 +313,27 @@ def _eval_model(model, test_data: TrialDataBase,
         pred = model.predict(X_test)
 
         #RMSE
-        curr_sse=np.sum((Y_test-pred)**2)
-        
-        sse+=curr_sse
+        curr_sse = np.sum((Y_test - pred)**2)
 
-        well_mse = curr_sse/len(Y_test)
+        sse += curr_sse
+
+        well_mse = curr_sse / len(Y_test)
         rmse_per_well[well_id] = float(np.sqrt(well_mse))
 
         #MAE
-        curr_abs=np.abs(Y_test-pred)
-        sum_abs_errors+=np.sum(curr_abs)
+        curr_abs = np.abs(Y_test - pred)
+        sum_abs_errors += np.sum(curr_abs)
 
         well_mae = mean_absolute_error(Y_test, pred)
         mae_per_well[well_id] = float(well_mae)
 
     # Sqrt of means is different from mean of sqrts. The former is what we want
-    rmse = np.sqrt(sse/n_instances)
-    mae = sum_abs_errors/n_instances
+    rmse = np.sqrt(sse / n_instances)
+    mae = sum_abs_errors / n_instances
 
     model_eval = ModelEval(rmse, mae, rmse_per_well, mae_per_well)
     return model_eval
+
 
 def _get_ring_values(canal_dset: Dataset, ring, well):
     '''
@@ -347,10 +348,10 @@ def _get_ring_values(canal_dset: Dataset, ring, well):
 
     # Retrieve ring values
     x, y = well
-    top = canal_dset[x-ring+1 : x+ring+1, y-ring]
-    bottom = canal_dset[x-ring : x+ring, y+ring+1]
-    left = canal_dset[x-ring, y-ring : y+ring]
-    right = canal_dset[x+ring+1, y-ring+1 : y+ring+1]
+    top = canal_dset[x - ring + 1:x + ring + 1, y - ring]
+    bottom = canal_dset[x - ring:x + ring, y + ring + 1]
+    left = canal_dset[x - ring, y - ring:y + ring]
+    right = canal_dset[x + ring + 1, y - ring + 1:y + ring + 1]
 
     # Reshape to a 1D array
     top.reshape(prod(top.shape))
@@ -365,9 +366,10 @@ def _get_ring_values(canal_dset: Dataset, ring, well):
 
     return ring_points
 
+
 def _pov_test_model(pov_canal_path: str, all_features: FeatureDatasetBase,
-                best_features: list, config: config_parser.Config, 
-                model, ring) -> ModelEval:
+                    best_features: list, config: config_parser.Config, model,
+                    ring) -> ModelEval:
 
     canal_h5 = h5py.File(pov_canal_path)
     canal_dset = canal_h5['p']
@@ -380,17 +382,17 @@ def _pov_test_model(pov_canal_path: str, all_features: FeatureDatasetBase,
 
     # Retrieve Y
     Y_test = test_data['phi']
-    
+
     # Generate the input features
     X_test = []
     X_test_coords = test_data[['x', 'y', 'z']]
     for feature, disp in best_features:
         for i in range(len(X_test_coords)):
             x, y, z = X_test_coords[i]
-            X_test_coords[i] = (x+disp[0], y+disp[1], z+disp[2])
+            X_test_coords[i] = (x + disp[0], y + disp[1], z + disp[2])
 
-        f_values = all_features.get_feature(feature
-            ).filter_coords(X_test_coords)
+        f_values = all_features.get_feature(feature).filter_coords(
+            X_test_coords)
 
         X_test.append(f_values)
 
@@ -400,8 +402,8 @@ def _pov_test_model(pov_canal_path: str, all_features: FeatureDatasetBase,
     pred = model.predict(X_test)
 
     #RMSE
-    sse=np.sum((Y_test-pred)**2)
-    mse = sse/len(Y_test)
+    sse = np.sum((Y_test - pred)**2)
+    mse = sse / len(Y_test)
     rmse = float(np.sqrt(mse))
 
     #MAE
@@ -510,22 +512,22 @@ def main(args_str=None):
         n_features = max(len(f_set), n_features)
     config.alg['max_num_features'] = n_features
 
-    print(f'[propagation] preparing trial data')
-
-    # Create TrialData
-    porosity_h5_f = h5py.File(config.starting_porosity_cube_path, 'r+')
-    porosity_h5_dset = porosity_h5_f[common.POROSITY_DSET_NAME]
-    trial_data = TrialDataNumpy(config.train_wells_ids, 
-                                porosity_h5_dset, config)
-    trial_data.prepare_porosity(it)
-    
-    all_features = FeatureDatasetMMapCache(config)
-
     # Set initial and end 'it' to be ran
     it = args.start_it
     features_sets = features_sets[it:]
     if args.num_its > 0:
         features_sets = features_sets[:args.num_its]
+
+    print(f'[propagation][it{it}] preparing trial data')
+
+    # Create TrialData
+    porosity_h5_f = h5py.File(config.starting_porosity_cube_path, 'r+')
+    porosity_h5_dset = porosity_h5_f[common.POROSITY_DSET_NAME]
+    trial_data = TrialDataNumpy(config.train_wells_ids, porosity_h5_dset,
+                                config)
+    trial_data.prepare_porosity(it)
+
+    all_features = FeatureDatasetMMapCache(config)
 
     print(f'[propagation][it{it}] starting propagations...')
 
@@ -535,21 +537,20 @@ def main(args_str=None):
         # Run propagations
         for f_set in features_sets:
             # Add features. Last feature needs to be added without a commit
-            # since commit increments the features' counter of trial_data. 
-            # E.g., if 2 features were used on a trial_data with up to 4 
-            # features, the feature counter would end on 3 if only 
+            # since commit increments the features' counter of trial_data.
+            # E.g., if 2 features were used on a trial_data with up to 4
+            # features, the feature counter would end on 3 if only
             # commit_feature was used.
             print(f'[propagation][it{it}] committing features')
             for (feature, disp) in f_set[:-1]:
-                trial_data.commit_feature(
-                    all_features.get_feature(feature), disp)
+                trial_data.commit_feature(all_features.get_feature(feature),
+                                          disp)
             (feature, disp) = f_set[-1]
-            trial_data.update_feature(
-                all_features.get_feature(feature), disp)
+            trial_data.update_feature(all_features.get_feature(feature), disp)
 
             print(f'[propagation][it{it}] performing propagation')
-            n_prop_points = propagate(porosity_h5_dset, trial_data, 
-                      all_features, f_set, it, config)
+            n_prop_points = propagate(porosity_h5_dset, trial_data,
+                                      all_features, f_set, it, config)
             print(f"[propagation][it{it}] propagated {n_prop_points} points")
             it += 1
             trial_data.prepare_porosity(it)
@@ -559,25 +560,23 @@ def main(args_str=None):
         gab = pd.read_csv(args.gab)
 
         print("Filtering propagated points")
-        prop_points = porosity_h5_dset[
-            porosity_h5_dset['real'] == common.RealValues.propagated]
-        
+        prop_points = porosity_h5_dset[porosity_h5_dset['real'] ==
+                                       common.RealValues.propagated]
+
         print("Preparing gab")
         gab = gab[['x', 'y', 'z', 'phi']].to_numpy()
-        
+
         # Index gab
         hier_gab = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
         for x, y, z, phi in tqdm(gab, total=len(gab)):
             hier_gab[x][y][z] = phi
 
-
         print("Calculating diffs")
         diffs = np.empty(len(prop_points))
-        for i, (x, y, z, phi) in tqdm(enumerate(
-                                        prop_points[['x', 'y', 'z', 'phi']]),
-                                      total=len(prop_points)):
+        for i, (x, y, z,
+                phi) in tqdm(enumerate(prop_points[['x', 'y', 'z', 'phi']]),
+                             total=len(prop_points)):
             diffs[i] = phi - hier_gab[x][y][z]
-
 
         # # Slow
         # diffs = np.empty(len(gab))
@@ -591,7 +590,7 @@ def main(args_str=None):
         with open('diffs.txt', 'w') as d_file:
             for i in range(len(diffs)):
                 sae += abs(diffs[i])
-                sse += diffs[i] ** 2
+                sse += diffs[i]**2
                 d_file.write(f'{diffs[i]}\n')
 
         print(f"mae: {sae/len(diffs)}")
@@ -599,9 +598,11 @@ def main(args_str=None):
 
     porosity_h5_f.close()
 
+
 def wrapper(p_hp5, c):
     x, y, z, Y = c
     return Y - p_hp5[(int(x), int(y), int(z))]['phi']
+
 
 if __name__ == '__main__':
     main()
