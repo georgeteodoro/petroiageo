@@ -351,10 +351,11 @@ def main():
         print(f"Hypercube chunk shape: {h5_dset.chunks}")
 
         # get wells
-        ring0 = h5_dset[h5_dset['real'] == common.RealValues.real]
-        wells = []
-        for x in np.unique(ring0['x']):
-            wells.append((x, ring0[ring0['x'] == x][0]['y']))
+        ring0 = h5_dset[h5_dset['real'] == common.RealValues.real][['x', 'y']]
+        #wells = []
+        #for x in np.unique(ring0['x']):
+        #    wells.append((x, ring0[ring0['x'] == x][0]['y']))
+        wells = set([(xx, yy) for xx, yy in ring0.tolist()])
         print("Wells:")
         print(list(wells))
 
