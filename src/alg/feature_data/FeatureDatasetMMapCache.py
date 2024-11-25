@@ -178,7 +178,7 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
                 self._lru_lock.release()
                 return FeatureDataMMap(feature_path,
                                        done_feature_callback,
-                                       pre_fetch=True)
+                                       pre_fetch=False)
             else:
                 # Cache miss
                 if not no_free_cache_print:

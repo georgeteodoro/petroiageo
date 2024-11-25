@@ -205,7 +205,7 @@ class TrialDataBase(ABC):
         t1 = time()
 
         # Load rings, one at a time
-        # Suposes that a it only propagates one ring
+        # Supposes that an iteration only propagates one ring
         end_ring_idx_to_load = prep_it if prep_it > 0 else 1
         for ring_to_load in range(start_ring_idx_to_load, end_ring_idx_to_load):
 
