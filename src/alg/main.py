@@ -385,16 +385,14 @@ def main(args_str=None):
         try:
             manager.run(config)
         except Exception as e:
-            print(f"[manager][main] Exception detected on main:\n{e}")
-            raise e
+            print(f"[manager][main] Exception detected on main: {e}")
             MPI.COMM_WORLD.Abort()
             # print(f"[manager][configs]{config}")
     else:
         try:
             worker.run(config)
         except Exception as e:
-            print(f"[worker-{rank}][main] Exception detected on main:\n{e}")
-            raise e
+            print(f"[worker-{rank}][main] Exception detected on main: {e}")
             MPI.COMM_WORLD.Abort()
 
 
