@@ -12,6 +12,7 @@ from config_parser import Config
 from data_filter import WellsSingleRingDataFilter
 from sampler import ChunkSamplerV1, target_based_sampler
 
+
 class TrialDataBase(ABC):
     '''
     Abstract trial_data class, which implements filtering and sampling. 
@@ -212,7 +213,8 @@ class TrialDataBase(ABC):
         # Load rings, one at a time
         # Suposes that a it only propagates one ring
         end_ring_idx_to_load = prep_it if prep_it > 0 else 1
-        for ring_to_load in range(start_ring_idx_to_load, end_ring_idx_to_load):
+        for ring_to_load in range(start_ring_idx_to_load,
+                                  end_ring_idx_to_load):
             t11 = time()
 
             # Set ring to be filtered
@@ -246,7 +248,9 @@ class TrialDataBase(ABC):
                 # Extend points_dict by each well_id
                 for w in self._wells_id_list:
                     well_data = filt_data[filt_data['well_id'] == w]
-                    well_data = well_data[['x', 'y', 'z', 'phi', 'well_id', 'real']]
+                    well_data = well_data[[
+                        'x', 'y', 'z', 'phi', 'well_id', 'real'
+                    ]]
 
                     points_dict[w].extend(well_data.tolist())
 
@@ -265,7 +269,8 @@ class TrialDataBase(ABC):
                         f"chunk[{chunk_slice}] p_chunk_filt: {t114-t113:.5f}")
                     print(
                         f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}]"
-                        f"chunk[{chunk_slice}] p_chunk_extend: {t115-t114:.5f}")
+                        f"chunk[{chunk_slice}] p_chunk_extend: {t115-t114:.5f}"
+                    )
 
             t12 = time()
 
@@ -282,15 +287,17 @@ class TrialDataBase(ABC):
 
             t13 = time()
             if profile:
-                print(f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}] "
-                      f"chunk_total: {t12-t11:.4f}")
-                print(f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}] "
-                      f"ring_update: {t13-t12:.4f}")
+                print(
+                    f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}] "
+                    f"chunk_total: {t12-t11:.4f}")
+                print(
+                    f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}] "
+                    f"ring_update: {t13-t12:.4f}")
 
         # Check if it is necessary to perform sampling
         if self._sampler != None:
             self._perf_sampling(prep_it)
-      
+
         self._current_ring = prep_it
 
         t2 = time()
@@ -453,7 +460,7 @@ class TrialDataBase(ABC):
         Helper function for filtering trial_data.
         Data is retrieved by ring and well_id until a chunk is reached.
         '''
-        
+
         n_training_chunks = self._config.get_param('n_training_chunks')
         profile = self._config.get_param('prof_TD_get_values')
         sequential_chunking = self._config.get_param('sequential_chunking')
@@ -474,8 +481,8 @@ class TrialDataBase(ABC):
             if new_points.size > 0:
                 # Only real points should be used for validation
                 if is_val:
-                    new_points = new_points[new_points['real'
-                                ] == common.RealValues.real]
+                    new_points = new_points[new_points['real'] ==
+                                            common.RealValues.real]
 
                 # Split X from y
                 new_points_X = new_points[cur_features]
@@ -507,7 +514,7 @@ class TrialDataBase(ABC):
             wells_len = 0
             for r in self._rings_list:
                 for w in wells_to_retrieve:
-                    wells_len += self._well_size_hook(r,w)
+                    wells_len += self._well_size_hook(r, w)
 
             points_per_chunk = int(ceil(wells_len / n_training_chunks))
             cur_chunk_id = 0
@@ -521,7 +528,7 @@ class TrialDataBase(ABC):
                     # Chunk was assembled
                     if cur_chunk_len >= points_per_chunk:
                         if cur_chunk_id == chunk_id:
-                            # The expected chunk was filled, then nothing 
+                            # The expected chunk was filled, then nothing
                             # else to do
                             break
                         else:
@@ -529,27 +536,28 @@ class TrialDataBase(ABC):
                             cur_chunk_id += 1
                             cur_chunk_len = 0
 
-                    # First, check if the previous ring,well have some 
-                    # leftover points. We assume that it is IMPOSSIBLE 
-                    # for a ring,well array to be larger than 
+                    # First, check if the previous ring,well have some
+                    # leftover points. We assume that it is IMPOSSIBLE
+                    # for a ring,well array to be larger than
                     # two points_per_chunk.
                     if prev_rw is not None:
                         cur_chunk_len += prev_remaining
                         cur_slice = slice(prev_beg, None)
 
-                        # All chunks are symbolically filled until the expected 
+                        # All chunks are symbolically filled until the expected
                         # chunk needs to be filled. Only then data is read.
                         if cur_chunk_id == chunk_id:
                             # Retrieve current chunk slice from the backend storage
                             t1 = time()
-                            new_points = self._get_values_hook(*prev_rw, cur_slice)
+                            new_points = self._get_values_hook(
+                                *prev_rw, cur_slice)
 
                             t2 = time()
                             get_val_hook_time += t2 - t1
-                            
+
                             # Update X and Y with the new points to be returned for
                             # the current chunk_id
-                            _update_X_Y(new_points, self._current_features, 
+                            _update_X_Y(new_points, self._current_features,
                                         len(wells_to_retrieve) == 1, X, y)
 
                         # Reset prev ring,well with points
@@ -559,29 +567,29 @@ class TrialDataBase(ABC):
 
                     # Trying to add the current ring,well
                     rw_len = self._well_size_hook(r, w)
-                    
+
                     if cur_chunk_len + rw_len <= points_per_chunk:
-                        # The current ring,well is not enough for the 
+                        # The current ring,well is not enough for the
                         # full chunk. Then add it entirely.
 
                         cur_chunk_len += rw_len
 
                         # Generate a chunk slice for the ring/well pair
                         # with all points
-                        cur_slice = slice(0,rw_len)
+                        cur_slice = slice(0, rw_len)
                     else:
                         # The current ring,well overfills the full chunk.
                         # Then only add enough.
                         expected_len = points_per_chunk - cur_chunk_len
-                        
+
                         cur_chunk_len += expected_len
-                        cur_slice = slice(0,expected_len)
-                        
+                        cur_slice = slice(0, expected_len)
+
                         prev_beg = expected_len
                         prev_remaining = rw_len - expected_len
                         prev_rw = (r, w)
-         
-                    # All chunks are symbolically filled until the expected 
+
+                    # All chunks are symbolically filled until the expected
                     # chunk needs to be filled. Only then data is read.
                     if cur_chunk_id == chunk_id:
                         # Retrieve current chunk slice from the backend storage
@@ -590,10 +598,10 @@ class TrialDataBase(ABC):
 
                         t2 = time()
                         get_val_hook_time += t2 - t1
-                        
+
                         # Update X and Y with the new points to be returned for
                         # the current chunk_id
-                        _update_X_Y(new_points, self._current_features, 
+                        _update_X_Y(new_points, self._current_features,
                                     len(wells_to_retrieve) == 1, X, y)
 
         else:
@@ -606,8 +614,7 @@ class TrialDataBase(ABC):
                         # Calculate how many points from a ring/well_id pair
                         # this chunk should have
                         rw_len = self._well_size_hook(r, w)
-                        points_per_rw = int(
-                            ceil(rw_len / n_training_chunks))
+                        points_per_rw = int(ceil(rw_len / n_training_chunks))
 
                         # Generate a chunk slice for the ring/well pair
                         beg = chunk_id * points_per_rw
@@ -615,7 +622,7 @@ class TrialDataBase(ABC):
                         end = min(end, rw_len)
                         cur_slice = slice(int(beg), int(end))
                     else:
-                        cur_slice = slice(0,self._well_size_hook(r, w))
+                        cur_slice = slice(0, self._well_size_hook(r, w))
                     t1 = time()
                     prep_slice_time += t1 - t0
 
@@ -624,10 +631,10 @@ class TrialDataBase(ABC):
 
                     t2 = time()
                     get_val_hook_time += t2 - t1
-                    
+
                     # Update X and Y with the new points to be returned for
                     # the current chunk_id
-                    _update_X_Y(new_points, self._current_features, 
+                    _update_X_Y(new_points, self._current_features,
                                 len(wells_to_retrieve) == 1, X, y)
 
         # Concatenate all temporary arrays into a single output array
@@ -666,7 +673,7 @@ class TrialDataBase(ABC):
         # Base columns names, e.g., x,y,x,phi,...
         field_names = [i for i, j in self._base_data_type]
         print(field_names)
-       
+
         # list of all available buckets to fit porosity points
         buckets_list = [
             x * poros_width + poros_min
@@ -685,7 +692,7 @@ class TrialDataBase(ABC):
         # ring was 'already sampled'. However, we don't sample it since
         # later sampling passes will shrink the first ring
         rings_to_sample = self._rings_list[1:]
-        
+
         # If this is not the first sampling only the last ring, which was
         # just propagated, should be sampled.
         if self._current_ring != -1:
@@ -735,9 +742,9 @@ class TrialDataBase(ABC):
                             continue
 
                         all_points = self._get_values_hook(ring, well_id)
-                        filt_points = all_points[(all_points['phi'] >= bucket)
-                                                 & (all_points['phi'] < bucket +
-                                                    poros_width)]
+                        filt_points = all_points[
+                            (all_points['phi'] >= bucket)
+                            & (all_points['phi'] < bucket + poros_width)]
                         total_bucket_points += len(filt_points)
 
                     if samp_debug:
@@ -756,8 +763,8 @@ class TrialDataBase(ABC):
 
                         # Split points based on whether they are within the
                         # bucket or not.
-                        all_points = self._get_values_hook(ring,
-                                                           well_id)[field_names]
+                        all_points = self._get_values_hook(
+                            ring, well_id)[field_names]
                         within_bucket_cond = (
                             (all_points['phi'] >= bucket)
                             & (all_points['phi'] < bucket + poros_width))
@@ -794,6 +801,10 @@ class TrialDataBase(ABC):
                 buckets_origin_count = self._get_buckets_origin_count(
                     poros_width, buckets_list, available_rings_to_shrink,
                     ring_being_sampled)
+                buckets_origin_count = {
+                    key: sum(list(inner_dict.values()))
+                    for key, inner_dict in buckets_origin_count.items()
+                }
                 beg_str = f"[buckets_len][ring-{ring_being_sampled}]"
                 print(beg_str, buckets_origin_count)
 
@@ -833,7 +844,8 @@ class TrialDataBase(ABC):
                 chunk_data = self._get_values_hook(ring, well_id)
                 for p in buckets_starts:
                     points_within = sum((chunk_data['phi'] >= p)
-                                        & (chunk_data['phi'] < p + poros_width))
+                                        & (chunk_data['phi'] < p +
+                                           poros_width))
                     buckets_len[p] += points_within
                     if points_within > 0:
                         buckets_origin[p].append((ring, well_id))
@@ -873,7 +885,8 @@ class TrialDataBase(ABC):
                 chunk_data = self._get_values_hook(ring, well_id)
                 for p in buckets_starts:
                     points_within = sum((chunk_data['phi'] >= p)
-                                        & (chunk_data['phi'] < p + poros_width))
+                                        & (chunk_data['phi'] < p +
+                                           poros_width))
                     if points_within > 0:
                         origin_pair = (ring, well_id)
                         buckets_origin_count.setdefault(
