@@ -4,7 +4,6 @@ import numpy as np
 
 from TrialDataBase import TrialDataBase
 
-
 class TrialDataSharedBase(TrialDataBase, ABC):
     '''
     Subclass of TrialData with shared storage within the same node.
@@ -105,14 +104,6 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         raise Exception("[TrialDataSharedBase][_update_local_col] "\
                         "Abstract method not implemented.")
 
-    @abstractmethod
-    def _del_single_ring_well(self, ring, well):
-        '''
-        Deletes the concrete data for a ring,well pair.
-        '''
-        raise Exception("[TrialDataSharedBase][_del_single_ring_well] "\
-                        "Abstract method not implemented.")
-
     # =========================================================================
     # === Implementations of TrialDataBase ====================================
     # =========================================================================
@@ -133,20 +124,12 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         # Allocate space for all features which should be used for training
         # for shared access.
         for w in self._wells_id_list:
-
             # 'data' parameter can have an incomplete dict of wells.
             # If well 'w' is not available at 'data' just skip it
             if data.get(w) is None:
                 continue
 
-
             well_data = data[w]
-            # If data was already allocated, remove it first
-            if overwite:
-                self._del_single_ring_well(ring, w)
-
-            # print(f'\t_set_ring_hook for r{ring}w{w}: {len(well_data)}')
-
             # Create the shared structure on all processes
             self._alloc_empty_ring_well_concrete(len(well_data), ring, w)
 
@@ -184,7 +167,6 @@ class TrialDataSharedBase(TrialDataBase, ABC):
             # If well 'w' is not available at 'data' just skip it
             if data.get(w) is None:
                 continue
-
             well_data = data[w]
             self._alloc_empty_ring_well_last_feature_concrete(
                 len(well_data), ring, w)

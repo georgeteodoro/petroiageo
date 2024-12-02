@@ -12,7 +12,6 @@ from config_parser import Config
 from data_filter import WellsSingleRingDataFilter
 from sampler import ChunkSamplerV1, target_based_sampler
 
-
 class TrialDataBase(ABC):
     '''
     Abstract trial_data class, which implements filtering and sampling. 
@@ -167,7 +166,6 @@ class TrialDataBase(ABC):
                  prepare. For running iteration 20 (will propagate ring 20)
                  prep_it should be 19.
         '''
-
         profile = self._config.get_param('prof_trial_prep_porosity')
 
         t0 = time()
@@ -215,21 +213,17 @@ class TrialDataBase(ABC):
         # Suposes that a it only propagates one ring
         end_ring_idx_to_load = prep_it if prep_it > 0 else 1
         for ring_to_load in range(start_ring_idx_to_load, end_ring_idx_to_load):
-
             t11 = time()
 
             # Set ring to be filtered
             self._f_sel_filter.set_ring(ring_to_load)
-
             # Create new ring data
             self._rings_list.append(ring_to_load)
             self._new_ring_hook(ring_to_load)
-
             # Prepare a dict of points per well_id
             points_dict = {wid: list() for wid in self._wells_id_list}
             target_wells_coords = self._config.get_coords_of_target_wells_ids(
                 self._wells_id_list)
-
             # Iterate on all porosity chunks to fill trial_data
             for chunk_slice in self._porosity_data.iter_chunks():
                 t111 = time()
@@ -241,7 +235,6 @@ class TrialDataBase(ABC):
 
                 # Load porosity data chunk
                 chunk_np = self._porosity_data[chunk_slice]
-
                 t112 = time()
 
                 # Add points to temporary points_dict
@@ -297,7 +290,7 @@ class TrialDataBase(ABC):
         # Check if it is necessary to perform sampling
         if self._sampler != None:
             self._perf_sampling(prep_it)
-
+      
         self._current_ring = prep_it
 
         t2 = time()
@@ -666,35 +659,40 @@ class TrialDataBase(ABC):
         alpha = self._config.alg['sampling']['alpha']
         bucket_max_size = self._config.alg['sampling']['bucket_max_size']
 
-        samp_debug = False
+        samp_debug = True
 
         rng = np.random.default_rng(seed=self._config.alg['sampling']['seed'])
 
         # Base columns names, e.g., x,y,x,phi,...
         field_names = [i for i, j in self._base_data_type]
-
+        print(field_names)
+       
         # list of all available buckets to fit porosity points
         buckets_list = [
             x * poros_width + poros_min
             for x in range(int((poros_max - poros_min) / poros_width))
         ]
+        print("Buckets list", buckets_list)
 
         # List of rings from which points can be updated. E.g., remove
         # points when the last ring needs to add some.
         # All rings, except the last one (recently propagated) should
         # be available for shrinking
         available_rings_to_shrink = self._rings_list[:-1]
+        print("Available rings to shrink:", available_rings_to_shrink)
 
         # List of rings which will be sampled. We assume that the first
         # ring was 'already sampled'. However, we don't sample it since
         # later sampling passes will shrink the first ring
         rings_to_sample = self._rings_list[1:]
-
+        
         # If this is not the first sampling only the last ring, which was
         # just propagated, should be sampled.
         if self._current_ring != -1:
             rings_to_sample = rings_to_sample[-1:]
+        print('Rings to sample', rings_to_sample)
 
+        print("beggining loop!")
         for ring_being_sampled in rings_to_sample:
             if samp_debug:
                 print(f'=============== sampling ring {ring_being_sampled}')

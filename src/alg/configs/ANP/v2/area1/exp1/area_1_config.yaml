@@ -26,16 +26,15 @@ alg:
     n_training_chunks: 1
 
   sampling: # Sampling strategy stuff
-    sampler: "v1"
+    sampler: "v2"
+    
+    #V1 PARAMS
     # Num of layers as window size. If negative, use max num of 
     # layers possible. Default: -1
     layers_window_size: 5
     # Max num of points for the sampling. If negative, use all data 
     # available. Default: -1
-    max_points: 10000
-    #Seed used by the rng to sample points when needed. Default: 42
-    seed: 42
-
+    max_points: 10000000
     # Function to penalize data from earlier iterations
     # following the beta distribution.
     # Set alpha=1 and beta=1 for no penalty. Default: alpha=1 and beta=1
@@ -43,7 +42,22 @@ alg:
       alpha: 1
       beta: 1
 
-  
+    #V2 PARAMS
+    #Max size per porosity bucket. Must be an integer. Default: 100
+    bucket_max_size: 100
+    #Bucket porosity width. Must be a positive float. Default: 1
+    poros_width: 1
+    #Min porosity. Must be non-negative. Default: 0
+    poros_min: 0
+    #Max porosity. Must be non-negative and greater than poros_min. Default: 100
+    poros_max: 100
+    #Update rate. Must be a float in the interval (0,1]. Default: 0.6
+    alpha: 0.6
+
+    #USED BY ALL VERSIONS
+    #Seed used by the rng to sample points when needed. Default: 42
+    seed: 42
+
   # If you want to really generate the porosity cube in the end. Default is true
   generate_porosity_cube: true
   
