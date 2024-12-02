@@ -25,6 +25,7 @@ __MACOSX/
 *.ipynb_checkpoints/
 
 venv/
+venv2/
 
 !dados/xx.npy
 !dados/pp.npy
