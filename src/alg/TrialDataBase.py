@@ -213,8 +213,7 @@ class TrialDataBase(ABC):
         # Load rings, one at a time
         # Suposes that a it only propagates one ring
         end_ring_idx_to_load = prep_it if prep_it > 0 else 1
-        for ring_to_load in range(start_ring_idx_to_load,
-                                  end_ring_idx_to_load):
+        for ring_to_load in range(start_ring_idx_to_load, end_ring_idx_to_load):
             t11 = time()
 
             # Set ring to be filtered
@@ -269,8 +268,7 @@ class TrialDataBase(ABC):
                         f"chunk[{chunk_slice}] p_chunk_filt: {t114-t113:.5f}")
                     print(
                         f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}]"
-                        f"chunk[{chunk_slice}] p_chunk_extend: {t115-t114:.5f}"
-                    )
+                        f"chunk[{chunk_slice}] p_chunk_extend: {t115-t114:.5f}")
 
             t12 = time()
 
@@ -287,12 +285,10 @@ class TrialDataBase(ABC):
 
             t13 = time()
             if profile:
-                print(
-                    f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}] "
-                    f"chunk_total: {t12-t11:.4f}")
-                print(
-                    f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}] "
-                    f"ring_update: {t13-t12:.4f}")
+                print(f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}] "
+                      f"chunk_total: {t12-t11:.4f}")
+                print(f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}] "
+                      f"ring_update: {t13-t12:.4f}")
 
         # Check if it is necessary to perform sampling
         if self._sampler != None:
@@ -700,6 +696,7 @@ class TrialDataBase(ABC):
         print('Rings to sample', rings_to_sample)
 
         print("beggining loop!")
+        ring_being_sampled = 0
         for ring_being_sampled in rings_to_sample:
             if samp_debug:
                 print(f'=============== sampling ring {ring_being_sampled}')
@@ -742,9 +739,9 @@ class TrialDataBase(ABC):
                             continue
 
                         all_points = self._get_values_hook(ring, well_id)
-                        filt_points = all_points[
-                            (all_points['phi'] >= bucket)
-                            & (all_points['phi'] < bucket + poros_width)]
+                        filt_points = all_points[(all_points['phi'] >= bucket)
+                                                 & (all_points['phi'] < bucket +
+                                                    poros_width)]
                         total_bucket_points += len(filt_points)
 
                     if samp_debug:
@@ -763,8 +760,8 @@ class TrialDataBase(ABC):
 
                         # Split points based on whether they are within the
                         # bucket or not.
-                        all_points = self._get_values_hook(
-                            ring, well_id)[field_names]
+                        all_points = self._get_values_hook(ring,
+                                                           well_id)[field_names]
                         within_bucket_cond = (
                             (all_points['phi'] >= bucket)
                             & (all_points['phi'] < bucket + poros_width))
@@ -795,18 +792,19 @@ class TrialDataBase(ABC):
                         updated_dict = {well_id: sampled_points}
                         self._set_ring_hook(ring, updated_dict, True)
 
-            rank_should_propagate = self._config.get_param(
-                'mpi_should_update_local')
-            if rank_should_propagate:
-                buckets_origin_count = self._get_buckets_origin_count(
-                    poros_width, buckets_list, available_rings_to_shrink,
-                    ring_being_sampled)
-                buckets_origin_count = {
-                    key: sum(list(inner_dict.values()))
-                    for key, inner_dict in buckets_origin_count.items()
-                }
-                beg_str = f"[buckets_len][ring-{ring_being_sampled}]"
-                print(beg_str, buckets_origin_count)
+        # For logging purposes
+        rank_should_propagate = self._config.get_param(
+            'mpi_should_update_local')
+        if rank_should_propagate:
+            buckets_origin_count = self._get_buckets_origin_count(
+                poros_width, buckets_list, available_rings_to_shrink,
+                ring_being_sampled)
+            buckets_origin_count = {
+                key: int(sum(list(inner_dict.values())))
+                for key, inner_dict in buckets_origin_count.items()
+            }
+            beg_str = f"[buckets_len][ring-{ring_being_sampled}]"
+            print(beg_str, buckets_origin_count)
 
     def _get_buckets_len(
         self, poros_width: float, buckets_starts: list[Decimal],
@@ -844,8 +842,7 @@ class TrialDataBase(ABC):
                 chunk_data = self._get_values_hook(ring, well_id)
                 for p in buckets_starts:
                     points_within = sum((chunk_data['phi'] >= p)
-                                        & (chunk_data['phi'] < p +
-                                           poros_width))
+                                        & (chunk_data['phi'] < p + poros_width))
                     buckets_len[p] += points_within
                     if points_within > 0:
                         buckets_origin[p].append((ring, well_id))
@@ -885,8 +882,7 @@ class TrialDataBase(ABC):
                 chunk_data = self._get_values_hook(ring, well_id)
                 for p in buckets_starts:
                     points_within = sum((chunk_data['phi'] >= p)
-                                        & (chunk_data['phi'] < p +
-                                           poros_width))
+                                        & (chunk_data['phi'] < p + poros_width))
                     if points_within > 0:
                         origin_pair = (ring, well_id)
                         buckets_origin_count.setdefault(
