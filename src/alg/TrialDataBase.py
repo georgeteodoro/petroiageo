@@ -651,7 +651,7 @@ class TrialDataBase(ABC):
 
         return X, y
 
-    def _perf_sampling_v2(self):
+    def _perf_sampling_v2(self, it: int):
         # Points of a bucket are: buckets_len[p] => poros of [p, p+width)
         # Values are Decimal to escape from python float imprecision, which
         # would screw the buckets indexing system. Also, must use string as
@@ -659,16 +659,8 @@ class TrialDataBase(ABC):
         poros_width = Decimal(str(self._config.alg['sampling']['poros_width']))
         poros_min = Decimal(str(self._config.alg['sampling']['poros_min']))
         poros_max = Decimal(str(self._config.alg['sampling']['poros_max']))
-        alpha = self._config.alg['sampling']['alpha']
-        bucket_max_size = self._config.alg['sampling']['bucket_max_size']
 
         samp_debug = True
-
-        rng = np.random.default_rng(seed=self._config.alg['sampling']['seed'])
-
-        # Base columns names, e.g., x,y,x,phi,...
-        field_names = [i for i, j in self._base_data_type]
-        print(field_names)
 
         # list of all available buckets to fit porosity points
         buckets_list = [
@@ -696,106 +688,17 @@ class TrialDataBase(ABC):
         print('Rings to sample', rings_to_sample)
 
         print("beggining loop!")
-        ring_being_sampled = 0
         for ring_being_sampled in rings_to_sample:
-            if samp_debug:
-                print(f'=============== sampling ring {ring_being_sampled}')
-
-            buckets_len, buckets_origin = self._get_buckets_len(
-                poros_width, buckets_list, available_rings_to_shrink,
-                ring_being_sampled)
-
-            # The sampling of 'ring_being_sampled' is done one well at a time
-            # to reduce the memory footprint
-            updated_ring_well_pairs = []
-            for well_id in self._wells_id_list:
-                prop_points = self._get_values_hook(ring_being_sampled,
-                                                    well_id)[field_names]
-
-                # Perform sampling to find out which points should remain
-                points_to_add, points_to_remove = target_based_sampler(
-                    prop_points, buckets_len, poros_width, bucket_max_size,
-                    alpha, rng)
-
-                if samp_debug:
-                    print(f'sampling r{ring_being_sampled}w{well_id}: '
-                          f'add{len(points_to_add)} '
-                          f'rem{sum(points_to_remove.values())}')
-
-                # Update the ring,well data for 'ring_being_sampled'
-                updated_dict = {well_id: points_to_add}
-                self._set_ring_hook(ring_being_sampled, updated_dict, True)
-                updated_ring_well_pairs.append((ring_being_sampled, well_id))
-
-                # Shrink other rings to balance the new propagated points
-                for bucket, n in points_to_remove.items():
-                    # Calculate how many points are within the current bucket
-                    total_bucket_points = 0
-                    for ring, well_id in buckets_origin[
-                            bucket] + updated_ring_well_pairs:
-                        # Only account for removable points from the
-                        # previous rings.
-                        if ring > ring_being_sampled:
-                            continue
-
-                        all_points = self._get_values_hook(ring, well_id)
-                        filt_points = all_points[(all_points['phi'] >= bucket)
-                                                 & (all_points['phi'] < bucket +
-                                                    poros_width)]
-                        total_bucket_points += len(filt_points)
-
-                    if samp_debug:
-                        print(f'++++ to_del {n}/{total_bucket_points} points '
-                              f'from bucket {bucket}')
-
-                    # Shrink previous rings proportionally by 'n'
-                    for ring, well_id in buckets_origin[bucket]:
-                        # Only account for removable points from the
-                        # previous rings. For a given ring_being_sampled=3 we
-                        # should not remove points from ring 5 since it will
-                        # be sampled later. This only applies for the first
-                        # sampling of all rings.
-                        if ring >= ring_being_sampled:
-                            continue
-
-                        # Split points based on whether they are within the
-                        # bucket or not.
-                        all_points = self._get_values_hook(ring,
-                                                           well_id)[field_names]
-                        within_bucket_cond = (
-                            (all_points['phi'] >= bucket)
-                            & (all_points['phi'] < bucket + poros_width))
-                        filt_points = all_points[within_bucket_cond]
-                        remaining_points = all_points[~within_bucket_cond]
-
-                        # Calculate how many points should be removed. If none,
-                        # then just skip. This can only happen for rounding
-                        # n_to_rem to zero.
-                        n_to_rem = int(n * len(filt_points) /
-                                       total_bucket_points)
-                        if n_to_rem == 0:
-                            continue
-
-                        if samp_debug:
-                            print(f'--- removing {n_to_rem} from '
-                                  f'r{ring}w{well_id}')
-
-                        # Since only the last points are removed we shuffle
-                        # them to avoid taking only consecutive points
-                        np.random.shuffle(filt_points)
-
-                        # Update ring/well data
-                        sampled_points = np.concatenate(
-                            (filt_points[:-n_to_rem], remaining_points))
-                        # updated_dict = defaultdict(list)
-                        # updated_dict[well_id] = sampled_points
-                        updated_dict = {well_id: sampled_points}
-                        self._set_ring_hook(ring, updated_dict, True)
+            self._sample_from_ring(poros_width, samp_debug, buckets_list,
+                                   available_rings_to_shrink,
+                                   ring_being_sampled)
 
         # For logging purposes
         rank_should_propagate = self._config.get_param(
             'mpi_should_update_local')
         if rank_should_propagate:
+            ring_being_sampled = 1 if len(
+                rings_to_sample) == 0 else rings_to_sample[-1]
             buckets_origin_count = self._get_buckets_origin_count(
                 poros_width, buckets_list, available_rings_to_shrink,
                 ring_being_sampled)
@@ -803,8 +706,141 @@ class TrialDataBase(ABC):
                 key: int(sum(list(inner_dict.values())))
                 for key, inner_dict in buckets_origin_count.items()
             }
-            beg_str = f"[buckets_len][ring-{ring_being_sampled}]"
+            beg_str = f"[it{it}][buckets_len][ring-{ring_being_sampled}]"
             print(beg_str, buckets_origin_count)
+
+    def _sample_from_ring(self, poros_width: Decimal, samp_debug: bool,
+                          buckets_list: list[Decimal],
+                          available_rings_to_shrink: list[int],
+                          ring_being_sampled: int):
+        """
+        Do the v2 sampling for a ring and update internal data to take
+        into account the sampled data
+        """
+        if samp_debug:
+            print(f'=============== sampling ring {ring_being_sampled}')
+
+        buckets_len, buckets_origin = self._get_buckets_len(
+            poros_width, buckets_list, available_rings_to_shrink,
+            ring_being_sampled)
+
+        # The sampling of 'ring_being_sampled' is done one well at a time
+        # to reduce the memory footprint
+        updated_ring_well_pairs = []
+
+        for well_id in self._wells_id_list:
+            self._sample_from_well(poros_width, samp_debug, ring_being_sampled,
+                                   buckets_len, buckets_origin,
+                                   updated_ring_well_pairs, well_id)
+
+    def _sample_from_well(self, poros_width: Decimal, samp_debug: bool,
+                          ring_being_sampled: int, buckets_len: dict[Decimal,
+                                                                     int],
+                          buckets_origin: dict[Decimal, list[tuple[int, int]]],
+                          updated_ring_well_pairs: list, well_id: int):
+        """
+        Do the v2 sampling for a well in a ring. Updates internal state to take into
+        account the sampled data.
+        """
+        alpha = self._config.alg['sampling']['alpha']
+        bucket_max_size = self._config.alg['sampling']['bucket_max_size']
+        rng = np.random.default_rng(seed=self._config.alg['sampling']['seed'])
+        # Base columns names, e.g., x,y,x,phi,...
+        field_names = [i for i, j in self._base_data_type]
+
+        prop_points = self._get_values_hook(ring_being_sampled,
+                                            well_id)[field_names]
+
+        # Perform sampling to find out which points should remain
+        points_to_add, points_to_remove = target_based_sampler(
+            prop_points, buckets_len, poros_width, bucket_max_size, alpha, rng)
+
+        if samp_debug:
+            print(f'sampling r{ring_being_sampled}w{well_id}: '
+                  f'add{len(points_to_add)} '
+                  f'rem{sum(points_to_remove.values())}')
+
+        # Update the ring,well data for 'ring_being_sampled'
+        updated_dict = {well_id: points_to_add}
+        self._set_ring_hook(ring_being_sampled, updated_dict, True)
+        updated_ring_well_pairs.append((ring_being_sampled, well_id))
+
+        self._shrink_other_rings(poros_width, samp_debug, field_names,
+                                 ring_being_sampled, buckets_origin,
+                                 updated_ring_well_pairs, points_to_remove)
+
+    def _shrink_other_rings(self, poros_width: Decimal, samp_debug: bool,
+                            field_names: list, ring_being_sampled: int,
+                            buckets_origin: dict[Decimal, list[tuple[int,
+                                                                     int]]],
+                            updated_ring_well_pairs: list,
+                            points_to_remove: dict[Decimal, int]):
+        """
+        Remove points from rings previous to ring_being_sampled to balance
+        the new sampled points on the v2 sampling
+        """
+        for bucket, n in points_to_remove.items():
+            # Calculate how many points are within the current bucket
+            total_bucket_points = 0
+            for ring, well_id in buckets_origin[
+                    bucket] + updated_ring_well_pairs:
+                # Only account for removable points from the
+                # previous rings.
+                if ring > ring_being_sampled:
+                    continue
+
+                all_ring_well_points = self._get_values_hook(ring, well_id)
+                filt_points = all_ring_well_points[
+                    (all_ring_well_points['phi'] >= bucket)
+                    & (all_ring_well_points['phi'] < bucket + poros_width)]
+                total_bucket_points += len(filt_points)
+
+            if samp_debug:
+                print(f'++++ to_del {n}/{total_bucket_points} points '
+                      f'from bucket {bucket}')
+
+            # Shrink previous rings proportionally by 'n'
+            for ring, well_id in buckets_origin[bucket]:
+                # Only account for removable points from the
+                # previous rings. For a given ring_being_sampled=3 we
+                # should not remove points from ring 5 since it will
+                # be sampled later. This only applies for the first
+                # sampling of all rings.
+                if ring >= ring_being_sampled:
+                    continue
+
+                # Split points based on whether they are within the
+                # bucket or not.
+                all_ring_well_points = self._get_values_hook(
+                    ring, well_id)[field_names]
+                within_bucket_cond = (
+                    (all_ring_well_points['phi'] >= bucket)
+                    & (all_ring_well_points['phi'] < bucket + poros_width))
+                filt_points = all_ring_well_points[within_bucket_cond]
+                remaining_points = all_ring_well_points[~within_bucket_cond]
+
+                # Calculate how many points should be removed. If none,
+                # then just skip. This can only happen for rounding
+                # n_to_rem to zero.
+                n_to_rem = int(n * len(filt_points) / total_bucket_points)
+                if n_to_rem == 0:
+                    continue
+
+                if samp_debug:
+                    print(f'--- removing {n_to_rem} from '
+                          f'r{ring}w{well_id}')
+
+                # Since only the last points are removed we shuffle
+                # all points to avoid taking only consecutive points
+                np.random.shuffle(filt_points)
+
+                # Update ring/well data
+                sampled_points = np.concatenate(
+                    (filt_points[:-n_to_rem], remaining_points))
+                # updated_dict = defaultdict(list)
+                # updated_dict[well_id] = sampled_points
+                updated_dict = {well_id: sampled_points}
+                self._set_ring_hook(ring, updated_dict, True)
 
     def _get_buckets_len(
         self, poros_width: float, buckets_starts: list[Decimal],
@@ -891,7 +927,7 @@ class TrialDataBase(ABC):
 
     def _perf_sampling(self, it):
         if self._sampler == 'v2':
-            self._perf_sampling_v2()
+            self._perf_sampling_v2(it)
             return
 
         # Sample each ring individually
