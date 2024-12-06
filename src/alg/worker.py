@@ -5,6 +5,8 @@ from timeit import default_timer as timer
 from time import time
 import gc
 
+from TrialDataFast import TrialDataFast
+
 from mpi_module import MPI_TAGS
 from feature_sel import test_new_feature
 from feature_data.FeatureDatasetSimple import FeatureDatasetSimple
@@ -93,17 +95,19 @@ def run(config):
     t2 = time()
     print(f"{beg_str} Loaded porosity in {t2-t1:.2f} secs.")
 
-    # Prepare trial_data
-    if is_shared_trial_data:
-        trial_data = TrialDataSharedNumpy(train_wells_ids, porosity_h5_dset,
-                                          config)
-    elif is_h5_trial_data:
-        trial_data = TrialDataH5(train_wells_ids, porosity_h5_dset, config)
-    elif is_h5_shared_trial_data:
-        trial_data = TrialDataSharedH5(train_wells_ids, porosity_h5_dset,
-                                       config)
-    else:
-        trial_data = TrialDataNumpy(train_wells_ids, porosity_h5_dset, config)
+    trial_data = TrialDataFast(train_wells_ids, porosity_h5_dset, config)
+
+    # # Prepare trial_data
+    # if is_shared_trial_data:
+    #     trial_data = TrialDataSharedNumpy(train_wells_ids, porosity_h5_dset,
+    #                                       config)
+    # elif is_h5_trial_data:
+    #     trial_data = TrialDataH5(train_wells_ids, porosity_h5_dset, config)
+    # elif is_h5_shared_trial_data:
+    #     trial_data = TrialDataSharedH5(train_wells_ids, porosity_h5_dset,
+    #                                    config)
+    # else:
+    #     trial_data = TrialDataNumpy(train_wells_ids, porosity_h5_dset, config)
     t3 = time()
     print(f"{beg_str} Created local TrialData in {t3-t2:.2f} secs.")
 
