@@ -108,3 +108,10 @@ def has_points_within_chunk(wells_list, ring, chunk_slice, return_list=False):
     else:
         # No overlapping was found on any well
         return False
+
+
+def has_points_within_chunks(wells_list, ring_beg, ring_end, chunk_slice, return_list=False):
+    for r in range(ring_beg, ring_end+1):
+        if has_points_within_chunk(wells_list, r, chunk_slice, return_list):
+            return True
+    return False
