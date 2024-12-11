@@ -26,7 +26,7 @@ class TrialDataBase(ABC):
     '''
 
     def __init__(self,
-                 target_wells_ids_list,
+                 target_wells_ids_list: list[int],
                  porosity_data: Dataset,
                  config: Config,
                  should_consider_sampling: bool = True):
@@ -687,12 +687,13 @@ class TrialDataBase(ABC):
         if self._current_ring != -1:
             rings_to_sample = rings_to_sample[-1:]
         print('Rings to sample', rings_to_sample)
-
+        buckets_max_size = self._config.alg['sampling']['bucket_max_size']
         # For logging purposes
         self._log_buckets_size(it,
                                poros_width,
                                buckets_list,
                                rings_to_sample,
+                               buckets_max_size,
                                starting=True)
 
         print("beggining loop!")
@@ -706,10 +707,11 @@ class TrialDataBase(ABC):
                                poros_width,
                                buckets_list,
                                rings_to_sample,
+                               buckets_max_size,
                                starting=False)
 
     def _log_buckets_size(self, it, poros_width, buckets_list, rings_to_sample,
-                          starting: bool):
+                          buckets_max_size, starting: bool):
         rank_should_propagate = self._config.get_param(
             'mpi_should_update_local')
         if rank_should_propagate:
@@ -727,6 +729,13 @@ class TrialDataBase(ABC):
             print(beg_str, buckets_len)
             total_points = sum(buckets_len.values())
             print(beg_str, "Total points:", total_points)
+            buckets_with_more_than_max_size = {
+                key: value
+                for key, value in buckets_len.items()
+                if value > buckets_max_size
+            }
+            print(beg_str, "Buckets over max size:",
+                  buckets_with_more_than_max_size)
 
     def _sample_from_ring(self, poros_width: Decimal, samp_debug: bool,
                           buckets_list: list[Decimal],
