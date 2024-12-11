@@ -15,6 +15,7 @@ from feature_data.backends.FeatureDataBase import FeatureDataBase
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 
+
 def config_arg_parser():
     parser = argparse.ArgumentParser(description="Modelagem de "
                                      "Aprendizado Invertido")
@@ -319,7 +320,7 @@ def update_config_file_params_with_args(config: config_parser.Config,
     config.add_param('is_shared_trial_data', args.is_shared_trial_data)
     config.add_param('is_h5_trial_data', args.is_h5_trial_data)
     config.add_param('is_h5_shared_trial_data', args.is_h5_shared_trial_data)
-    
+
     # POV exec
     config.add_param('pov_canal_path', args.pov_canal_path)
     config.add_param('pov_should_prop', args.pov_should_prop)

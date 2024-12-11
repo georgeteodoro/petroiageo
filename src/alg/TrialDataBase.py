@@ -673,6 +673,7 @@ class TrialDataBase(ABC):
         # points when the last ring needs to add some.
         # All rings, except the last one (recently propagated) should
         # be available for shrinking
+        print("Rings list:", self._rings_list)
         available_rings_to_shrink = self._rings_list[:-1]
         print("Available rings to shrink:", available_rings_to_shrink)
 
@@ -687,6 +688,13 @@ class TrialDataBase(ABC):
             rings_to_sample = rings_to_sample[-1:]
         print('Rings to sample', rings_to_sample)
 
+        # For logging purposes
+        self._log_buckets_size(it,
+                               poros_width,
+                               buckets_list,
+                               rings_to_sample,
+                               starting=True)
+
         print("beggining loop!")
         for ring_being_sampled in rings_to_sample:
             self._sample_from_ring(poros_width, samp_debug, buckets_list,
@@ -694,20 +702,32 @@ class TrialDataBase(ABC):
                                    ring_being_sampled)
 
         # For logging purposes
+        self._log_buckets_size(it,
+                               poros_width,
+                               buckets_list,
+                               rings_to_sample,
+                               starting=False)
+
+    def _log_buckets_size(self, it, poros_width, buckets_list, rings_to_sample,
+                          starting: bool):
         rank_should_propagate = self._config.get_param(
             'mpi_should_update_local')
         if rank_should_propagate:
-            ring_being_sampled = 1 if len(
+            starting_ring = 0
+            last_ring_to_count = 0 if len(
                 rings_to_sample) == 0 else rings_to_sample[-1]
+            print("Last ring to count:", last_ring_to_count)
             buckets_origin_count = self._get_buckets_origin_count(
-                poros_width, buckets_list, available_rings_to_shrink,
-                ring_being_sampled)
+                poros_width, buckets_list, starting_ring, last_ring_to_count)
             buckets_origin_count = {
                 key: int(sum(list(inner_dict.values())))
                 for key, inner_dict in buckets_origin_count.items()
             }
-            beg_str = f"[it{it}][buckets_len][ring-{ring_being_sampled}]"
+            beg_str = f"[it{it}][buckets_len]"
+            beg_str += '[starting_buckets_len]' if starting else '[ending_buckets_len]'
             print(beg_str, buckets_origin_count)
+            total_points = sum(buckets_origin_count.values())
+            print(beg_str, "Total points:", total_points)
 
     def _sample_from_ring(self, poros_width: Decimal, samp_debug: bool,
                           buckets_list: list[Decimal],
@@ -727,7 +747,7 @@ class TrialDataBase(ABC):
         # The sampling of 'ring_being_sampled' is done one well at a time
         # to reduce the memory footprint
         updated_ring_well_pairs = []
-
+        #TODO: Shuffle wells is list to end sampling bias
         for well_id in self._wells_id_list:
             self._sample_from_well(poros_width, samp_debug, ring_being_sampled,
                                    buckets_len, buckets_origin,
@@ -886,8 +906,8 @@ class TrialDataBase(ABC):
 
     def _get_buckets_origin_count(
             self, poros_width: float, buckets_starts: list[float],
-            available_rings_to_shrink: list[int],
-            ring_being_sampled: int) -> dict[Decimal, dict[tuple, int]]:
+            starting_ring: int,
+            ending_ring: int) -> dict[Decimal, dict[tuple, int]]:
         """
         Counts how many points are within each (ring, well_id) pairs that make the buckets.
         This is for logging purposes.
@@ -896,11 +916,8 @@ class TrialDataBase(ABC):
             poros_width (float): The buckets porosity width
             buckets_starts (list[float]): The porosity start 
             for every bucket
-            available_rings_to_shrink (list[int]): The rings where
-            to remove points from if needed when adding sampled 
-            points to the buckets
-            ring_being_sampled (int): The current ring to where sample
-            points from .
+            starting_ring (int): The starting ring from where to count
+            ending_ring (int): The ending ring from where to count
         
         return:
             A dict of dicts with bucket starting porosity as keys and the inside dicts with
@@ -908,13 +925,8 @@ class TrialDataBase(ABC):
             Example: {0.2: {(1,1):10, (1,2):5}, 0.4: {(1,1):10, (1,2):5}}
         """
         buckets_origin_count = dict()
-        for ring in available_rings_to_shrink:
+        for ring in range(starting_ring, ending_ring + 1):
             for well_id in self._wells_id_list:
-                # Only account for removable points from the
-                # previous rings.
-                if ring >= ring_being_sampled:
-                    continue
-
                 chunk_data = self._get_values_hook(ring, well_id)
                 for p in buckets_starts:
                     points_within = sum((chunk_data['phi'] >= p)
