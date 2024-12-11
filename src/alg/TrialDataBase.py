@@ -755,8 +755,10 @@ class TrialDataBase(ABC):
         # The sampling of 'ring_being_sampled' is done one well at a time
         # to reduce the memory footprint
         updated_ring_well_pairs = []
-        #TODO: Shuffle wells is list to end sampling bias
-        for well_id in self._wells_id_list:
+
+        shuffled_wells_ids = self._wells_id_list.copy()
+        np.random.shuffle(shuffled_wells_ids)
+        for well_id in shuffled_wells_ids:
             self._sample_from_well(poros_width, samp_debug, ring_being_sampled,
                                    buckets_len, buckets_origin,
                                    updated_ring_well_pairs, well_id)

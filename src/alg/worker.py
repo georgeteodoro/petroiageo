@@ -5,6 +5,7 @@ from timeit import default_timer as timer
 from time import time
 import gc
 
+from config_parser import Config
 from mpi_module import MPI_TAGS
 from feature_sel import test_new_feature
 from feature_data.FeatureDatasetSimple import FeatureDatasetSimple
@@ -49,7 +50,7 @@ gc_start = None
 gc_times = []
 
 
-def run(config):
+def run(config: Config):
     rank_should_propagate = config.get_param('mpi_should_update_local')
     feature_sel_only = config.get_param('feature_sel_only')
     is_feature_in_mem = config.get_param("is_feature_in_mem")
@@ -186,9 +187,10 @@ def run(config):
                     print(f"{beg_str}[it{it}][f_it{f_it}] Trial "
                           f"{best_features + [(feature, disp)]} "
                           f"rmse {ret[0]} in {t7-t4:.2f}")
-                    
+
                     print(f"{beg_str}[it{it}][trialProf] get_feature {t5-t4}")
-                    print(f"{beg_str}[it{it}][trialProf] update_feature {t6-t5}")
+                    print(
+                        f"{beg_str}[it{it}][trialProf] update_feature {t6-t5}")
                     print(f"{beg_str}[it{it}][trialProf] training {t7-t6}")
 
                     it_get_f_time += t5 - t4
