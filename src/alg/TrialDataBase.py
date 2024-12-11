@@ -714,19 +714,18 @@ class TrialDataBase(ABC):
             'mpi_should_update_local')
         if rank_should_propagate:
             starting_ring = 0
-            last_ring_to_count = 0 if len(
+            last_ring_to_count = 1 if len(
                 rings_to_sample) == 0 else rings_to_sample[-1]
             print("Last ring to count:", last_ring_to_count)
-            buckets_origin_count = self._get_buckets_origin_count(
-                poros_width, buckets_list, starting_ring, last_ring_to_count)
-            buckets_origin_count = {
-                key: int(sum(list(inner_dict.values())))
-                for key, inner_dict in buckets_origin_count.items()
-            }
+            buckets_len, _ = self._get_buckets_len(
+                poros_width, buckets_list,
+                list(range(starting_ring, last_ring_to_count)),
+                last_ring_to_count)
+
             beg_str = f"[it{it}][buckets_len]"
             beg_str += '[starting_buckets_len]' if starting else '[ending_buckets_len]'
-            print(beg_str, buckets_origin_count)
-            total_points = sum(buckets_origin_count.values())
+            print(beg_str, buckets_len)
+            total_points = sum(buckets_len.values())
             print(beg_str, "Total points:", total_points)
 
     def _sample_from_ring(self, poros_width: Decimal, samp_debug: bool,
@@ -903,39 +902,6 @@ class TrialDataBase(ABC):
                     if points_within > 0:
                         buckets_origin[p].append((ring, well_id))
         return buckets_len, buckets_origin
-
-    def _get_buckets_origin_count(
-            self, poros_width: float, buckets_starts: list[float],
-            starting_ring: int,
-            ending_ring: int) -> dict[Decimal, dict[tuple, int]]:
-        """
-        Counts how many points are within each (ring, well_id) pairs that make the buckets.
-        This is for logging purposes.
-        
-        args: 
-            poros_width (float): The buckets porosity width
-            buckets_starts (list[float]): The porosity start 
-            for every bucket
-            starting_ring (int): The starting ring from where to count
-            ending_ring (int): The ending ring from where to count
-        
-        return:
-            A dict of dicts with bucket starting porosity as keys and the inside dicts with
-            (ring, well_id) as keys and the num of points in the bucket as a value.
-            Example: {0.2: {(1,1):10, (1,2):5}, 0.4: {(1,1):10, (1,2):5}}
-        """
-        buckets_origin_count = dict()
-        for ring in range(starting_ring, ending_ring + 1):
-            for well_id in self._wells_id_list:
-                chunk_data = self._get_values_hook(ring, well_id)
-                for p in buckets_starts:
-                    points_within = sum((chunk_data['phi'] >= p)
-                                        & (chunk_data['phi'] < p + poros_width))
-                    if points_within > 0:
-                        origin_pair = (ring, well_id)
-                        buckets_origin_count.setdefault(
-                            p, dict())[origin_pair] = points_within
-        return buckets_origin_count
 
     def _perf_sampling(self, it):
         if self._sampler == 'v2':
