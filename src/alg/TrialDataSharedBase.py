@@ -108,7 +108,7 @@ class TrialDataSharedBase(TrialDataBase, ABC):
     # === Implementations of TrialDataBase ====================================
     # =========================================================================
 
-    def _set_ring_hook(self, ring, data, overwite=False):
+    def _set_ring_hook(self, ring, data, overwrite=False):
         '''
         Add porosity and other info (coordinates and well_id) to the _data 
         storage. Adds data organized by ring and by well_id.
