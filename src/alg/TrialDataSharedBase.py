@@ -4,6 +4,7 @@ import numpy as np
 
 from TrialDataBase import TrialDataBase
 
+
 class TrialDataSharedBase(TrialDataBase, ABC):
     '''
     Subclass of TrialData with shared storage within the same node.
@@ -104,6 +105,14 @@ class TrialDataSharedBase(TrialDataBase, ABC):
         raise Exception("[TrialDataSharedBase][_update_local_col] "\
                         "Abstract method not implemented.")
 
+    @abstractmethod
+    def _del_single_ring_well(self, ring, well):
+        '''
+        Deletes the concrete data for a ring,well pair.
+        '''
+        raise Exception("[TrialDataSharedBase][_del_single_ring_well] "\
+                        "Abstract method not implemented.")
+
     # =========================================================================
     # === Implementations of TrialDataBase ====================================
     # =========================================================================
@@ -130,6 +139,11 @@ class TrialDataSharedBase(TrialDataBase, ABC):
                 continue
 
             well_data = data[w]
+
+            # If data was already allocated, remove it first
+            if overwrite:
+                self._del_single_ring_well(ring, w)
+
             # Create the shared structure on all processes
             self._alloc_empty_ring_well_concrete(len(well_data), ring, w)
 
@@ -249,7 +263,9 @@ class TrialDataSharedBase(TrialDataBase, ABC):
 
         # Since a feature is being committed, the last column is invalid
         self._is_last_col_empty = True
-        print(f'_should_commit_feature_hook _is_last_col_empty: {self._is_last_col_empty}')
+        print(
+            f'_should_commit_feature_hook _is_last_col_empty: {self._is_last_col_empty}'
+        )
         return True
 
     def _done_commit_feature_hook(self):
