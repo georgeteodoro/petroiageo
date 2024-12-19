@@ -702,13 +702,12 @@ class TrialDataBase(ABC):
                                    ring_being_sampled, rng)
 
         # For logging purposes
-        if samp_debug:
-            self._log_train_data_buckets_size(it,
-                                              poros_width,
-                                              buckets_list,
-                                              rings_to_sample,
-                                              buckets_max_size,
-                                              starting=False)
+        self._log_train_data_buckets_size(it,
+                                          poros_width,
+                                          buckets_list,
+                                          rings_to_sample,
+                                          buckets_max_size,
+                                          starting=False)
 
     def _log_train_data_buckets_size(self, it, poros_width, buckets_list,
                                      rings_to_sample, buckets_max_size,
