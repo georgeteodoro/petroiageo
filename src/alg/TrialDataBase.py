@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from h5py import Dataset
+from mpi4py import MPI
 import numpy as np
 from numpy.lib import recfunctions as rfn
 from time import time
@@ -11,6 +12,9 @@ import common
 from config_parser import Config
 from data_filter import WellsSingleRingDataFilter
 from sampler import ChunkSamplerV1, target_based_sampler
+
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
 
 
 class TrialDataBase(ABC):
@@ -792,7 +796,8 @@ class TrialDataBase(ABC):
                           rng: np.random.Generator = None):
         """
         Do the v2 sampling for a well in a ring. Updates internal state to take into
-        account the sampled data. Modify updated_ring_well_pairs inplace
+        account the sampled data. Modify updated_ring_well_pairs and
+        buckets_len inplace
 
         Args:
         poros_width: The width of every bucket in porosity measurements
@@ -852,7 +857,7 @@ class TrialDataBase(ABC):
         still_should_remove: dict = {
             key: (value - removed_p_per_bucket[key])
             for key, value in points_to_remove.items()
-            if value - removed_p_per_bucket[key] > 0
+            if (value - removed_p_per_bucket[key]) > 0
         }
 
         if samp_debug:
@@ -881,6 +886,11 @@ class TrialDataBase(ABC):
                         f"bucket {bucket} to compensate"
                 )
 
+            assert_msg = f"[WARNING] should still remove {n_to_rem} from"\
+                       f"r{ring_being_sampled}w{well_id} "\
+                        f"but only got {len(filt_points)} points!"
+            assert len(filt_points) >= n_to_rem, assert_msg
+
             np.random.shuffle(filt_points)
             # Update ring/well data
             sampled_points = np.concatenate(
@@ -898,7 +908,9 @@ class TrialDataBase(ABC):
         """
         Remove points from: rings previous to ring_being_sampled and
         ring_being_sampled that is not from the current well to balance
-        the new sampled points on the v2 sampling
+        the new sampled points on the v2 sampling.
+
+        Returns a dict of how many points were removed per bucket
         """
         removed_p_per_bucket = dict()
         for bucket, n_to_rem_from_all_rings in points_to_remove.items():
@@ -907,9 +919,11 @@ class TrialDataBase(ABC):
                 poros_width, ring_being_sampled,
                 buckets_origin[bucket] + updated_ring_well_pairs, bucket)
 
+            # In theory, tot_shrinkable_b_pts < (b_max_size + n_to_rem_from_all_rings)
+            # but, in practice, it might be >=.
+            # TODO: solve this issue
             will_remove = tot_shrinkable_b_pts / (b_max_size +
                                                   n_to_rem_from_all_rings)
-            will_remove = min(will_remove, 1)
             will_remove *= n_to_rem_from_all_rings
             will_remove = int(will_remove)
             if samp_debug:
@@ -917,6 +931,8 @@ class TrialDataBase(ABC):
                     f'++++ to_del {will_remove}/{tot_shrinkable_b_pts} points '
                     f'from bucket {bucket} as we want to remove {n_to_rem_from_all_rings} on total'
                 )
+
+            assert will_remove <= tot_shrinkable_b_pts, f"{will_remove} is greater than {tot_shrinkable_b_pts}"
 
             bucket_removed_points = 0
             # Shrink previous rings proportionally by 'n'
@@ -939,28 +955,29 @@ class TrialDataBase(ABC):
                     # n_to_rem to zero.
                     n_to_rem = len(filt_points) / (b_max_size +
                                                    n_to_rem_from_all_rings)
-                    n_to_rem = min(n_to_rem, 1)
                     n_to_rem *= n_to_rem_from_all_rings
                     n_to_rem = int(n_to_rem)
-
-                    bucket_removed_points += n_to_rem
-                    if n_to_rem == 0:
-                        continue
 
                     if samp_debug:
                         print(
                             f'--- removing {n_to_rem}/{len(filt_points)} from '
                             f'r{ring}w{well_id}')
 
+                    if n_to_rem == 0:
+                        continue
                     # Since only the last points are removed we shuffle
                     # all points to avoid taking only consecutive points
                     np.random.shuffle(filt_points)
 
                     # Update ring/well data
+                    assert n_to_rem > 0, f"n_to_rem is {n_to_rem}, which doesnt makes sense!"
                     sampled_points = np.concatenate(
                         (filt_points[:-n_to_rem], remaining_points))
                     updated_dict = {well_id: sampled_points}
                     self._set_ring_hook(ring, updated_dict, True)
+
+                    # This is the true removed points
+                    bucket_removed_points += min(n_to_rem, len(filt_points))
 
             removed_p_per_bucket[bucket] = bucket_removed_points
             if samp_debug:
