@@ -1082,7 +1082,7 @@ class TrialDataBase(ABC):
                     if points_within > 0:
                         buckets_origin[p].append((ring, well_id))
         return buckets_len, buckets_origin
-
+    
     def _perf_sampling(self, it):
         if self._sampler == 'v2':
             self._perf_sampling_v2(it)
