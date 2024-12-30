@@ -667,7 +667,7 @@ class TrialDataBase(ABC):
         poros_min = Decimal(str(self._config.alg['sampling']['poros_min']))
         poros_max = Decimal(str(self._config.alg['sampling']['poros_max']))
 
-        samp_debug = False
+        samp_debug = True
 
         # list of all available buckets to fit porosity points
         buckets_list = [
@@ -683,7 +683,7 @@ class TrialDataBase(ABC):
         elif it == 1:
             rings_to_sample = [0]
         else:
-            rings_to_sample = self._rings_list[1:]
+            rings_to_sample = self._rings_list.copy()
 
         if samp_debug:
             print("[_perf_sampling_v2]Buckets list", buckets_list)
@@ -720,10 +720,13 @@ class TrialDataBase(ABC):
             'mpi_should_update_local')
         if rank_should_propagate:
             starting_ring = 0
-            last_ring_to_count = 1 if len(
-                rings_to_sample) == 0 else rings_to_sample[-1] + 1
-            if starting:
-                last_ring_to_count -= 1
+            if len(rings_to_sample) == 0:
+                last_ring_to_count = 1
+            elif starting:
+                last_ring_to_count = rings_to_sample[-1]
+            else:
+                last_ring_to_count = rings_to_sample[-1] + 1
+
             target_rings = list(range(starting_ring, last_ring_to_count))
             beg_str = f"[it{it}][buckets_len]"
             beg_str += '[starting_buckets_len]' if starting else '[ending_buckets_len]'
