@@ -667,7 +667,7 @@ class TrialDataBase(ABC):
         poros_min = Decimal(str(self._config.alg['sampling']['poros_min']))
         poros_max = Decimal(str(self._config.alg['sampling']['poros_max']))
 
-        samp_debug = True
+        samp_debug = False
 
         # list of all available buckets to fit porosity points
         buckets_list = [
@@ -856,6 +856,8 @@ class TrialDataBase(ABC):
                                  removed_p_per_bucket: dict[Decimal, int]):
         """
         Remove points from the (well_id, ring_being_sampled) as needed
+
+        Update ring_being_sampled inner data inplace
         """
         still_should_remove: dict = {
             key: (value - removed_p_per_bucket[key])
@@ -870,17 +872,18 @@ class TrialDataBase(ABC):
 
         # Base columns names, e.g., x,y,x,phi,...
         field_names = [i for i, j in self._base_data_type]
-        added_points = self._get_values_hook(ring_being_sampled,
-                                             well_id)[field_names]
         for bucket, n_to_rem in still_should_remove.items():
             if n_to_rem == 0:
                 continue
 
-            within_bucket_cond = ((added_points['phi'] >= bucket)
-                                  &
-                                  (added_points['phi'] < bucket + poros_width))
-            filt_points = added_points[within_bucket_cond]
-            remaining_points = added_points[~within_bucket_cond]
+            updated_ring_well_pts = self._get_values_hook(
+                ring_being_sampled, well_id)[field_names]
+
+            within_bucket_cond = (
+                (updated_ring_well_pts['phi'] >= bucket)
+                & (updated_ring_well_pts['phi'] < bucket + poros_width))
+            filt_points = updated_ring_well_pts[within_bucket_cond]
+            remaining_points = updated_ring_well_pts[~within_bucket_cond]
 
             if samp_debug:
                 print(
