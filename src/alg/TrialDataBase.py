@@ -922,31 +922,28 @@ class TrialDataBase(ABC):
                 poros_width, ring_being_sampled,
                 buckets_origin[bucket] + updated_ring_well_pairs, bucket)
 
-            # In theory, tot_shrinkable_b_pts < (b_max_size + n_to_rem_from_all_rings)
-            # but, in practice, it might be >=.
-            # TODO: solve this issue
-            will_remove = tot_shrinkable_b_pts / (b_max_size +
-                                                  n_to_rem_from_all_rings)
-            will_remove *= n_to_rem_from_all_rings
-            will_remove = int(will_remove)
             if samp_debug:
+                # In theory, tot_shrinkable_b_pts < (b_max_size + n_to_rem_from_all_rings)
+                # but, in practice, it might be >=.
+                # TODO: solve this issue
+                will_remove = tot_shrinkable_b_pts / (b_max_size +
+                                                      n_to_rem_from_all_rings)
+                will_remove *= n_to_rem_from_all_rings
+                will_remove = int(will_remove)
                 print(
                     f'++++ to_del {will_remove}/{tot_shrinkable_b_pts} points '
                     f'from bucket {bucket} as we want to remove {n_to_rem_from_all_rings} on total'
                 )
 
-            assert will_remove <= tot_shrinkable_b_pts, f"{will_remove} is greater than {tot_shrinkable_b_pts}"
-
             bucket_removed_points = 0
-            # Shrink previous rings proportionally by 'n'
+            # Shrink rings proportionally by 'n'
             if tot_shrinkable_b_pts > 0:
                 for ring, well_id in buckets_origin[
                         bucket] + updated_ring_well_pairs:
                     # Only account for removable points from the
-                    # previous rings. For a given ring_being_sampled=3 we
-                    # should not remove points from ring 5 since it will
-                    # be sampled later. This only applies for the first
-                    # sampling of all rings.
+                    # less or equal rings. For a given ring_being_sampled=3
+                    # we should not remove points from ring 5 since it will
+                    # be sampled later.
                     if ring > ring_being_sampled:
                         continue
 
@@ -956,8 +953,9 @@ class TrialDataBase(ABC):
                     # Calculate how many points should be removed. If none,
                     # then just skip. This can only happen for rounding
                     # n_to_rem to zero.
-                    n_to_rem = len(filt_points) / (b_max_size +
-                                                   n_to_rem_from_all_rings)
+                    current_tot_b_points = (b_max_size +
+                                            n_to_rem_from_all_rings)
+                    n_to_rem = len(filt_points) / current_tot_b_points
                     n_to_rem *= n_to_rem_from_all_rings
                     n_to_rem = int(n_to_rem)
 
