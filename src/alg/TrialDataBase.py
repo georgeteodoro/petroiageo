@@ -916,7 +916,7 @@ class TrialDataBase(ABC):
         Returns a dict of how many points were removed per bucket
         """
         removed_p_per_bucket = dict()
-        for bucket, n_to_rem_from_all_rings in points_to_remove.items():
+        for bucket, n_to_rem_from_bucket in points_to_remove.items():
             target_pts_origins = [(ring, well_id)
                                   for (ring,
                                        well_id) in buckets_origin[bucket] +
@@ -927,28 +927,28 @@ class TrialDataBase(ABC):
                 poros_width, target_pts_origins, bucket)
 
             if samp_debug:
-                # In theory, tot_shrinkable_b_pts < (b_max_size + n_to_rem_from_all_rings)
+                # In theory, tot_shrinkable_b_pts < (b_max_size + n_to_rem_from_bucket)
                 # but, in practice, it might be >=.
                 # TODO: solve this issue
                 will_remove = tot_shrinkable_b_pts / (b_max_size +
-                                                      n_to_rem_from_all_rings)
-                will_remove *= n_to_rem_from_all_rings
+                                                      n_to_rem_from_bucket)
+                will_remove *= n_to_rem_from_bucket
                 will_remove = int(will_remove)
                 print(
                     f'++++ to_del {will_remove}/{tot_shrinkable_b_pts} points '
-                    f'from bucket {bucket} as we want to remove {n_to_rem_from_all_rings} on total'
+                    f'from bucket {bucket} as we want to remove {n_to_rem_from_bucket} on total'
                 )
 
             n_removed_points = 0
             if tot_shrinkable_b_pts > 0:
                 n_removed_points = self._shrink_bucket_proportionally(
                     poros_width, samp_debug, b_max_size, target_pts_origins,
-                    bucket, n_to_rem_from_all_rings)
+                    bucket, n_to_rem_from_bucket)
 
             removed_p_per_bucket[bucket] = n_removed_points
             if samp_debug:
                 print(
-                    f"--- Wanted to remove {n_to_rem_from_all_rings}"\
+                    f"--- Wanted to remove {n_to_rem_from_bucket}"\
                     f" and calculated to remove {n_removed_points}"
                 )
         return removed_p_per_bucket
@@ -957,10 +957,10 @@ class TrialDataBase(ABC):
                                       samp_debug: bool, b_max_size: int,
                                       pts_origin: list[tuple[int, int]],
                                       bucket: Decimal,
-                                      n_to_rem_from_all_rings: int) -> int:
+                                      n_total_to_remove: int) -> int:
         """
         Proportionally remove points from the bucket where points come from the pts_origin
-        but aren't from rings greater then max_ring given the n_to_rem_from_all_rings.
+        but aren't from rings greater then max_ring given the n_total_to_remove.
 
         Return the number of points removed
         """
@@ -972,31 +972,31 @@ class TrialDataBase(ABC):
 
             # Calculate how many points should be removed. If none,
             # then just skip. This can only happen for rounding
-            # n_to_rem to zero.
-            current_tot_b_points = (b_max_size + n_to_rem_from_all_rings)
-            n_to_rem = len(filt_points) / current_tot_b_points
-            n_to_rem *= n_to_rem_from_all_rings
-            n_to_rem = int(n_to_rem)
+            # n_curr_to_rem to zero.
+            current_tot_b_points = (b_max_size + n_total_to_remove)
+            n_curr_to_rem = len(filt_points) / current_tot_b_points
+            n_curr_to_rem *= n_total_to_remove
+            n_curr_to_rem = int(n_curr_to_rem)
 
             if samp_debug:
-                print(f'--- removing {n_to_rem}/{len(filt_points)} from '
+                print(f'--- removing {n_curr_to_rem}/{len(filt_points)} from '
                       f'r{ring}w{well_id}')
 
-            if n_to_rem == 0:
+            if n_curr_to_rem == 0:
                 continue
             # Since only the last points are removed we shuffle
             # all points to avoid taking only consecutive points
             np.random.shuffle(filt_points)
 
             # Update ring/well data
-            assert n_to_rem > 0, f"n_to_rem is {n_to_rem}, which doesnt makes sense!"
+            assert n_curr_to_rem > 0, f"n_to_rem is {n_curr_to_rem}, which doesnt makes sense!"
             sampled_points = np.concatenate(
-                (filt_points[:-n_to_rem], remaining_points))
+                (filt_points[:-n_curr_to_rem], remaining_points))
             updated_dict = {well_id: sampled_points}
             self._set_ring_hook(ring, updated_dict, True)
 
             # This is the true removed points
-            n_removed_points += min(n_to_rem, len(filt_points))
+            n_removed_points += min(n_curr_to_rem, len(filt_points))
 
         return n_removed_points
 
