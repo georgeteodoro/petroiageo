@@ -842,7 +842,7 @@ class TrialDataBase(ABC):
 
         updated_ring_well_pairs.append((ring_being_sampled, well_id))
 
-        removed_p_per_bucket = self._shrink_other_rings(
+        removed_p_per_bucket = self._shrink_rings(
             poros_width, samp_debug, ring_being_sampled, bucket_max_size,
             buckets_origin, updated_ring_well_pairs, points_to_remove)
 
@@ -902,16 +902,16 @@ class TrialDataBase(ABC):
             updated_dict = {well_id: sampled_points}
             self._set_ring_hook(ring_being_sampled, updated_dict, True)
 
-    def _shrink_other_rings(
+    def _shrink_rings(
             self, poros_width: Decimal, samp_debug: bool,
             ring_being_sampled: int, b_max_size: int,
             buckets_origin: dict[Decimal, list[tuple[int, int]]],
             updated_ring_well_pairs: list,
             points_to_remove: dict[Decimal, int]) -> dict[Decimal, int]:
         """
-        Remove points from: rings previous to ring_being_sampled and
-        ring_being_sampled that is not from the current well to balance
-        the new sampled points on the v2 sampling.
+        Remove points from rings less or equal to ring_being_sampled
+        defined from buckets_origin + updated_ring_well_pairs
+        to balance the new sampled points on the v2 sampling.
 
         Returns a dict of how many points were removed per bucket
         """
