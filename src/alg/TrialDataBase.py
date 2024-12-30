@@ -917,9 +917,14 @@ class TrialDataBase(ABC):
         """
         removed_p_per_bucket = dict()
         for bucket, n_to_rem_from_all_rings in points_to_remove.items():
-            tot_shrinkable_b_pts = self._calc_n_points_in_bucket_for_rings_leq_to(
-                poros_width, ring_being_sampled,
-                buckets_origin[bucket] + updated_ring_well_pairs, bucket)
+            target_pts_origins = [(ring, well_id)
+                                  for (ring,
+                                       well_id) in buckets_origin[bucket] +
+                                  updated_ring_well_pairs
+                                  if ring <= ring_being_sampled]
+
+            tot_shrinkable_b_pts = self._calc_n_points_in_bucket_at_origins(
+                poros_width, target_pts_origins, bucket)
 
             if samp_debug:
                 # In theory, tot_shrinkable_b_pts < (b_max_size + n_to_rem_from_all_rings)
@@ -987,8 +992,8 @@ class TrialDataBase(ABC):
 
             if n_to_rem == 0:
                 continue
-                # Since only the last points are removed we shuffle
-                # all points to avoid taking only consecutive points
+            # Since only the last points are removed we shuffle
+            # all points to avoid taking only consecutive points
             np.random.shuffle(filt_points)
 
             # Update ring/well data
@@ -1026,27 +1031,20 @@ class TrialDataBase(ABC):
         out_of_bucket = all_ring_well_points[~within_bucket_cond]
         return in_bucket, out_of_bucket
 
-    def _calc_n_points_in_bucket_for_rings_leq_to(self, poros_width: Decimal,
-                                                  target_ring: int,
-                                                  target_buckets_origin: list[
-                                                      tuple[int, int]],
-                                                  bucket: int) -> int:
+    def _calc_n_points_in_bucket_at_origins(self, poros_width: Decimal,
+                                            target_buckets_origin: list[tuple[
+                                                int, int]], bucket: int) -> int:
         """
-        Count how many points are within a bucket at rings less or equal to 
-        the target_ring that are defined by the pairs at the target_buckets_origin
+        Count how many points are within a bucket that are defined by
+        the pairs at the target_buckets_origin
 
         Args:
         poros_width: The buckets width
-        target_ring: The target ring
         target_buckets_origin: List of points origins made up of tuples of (ring, well_id)
         bucket: The bucket porosity start 
         """
         total_points = 0
         for ring, well_id in target_buckets_origin:
-            # Only account for removable points
-            if ring > target_ring:
-                continue
-
             filt_points, _ = self._split_pts_in_and_out_of_bucket(
                 poros_width, bucket, ring, well_id)
             total_points += len(filt_points)
