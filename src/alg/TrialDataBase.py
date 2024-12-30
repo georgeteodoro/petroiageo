@@ -923,10 +923,10 @@ class TrialDataBase(ABC):
                                   updated_ring_well_pairs
                                   if ring <= ring_being_sampled]
 
-            tot_shrinkable_b_pts = self._calc_n_points_in_bucket_at_origins(
-                poros_width, target_pts_origins, bucket)
-
+            tot_shrinkable_b_pts = None
             if samp_debug:
+                tot_shrinkable_b_pts = self._calc_n_points_in_bucket_at_origins(
+                    poros_width, target_pts_origins, bucket)
                 # In theory, tot_shrinkable_b_pts < (b_max_size + n_to_rem_from_bucket)
                 # but, in practice, it might be >=.
                 # TODO: solve this issue
@@ -940,7 +940,7 @@ class TrialDataBase(ABC):
                 )
 
             n_removed_points = 0
-            if tot_shrinkable_b_pts > 0:
+            if tot_shrinkable_b_pts is None or tot_shrinkable_b_pts > 0:
                 n_removed_points = self._shrink_bucket_proportionally(
                     poros_width, samp_debug, b_max_size, target_pts_origins,
                     bucket, n_to_rem_from_bucket)
@@ -959,21 +959,26 @@ class TrialDataBase(ABC):
                                       bucket: Decimal,
                                       n_total_to_remove: int) -> int:
         """
-        Proportionally remove points from the bucket where points come from the pts_origin
-        but aren't from rings greater then max_ring given the n_total_to_remove.
+        Proportionally remove points from the bucket based on n_total_to_remove
+        where points come from the pts_origin .
 
         Return the number of points removed
         """
+        # If a bucket is beeing shrinked, it's total num of points
+        # can be computed as bucket_max_size + n_total_to_remove
+        current_tot_b_points = (b_max_size + n_total_to_remove)
+
         n_removed_points = 0
         for ring, well_id in pts_origin:
 
             filt_points, remaining_points = self._split_pts_in_and_out_of_bucket(
                 poros_width, bucket, ring, well_id)
 
-            # Calculate how many points should be removed. If none,
-            # then just skip. This can only happen for rounding
-            # n_curr_to_rem to zero.
-            current_tot_b_points = (b_max_size + n_total_to_remove)
+            if len(filt_points) == 0:
+                continue
+
+            # Compute how many points should be removed from this ring,well
+            # pair proportionally
             n_curr_to_rem = len(filt_points) / current_tot_b_points
             n_curr_to_rem *= n_total_to_remove
             n_curr_to_rem = int(n_curr_to_rem)
