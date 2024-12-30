@@ -917,7 +917,6 @@ class TrialDataBase(ABC):
         """
         removed_p_per_bucket = dict()
         for bucket, n_to_rem_from_all_rings in points_to_remove.items():
-            # Calculate how many points are within the current bucket
             tot_shrinkable_b_pts = self._calc_n_points_in_bucket_for_rings_leq_to(
                 poros_width, ring_being_sampled,
                 buckets_origin[bucket] + updated_ring_well_pairs, bucket)
@@ -936,7 +935,6 @@ class TrialDataBase(ABC):
                 )
 
             n_removed_points = 0
-            # Shrink rings proportionally by 'n'
             if tot_shrinkable_b_pts > 0:
                 pts_origin = buckets_origin[bucket] + updated_ring_well_pairs
                 n_removed_points = self._shrink_bucket_proportionally(
