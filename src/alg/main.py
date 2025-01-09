@@ -387,14 +387,14 @@ def main(args_str=None):
             manager.run(config)
         except Exception as e:
             print(f"[manager][main] Exception detected on main: {e}")
-            if not config.no_abort:
+            if not args.no_abort:
                 MPI.COMM_WORLD.Abort()
     else:
         try:
             worker.run(config)
         except Exception as e:
             print(f"[worker{rank}][main] Exception detected on main: {e}")
-            if not config.no_abort:
+            if not args.no_abort:
                 MPI.COMM_WORLD.Abort()
 
 
