@@ -7,6 +7,9 @@ from TrialDataBase import TrialDataBase
 from config_parser import Config
 import common
 
+import warnings
+warnings.filterwarnings(action='ignore', category=UserWarning)
+
 def _train_regr(X_train, y_train, X_val, y_val, hyperparams, regressor=None):
     '''
     Single trial given only the base input data and hyperparams.

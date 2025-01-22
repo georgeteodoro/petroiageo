@@ -190,9 +190,9 @@ class TrialDataBase(ABC):
             if self._rings_to_keep > 0:
                 start_ring_idx_to_load = max(prep_it - self._rings_to_keep, 0)
             # TODO: This else should be elif self._current_ring < 0, otherwise,
-            # in continued iteration, even if we already loaded the previous rings,
-            # we would load them again. This should be done only if it is not a
-            # continued iteration
+            # in continued iteration, even if we already loaded the previous 
+            # rings, we would load them again. This should be done only if it 
+            # is not a continued iteration
             else:
                 start_ring_idx_to_load = 0
 
@@ -246,26 +246,31 @@ class TrialDataBase(ABC):
                 # Extend points_dict by each well_id
                 for w in self._wells_id_list:
                     well_data = filt_data[filt_data['well_id'] == w]
-                    well_data = well_data[['x', 'y', 'z', 'phi', 'well_id', 'real']]
+                    well_data = well_data[['x', 
+                                           'y', 
+                                           'z', 
+                                           'phi', 
+                                           'well_id', 
+                                           'real',]]
 
                     points_dict[w].extend(well_data.tolist())
 
                 t115 = time()
 
                 if profile:
-                    print(
-                        f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}]"
-                        f"chunk[{chunk_slice}] p_chunk_load: {t112-t111:.5f}")
-                    print(
-                        f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}]"
-                        f"chunk[{chunk_slice}] p_chunk_satisfy: {t113-t112:.5f}"
+                    print(f"[TrialDataBase][prepare_porosity] "
+                          f"ring[{ring_to_load}] chunk[{chunk_slice}] "
+                          f"p_chunk_load: {t112-t111:.5f}")
+                    print(f"[TrialDataBase][prepare_porosity] "
+                          f"ring[{ring_to_load}] chunk[{chunk_slice}] "
+                          f"p_chunk_satisfy: {t113-t112:.5f}"
                     )
-                    print(
-                        f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}]"
-                        f"chunk[{chunk_slice}] p_chunk_filt: {t114-t113:.5f}")
-                    print(
-                        f"[TrialDataBase][prepare_porosity] ring[{ring_to_load}]"
-                        f"chunk[{chunk_slice}] p_chunk_extend: {t115-t114:.5f}")
+                    print(f"[TrialDataBase][prepare_porosity] "
+                          f"ring[{ring_to_load}] chunk[{chunk_slice}] "
+                          f"p_chunk_filt: {t114-t113:.5f}")
+                    print(f"[TrialDataBase][prepare_porosity] "
+                          f"ring[{ring_to_load}] chunk[{chunk_slice}] "
+                          f"p_chunk_extend: {t115-t114:.5f}")
 
             t12 = time()
 
@@ -301,8 +306,8 @@ class TrialDataBase(ABC):
         '''
         Commits the current feature, then setting up the next feature.
         '''
-        assert self._current_feature_id >= 0, "[TrialDataBase][commit_feature] "\
-            "Committing feature before prepare_porosity."
+        assert self._current_feature_id >= 0, "[TrialDataBase] "\
+            "[commit_feature] Committing feature before prepare_porosity."
         assert self._current_feature_id < self._n_features, \
             "[TrialDataBase][commit_feature] Committing beyond last feature: "\
             f"cur_feature={self._current_feature_id} "\
@@ -540,15 +545,17 @@ class TrialDataBase(ABC):
                         # All chunks are symbolically filled until the expected 
                         # chunk needs to be filled. Only then data is read.
                         if cur_chunk_id == chunk_id:
-                            # Retrieve current chunk slice from the backend storage
+                            # Retrieve current chunk slice from the 
+                            # backend storage
                             t1 = time()
-                            new_points = self._get_values_hook(*prev_rw, cur_slice)
+                            new_points = self._get_values_hook(
+                                *prev_rw, cur_slice)
 
                             t2 = time()
                             get_val_hook_time += t2 - t1
                             
-                            # Update X and Y with the new points to be returned for
-                            # the current chunk_id
+                            # Update X and Y with the new points to be 
+                            # returned for the current chunk_id
                             _update_X_Y(new_points, self._current_features, 
                                         len(wells_to_retrieve) == 1, X, y)
 
