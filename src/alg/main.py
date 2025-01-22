@@ -210,6 +210,16 @@ def config_arg_parser():
     )
 
     parser.add_argument(
+        '--t-non-hier',
+        dest='is_non_hier_trial_data',
+        action='store_true',
+        default=False,
+        required=False,
+        help="Use non-hierarchical trial data storage. Not to be used. "
+        "This implementation is for baseline performance compare only.",
+    )
+
+    parser.add_argument(
         '--t-h5',
         dest='is_h5_trial_data',
         action='store_true',
@@ -320,13 +330,14 @@ def update_config_file_params_with_args(config: config_parser.Config,
     config.add_param('is_shared_trial_data', args.is_shared_trial_data)
     config.add_param('is_h5_trial_data', args.is_h5_trial_data)
     config.add_param('is_h5_shared_trial_data', args.is_h5_shared_trial_data)
+    config.add_param('is_non_hier_trial_data', args.is_non_hier_trial_data)
 
     # POV exec
     config.add_param('pov_canal_path', args.pov_canal_path)
     config.add_param('pov_should_prop', args.pov_should_prop)
 
     # Profiling
-    config.add_param('prof_trial_prep_porosity', True)
+    # config.add_param('prof_trial_prep_porosity', True)
     # config.add_param('prof_trial_update_feature', True)
     # config.add_param('prof_feature_sel', True)
     # config.add_param('prof_TD_get_values', True)
