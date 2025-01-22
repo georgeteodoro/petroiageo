@@ -114,6 +114,7 @@ class FeatureDatasetMMapCache(FeatureDatasetBase):
             print(
                 f"[FeatureDatasetMMapCache] couldn't unlink with exception {e}"
             )
+        self._mpi_local_comm.Barrier()
         if self._is_resp_rank:
             self._free_cache_lines_sem = posix_ipc.Semaphore(
                 semaphore_name,
