@@ -2,6 +2,7 @@ import argparse
 from mpi4py import MPI
 import sys
 from time import sleep
+import traceback
 
 import config_parser
 import mpi_module
@@ -387,6 +388,7 @@ def main(args_str=None):
             manager.run(config)
         except Exception as e:
             print(f"[manager][main] Exception detected on main: {e}")
+            print(traceback.format_exc())
             if not args.no_abort:
                 MPI.COMM_WORLD.Abort()
     else:
@@ -394,6 +396,7 @@ def main(args_str=None):
             worker.run(config)
         except Exception as e:
             print(f"[worker{rank}][main] Exception detected on main: {e}")
+            print(traceback.format_exc())
             if not args.no_abort:
                 MPI.COMM_WORLD.Abort()
 
