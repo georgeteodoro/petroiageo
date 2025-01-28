@@ -80,17 +80,14 @@ class TrialDataBase(ABC):
         # Setup sampling, if required
         self._sampler = None
         self._rings_to_keep = -1
-        if config.alg.get('sampling') != None and should_consider_sampling:
-            if config.alg['sampling'].get('sampler') != None and config.alg[
-                    'sampling']['sampler'] == 'v1':
+        if should_consider_sampling:
+            if config.alg['sampling'].get('sampler', None) == 'v1':
                 self._sampler = ChunkSamplerV1(config)
-            elif config.alg['sampling'].get('sampler') != None and config.alg[
-                    'sampling']['sampler'] == 'v2':
-                self._sampler = 'v2'
-
-            if config.alg['sampling'].get('layers_window_size') != None:
-                self._rings_to_keep = config.alg['sampling'][
+                if config.alg['sampling'].get('layers_window_size') != None:
+                    self._rings_to_keep = config.alg['sampling'][
                     'layers_window_size']
+            elif config.alg['sampling'].get('sampler', None) == 'v2':
+                self._sampler = 'v2'
 
     # =========================================================================
     # === Interface for subclasses ============================================
