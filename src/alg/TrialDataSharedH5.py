@@ -21,31 +21,6 @@ class TrialDataSharedH5(TrialDataSharedBase):
               self).__init__(target_wells_list, porosity_data, config,
                              should_consider_sampling)
 
-        # These default values are required for unittesting since without
-        # mpi_local there cannot be a responsible process
-        resp_rank = 0
-        mpi_local_rank = 0
-        self._is_resp_rank = True
-
-        self._mpi_local_comm = config.get_param('mpi_local_comm')
-        if self._mpi_local_comm is not None:
-            # Local node processes communicator. Required to coordinate the
-            # creation of a single shared memory region for all processes.
-            mpi_local_rank = self._mpi_local_comm.Get_rank()
-
-            # Set a single intra-node process as the creator of the
-            # shared-memory LRU list. This is the responsible rank.
-            rank_list = np.zeros(self._mpi_local_comm.Get_size(),
-                                 dtype=np.int64)
-            self._mpi_local_comm.Allgather(
-                [np.int64(mpi_local_rank), mpi4py.MPI.LONG],
-                [rank_list, mpi4py.MPI.LONG])
-            resp_rank = rank_list.min()
-            self._is_resp_rank = mpi_local_rank == resp_rank
-        else:
-            print("[TrialDataSharedBase] _mpi_local_comm is None. "\
-                  "Ignore if unittesting.")
-
         # Define H5 filenames for shared and local data
         self._shd_filename = f"/tmp/TD-shr-r{resp_rank}-tmp.h5"
         self._local_filename = f"/tmp/TD-local-r{mpi_local_rank}-tmp.h5"
