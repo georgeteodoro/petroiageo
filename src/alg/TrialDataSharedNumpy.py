@@ -88,9 +88,9 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
         '''
 
         if chunk_slice is not None:
-            return self._data_local[ring].get(well, np.empty(0))[chunk_slice]
+            return self._data_local.get(ring, {}).get(well, np.empty(0))[chunk_slice]
         else:
-            return self._data_local[ring].get(well, np.empty(0))
+            return self._data_local.get(ring, {}).get(well, np.empty(0))
 
     def _update_shd_col(self, ring, well, cols, data):
         '''
@@ -176,7 +176,8 @@ class TrialDataSharedNumpy(TrialDataSharedBase):
     def _del_single_ring_well(self, ring, well):
         shm = self._shm_objects.pop((ring, well))
         shm.close()
-        shm.unlink()
+        if self._mpi_local_comm is None or self._is_resp_rank:
+            shm.unlink()
 
     def _del_all_concrete(self):
         '''
