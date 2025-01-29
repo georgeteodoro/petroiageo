@@ -48,6 +48,10 @@ def run(config):
         best_features = []
         feature_scheduler.begin_iteration()
 
+        # Wait all processes to finish prepare_porosity
+        print(f"{beg_str}[it{it}] Waiting prepare_porosity")
+        comm.Barrier()
+
         # Count of how many workers are just waiting the end of
         # the current f_it. It only changes when there are no more
         # features to be scheduled.
