@@ -48,7 +48,8 @@ def _full_train(X_train, y_train, X_val, y_val, hyperparams):
 
     return rmse, mae
 
-def test_new_feature(trial_data: TrialDataBase, config: Config, hyperparams=None):
+def test_new_feature(trial_data: TrialDataBase, 
+        config: Config, hyperparams=None):
     '''
     Trains a model with trial_data, returning the metric values for the
     trained model.
