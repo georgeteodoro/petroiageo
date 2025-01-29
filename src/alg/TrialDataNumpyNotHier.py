@@ -223,7 +223,7 @@ class TrialDataNumpyNotHier(ABC):
         for w in wells_to_retrieve:
             well_cond |= self._data['well_id'] == w
 
-        filtered_values = self._data[wells_to_retrieve]
+        filtered_values = self._data[well_cond]
 
         # print(wells_to_retrieve)
         # print(sum(well_cond))
@@ -232,5 +232,8 @@ class TrialDataNumpyNotHier(ABC):
         X = rfn.structured_to_unstructured(
             filtered_values[self._current_features])
         y = filtered_values['phi']
+
+        print(X)
+        print(y)
 
         return X, y
