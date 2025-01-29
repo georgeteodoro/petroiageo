@@ -233,7 +233,4 @@ class TrialDataNumpyNotHier(ABC):
             filtered_values[self._current_features])
         y = filtered_values['phi']
 
-        print(X)
-        print(y)
-
         return X, y

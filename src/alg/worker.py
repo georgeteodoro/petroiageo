@@ -139,6 +139,9 @@ def run(config):
         it_commit_f_time = 0
         it_training_time = 0
 
+        # Wait all processes to finish prepare_porosity
+        comm.Barrier()
+
         # feature selection
         comm.send(None, dest=manager_rank, tag=MPI_TAGS.WORKER_FIRST_JOB.value)
 
