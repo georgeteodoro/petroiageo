@@ -1036,16 +1036,31 @@ class TrialDataBase(ABC):
         Returns the points that are in the bucket and those that aren't
         """
         field_names = [i for i, j in self._base_data_type]
-        all_ring_well_points = self._get_values_hook(ring, well_id)[field_names]
-        if all_ring_well_points is None or len(all_ring_well_points) == 0:
+        try:
+            all_ring_well_points = self._get_values_hook(ring,
+                                                         well_id)[field_names]
+        except Exception as e:
+            # TODO: Don't know yet why this happens, but when it does
+            # it is because we tried to get values from a ring, well pair
+            # that doesnt have local data but has shared data.
+            # So, we consider that it didn't have values on the first place
+            # and proceed normaly
+            warn_msg = f"[TrialDataBase][_split_pts_in_and_out_of_bucket] Exception"
+            warn_msg += f"Caught! Tried to get {ring}, {well_id} values but raised an "
+            warn_msg += f"exception! Returning empty ndarrays! Message: {e}"
+            print(warn_msg)
             return np.empty(0), np.empty(0)
+        else:
 
-        within_bucket_cond = (
-            (all_ring_well_points['phi'] >= bucket)
-            & (all_ring_well_points['phi'] < bucket + poros_width))
-        in_bucket = all_ring_well_points[within_bucket_cond]
-        out_of_bucket = all_ring_well_points[~within_bucket_cond]
-        return in_bucket, out_of_bucket
+            if all_ring_well_points is None or len(all_ring_well_points) == 0:
+                return np.empty(0), np.empty(0)
+
+            within_bucket_cond = (
+                (all_ring_well_points['phi'] >= bucket)
+                & (all_ring_well_points['phi'] < bucket + poros_width))
+            in_bucket = all_ring_well_points[within_bucket_cond]
+            out_of_bucket = all_ring_well_points[~within_bucket_cond]
+            return in_bucket, out_of_bucket
 
     def _calc_n_points_in_bucket_at_origins(self, poros_width: Decimal,
                                             target_buckets_origin: list[tuple[
