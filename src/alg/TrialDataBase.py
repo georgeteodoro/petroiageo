@@ -85,7 +85,7 @@ class TrialDataBase(ABC):
                 self._sampler = ChunkSamplerV1(config)
                 if config.alg['sampling'].get('layers_window_size') != None:
                     self._rings_to_keep = config.alg['sampling'][
-                    'layers_window_size']
+                        'layers_window_size']
             elif config.alg['sampling'].get('sampler', None) == 'v2':
                 self._sampler = 'v2'
 
@@ -664,7 +664,7 @@ class TrialDataBase(ABC):
         poros_min = Decimal(str(self._config.alg['sampling']['poros_min']))
         poros_max = Decimal(str(self._config.alg['sampling']['poros_max']))
 
-        samp_debug = False
+        samp_debug = True
 
         # list of all available buckets to fit porosity points
         buckets_list = [
@@ -941,9 +941,19 @@ class TrialDataBase(ABC):
 
             n_removed_points = 0
             if tot_shrinkable_b_pts is None or tot_shrinkable_b_pts > 0:
-                n_removed_points = self._shrink_bucket_proportionally(
+                n_removed_points, emptied_ring_well_pairs = self._shrink_bucket_proportionally(
                     poros_width, samp_debug, b_max_size, target_pts_origins,
                     bucket, n_to_rem_from_bucket)
+
+            for ring, well_id in emptied_ring_well_pairs:
+                if (ring, well_id) in buckets_origin[bucket]:
+                    buckets_origin[bucket].remove((ring, well_id))
+                elif (ring, well_id) in updated_ring_well_pairs:
+                    updated_ring_well_pairs.remove((ring, well_id))
+                else:
+                    error_msg = f"Should remove emptied ring well pair {(ring, well_id)}"
+                    error_msg += " but couldnt find it!"
+                    raise ValueError(error_msg)
 
             removed_p_per_bucket[bucket] = n_removed_points
             if samp_debug:
@@ -951,24 +961,28 @@ class TrialDataBase(ABC):
                     f"--- Wanted to remove {n_to_rem_from_bucket}"\
                     f" and calculated to remove {n_removed_points}"
                 )
+                if len(emptied_ring_well_pairs) > 0:
+                    print(f"--- --- Emtpied and removed ring well pairs:",
+                          emptied_ring_well_pairs)
         return removed_p_per_bucket
 
-    def _shrink_bucket_proportionally(self, poros_width: Decimal,
-                                      samp_debug: bool, b_max_size: int,
-                                      pts_origin: list[tuple[int, int]],
-                                      bucket: Decimal,
-                                      n_total_to_remove: int) -> int:
+    def _shrink_bucket_proportionally(
+            self, poros_width: Decimal, samp_debug: bool, b_max_size: int,
+            pts_origin: list[tuple[int, int]], bucket: Decimal,
+            n_total_to_remove: int) -> tuple[int, list[tuple[int, int]]]:
         """
         Proportionally remove points from the bucket based on n_total_to_remove
         where points come from the pts_origin .
 
-        Return the number of points removed
+        Return the number of points removed and a list of ring,well_id pairs that 
+        were emptied
         """
         # If a bucket is beeing shrinked, it's total num of points
         # can be computed as bucket_max_size + n_total_to_remove
         current_tot_b_points = (b_max_size + n_total_to_remove)
 
         n_removed_points = 0
+        emptied_ring_well_pairs = list()
         for ring, well_id in pts_origin:
 
             filt_points, remaining_points = self._split_pts_in_and_out_of_bucket(
@@ -999,11 +1013,13 @@ class TrialDataBase(ABC):
                 (filt_points[:-n_curr_to_rem], remaining_points))
             updated_dict = {well_id: sampled_points}
             self._set_ring_hook(ring, updated_dict, True)
+            if len(sampled_points) == 0:
+                emptied_ring_well_pairs.append((ring, well_id))
 
             # This is the true removed points
             n_removed_points += min(n_curr_to_rem, len(filt_points))
 
-        return n_removed_points
+        return n_removed_points, emptied_ring_well_pairs
 
     def _split_pts_in_and_out_of_bucket(
             self, poros_width: Decimal, bucket: Decimal, ring: int,
@@ -1021,6 +1037,9 @@ class TrialDataBase(ABC):
         """
         field_names = [i for i, j in self._base_data_type]
         all_ring_well_points = self._get_values_hook(ring, well_id)[field_names]
+        if all_ring_well_points is None or len(all_ring_well_points) == 0:
+            return np.empty(0), np.empty(0)
+
         within_bucket_cond = (
             (all_ring_well_points['phi'] >= bucket)
             & (all_ring_well_points['phi'] < bucket + poros_width))
@@ -1079,7 +1098,7 @@ class TrialDataBase(ABC):
                     if points_within > 0:
                         buckets_origin[p].append((ring, well_id))
         return buckets_len, buckets_origin
-    
+
     def _perf_sampling(self, it):
         if self._sampler == 'v2':
             self._perf_sampling_v2(it)
