@@ -664,7 +664,7 @@ class TrialDataBase(ABC):
         poros_min = Decimal(str(self._config.alg['sampling']['poros_min']))
         poros_max = Decimal(str(self._config.alg['sampling']['poros_max']))
 
-        samp_debug = True
+        samp_debug = False
 
         # list of all available buckets to fit porosity points
         buckets_list = [
