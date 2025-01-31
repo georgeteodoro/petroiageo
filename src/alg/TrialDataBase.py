@@ -751,7 +751,7 @@ class TrialDataBase(ABC):
                           rng: np.random.Generator = None):
         """
         Do the v2 sampling for a ring and update internal data to take
-        into account the sampled data. m
+        into account the sampled data.
 
         Args:
         poros_width: The width of every bucket in porosity measurements
