@@ -88,6 +88,8 @@ class TrialDataBase(ABC):
                         'layers_window_size']
             elif config.alg['sampling'].get('sampler', None) == 'v2':
                 self._sampler = 'v2'
+                self.rng = np.random.default_rng(
+                    seed=self._config.alg['sampling']['seed'])
 
     # =========================================================================
     # === Interface for subclasses ============================================
@@ -696,11 +698,10 @@ class TrialDataBase(ABC):
                                               rings_to_sample,
                                               buckets_max_size,
                                               starting=True)
-
-        rng = np.random.default_rng(seed=self._config.alg['sampling']['seed'])
+    
         for ring_being_sampled in rings_to_sample:
             self._sample_from_ring(poros_width, samp_debug, buckets_list,
-                                   ring_being_sampled, rng)
+                                   ring_being_sampled, rng=self.rng)
 
         # For logging purposes
         self._log_train_data_buckets_size(it,
