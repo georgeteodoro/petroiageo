@@ -698,10 +698,13 @@ class TrialDataBase(ABC):
                                               rings_to_sample,
                                               buckets_max_size,
                                               starting=True)
-    
+
         for ring_being_sampled in rings_to_sample:
-            self._sample_from_ring(poros_width, samp_debug, buckets_list,
-                                   ring_being_sampled, rng=self.rng)
+            self._sample_from_ring(poros_width,
+                                   samp_debug,
+                                   buckets_list,
+                                   ring_being_sampled,
+                                   rng=self.rng)
 
         # For logging purposes
         self._log_train_data_buckets_size(it,
