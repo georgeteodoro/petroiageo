@@ -910,16 +910,11 @@ class TrialDataBase(ABC):
             updated_dict = {well_id: sampled_points}
             self._set_ring_hook(ring_being_sampled, updated_dict, True)
 
-            if len(sampled_points) == 0:
-                if (ring_being_sampled, well_id) in buckets_origin[bucket]:
-                    buckets_origin[bucket].remove((ring_being_sampled, well_id))
-                elif (ring_being_sampled, well_id) in updated_ring_well_pairs:
-                    updated_ring_well_pairs.remove(
-                        (ring_being_sampled, well_id))
-                else:
-                    error_msg = f"Should remove emptied ring well pair {(ring_being_sampled, well_id)}"
-                    error_msg += " but couldnt find it!"
-                    raise ValueError(error_msg)
+            self._remove_pnt_origin_if_no_more_pnts(bucket,
+                                                    updated_ring_well_pairs,
+                                                    buckets_origin,
+                                                    ring_being_sampled, well_id,
+                                                    sampled_points)
 
     def _shrink_rings(self,
                       poros_width: Decimal,
@@ -963,19 +958,10 @@ class TrialDataBase(ABC):
 
             n_removed_points = 0
             if tot_shrinkable_b_pts is None or tot_shrinkable_b_pts > 0:
-                n_removed_points, emptied_ring_well_pairs = self._shrink_bucket_proportionally(
+                n_removed_points = self._shrink_bucket_proportionally(
                     poros_width, samp_debug, b_max_size, target_pts_origins,
-                    bucket, n_to_rem_from_bucket, rng)
-
-            for ring, well_id in emptied_ring_well_pairs:
-                if (ring, well_id) in buckets_origin[bucket]:
-                    buckets_origin[bucket].remove((ring, well_id))
-                elif (ring, well_id) in updated_ring_well_pairs:
-                    updated_ring_well_pairs.remove((ring, well_id))
-                else:
-                    error_msg = f"Should remove emptied ring well pair {(ring, well_id)}"
-                    error_msg += " but couldnt find it!"
-                    raise ValueError(error_msg)
+                    bucket, n_to_rem_from_bucket, updated_ring_well_pairs,
+                    buckets_origin, rng)
 
             removed_p_per_bucket[bucket] = n_removed_points
             if samp_debug:
@@ -983,9 +969,7 @@ class TrialDataBase(ABC):
                     f"--- Wanted to remove {n_to_rem_from_bucket}"\
                     f" and calculated to remove {n_removed_points}"
                 )
-                if len(emptied_ring_well_pairs) > 0:
-                    print(f"--- --- Emtpied and removed ring well pairs:",
-                          emptied_ring_well_pairs)
+
         return removed_p_per_bucket
 
     def _shrink_bucket_proportionally(
@@ -996,14 +980,15 @@ class TrialDataBase(ABC):
             pts_origin: list[tuple[int, int]],
             bucket: Decimal,
             n_total_to_remove: int,
+            updated_ring_well_pairs: list,
+            buckets_origin: dict[Decimal, list[tuple[int, int]]],
             rng: np.random.Generator = None
     ) -> tuple[int, list[tuple[int, int]]]:
         """
         Proportionally remove points from the bucket based on n_total_to_remove
         where points come from the pts_origin .
 
-        Return the number of points removed and a list of ring,well_id pairs that 
-        were emptied
+        Return the number of points removed
         """
 
         if rng is None:
@@ -1014,7 +999,6 @@ class TrialDataBase(ABC):
         current_tot_b_points = (b_max_size + n_total_to_remove)
 
         n_removed_points = 0
-        emptied_ring_well_pairs = list()
         for ring, well_id in pts_origin:
 
             filt_points, remaining_points = self._split_pts_in_and_out_of_bucket(
@@ -1045,13 +1029,38 @@ class TrialDataBase(ABC):
                 (filt_points[:-n_curr_to_rem], remaining_points))
             updated_dict = {well_id: sampled_points}
             self._set_ring_hook(ring, updated_dict, True)
-            if len(sampled_points) == 0:
-                emptied_ring_well_pairs.append((ring, well_id))
+            self._remove_pnt_origin_if_no_more_pnts(bucket,
+                                                    updated_ring_well_pairs,
+                                                    buckets_origin, ring,
+                                                    well_id, sampled_points)
+            if samp_debug and len(sampled_points) == 0:
+                print(
+                    f"--- --- Emtpied and removed (ring,well) pair: ({(ring, well_id)})"
+                )
 
             # This is the true removed points
             n_removed_points += min(n_curr_to_rem, len(filt_points))
 
-        return n_removed_points, emptied_ring_well_pairs
+        return n_removed_points
+
+    def _remove_pnt_origin_if_no_more_pnts(
+            self, bucket: Decimal, updated_ring_well_pairs: list,
+            buckets_origin: dict[Decimal, list[tuple[int, int]]], ring: int,
+            well_id: int, sampled_points: np.ndarray):
+        """
+        Remove the (ring, well_id) pair either from updated_ring_well_pairs or buckets_origin[bucket]
+        if the sampled_points is None or its len is 0.
+        Raise ValueError if the pair (ring, well_id) can't be found at both sources
+        """
+        if sampled_points is None or len(sampled_points) == 0:
+            if (ring, well_id) in buckets_origin[bucket]:
+                buckets_origin[bucket].remove((ring, well_id))
+            elif (ring, well_id) in updated_ring_well_pairs:
+                updated_ring_well_pairs.remove((ring, well_id))
+            else:
+                error_msg = f"Should remove emptied (ring,well) pair ({(ring, well_id)})"
+                error_msg += " but couldnt find it!"
+                raise ValueError(error_msg)
 
     def _split_pts_in_and_out_of_bucket(
             self, poros_width: Decimal, bucket: Decimal, ring: int,
