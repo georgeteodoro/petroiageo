@@ -845,7 +845,7 @@ class TrialDataBase(ABC):
 
         removed_p_per_bucket = self._shrink_rings(
             poros_width, samp_debug, ring_being_sampled, bucket_max_size,
-            buckets_origin, updated_ring_well_pairs, points_to_remove)
+            buckets_origin, updated_ring_well_pairs, points_to_remove, rng)
 
         self._remove_remaining_points(poros_width, samp_debug,
                                       ring_being_sampled, well_id,
@@ -906,12 +906,15 @@ class TrialDataBase(ABC):
             updated_dict = {well_id: sampled_points}
             self._set_ring_hook(ring_being_sampled, updated_dict, True)
 
-    def _shrink_rings(
-            self, poros_width: Decimal, samp_debug: bool,
-            ring_being_sampled: int, b_max_size: int,
-            buckets_origin: dict[Decimal, list[tuple[int, int]]],
-            updated_ring_well_pairs: list,
-            points_to_remove: dict[Decimal, int]) -> dict[Decimal, int]:
+    def _shrink_rings(self,
+                      poros_width: Decimal,
+                      samp_debug: bool,
+                      ring_being_sampled: int,
+                      b_max_size: int,
+                      buckets_origin: dict[Decimal, list[tuple[int, int]]],
+                      updated_ring_well_pairs: list,
+                      points_to_remove: dict[Decimal, int],
+                      rng: np.random.Generator = None) -> dict[Decimal, int]:
         """
         Remove points from rings less or equal to ring_being_sampled
         defined from buckets_origin + updated_ring_well_pairs
@@ -947,7 +950,7 @@ class TrialDataBase(ABC):
             if tot_shrinkable_b_pts is None or tot_shrinkable_b_pts > 0:
                 n_removed_points, emptied_ring_well_pairs = self._shrink_bucket_proportionally(
                     poros_width, samp_debug, b_max_size, target_pts_origins,
-                    bucket, n_to_rem_from_bucket)
+                    bucket, n_to_rem_from_bucket, rng)
 
             for ring, well_id in emptied_ring_well_pairs:
                 if (ring, well_id) in buckets_origin[bucket]:
@@ -971,9 +974,15 @@ class TrialDataBase(ABC):
         return removed_p_per_bucket
 
     def _shrink_bucket_proportionally(
-            self, poros_width: Decimal, samp_debug: bool, b_max_size: int,
-            pts_origin: list[tuple[int, int]], bucket: Decimal,
-            n_total_to_remove: int) -> tuple[int, list[tuple[int, int]]]:
+            self,
+            poros_width: Decimal,
+            samp_debug: bool,
+            b_max_size: int,
+            pts_origin: list[tuple[int, int]],
+            bucket: Decimal,
+            n_total_to_remove: int,
+            rng: np.random.Generator = None
+    ) -> tuple[int, list[tuple[int, int]]]:
         """
         Proportionally remove points from the bucket based on n_total_to_remove
         where points come from the pts_origin .
@@ -981,6 +990,10 @@ class TrialDataBase(ABC):
         Return the number of points removed and a list of ring,well_id pairs that 
         were emptied
         """
+
+        if rng in None:
+            rng = np.random.default_rng(
+                seed=self._config.alg['sampling']['seed'])
         # If a bucket is beeing shrinked, it's total num of points
         # can be computed as bucket_max_size + n_total_to_remove
         current_tot_b_points = (b_max_size + n_total_to_remove)
@@ -1009,7 +1022,7 @@ class TrialDataBase(ABC):
                 continue
             # Since only the last points are removed we shuffle
             # all points to avoid taking only consecutive points
-            np.random.shuffle(filt_points)
+            rng.shuffle(filt_points)
 
             # Update ring/well data
             assert n_curr_to_rem > 0, f"n_to_rem is {n_curr_to_rem}, which doesnt makes sense!"
