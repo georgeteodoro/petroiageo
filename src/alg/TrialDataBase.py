@@ -849,12 +849,16 @@ class TrialDataBase(ABC):
 
         self._remove_remaining_points(poros_width, samp_debug,
                                       ring_being_sampled, well_id,
-                                      points_to_remove, removed_p_per_bucket)
+                                      points_to_remove, removed_p_per_bucket,
+                                      updated_ring_well_pairs, buckets_origin)
 
     def _remove_remaining_points(self, poros_width: int, samp_debug: bool,
                                  ring_being_sampled: int, well_id: int,
                                  points_to_remove: dict[Decimal, int],
-                                 removed_p_per_bucket: dict[Decimal, int]):
+                                 removed_p_per_bucket: dict[Decimal, int],
+                                 updated_ring_well_pairs: list,
+                                 buckets_origin: dict[Decimal,
+                                                      list[tuple[int, int]]]):
         """
         Remove points from the (well_id, ring_being_sampled) as needed
 
@@ -905,6 +909,17 @@ class TrialDataBase(ABC):
 
             updated_dict = {well_id: sampled_points}
             self._set_ring_hook(ring_being_sampled, updated_dict, True)
+
+            if len(sampled_points) == 0:
+                if (ring_being_sampled, well_id) in buckets_origin[bucket]:
+                    buckets_origin[bucket].remove((ring_being_sampled, well_id))
+                elif (ring_being_sampled, well_id) in updated_ring_well_pairs:
+                    updated_ring_well_pairs.remove(
+                        (ring_being_sampled, well_id))
+                else:
+                    error_msg = f"Should remove emptied ring well pair {(ring_being_sampled, well_id)}"
+                    error_msg += " but couldnt find it!"
+                    raise ValueError(error_msg)
 
     def _shrink_rings(self,
                       poros_width: Decimal,
@@ -991,7 +1006,7 @@ class TrialDataBase(ABC):
         were emptied
         """
 
-        if rng in None:
+        if rng is None:
             rng = np.random.default_rng(
                 seed=self._config.alg['sampling']['seed'])
         # If a bucket is beeing shrinked, it's total num of points
