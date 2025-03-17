@@ -40,9 +40,7 @@ def run(config):
 
     for it in range(start_it, num_its + start_it):
         print(f"{beg_str} Running [it{it}]")
-
-        it_wait_time = 0
-        t0 = time()
+        ti = time()
 
         # Initialize best features and local features to be scheduled
         best_features = []
@@ -51,6 +49,10 @@ def run(config):
         # Wait all processes to finish prepare_porosity
         print(f"{beg_str}[it{it}] Waiting prepare_porosity")
         comm.Barrier()
+
+        t0 = time()
+        it_wait_time = 0
+        print(f"{beg_str}[it{it}] prepare_porosity {t0-ti}")
 
         # Count of how many workers are just waiting the end of
         # the current f_it. It only changes when there are no more
