@@ -130,7 +130,7 @@ def run(config):
         # porosity, and other columns
         trial_data.prepare_porosity(it)
         t1 = time()
-        print(f"{beg_str}[it{it}] Prepared trial_data in {t1-t0} secs.")
+        print(f"{beg_str}[it{it}] Prepared prepare_porosity in {t1-t0} secs.")
 
         it_wait_job_time = 0
         it_wait_response_time = 0
@@ -141,6 +141,8 @@ def run(config):
 
         # Wait all processes to finish prepare_porosity
         comm.Barrier()
+
+        t1 = time()
 
         # feature selection
         comm.send(None, dest=manager_rank, tag=MPI_TAGS.WORKER_FIRST_JOB.value)
@@ -261,14 +263,14 @@ def run(config):
                 raise Exception(f"{beg_str} Bad MPI tag: {msg_tag}")
 
         t14 = time()
-        # print(f"{beg_str}[it{it}][fprof] feature_sel_total {t14-t0}")
-        # print(f"{beg_str}[it{it}][fprof] it_wait_job_time {it_wait_job_time}")
-        # print(f"{beg_str}[it{it}][fprof] it_wait_response_time "
-        #       f"{it_wait_response_time}")
-        # print(f"{beg_str}[it{it}][fprof] it_get_f_time {it_get_f_time}")
-        # print(f"{beg_str}[it{it}][fprof] it_update_f_time {it_update_f_time}")
-        # print(f"{beg_str}[it{it}][fprof] it_commit_f_time {it_commit_f_time}")
-        # print(f"{beg_str}[it{it}][fprof] it_training_time {it_training_time}")
+        print(f"{beg_str}[it{it}][fprof] feature_sel_total {t14-t1:.2f}")
+        print(f"{beg_str}[it{it}][fprof] it_wait_job_time {it_wait_job_time:.9f}")
+        print(f"{beg_str}[it{it}][fprof] it_wait_response_time "
+              f"{it_wait_response_time:.9f}")
+        print(f"{beg_str}[it{it}][fprof] it_get_f_time {it_get_f_time:.9f}")
+        print(f"{beg_str}[it{it}][fprof] it_update_f_time {it_update_f_time:.9f}")
+        print(f"{beg_str}[it{it}][fprof] it_commit_f_time {it_commit_f_time:.9f}")
+        print(f"{beg_str}[it{it}][fprof] it_training_time {it_training_time:.9f}")
 
         # Propagation
         # Only one rank per node actually commits data to the hdf5 file,

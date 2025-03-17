@@ -13,7 +13,7 @@ wells: # This is wells related stuff
   window: 3 # window size for which the hypercube is/was padded
 
 # Directory where every file will be treated as a feature
-features_folder: "../../data/POV/features/2x2x4" 
+features_folder: "../../data/POV/features/" 
 
 # Output path for the porosity cube produced (if any)
 porosity_cube_output_path: "./results/porosity.npy" 
@@ -35,7 +35,8 @@ alg:
     n_training_chunks: 1
 
   sampling: # Sampling strategy stuff
-    sampler: "v1"
+    sampler: ""
+    # sampler: "v1"
     # Num of layers as window size. If negative, use max num of 
     # layers possible. Default: -1
     layers_window_size: 100
