@@ -387,7 +387,7 @@
            </font>
           </property>
           <property name="text">
-           <string>Métricas</string>
+           <string>Progresso</string>
           </property>
          </widget>
         </item>
