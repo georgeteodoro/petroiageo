@@ -444,7 +444,7 @@ class Config:
 
         self.config = self.update_recursivelly(self.config, input_config)
 
-        ConfigValidator.raise_if_invalid_config(self.config)
+        # ConfigValidator.raise_if_invalid_config(self.config)
 
     def _treat_input_config(self, config: dict) -> dict:
         config_type_caster = self._get_config_type_caster()
@@ -573,11 +573,12 @@ class Config:
         This method's goal is to add params to the config object other than
         the base ones.
         """
-        if param_name not in Config.TOP_LEVEL_BASE_CONFIGS:
-            self.config[param_name] = param_value
-        else:
-            raise InvalidNewParamError(
-                "This new param's name is equal to a base param!")
+        self.config[param_name] = param_value
+        # if param_name not in Config.TOP_LEVEL_BASE_CONFIGS:
+        #     self.config[param_name] = param_value
+        # else:
+        #     raise InvalidNewParamError(
+        #         "This new param's name is equal to a base param!")
 
     def remove_param(self, param_name: str):
         """
