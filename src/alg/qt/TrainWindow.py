@@ -56,7 +56,7 @@ class TrainWindow(QtWidgets.QMainWindow):
     def start_prop(self):
         if self.prop_process is not None:
             print('already running.... this is bad')
-            return
+            return False
 
         msg = QtWidgets.QMessageBox()
         msg.setText('Erro de configuração')
@@ -103,8 +103,7 @@ class TrainWindow(QtWidgets.QMainWindow):
             chunks = f'--tr-chunk {n_chunks}'
 
         run_str = ['mpirun', '-np', str(n_workers + 1), '--bind-to', 'core', 
-                   'python3', 'main.py', '-h', '--no-abort', '--config', 
-                   config_path, 
+                   'python3', 'main.py', '--no-abort', '--config', config_path,
                    '--poros-file', poros_file_path, '--it', str(it_ini), 
                    '--nits', str(n_its), '--nf', str(n_feats), '--nsf', 
                    str(n_feat_sel), '--ntf', str(n_trials), '-w', str(window), 
@@ -120,6 +119,7 @@ class TrainWindow(QtWidgets.QMainWindow):
                 msg.exec()
                 return False
 
+        self.logText.clear()
         self.logText.appendPlainText(' '.join(run_str))
         
         self.prop_process = subprocess.Popen(
@@ -145,7 +145,7 @@ class TrainWindow(QtWidgets.QMainWindow):
     def add_to_log_buffer(self):
         # While process is alive
         while self.prop_process.poll() is None:
-            l = self.prop_process.communicate()[0][:-1].decode('ascii')
+            l = self.prop_process.stdout.readline()[:-1].decode('ascii')
             if len(l) > 0:
                 # There is a new line, send an update
                 self.new_log_line.emit(l)
