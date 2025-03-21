@@ -1,9 +1,12 @@
 from PyQt6 import QtWidgets, uic
 
+import config_parser
+
+
 # key, config option, text for ComboBox
-FeaturePlace = {0: ('',                  'Mem Maping' ), # simple
-                1: ('is_feature_cache',  'Cached',    ), # mmap cache
-                2: ('is_feature_in_mem', 'Full in-mem'), # in mem all
+FeaturePlace = {0: ('',          'Mem Maping' ), # simple
+                1: ('--f-cache', 'Cached',    ), # mmap cache
+                2: ('--f-inmem', 'Full in-mem'), # in mem all
                }
 
 class ConfigWindow(QtWidgets.QMainWindow):
@@ -86,7 +89,10 @@ class ConfigWindow(QtWidgets.QMainWindow):
             'saveConfigButton')[0]
         self.saveConfigButton.clicked.connect(self.save_config)
 
-        self.load_config(self.config)
+        if self.config == None:
+            self.config = config_parser.YAMLConfig()
+        else:
+            self.load_config(self.config)
 
         self.show()
 
@@ -128,20 +134,20 @@ class ConfigWindow(QtWidgets.QMainWindow):
         if config.get_param('fsched_loc') is None:
             self.fSchedCheck.setChecked(False) # Not in config file
         else:
-            self.fSchedCheck.setChecked(
-                config.get_param('fsched_loc')) # Not in config file
+            self.fSchedCheck.setChecked(bool(config.get_param(
+            'fsched_loc'))) # Not in config file
 
         if config.get_param('is_porosity_dfs') is None:
             self.dfsPorosityCheck.setChecked(False) # Not in config file
         else:
-            self.dfsPorosityCheck.setChecked(
-                config.get_param('is_porosity_dfs')) # Not in config file
+            self.dfsPorosityCheck.setChecked(bool(config.get_param(
+                'is_porosity_dfs'))) # Not in config file
 
         if config.get_param('is_shared_trial_data') is None:
             self.sharedTdCheck.setChecked(False) # Not in config file
         else:
-            self.sharedTdCheck.setChecked(
-                config.get_param('is_shared_trial_data')) # Not in config file
+            self.sharedTdCheck.setChecked(bool(
+                config.get_param('is_shared_trial_data'))) # Not in config file
 
         if config.get_param('feature_place') is not None:
             self.featurePlaceCB.setCurrentIndex(
@@ -156,6 +162,7 @@ class ConfigWindow(QtWidgets.QMainWindow):
         msg.setWindowTitle('Erro')
         # msg.exec()
 
+        # Check if all fields are filled
         all_filled = True
         for LE in self.LEs:
             if len(LE.text()) == 0:
@@ -165,6 +172,7 @@ class ConfigWindow(QtWidgets.QMainWindow):
             msg.exec()
             return
 
+        # Update config
         self.config.starting_porosity_cube_path = self.pathPorosityLE.text()
         self.config.add_param('it_ini', int(self.itIniLE.text()))
         self.config.add_param('nits', int(self.nItsLE.text()))
@@ -185,6 +193,7 @@ class ConfigWindow(QtWidgets.QMainWindow):
         self.config.add_param('feature_place', 
                               self.featurePlaceCB.currentData())
 
+        # Push config object to parent
         self.parent.update_config(self.config)
 
         self.close()
