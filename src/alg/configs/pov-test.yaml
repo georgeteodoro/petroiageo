@@ -21,11 +21,11 @@ porosity_cube_output_path: "./results/porosity.npy"
 starting_porosity_cube_path: "/home/will/git/petroiageo/data/POV/POV_TEST/porosity-it0.h5"
 
 
-nits: 1
+nits: 3
 it_ini: 0
-num_features: 1
-max_num_features: 2
-max_feats_for_trial: 2
+num_features: 0
+max_num_features: 4
+max_feats_for_trial: 8
 n_workers: 1
 n_training_chunks: 1
 is_shared_trial_data: True

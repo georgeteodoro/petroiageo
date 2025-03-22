@@ -7,34 +7,38 @@ from time import sleep
 
 from qt.ConfigWindow import ConfigWindow, FeaturePlace
 
+
 class TrainWindow(QtWidgets.QMainWindow):
+
     def __init__(self):
         super(TrainWindow, self).__init__()
 
         self.config = None
-
-        self.log_buffer = []
+        self.prop_process = None
+        self.is_propagating = False
 
         uic.loadUi('qt/train.ui', self)
 
-        self.logText = self.findChildren(QtWidgets.QPlainTextEdit, 
-            'logText')[0]
+        self.logText = self.findChildren(QtWidgets.QPlainTextEdit,
+                                         'logText')[0]
 
-        self.configButton = self.findChildren(QtWidgets.QPushButton, 
-            'configButton')[0]
+        self.configButton = self.findChildren(QtWidgets.QPushButton,
+                                              'configButton')[0]
         self.configButton.clicked.connect(self.configure)
 
-        self.propagateButton = self.findChildren(QtWidgets.QPushButton, 
-            'propagateButton')[0]
+        self.propagateButton = self.findChildren(QtWidgets.QPushButton,
+                                                 'propagateButton')[0]
         self.propagateButton.clicked.connect(self.propagate)
 
-        self.prop_process = None
+        self.totalPB = self.findChildren(QtWidgets.QProgressBar, 'totalPB')[0]
+        self.itPB = self.findChildren(QtWidgets.QProgressBar, 'itPB')[0]
+        self.fItPB = self.findChildren(QtWidgets.QProgressBar, 'fItPB')[0]
 
         # Signals for propagation
-        
+
         # Signal/slot: new line from proc to add to log field
         self.new_log_line.connect(self.add_to_log)
-        
+
         # Signal/slot: prop proc is done, reset view
         self.prop_is_done.connect(self.stop_propagate)
 
@@ -57,6 +61,11 @@ class TrainWindow(QtWidgets.QMainWindow):
         if self.prop_process is not None:
             print('already running.... this is bad')
             return False
+
+        # Reset progress bars
+        self.totalPB.setValue(0)
+        self.itPB.setValue(0)
+        self.fItPB.setValue(0)
 
         msg = QtWidgets.QMessageBox()
         msg.setText('Erro de configuração')
@@ -102,12 +111,18 @@ class TrainWindow(QtWidgets.QMainWindow):
         if self.config.get_param('fsched_loc'):
             chunks = f'--tr-chunk {n_chunks}'
 
-        run_str = ['mpirun', '-np', str(n_workers + 1), '--bind-to', 'core', 
-                   'python3', 'main.py', '--no-abort', '--config', config_path,
-                   '--poros-file', poros_file_path, '--it', str(it_ini), 
-                   '--nits', str(n_its), '--nf', str(n_feats), '--nsf', 
-                   str(n_feat_sel), '--ntf', str(n_trials), '-w', str(window), 
-                   f_sched, f_place, poros_dfs, shared_td, chunks]
+        run_str = [
+            'mpirun', '-np',
+            str(n_workers + 1), '--bind-to', 'core', 'python3', 'main.py',
+            '--no-abort', '--config', config_path, '--poros-file',
+            poros_file_path, '--it',
+            str(it_ini), '--nits',
+            str(n_its), '--nf',
+            str(n_feats), '--nsf',
+            str(n_feat_sel), '--ntf',
+            str(n_trials), '-w',
+            str(window), f_sched, f_place, poros_dfs, shared_td, chunks
+        ]
 
         # Remove the last empty config
         while '' in run_str:
@@ -121,9 +136,8 @@ class TrainWindow(QtWidgets.QMainWindow):
 
         self.logText.clear()
         self.logText.appendPlainText(' '.join(run_str))
-        
-        self.prop_process = subprocess.Popen(
-            run_str, stdout=subprocess.PIPE)
+
+        self.prop_process = subprocess.Popen(run_str, stdout=subprocess.PIPE)
 
         self.log_thread1 = threading.Thread(target=self.add_to_log_buffer)
         self.log_thread1.start()
@@ -135,7 +149,41 @@ class TrainWindow(QtWidgets.QMainWindow):
     # Append a new line to the correct place
     @pyqtSlot(str)
     def add_to_log(self, line):
-        self.logText.appendPlainText(line)  
+        self.logText.appendPlainText(line)
+
+        # Only check manager info
+        if line[0:9] != '[manager]':
+            return
+
+        sline = line.split(' ')
+
+        # Check prep progress bar total
+        if 'RunPlanIt' in sline:
+            self.totalPB.setMinimum(0)
+            self.totalPB.setMaximum(int(sline[4]))
+        elif 'RunPlanFSel' in sline:
+            self.itPB.setMinimum(0)
+            self.itPB.setMaximum(int(sline[2]))
+        elif 'RunPlanTrials' in sline:
+            self.fItPB.setMinimum(0)
+            self.fItPB.setMaximum(int(sline[2]))
+
+        elif 'TrialDone' in sline:
+            # Single trial done
+            self.fItPB.setValue(self.fItPB.value() + 1)
+        elif 'fItDone' in sline:
+            # Single feature selected
+            self.itPB.setValue(self.itPB.value() + 1)
+            self.fItPB.setValue(0)
+        elif 'DoneIt' in sline:
+            # All features from a single IT are done
+            self.totalPB.setValue(self.totalPB.value() + 1)
+            self.itPB.setValue(0)
+
+            # If all is done, keep all bars at 100%
+            if self.totalPB.value() == self.totalPB.maximum():
+                self.itPB.setValue(self.itPB.maximum())
+                self.fItPB.setValue(self.fItPB.maximum())
 
         # Later... parse line to update other fields...
 
@@ -155,7 +203,6 @@ class TrainWindow(QtWidgets.QMainWindow):
 
         self.prop_is_done.emit(0)
 
-
     def configure(self):
         self.configWindow = ConfigWindow(self.config, self)
         self.configWindow.show()
@@ -165,6 +212,7 @@ class TrainWindow(QtWidgets.QMainWindow):
 
     def propagate(self):
         self.propagateButton.setEnabled(False)
+        self.is_propagating = True
         if self.start_prop():
             self.configButton.setEnabled(False)
             self.propagateButton.setText('Stop')
@@ -174,12 +222,13 @@ class TrainWindow(QtWidgets.QMainWindow):
         else:
             self.propagateButton.setEnabled(True)
 
-
     def stop_propagate(self):
-        self.end_prop()
-        self.configButton.setEnabled(True)
-        self.propagateButton.setText('Propagar')
-        self.propagateButton.clicked.connect(self.propagate)
-        self.propagateButton.clicked.disconnect(self.stop_propagate)
-
-
+        if self.is_propagating:
+            self.propagateButton.setEnabled(False)
+            self.is_propagating = False
+            self.end_prop()
+            self.configButton.setEnabled(True)
+            self.propagateButton.setText('Propagar')
+            self.propagateButton.clicked.connect(self.propagate)
+            self.propagateButton.clicked.disconnect(self.stop_propagate)
+            self.propagateButton.setEnabled(True)
