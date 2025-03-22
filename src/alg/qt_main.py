@@ -32,5 +32,6 @@ def main(args_str=None):
     window.show()
     app.exec()
 
+
 if __name__ == "__main__":
     main()

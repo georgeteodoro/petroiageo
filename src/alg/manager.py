@@ -22,6 +22,7 @@ def run(config):
     feat_loc_scheduler = config.get_param('fsched_loc')
     num_its = config.alg['num_its']
     start_it = config.alg['it']
+    n_trials = config.get_param('max_feats_for_trial')
 
     status = MPI.Status()
 
@@ -37,6 +38,10 @@ def run(config):
     cur_best_feature = None
     cur_best_rmse = float('inf')
     cur_best_mae = float('inf')
+
+    print(f"{beg_str} RunPlanIt {start_it} / {num_its}")
+    print(f"{beg_str} RunPlanFSel {n_features_to_select}")
+    print(f"{beg_str} RunPlanTrials {n_trials}")
 
     for it in range(start_it, num_its + start_it):
         print(f"{beg_str} Running [it{it}]")
@@ -73,6 +78,7 @@ def run(config):
 
             # Parse response from worker
             if msg_tag == MPI_TAGS.WORKER_JOB_RESULT.value:
+                print(f"{beg_str}[it{it}] TrialDone from {worker_rank}.")
                 # Update best feature, if new best was found
                 for (feature, rmse, mae) in msg:
                     feature_scheduler.tried_feature(feature, worker_rank)
@@ -128,6 +134,7 @@ def run(config):
                 # or a full iteration
                 if done_workers == workers_size:
                     best_features.append(cur_best_feature)
+                    print(f"{beg_str}[it{it}] fItDone")
 
                     # Check if this is the final f_it from the current it,
                     # or if this is just the end of a f_it.
@@ -175,6 +182,8 @@ def run(config):
 
         t1 = time()
         print(f"{beg_str}[it{it}] IT waiting time: {it_wait_time}/{t1-t0}")
+
+        print(f"{beg_str}[it{it}] DoneIt {it}")
 
         # Wait for the end of propagation
         print(f"{beg_str}[it{it}] Waiting fsel")
