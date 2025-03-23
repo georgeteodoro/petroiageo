@@ -15,8 +15,7 @@ class LoadInfoWindow(QtWidgets.QDialog):
         self.parent = parent
 
         uic.loadUi('qt/dsetinfo.ui', self)
-
-        
+    
         self.okPB = self.findChildren(QtWidgets.QPushButton,
                                               'okPB')[0]
         self.okPB.setEnabled(False)
@@ -69,13 +68,14 @@ class TrainWindow(QtWidgets.QMainWindow):
         self.config = None
         self.prop_process = None
         self.is_propagating = False
+        self.has_loaded_dset = False
 
         uic.loadUi('qt/train.ui', self)
 
         self.logText = self.findChildren(QtWidgets.QPlainTextEdit,
                                          'logText')[0]
 
-        # Buttons -------------------------------------------------------------
+        # LineEdits -----------------------------------------------------------
         self.dimLE = self.findChildren(QtWidgets.QLineEdit,
                                          'dimLE')[0]
 
@@ -93,7 +93,6 @@ class TrainWindow(QtWidgets.QMainWindow):
 
         self.nEmptyLE = self.findChildren(QtWidgets.QLineEdit,
                                          'nEmptyLE')[0]
-
 
         # Buttons -------------------------------------------------------------
         self.configButton = self.findChildren(QtWidgets.QPushButton,
@@ -118,9 +117,7 @@ class TrainWindow(QtWidgets.QMainWindow):
 
         self.update_dset_info_signal.connect(self.dset_info)
 
-
-        # Signals for propagation
-
+        # Signals for propagation ---------------------------------------------
         # Signal/slot: new line from proc to add to log field
         self.new_log_line.connect(self.add_to_log)
 
@@ -236,6 +233,15 @@ class TrainWindow(QtWidgets.QMainWindow):
     def add_to_log(self, line):
         self.logText.appendPlainText(line)
 
+        if 'Propagated' in line.split(' '):
+            n_total = int(self.nPointsLE.value())
+            n_prop = int(self.nPropLE.value().split('/')[0]) + 
+                int(line.split(' ')[2])
+            n_empty = int(self.nEmptyLE.value().split('/')[0]) - 
+                int(line.split(' ')[2])
+            self.nPropLE.setValue(f'{n_prop}/{n_prop/n_total:.2f}%')
+            self.nEmptyLE.setValue(f'{n_empty}/{n_empty/n_total:.2f}%')
+
         # Only check manager info
         if line[0:9] != '[manager]':
             return
@@ -264,16 +270,13 @@ class TrainWindow(QtWidgets.QMainWindow):
             # All features from a single IT are done
             self.totalPB.setValue(self.totalPB.value() + 1)
             self.itPB.setValue(0)
+            self.itCurLE.setText(f'{int(sline[2])}')
 
             # If all is done, keep all bars at 100%
             if self.totalPB.value() == self.totalPB.maximum():
                 self.itPB.setValue(self.itPB.maximum())
                 self.fItPB.setValue(self.fItPB.maximum())
 
-        # Later... parse line to update other fields...
-
-    # Signal that the subprocess has ended
-    prop_is_done = pyqtSignal(int)
 
     def add_to_log_buffer(self):
         # While process is alive
@@ -300,13 +303,15 @@ class TrainWindow(QtWidgets.QMainWindow):
         self.is_propagating = True
         if self.start_prop():
             self.configButton.setEnabled(False)
-            self.propagateButton.setText('Stop')
+            self.propagateButton.setText('Parar Propagação')
             self.propagateButton.clicked.connect(self.stop_propagate)
             self.propagateButton.clicked.disconnect(self.propagate)
             self.propagateButton.setEnabled(True)
         else:
             self.propagateButton.setEnabled(True)
 
+    # Signal that the subprocess has ended
+    prop_is_done = pyqtSignal(int)
     def stop_propagate(self):
         if self.is_propagating:
             self.propagateButton.setEnabled(False)
@@ -329,6 +334,7 @@ class TrainWindow(QtWidgets.QMainWindow):
 
         msg = LoadInfoWindow(self.config, self)
         msg.exec()
+        self.has_loaded_dset = True
 
         # self.log_thread1 = threading.Thread(target=self.add_to_log_buffer)
         # self.log_thread1.start()
@@ -338,8 +344,6 @@ class TrainWindow(QtWidgets.QMainWindow):
     def dset_info(self, info):
         for l in info:
             l = l.replace(', ', ',')
-            # l = l.replace('(', '')
-            # l = l.replace(')', '')
             l = l.split(' ')
 
             if len(l) > 1 and l[1] == 'shape:':
