@@ -114,8 +114,10 @@ def propagate(porosity_data_h5: Dataset, trial_data: TrialDataBase,
 
             n_propagated_points += len(coords_to_update[0])
 
-            # print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
-            #       f"n_propagated_points: {n_propagated_points}")
+            print(coords_to_update)
+
+            print(f"[propagation1][it{it}][worker{rank}][chunk{chunk_n}] "
+                  f"n_propagated_points: {n_propagated_points}")
 
             # Update the filtered values on the tmp nparray
             cur_chunk_np['real'][
