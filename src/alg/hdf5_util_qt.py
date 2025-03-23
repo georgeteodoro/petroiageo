@@ -374,7 +374,7 @@ def main():
         print(wells_metrics)
 
         total_points = prod(h5_dset.shape)
-        print("Total points:")
+        print(f"Total points: {total_points}")
         print(f"\tReal: {metrics[0]} {100*(metrics[0]/total_points):.2f}%")
         print(f"\tPropagated: {metrics[1]} "
               f"{100*(metrics[1]/total_points):.2f}%")
