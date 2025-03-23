@@ -7,6 +7,13 @@ from time import sleep
 
 from qt.ConfigWindow import ConfigWindow, FeaturePlace
 
+class LoadInfoWindow(QtWidgets.QDialog):
+    def __init__(self):
+        super(LoadInfoWindow, self).__init__()
+
+        uic.loadUi('qt/dsetinfo.ui', self)
+
+
 
 class TrainWindow(QtWidgets.QMainWindow):
 
@@ -22,6 +29,7 @@ class TrainWindow(QtWidgets.QMainWindow):
         self.logText = self.findChildren(QtWidgets.QPlainTextEdit,
                                          'logText')[0]
 
+        # Buttons -------------------------------------------------------------
         self.configButton = self.findChildren(QtWidgets.QPushButton,
                                               'configButton')[0]
         self.configButton.clicked.connect(self.configure)
@@ -29,6 +37,14 @@ class TrainWindow(QtWidgets.QMainWindow):
         self.propagateButton = self.findChildren(QtWidgets.QPushButton,
                                                  'propagateButton')[0]
         self.propagateButton.clicked.connect(self.propagate)
+
+        self.dsetLoadButton = self.findChildren(QtWidgets.QPushButton,
+                                                'dsetLoadButton')[0]
+        self.dsetLoadButton.clicked.connect(self.load_dset_info)
+
+        self.dsetClearButton = self.findChildren(QtWidgets.QPushButton,
+                                                 'dsetClearButton')[0]
+        self.dsetClearButton.clicked.connect(self.clear_dset)
 
         self.totalPB = self.findChildren(QtWidgets.QProgressBar, 'totalPB')[0]
         self.itPB = self.findChildren(QtWidgets.QProgressBar, 'itPB')[0]
@@ -232,3 +248,31 @@ class TrainWindow(QtWidgets.QMainWindow):
             self.propagateButton.clicked.connect(self.propagate)
             self.propagateButton.clicked.disconnect(self.stop_propagate)
             self.propagateButton.setEnabled(True)
+
+    def load_dset_info(self):
+        msg = LoadInfoWindow()
+        msg.exec()
+
+        if self.config is None:
+            msg = QtWidgets.QMessageBox()
+            msg.setText('Erro de configuração')
+            msg.setInformativeText('Não foi configurado um path de porosidade.')
+            msg.setWindowTitle('Erro')
+            msg.exec()
+            return
+
+        poros_file_path = self.config.starting_porosity_cube_path
+
+        run_str = [
+            'python3', 'hdf5_util_qt.py', poros_file_path, '-i', '10000'
+        ]
+
+        info_process = subprocess.Popen(run_str, stdout=subprocess.PIPE)
+
+       
+
+        # self.log_thread1 = threading.Thread(target=self.add_to_log_buffer)
+        # self.log_thread1.start()
+
+    def clear_dset(self):
+        pass
