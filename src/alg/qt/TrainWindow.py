@@ -8,10 +8,56 @@ from time import sleep
 from qt.ConfigWindow import ConfigWindow, FeaturePlace
 
 class LoadInfoWindow(QtWidgets.QDialog):
-    def __init__(self):
+    def __init__(self, config, parent):
         super(LoadInfoWindow, self).__init__()
 
+        self.config = config
+        self.parent = parent
+
         uic.loadUi('qt/dsetinfo.ui', self)
+
+        
+        self.okPB = self.findChildren(QtWidgets.QPushButton,
+                                              'okPB')[0]
+        self.okPB.setEnabled(False)
+        self.okPB.clicked.connect(self.done)
+
+        poros_file_path = self.config.starting_porosity_cube_path
+
+        run_str = [
+            'python3', 'hdf5_util_qt.py', poros_file_path, '-i', '10000'
+        ]
+
+        self.new_log_line.connect(self.add_to_log)
+
+        self.info_process = subprocess.Popen(run_str, stdout=subprocess.PIPE)
+
+        self.log_thread = threading.Thread(target=self.add_to_log_buffer)
+        self.log_thread.start()
+
+
+    # Signal that a new line was outputted from the subprocess
+    new_log_line = pyqtSignal(str)
+    # Append a new line to the correct place
+    @pyqtSlot(str)
+    def add_to_log(self, line):
+        self.logText.appendPlainText(line)
+
+    def add_to_log_buffer(self):
+        # While process is alive
+        info = []
+        while self.info_process.poll() is None:
+            l = self.info_process.stdout.readline()[:-1].decode('ascii')
+            if len(l) > 0:
+                # There is a new line, send an update
+                self.new_log_line.emit(l)
+                info.append(l)
+            else:
+                # Don't busy wait...
+                sleep(1)
+        self.parent.update_dset_info_signal.emit(info)
+        self.okPB.setEnabled(True)
+
 
 
 
@@ -28,6 +74,26 @@ class TrainWindow(QtWidgets.QMainWindow):
 
         self.logText = self.findChildren(QtWidgets.QPlainTextEdit,
                                          'logText')[0]
+
+        # Buttons -------------------------------------------------------------
+        self.dimLE = self.findChildren(QtWidgets.QLineEdit,
+                                         'dimLE')[0]
+
+        self.nPointsLE = self.findChildren(QtWidgets.QLineEdit,
+                                         'nPointsLE')[0]
+
+        self.itCurLE = self.findChildren(QtWidgets.QLineEdit,
+                                         'itCurLE')[0]
+
+        self.nPropLE = self.findChildren(QtWidgets.QLineEdit,
+                                         'nPropLE')[0]
+
+        self.nRealLE = self.findChildren(QtWidgets.QLineEdit,
+                                         'nRealLE')[0]
+
+        self.nEmptyLE = self.findChildren(QtWidgets.QLineEdit,
+                                         'nEmptyLE')[0]
+
 
         # Buttons -------------------------------------------------------------
         self.configButton = self.findChildren(QtWidgets.QPushButton,
@@ -49,6 +115,9 @@ class TrainWindow(QtWidgets.QMainWindow):
         self.totalPB = self.findChildren(QtWidgets.QProgressBar, 'totalPB')[0]
         self.itPB = self.findChildren(QtWidgets.QProgressBar, 'itPB')[0]
         self.fItPB = self.findChildren(QtWidgets.QProgressBar, 'fItPB')[0]
+
+        self.update_dset_info_signal.connect(self.dset_info)
+
 
         # Signals for propagation
 
@@ -250,9 +319,6 @@ class TrainWindow(QtWidgets.QMainWindow):
             self.propagateButton.setEnabled(True)
 
     def load_dset_info(self):
-        msg = LoadInfoWindow()
-        msg.exec()
-
         if self.config is None:
             msg = QtWidgets.QMessageBox()
             msg.setText('Erro de configuração')
@@ -261,18 +327,33 @@ class TrainWindow(QtWidgets.QMainWindow):
             msg.exec()
             return
 
-        poros_file_path = self.config.starting_porosity_cube_path
-
-        run_str = [
-            'python3', 'hdf5_util_qt.py', poros_file_path, '-i', '10000'
-        ]
-
-        info_process = subprocess.Popen(run_str, stdout=subprocess.PIPE)
-
-       
+        msg = LoadInfoWindow(self.config, self)
+        msg.exec()
 
         # self.log_thread1 = threading.Thread(target=self.add_to_log_buffer)
         # self.log_thread1.start()
+
+    update_dset_info_signal = pyqtSignal(list)
+    @pyqtSlot(list)
+    def dset_info(self, info):
+        for l in info:
+            l = l.replace(', ', ',')
+            # l = l.replace('(', '')
+            # l = l.replace(')', '')
+            l = l.split(' ')
+
+            if len(l) > 1 and l[1] == 'shape:':
+                self.dimLE.setText(l[2])
+            if l[0] == 'Total':
+                self.nPointsLE.setText(l[2])
+            if l[0] == 'MaxRing':
+                self.itCurLE.setText(l[1])
+            if l[0] == '\tPropagated:':
+                self.nPropLE.setText(f'{l[1]}/{l[2]}')
+            if l[0] == '\tReal:':
+                self.nRealLE.setText(f'{l[1]}/{l[2]}')
+            if l[0] == '\tEmpty:':
+                self.nEmptyLE.setText(f'{l[1]}/{l[2]}')
 
     def clear_dset(self):
         pass
