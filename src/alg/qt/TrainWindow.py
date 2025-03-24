@@ -6,59 +6,7 @@ import subprocess
 from time import sleep
 
 from qt.ConfigWindow import ConfigWindow, FeaturePlace
-
-class LoadInfoWindow(QtWidgets.QDialog):
-    def __init__(self, config, parent):
-        super(LoadInfoWindow, self).__init__()
-
-        self.config = config
-        self.parent = parent
-
-        uic.loadUi('qt/dsetinfo.ui', self)
-    
-        self.okPB = self.findChildren(QtWidgets.QPushButton,
-                                              'okPB')[0]
-        self.okPB.setEnabled(False)
-        self.okPB.clicked.connect(self.done)
-
-        poros_file_path = self.config.starting_porosity_cube_path
-
-        run_str = [
-            'python3', 'hdf5_util_qt.py', poros_file_path, '-i', '10000'
-        ]
-
-        self.new_log_line.connect(self.add_to_log)
-
-        self.info_process = subprocess.Popen(run_str, stdout=subprocess.PIPE)
-
-        self.log_thread = threading.Thread(target=self.add_to_log_buffer)
-        self.log_thread.start()
-
-
-    # Signal that a new line was outputted from the subprocess
-    new_log_line = pyqtSignal(str)
-    # Append a new line to the correct place
-    @pyqtSlot(str)
-    def add_to_log(self, line):
-        self.logText.appendPlainText(line)
-
-    def add_to_log_buffer(self):
-        # While process is alive
-        info = []
-        while self.info_process.poll() is None:
-            l = self.info_process.stdout.readline()[:-1].decode('ascii')
-            if len(l) > 0:
-                # There is a new line, send an update
-                self.new_log_line.emit(l)
-                info.append(l)
-            else:
-                # Don't busy wait...
-                sleep(1)
-        self.parent.update_dset_info_signal.emit(info)
-        self.okPB.setEnabled(True)
-
-
-
+from qt.TrainWindowDialogs import LoadInfoWindow, ClearItsWindow
 
 class TrainWindow(QtWidgets.QMainWindow):
 
@@ -234,13 +182,15 @@ class TrainWindow(QtWidgets.QMainWindow):
         self.logText.appendPlainText(line)
 
         if 'Propagated' in line.split(' '):
-            n_total = int(self.nPointsLE.value())
-            n_prop = int(self.nPropLE.value().split('/')[0]) + 
-                int(line.split(' ')[2])
-            n_empty = int(self.nEmptyLE.value().split('/')[0]) - 
-                int(line.split(' ')[2])
-            self.nPropLE.setValue(f'{n_prop}/{n_prop/n_total:.2f}%')
-            self.nEmptyLE.setValue(f'{n_empty}/{n_empty/n_total:.2f}%')
+            n_total = int(self.nPointsLE.text())
+            n_prop = int(self.nPropLE.text().split('/')[0]) + int(
+                line.split(' ')[2])
+            n_prop_pct = 100 * float(n_prop)/n_total
+            n_empty = int(self.nEmptyLE.text().split('/')[0]) - int(
+                line.split(' ')[2])
+            n_empty_pct = 100 * float(n_empty)/n_total
+            self.nPropLE.setText(f'{n_prop}/{n_prop_pct:.2f}%')
+            self.nEmptyLE.setText(f'{n_empty}/{n_empty_pct:.2f}%')
 
         # Only check manager info
         if line[0:9] != '[manager]':
@@ -298,30 +248,42 @@ class TrainWindow(QtWidgets.QMainWindow):
     def update_config(self, config):
         self.config = config
 
-    def propagate(self):
+    def disable_buttons(self):
         self.propagateButton.setEnabled(False)
+        self.configButton.setEnabled(False)
+        self.dsetLoadButton.setEnabled(False)
+        self.dsetClearButton.setEnabled(False)
+
+    def enable_buttons(self):
+        self.propagateButton.setEnabled(True)
+        self.configButton.setEnabled(True)
+        self.dsetLoadButton.setEnabled(True)
+        self.dsetClearButton.setEnabled(True)
+
+    def propagate(self):
+        self.disable_buttons()
+
         self.is_propagating = True
         if self.start_prop():
-            self.configButton.setEnabled(False)
             self.propagateButton.setText('Parar Propagação')
             self.propagateButton.clicked.connect(self.stop_propagate)
             self.propagateButton.clicked.disconnect(self.propagate)
             self.propagateButton.setEnabled(True)
         else:
-            self.propagateButton.setEnabled(True)
+            self.enable_buttons()
 
     # Signal that the subprocess has ended
     prop_is_done = pyqtSignal(int)
     def stop_propagate(self):
         if self.is_propagating:
-            self.propagateButton.setEnabled(False)
+            self.disable_buttons()
             self.is_propagating = False
             self.end_prop()
             self.configButton.setEnabled(True)
             self.propagateButton.setText('Propagar')
             self.propagateButton.clicked.connect(self.propagate)
             self.propagateButton.clicked.disconnect(self.stop_propagate)
-            self.propagateButton.setEnabled(True)
+            self.enable_buttons()
 
     def load_dset_info(self):
         if self.config is None:
@@ -336,8 +298,6 @@ class TrainWindow(QtWidgets.QMainWindow):
         msg.exec()
         self.has_loaded_dset = True
 
-        # self.log_thread1 = threading.Thread(target=self.add_to_log_buffer)
-        # self.log_thread1.start()
 
     update_dset_info_signal = pyqtSignal(list)
     @pyqtSlot(list)
@@ -360,4 +320,13 @@ class TrainWindow(QtWidgets.QMainWindow):
                 self.nEmptyLE.setText(f'{l[1]}/{l[2]}')
 
     def clear_dset(self):
-        pass
+        if self.config is None:
+            msg = QtWidgets.QMessageBox()
+            msg.setText('Erro de configuração')
+            msg.setInformativeText('Não foi configurado um path de porosidade.')
+            msg.setWindowTitle('Erro')
+            msg.exec()
+            return
+
+        msg = ClearItsWindow(self.config, self)
+        msg.exec()
