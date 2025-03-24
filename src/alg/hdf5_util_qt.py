@@ -340,6 +340,24 @@ def main():
         return
     h5_dset = h5_file['p']
 
+    if args.it_clear:
+        for chunk_slice in h5_dset.iter_chunks():
+            np_dset = h5_dset[chunk_slice]
+
+            # print(f"updating {chunk_slice}")
+
+            def _update(np_dset, cond, default):
+                return np.where(cond, default, np_dset)
+
+            cond = np_dset['ring'] > int(args.it_clear)
+            # print(f'to update: {cond.sum()}')
+            np_dset['phi'] = _update(np_dset['phi'], cond, 0)
+            np_dset['real'] = _update(np_dset['real'], cond,
+                                      common.RealValues.empty)
+            np_dset['ring'] = _update(np_dset['ring'], cond, -1)
+            np_dset['well_id'] = _update(np_dset['well_id'], cond, -1)
+            h5_dset[chunk_slice] = np_dset
+
     if args.it_info:
         it_info = int(args.it_info) + 1
         # get shape
@@ -405,23 +423,6 @@ def main():
         # for i, count in enumerate(metrics):
         #     print(f"\tit{i}: {count}")
 
-    if args.it_clear:
-        for chunk_slice in h5_dset.iter_chunks():
-            np_dset = h5_dset[chunk_slice]
-
-            # print(f"updating {chunk_slice}")
-
-            def _update(np_dset, cond, default):
-                return np.where(cond, default, np_dset)
-
-            cond = np_dset['ring'] > int(args.it_clear)
-            # print(f'to update: {cond.sum()}')
-            np_dset['phi'] = _update(np_dset['phi'], cond, 0)
-            np_dset['real'] = _update(np_dset['real'], cond,
-                                      common.RealValues.empty)
-            np_dset['ring'] = _update(np_dset['ring'], cond, -1)
-            np_dset['well_id'] = _update(np_dset['well_id'], cond, -1)
-            h5_dset[chunk_slice] = np_dset
 
 
 if __name__ == '__main__':
