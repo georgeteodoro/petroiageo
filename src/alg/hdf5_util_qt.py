@@ -300,6 +300,7 @@ def get_count_if_field_is(h5_dset, it, wells, field, vals_to_cmp):
 
 
 def main():
+    print('stating...')
     parser = argparse.ArgumentParser(description="usage: H5_FILE [OPTS]")
 
     parser.add_argument('filename')
@@ -331,6 +332,7 @@ def main():
     )
 
     args = parser.parse_args()
+
 
     # Get porosity H5 file
     print(args.filename)

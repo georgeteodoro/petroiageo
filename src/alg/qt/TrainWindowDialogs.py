@@ -28,7 +28,7 @@ class LoadInfoWindow(QtWidgets.QDialog):
         poros_file_path = self.config.starting_porosity_cube_path
 
         run_str = [
-            'python3', 'hdf5_util_qt.py', poros_file_path, '-i', '10000'
+            'python3', '-u', 'hdf5_util_qt.py', poros_file_path, '-i', '10000'
         ]
 
         self.new_log_line.connect(self.add_to_log)
@@ -51,16 +51,13 @@ class LoadInfoWindow(QtWidgets.QDialog):
         info = []
         while self.info_process.poll() is None:
             l = self.info_process.stdout.readline()[:-1].decode('ascii')
-            print(l)
             if len(l) > 0:
                 # There is a new line, send an update
                 self.new_log_line.emit(l)
                 info.append(l)
             else:
                 # Don't busy wait...
-                print('sleeping')
                 sleep(1)
-                print('awake')
         self.parent.update_dset_info_signal.emit(info)
         self.okPB.setEnabled(True)
 
@@ -127,7 +124,7 @@ class ClearItsWindow(QtWidgets.QDialog):
             return
         
         run_str = [
-            'python3', 'hdf5_util_qt.py', self.poros_file_path, '-i', 
+            'python3', '-u', 'hdf5_util_qt.py', self.poros_file_path, '-i', 
             '10000', '-c', self.itMaxLE.text()
         ]
 
