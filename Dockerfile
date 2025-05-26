@@ -29,7 +29,10 @@ RUN apt-get update \
 
 ENV CC=mpicc \
     HDF5_MPI=ON \
-    HDF5_DIR=/hdf5/build
+    HDF6_DIR=/hdf5/build \
+    OMPI_ALLOW_RUN_AS_ROOT=1 \
+    OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
+
 
 RUN git clone https://github.com/HDFGroup/hdf5.git hdf5 \
     && cd hdf5 \
@@ -46,3 +49,13 @@ RUN pip3 uninstall -y mpi4py \
     && git checkout 3.11.0 \
     && pip3 install wheel Cython==3.1.0a1 \
     && export CC=mpicc; export HDF5_MPI="ON"; export HDF5_DIR="/hdf5/build"; pip3 install --no-build-isolation .
+
+WORKDIR /app 
+
+COPY requirements .
+
+RUN pip3 install -r requirements
+
+COPY . .
+
+WORKDIR /app/src/alg

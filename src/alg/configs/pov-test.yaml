@@ -13,12 +13,12 @@ wells: # This is wells related stuff
   window: 3 # window size for which the hypercube is/was padded
 
 # Directory where every file will be treated as a feature
-features_folder: "/home/will/git/petroiageo/data/POV/POV_TEST/features" 
+features_folder: "/app/npy" 
 
 # Output path for the porosity cube produced (if any)
 porosity_cube_output_path: "./results/porosity.npy" 
 # The starting porosity cube file.
-starting_porosity_cube_path: "/home/will/git/petroiageo/data/POV/POV_TEST/porosity-it0.h5"
+starting_porosity_cube_path: "/app/src/data/POV/porosity.h5"
 
 
 nits: 3
