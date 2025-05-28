@@ -8,6 +8,8 @@ from time import sleep
 from qt.ConfigWindow import ConfigWindow, FeaturePlace
 from qt.TrainWindowDialogs import LoadInfoWindow, ClearItsWindow
 
+import pathlib
+
 class TrainWindow(QtWidgets.QMainWindow):
 
     def __init__(self):
@@ -18,6 +20,7 @@ class TrainWindow(QtWidgets.QMainWindow):
         self.is_propagating = False
         self.has_loaded_dset = False
 
+        from qt.shapes_widget import ShapesWidget
         uic.loadUi('qt/train.ui', self)
 
         self.logText = self.findChildren(QtWidgets.QPlainTextEdit,
@@ -141,7 +144,14 @@ class TrainWindow(QtWidgets.QMainWindow):
         if self.config.get_param('fsched_loc'):
             chunks = f'--tr-chunk {n_chunks}'
 
+        pwd = pathlib.Path.cwd().parent.parent
+        config_dir = pathlib.Path('/app/src/alg/configs')
+        config_path = str(config_dir/pathlib.Path(config_path).name)
         run_str = [
+            'docker', 'run', 
+            '-v', f'{pwd}/npy:/app/npy',
+            '-v', f'{pwd}/src/data:/app/src/data',
+            'petroia',
             'mpirun', '-np',
             str(n_workers + 1), '--bind-to', 'core', 'python3', 'main.py',
             '--no-abort', '--config', config_path, '--poros-file',
