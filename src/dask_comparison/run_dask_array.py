@@ -156,28 +156,90 @@ def commit_feature(feature_name, dx, dy, dz):
 # 5. Main
 # ============================================================
 
+def shift_array_3d(arr, dx=0, dy=0, dz=0, default=0):
+    """
+    Shift a 3D NumPy array by (dx, dy, dz).
+
+    Coordinates are interpreted as (x, y, z), while the array
+    axes are (z, y, x).
+
+    Integer shifts are required.
+
+    Values shifted outside the array bounds are discarded.
+    Newly exposed positions are filled with `default`.
+    """
+
+    if arr.ndim != 3:
+        raise ValueError("arr must be a 3D array")
+
+    if not all(float(v).is_integer() for v in (dx, dy, dz)):
+        raise ValueError("dx, dy, dz must be integers")
+
+    dx, dy, dz = int(dx), int(dy), int(dz)
+
+    result = np.full_like(arr, default)
+
+    nz, ny, nx = arr.shape
+
+    # Source ranges
+    src_x0 = max(0, -dx)
+    src_x1 = min(nx, nx - dx)
+
+    src_y0 = max(0, -dy)
+    src_y1 = min(ny, ny - dy)
+
+    src_z0 = max(0, -dz)
+    src_z1 = min(nz, nz - dz)
+
+    # Destination ranges
+    dst_x0 = max(0, dx)
+    dst_x1 = dst_x0 + (src_x1 - src_x0)
+
+    dst_y0 = max(0, dy)
+    dst_y1 = dst_y0 + (src_y1 - src_y0)
+
+    dst_z0 = max(0, dz)
+    dst_z1 = dst_z0 + (src_z1 - src_z0)
+
+    result[
+        dst_z0:dst_z1,
+        dst_y0:dst_y1,
+        dst_x0:dst_x1,
+    ] = arr[
+        src_z0:src_z1,
+        src_y0:src_y1,
+        src_x0:src_x1,
+    ]
+
+    return result
+
 def main():
 
-    # --------------------------------------------------------
-    # Connect to scheduler
-    # --------------------------------------------------------
-
     client = Client(SCHEDULER_ADDRESS)
-
     print(client)
 
-    # --------------------------------------------------------
-    # Load the dataset on every worker.
-    #
-    # IMPORTANT:
-    #
-    # This does NOT create a Dask task for the dataset.
-    # It initializes worker-local state once.
-    # --------------------------------------------------------
+    #client.register_plugin(
+    #    DatasetPlugin(str(DATASET_PATH))
+    #)
 
-    client.register_plugin(
-        DatasetPlugin(str(DATASET_PATH))
-    )
+    mpi_kwargs = {}
+    dataset_h5 = h5py.File(DATASET_PATH,
+                                   'r', **mpi_kwargs)
+    dataset_h5 = worker.dataset_h5[POROSITY_DSET_NAME]
+    
+    all_datasets = [dataset_h5]
+
+
+    for feature in FEATURES_LIST:
+        feature_dataset = h5py.File(DATASET_PATH,
+                                   'r', **mpi_kwargs)
+        feature_dataset = feature_dataset[FEATURE_DSET_NAME]
+        for i in range(-DISP_WINDOW_X, DISP_WINDOW_X + 1):
+            for j in range(-DISP_WINDOW_Y, DISP_WINDOW_Y + 1):
+                for k in range(-DISP_WINDOW_Z, DISP_WINDOW_Z + 1):
+                    feature = shift_array_3d(np.asarray(feature_dataset), i, j, k)
+                    all_datasets.append(feature)
+
 
     # --------------------------------------------------------
     # Generate configurations
