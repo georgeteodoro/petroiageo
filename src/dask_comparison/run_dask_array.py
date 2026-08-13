@@ -3,10 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import h5py
-
+from tqdm import tqdm
 import numpy as np
 
 from dask.distributed import Client, WorkerPlugin, as_completed
+import dask
+import dask.array as da
 
 from feature_sel import test_new_feature
 
@@ -28,6 +30,10 @@ DISP_WINDOW_Y = DISP_WINDOW_X
 DISP_WINDOW_Z = DISP_WINDOW_X
 FEATURES_PATH = BASE_PATH + "/data/POV/features/h5_features"
 FEATURES_LIST = ['FAR', 'FAR2']
+
+NUM_SEL_FEATURES = 2
+
+REAL_WELLS =[(134, 227),(146, 500),(167, 186),(174, 365),(200, 102),(236, 113),(250, 315),(287, 242),(230, 194),(344, 276)]
 
 def enum(*sequential, **named):
     enums = dict(zip(sequential, range(len(sequential))), **named)
@@ -109,34 +115,36 @@ def _merge_arrays(arr1, arr2, feature_id):
     ]
 
 
-def single_feature_trial(config):
+def single_feature_trial(training_data, features_data, feature_name, f_iteration):
     from dask.distributed import get_worker
-    feature_name, dx, dy, dz = config
+
+    feature = features_data[feature_name]
+    training_data[f'f_{f_iteration}'] = feature
 
     worker = get_worker()
-    print(f"[single_feature_trial][{worker.id}] testing {config}")
-    print(worker.dataset_h5)
-    training_data = worker.dataset_h5
-    training_data = training_data[training_data['real'] != RealValues.empty]
-    print(f"[single_feature_trial][{worker.id}] done copying")
-    cur_feature_id = worker.cur_feature_id
+    # print(f"[single_feature_trial][{worker.id}] testing {config}")
+    # print(worker.dataset_h5)
+    # training_data = worker.dataset_h5
+    # training_data = training_data[training_data['real'] != RealValues.empty]
+    # print(f"[single_feature_trial][{worker.id}] done copying")
+    # cur_feature_id = worker.cur_feature_id
 
-    # load feature and apply displacement
-    feature_path = f"{FEATURES_PATH}/{feature_name}.h5"
-    print(f"[single_feature_trial][{worker.id}] reading feature {feature_path}")
-    feature_data = h5py.File(feature_path, 'r')[FEAT_DSET_NAME]
-    print(feature_data)
-    feature_data['x'] += dx
-    feature_data['y'] += dy
-    feature_data['z'] += dz
-    training_data = _merge_arrays(training_data, feature_data, cur_feature_id)
+    # # load feature and apply displacement
+    # feature_path = f"{FEATURES_PATH}/{feature_name}.h5"
+    # print(f"[single_feature_trial][{worker.id}] reading feature {feature_path}")
+    # feature_data = h5py.File(feature_path, 'r')[FEAT_DSET_NAME]
+    # print(feature_data)
+    # feature_data['x'] += dx
+    # feature_data['y'] += dy
+    # feature_data['z'] += dz
+    # training_data = _merge_arrays(training_data, feature_data, cur_feature_id)
 
-    # rmse, mae = test_new_feature(training_data)
+    rmse, mae = test_new_feature(training_data, f_iteration)
 
     # print(test_new_feature())
-    print(f"[single_feature_trial][{worker.id}] done {config}")
+    print(f"[single_feature_trial][{worker.id}][f_it{f_iteration}] done {feature_name}: {rmse}, {mae}")
 
-    return f"done from {worker}"
+    return feature_name, rmse, mae
 
 def commit_feature(feature_name, dx, dy, dz):
     worker = get_worker()
@@ -157,74 +165,11 @@ def commit_feature(feature_name, dx, dy, dz):
 # 5. Main
 # ============================================================
 
-def shift_array_3d(arr, dx=0, dy=0, dz=0, default=0):
-    """
-    Shift a 3D NumPy array by (dx, dy, dz).
-
-    Coordinates are interpreted as (x, y, z), while the array
-    axes are (z, y, x).
-
-    Integer shifts are required.
-
-    Values shifted outside the array bounds are discarded.
-    Newly exposed positions are filled with `default`.
-    """
-
-    if arr.ndim != 3:
-        raise ValueError("arr must be a 3D array")
-
-    if not all(float(v).is_integer() for v in (dx, dy, dz)):
-        raise ValueError("dx, dy, dz must be integers")
-
-    dx, dy, dz = int(dx), int(dy), int(dz)
-
-    result = np.full_like(arr, default)
-
-    nz, ny, nx = arr.shape
-
-    # Source ranges
-    src_x0 = max(0, -dx)
-    src_x1 = min(nx, nx - dx)
-
-    src_y0 = max(0, -dy)
-    src_y1 = min(ny, ny - dy)
-
-    src_z0 = max(0, -dz)
-    src_z1 = min(nz, nz - dz)
-
-    # Destination ranges
-    dst_x0 = max(0, dx)
-    dst_x1 = dst_x0 + (src_x1 - src_x0)
-
-    dst_y0 = max(0, dy)
-    dst_y1 = dst_y0 + (src_y1 - src_y0)
-
-    dst_z0 = max(0, dz)
-    dst_z1 = dst_z0 + (src_z1 - src_z0)
-
-    result[
-        dst_z0:dst_z1,
-        dst_y0:dst_y1,
-        dst_x0:dst_x1,
-    ] = arr[
-        src_z0:src_z1,
-        src_y0:src_y1,
-        src_x0:src_x1,
-    ]
-
-    return result
-
 def main():
 
-    # client = Client(SCHEDULER_ADDRESS)
-    # print(client)
-
-    #client.register_plugin(
-    #    DatasetPlugin(str(DATASET_PATH))
-    #)
-
-    # load porosity list .txt
-    # have x, y, z, real, well, phi cols
+    sel_f_types = []
+    for i in range(NUM_SEL_FEATURES):
+        sel_f_types.append((f'f_{i}', np.float64))
 
     dtype = np.dtype([
         ("x", np.int32),
@@ -232,7 +177,8 @@ def main():
         ("z", np.int32),
         ("phi", np.float32),
         ("real", np.int32),
-    ])
+        ("well_id", np.int32),
+    ] + sel_f_types)
     raw = np.loadtxt(DATASET_PATH)
     data = np.empty(
         len(raw),
@@ -242,154 +188,113 @@ def main():
     data["y"] = raw[:, 1]
     data["z"] = raw[:, 2]
     data["phi"] = raw[:, 3]
-    data["real"] = 5
+    data["well_id"] = -1
+    data["real"] = RealValues.real
+
+    real_wells_dict = {}
+    for i, w in enumerate(REAL_WELLS):
+        real_wells_dict[w] = i
+
+    print(real_wells_dict)
+
+    for i, d in enumerate(data):
+        x, y = int(d['x']), int(d['y'])
+        if (x, y) in real_wells_dict:
+            data[i] = real_wells_dict[(x,y)]
 
     training_data = data
+    # training_data_da = da.from_array(training_data)
+    # print(training_data_da)
 
     # get coordinates of current points
     coordinates = training_data[['x','y','z']]
-
-    print(training_data)
     print(coordinates)
 
+    # Prepare the features
+    all_feature_types = []
     mpi_kwargs = {}
     features = []
     feature_files = {}
-    for feature in FEATURES_LIST:
-        feature_file = h5py.File(FEATURES_PATH + "/" + feature + ".h5",
+    for feature_name in FEATURES_LIST:
+        feature_file = h5py.File(FEATURES_PATH + "/" + feature_name + ".h5",
                                 'r', **mpi_kwargs)
-        feature_files[feature] = feature_file[FEAT_DSET_NAME]
+        feature_files[feature_name] = feature_file[FEAT_DSET_NAME]
         for dx in range(-DISP_WINDOW_X, DISP_WINDOW_X + 1):
             for dy in range(-DISP_WINDOW_Y, DISP_WINDOW_Y + 1):
                 for dz in range(-DISP_WINDOW_Z, DISP_WINDOW_Z + 1):
-                    features.append((feature, dx, dy, dz))
+                    features.append((feature_name, dx, dy, dz))
+                    all_feature_types.append((f'{feature_name}-{dx}-{dy}-{dz}', np.float64))
 
-    print(features)
-    print(feature_files)
+    dtype = np.dtype(all_feature_types)
+    features_data = np.empty(
+        len(coordinates),
+        dtype=dtype,
+    )
 
     # apply all displacements and generate new arrays of features displacements
-    all_features_data = []
-    for feature, dx, dy, dz in features:
+    for feature, dx, dy, dz in tqdm(features, desc="Filtering feature data by coordinates"):
+        # Get the coordinates list
         feature_coordinates = coordinates.copy()
         feature_coordinates['x'] += dx
         feature_coordinates['y'] += dy
         feature_coordinates['z'] += dz
+        coords = feature_coordinates
 
+        # Filter coordinates into vals
         feature_data = feature_files[feature]
-        xyz = feature_data[["x", "y", "z"]][:]
-        mask = np.isin(xyz, feature_coordinates)
-        # Read the matching complete rows
-        # return h5_dataset[:][mask]
+        vals = np.empty((len(coords), ), np.float64)
+        for i, c in enumerate(coords):
+            vals[i] = feature_data[tuple(c)]
 
-        feature_data[FEAT_DSET_NAME] = feature_file[feature_coordinates]
+        # Add feature data
+        features_data[f'{feature_name}-{dx}-{dy}-{dz}'] = vals
 
-        all_features_data.append(feature_data)
+    # Create dask array with a single feature per chunk for feature parallelism
+    print(features_data)
+    # features_data_da = [da.from_array(feature_data) for feature_data in features_data]
 
-    print(all_features_data)
-    0/0
-
-    # concatenate all columns
-    training_data_da = da.concatenate([training_data] + all_features_data, axis=1)
-
-
-
-
-
-
-
-
-
-
-
-
-
-    mpi_kwargs = {}
-    dataset_h5 = h5py.File(DATASET_PATH,
-                                   'r', **mpi_kwargs)
-    dataset_h5 = worker.dataset_h5[POROSITY_DSET_NAME]
-    
-    all_datasets = [dataset_h5]
-
-
-    for feature in FEATURES_LIST:
-        feature_dataset = h5py.File(DATASET_PATH,
-                                   'r', **mpi_kwargs)
-        feature_dataset = feature_dataset[FEATURE_DSET_NAME]
-        for i in range(-DISP_WINDOW_X, DISP_WINDOW_X + 1):
-            for j in range(-DISP_WINDOW_Y, DISP_WINDOW_Y + 1):
-                for k in range(-DISP_WINDOW_Z, DISP_WINDOW_Z + 1):
-                    feature = shift_array_3d(np.asarray(feature_dataset), i, j, k)
-                    all_datasets.append(feature)
-
-
-    # --------------------------------------------------------
-    # Generate configurations
-    # --------------------------------------------------------
-
-    configurations = config_gen()
+    # Create configs to run
+    configurations = [fname for fname, _ in all_feature_types]
     configurations = [configurations[0]]
 
     print(
         f"Generated {len(configurations)} configurations"
     )
 
-    # --------------------------------------------------------
-    # Discover workers.
-    #
-    # We expect exactly one worker per physical node.
-    # --------------------------------------------------------
+    client = Client(SCHEDULER_ADDRESS)
+    # client.persist(training_data_da)
+    client.upload_file("feature_sel.py")
+    client.scatter(training_data, broadcast=True)
+    client.scatter(features_data, broadcast=True)
+    print(client)
 
+    # Start workers
     scheduler_info = client.scheduler_info()
-
     workers = list(
         scheduler_info["workers"].keys()
     )
-
     print("\nWorkers:")
-
     for worker in workers:
-
         info = scheduler_info["workers"][worker]
-
         print(
             f"  {worker}: "
             f"{info['nthreads']} threads"
         )
 
-    # --------------------------------------------------------
-    # Submit exactly ONE task per configuration.
-    #
-    # run(config)
-    #
-    # Each task occupies one worker thread.
-    # --------------------------------------------------------
+    f_iteration = 0
+    tasks = [
+        dask.delayed(single_feature_trial)(training_data, features_data, config, f_iteration)
+        for config in configurations
+    ]
 
-    futures = []
+    print('----------------------------------')
+    print(training_data)
+    print(features_data)
+    results = dask.compute(*tasks)
 
-    for task_params in configurations:
-        future = client.submit(
-            single_feature_trial,
-            task_params,
-
-            # Hard placement:
-            # this task can execute ONLY on this worker.
-            # workers=[worker],
-            # allow_other_workers=False,
-
-            # Optional explicit priority.
-            priority=0,
-        )
-
-        futures.append(future)
-
-    print(
-        f"\nSubmitted {len(futures)} tasks"
-    )
-
-    # --------------------------------------------------------
-    # Collect results as tasks finish.
-    # --------------------------------------------------------
-
+    print(results)
+    0/0
+    
     results = []
 
     for future in as_completed(futures):

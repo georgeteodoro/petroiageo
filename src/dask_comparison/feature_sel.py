@@ -70,7 +70,7 @@ def _full_train(X_train, y_train, X_val, y_val, hyperparams):
 
     return rmse, mae
 
-def test_new_feature(training_data):
+def test_new_feature(training_data, f_iteration):
     '''
     Trains a model with trial_data, returning the metric values for the
     trained model.
@@ -92,12 +92,9 @@ def test_new_feature(training_data):
 
     t1 = time()
 
-    feature_cols = [c != 'phi' for c in training_data.dtype.names]
-    feature_cols.remove('well_id')
-    feature_cols.remove('real')
-    # feature_cols.remove('x')
-    # feature_cols.remove('y')
-    # feature_cols.remove('z')
+    feature_cols = []
+    for i in range(f_iteration+1):
+        feature_cols.append(f'f_{i}')
 
     # Leave-one-well-out
     for curr_well_id in TRAIN_WELLS_IDS:
@@ -111,6 +108,7 @@ def test_new_feature(training_data):
         # X_val, y_val = trial_data.get_val_values(curr_well_id)
         cur_validate_data = training_data[training_data['well_id'] == curr_well_id]
         X_val = cur_validate_data[feature_cols]
+        X_val = np.column_stack([X_val[name] for name in X_val.dtype.names])
         y_val = cur_validate_data['phi']
         t12 = time()
 
@@ -127,6 +125,7 @@ def test_new_feature(training_data):
             #     curr_well_id, chunk_id)
             cur_training_data = training_data[training_data['well_id'] != curr_well_id]
             X_train = cur_training_data[feature_cols]
+            X_train = np.column_stack([X_train[name] for name in X_train.dtype.names])
             y_train = cur_training_data['phi']
 
             # X_train=None if there are no validation points available. This can
