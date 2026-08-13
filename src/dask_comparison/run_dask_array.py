@@ -15,11 +15,12 @@ from feature_sel import test_new_feature
 # Configuration
 # ============================================================
 
-#BASE_PATH="/home/will/git/petroiageo"
-BASE_PATH="/snfs2/willianjunior/git/petroiageo"
+BASE_PATH="/home/will/git/petroiageo"
+# BASE_PATH="/snfs2/willianjunior/git/petroiageo"
 
 SCHEDULER_ADDRESS = "tcp://127.0.0.1:8786"
-DATASET_PATH = Path(BASE_PATH + "/data/POV/porosity_data.h5")
+# DATASET_PATH = Path(BASE_PATH + "/data/POV/porosity_data.h5")
+DATASET_PATH = BASE_PATH + "/data/POV/raw/porosity-canal.txt"
 POROSITY_DSET_NAME = "p"
 FEAT_DSET_NAME = "f"
 DISP_WINDOW_X = 0
@@ -215,12 +216,92 @@ def shift_array_3d(arr, dx=0, dy=0, dz=0, default=0):
 
 def main():
 
-    client = Client(SCHEDULER_ADDRESS)
-    print(client)
+    # client = Client(SCHEDULER_ADDRESS)
+    # print(client)
 
     #client.register_plugin(
     #    DatasetPlugin(str(DATASET_PATH))
     #)
+
+    # load porosity list .txt
+    # have x, y, z, real, well, phi cols
+
+    dtype = np.dtype([
+        ("x", np.int32),
+        ("y", np.int32),
+        ("z", np.int32),
+        ("phi", np.float32),
+        ("real", np.int32),
+    ])
+    raw = np.loadtxt(DATASET_PATH)
+    data = np.empty(
+        len(raw),
+        dtype=dtype,
+    )
+    data["x"] = raw[:, 0]
+    data["y"] = raw[:, 1]
+    data["z"] = raw[:, 2]
+    data["phi"] = raw[:, 3]
+    data["real"] = 5
+
+    training_data = data
+
+    # get coordinates of current points
+    coordinates = training_data[['x','y','z']]
+
+    print(training_data)
+    print(coordinates)
+
+    mpi_kwargs = {}
+    features = []
+    feature_files = {}
+    for feature in FEATURES_LIST:
+        feature_file = h5py.File(FEATURES_PATH + "/" + feature + ".h5",
+                                'r', **mpi_kwargs)
+        feature_files[feature] = feature_file[FEAT_DSET_NAME]
+        for dx in range(-DISP_WINDOW_X, DISP_WINDOW_X + 1):
+            for dy in range(-DISP_WINDOW_Y, DISP_WINDOW_Y + 1):
+                for dz in range(-DISP_WINDOW_Z, DISP_WINDOW_Z + 1):
+                    features.append((feature, dx, dy, dz))
+
+    print(features)
+    print(feature_files)
+
+    # apply all displacements and generate new arrays of features displacements
+    all_features_data = []
+    for feature, dx, dy, dz in features:
+        feature_coordinates = coordinates.copy()
+        feature_coordinates['x'] += dx
+        feature_coordinates['y'] += dy
+        feature_coordinates['z'] += dz
+
+        feature_data = feature_files[feature]
+        xyz = feature_data[["x", "y", "z"]][:]
+        mask = np.isin(xyz, feature_coordinates)
+        # Read the matching complete rows
+        # return h5_dataset[:][mask]
+
+        feature_data[FEAT_DSET_NAME] = feature_file[feature_coordinates]
+
+        all_features_data.append(feature_data)
+
+    print(all_features_data)
+    0/0
+
+    # concatenate all columns
+    training_data_da = da.concatenate([training_data] + all_features_data, axis=1)
+
+
+
+
+
+
+
+
+
+
+
+
 
     mpi_kwargs = {}
     dataset_h5 = h5py.File(DATASET_PATH,
