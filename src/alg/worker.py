@@ -79,6 +79,7 @@ def run(config):
             gc_times += [duration]
 
     gc.callbacks += [gc_callback]
+    print(f"{beg_str} Starting worker.")
 
     t0 = time()
 
@@ -305,7 +306,13 @@ def run(config):
         print(f"{beg_str}[it{it}] Waiting fsel")
         comm.Barrier()
 
+    # Print all data - delete later...
+    X, y = trial_data.get_train_values(-1, -1, True)
+    print(X.shape)
+    print(y.shape)
+  
     porosity_h5_f.close()
+
     print(beg_str + f"[GC] calls: {len(gc_times)} total: {sum(gc_times):.2f}")
     if rank_should_propagate:
         print(beg_str + f' End Time(hh:mm:ss.ms): {datetime.now()}')

@@ -338,7 +338,7 @@ def update_config_file_params_with_args(config: config_parser.Config,
 
     # Profiling
     # config.add_param('prof_trial_prep_porosity', True)
-    config.add_param('prof_trial_update_feature', True)
+    #config.add_param('prof_trial_update_feature', True)
     # config.add_param('prof_feature_sel', True)
     # config.add_param('prof_TD_get_values', True)
 
@@ -369,6 +369,8 @@ def main(args_str=None):
     rank = comm.Get_rank()
     mpi_size = comm.Get_size()
     manager_rank = mpi_size - 1
+
+    print("initialized...")
 
     # Call MPI.abort() on all processes if one of them breaks
     # This avoids lingering executions after any error occurs
