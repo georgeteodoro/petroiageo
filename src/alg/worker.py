@@ -308,8 +308,14 @@ def run(config):
 
     # Print all data - delete later...
     X, y = trial_data.get_train_values(-1, -1, True)
-    print(X.shape)
-    print(y.shape)
+    with open(f'training_data_it{it}.log', 'w') as f:
+        for t in X:
+            #print(t)
+            f.write(str(tuple(t)))
+            f.write('\n')
+    print(beg_str + f" X: {X.shape}")
+    print(beg_str + f" y: {y.shape}")
+
   
     porosity_h5_f.close()
 
