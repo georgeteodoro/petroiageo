@@ -5,10 +5,12 @@ from pathlib import Path
 import h5py
 from tqdm import tqdm
 import numpy as np
+import ast
 
 from dask.distributed import Client, WorkerPlugin, as_completed
 import dask
 import dask.array as da
+from dask.distributed import get_worker
 
 from feature_sel import test_new_feature
 
@@ -23,8 +25,7 @@ BASE_PATH="/snfs2/willianjunior/git/petroiageo"
 SCHEDULER_ADDRESS = "tcp://127.0.0.1:8786"
 # DATASET_PATH = Path(BASE_PATH + "/data/POV/porosity_data.h5")
 DATASET_PATH = BASE_PATH + "/data/POV/raw/porosity-canal.txt"
-POROSITY_DSET_NAME = "p"
-FEAT_DSET_NAME = "f"
+DSET_MPI_PATH = "/snfs2/willianjunior/git/petroiageo/src/alg/training_data_it1.log"
 DISP_WINDOW_X = 1
 DISP_WINDOW_Y = DISP_WINDOW_X
 DISP_WINDOW_Z = DISP_WINDOW_X
@@ -69,6 +70,8 @@ def config_gen() -> list[Configuration]:
 # ============================================================
 
 def single_feature_trial(training_data, features_data, feature_name, f_iteration):
+    worker = get_worker()
+
     feature = features_data[feature_name]
     training_data[f'f_{f_iteration}'] = feature
     rmse, mae = test_new_feature(training_data, f_iteration)
@@ -81,21 +84,13 @@ def single_feature_trial(training_data, features_data, feature_name, f_iteration
 # ============================================================
 # 5. Main
 # ============================================================
+def load_porosity_mpi(dtype):
+    with open(DSET_MPI_PATH) as f:
+        data = np.array([ast.literal_eval(line) for line in f], dtype=dtype)
 
-def main():
+    return data
 
-    sel_f_types = []
-    for i in range(NUM_SEL_FEATURES):
-        sel_f_types.append((f'f_{i}', np.float64))
-
-    dtype = np.dtype([
-        ("x", np.int32),
-        ("y", np.int32),
-        ("z", np.int32),
-        ("phi", np.float32),
-        ("real", np.int32),
-        ("well_id", np.int32),
-    ] + sel_f_types)
+def load_porosity_txt(dtype):
     raw = np.loadtxt(DATASET_PATH)
     data = np.empty(
         len(raw),
@@ -120,11 +115,31 @@ def main():
                 filt = data[(data['x'] == x) & (data['y'] == y)]
                 data_filtered[filtered_size:filtered_size+len(filt)] = filt
                 filtered_size += len(filt)
-    
-    
+
+
     data_filtered.resize(filtered_size, refcheck=False)
     print(f"data_filtered: {data_filtered[:10]}...")
     print(f"filtered training data: {data_filtered.shape}")
+
+    return data_filtered
+
+def main():
+
+    sel_f_types = []
+    for i in range(NUM_SEL_FEATURES):
+        sel_f_types.append((f'f_{i}', np.float64))
+
+    dtype = np.dtype([
+        ("x", np.int32),
+        ("y", np.int32),
+        ("z", np.int32),
+        ("phi", np.float32),
+        ("real", np.int32),
+        ("well_id", np.int32),
+    ] + sel_f_types)
+
+    #training_data = load_porosity_txt(dtype)
+    training_data = load_porosity_mpi(dtype)
 
     real_wells_dict = {}
     for i, w in enumerate(REAL_WELLS):
@@ -132,12 +147,10 @@ def main():
 
     print(f"real_wells_dict: {real_wells_dict}")
 
-    for i, d in enumerate(data_filtered):
+    for i, d in enumerate(training_data):
         x, y = int(d['x']), int(d['y'])
         if (x, y) in real_wells_dict:
-            data_filtered[i]['well_id'] = real_wells_dict[(x,y)]
-
-    training_data = data_filtered
+            training_data[i]['well_id'] = real_wells_dict[(x,y)]
 
     # get coordinates of current points
     coordinates = training_data[['x','y','z']]

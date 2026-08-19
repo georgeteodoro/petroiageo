@@ -638,7 +638,7 @@ class TrialDataBase(ABC):
                     # the current chunk_id
                     feats = self._current_features
                     if ret_coords:
-                        feats = ['x', 'y', 'z'] + feats
+                        feats = ['x', 'y', 'z', 'phi', 'well_id', 'real'] + feats
                     _update_X_Y(new_points, feats, 
                                 len(wells_to_retrieve) == 1, X, y)
 
