@@ -298,6 +298,8 @@ class TrialDataBase(ABC):
         if self._sampler != None:
             self._perf_sampling(prep_it)
 
+        print(f"[TrialDataBase][prepare_porosity] total data len: {len(self)}")
+
         t2 = time()
         if profile:
             print(f"[TrialDataBase][prepare_porosity] final_time {t2-t1:.4f}")
@@ -413,7 +415,7 @@ class TrialDataBase(ABC):
             print(f"[TrialDataBase][update_feature] "
                   f"update_col: {update_col_time:.2f}")
 
-    def get_train_values(self, well_id, chunk_id):
+    def get_train_values(self, well_id, chunk_id, ret_coords=False):
         '''
         Leave-one-well-out validation function. Returns all data that
         is NOT on well_id. If well_id=-1, then all data is returned.
@@ -427,7 +429,7 @@ class TrialDataBase(ABC):
         wells_to_retrieve = list(self._wells_id_list)
         if well_id >= 0:
             wells_to_retrieve.remove(well_id)
-        return self._get_values(wells_to_retrieve, chunk_id)
+        return self._get_values(wells_to_retrieve, chunk_id, ret_coords)
 
     def get_val_values(self, well_id):
         wells_to_retrieve = [well_id]
@@ -453,7 +455,7 @@ class TrialDataBase(ABC):
     # === Helper functions ====================================================
     # =========================================================================
 
-    def _get_values(self, wells_to_retrieve, chunk_id):
+    def _get_values(self, wells_to_retrieve, chunk_id, ret_coords=False):
         '''
         Helper function for filtering trial_data.
         Data is retrieved by ring and well_id until a chunk is reached.
@@ -634,7 +636,10 @@ class TrialDataBase(ABC):
                     
                     # Update X and Y with the new points to be returned for
                     # the current chunk_id
-                    _update_X_Y(new_points, self._current_features, 
+                    feats = self._current_features
+                    if ret_coords:
+                        feats = ['x', 'y', 'z'] + feats
+                    _update_X_Y(new_points, feats, 
                                 len(wells_to_retrieve) == 1, X, y)
 
         # Concatenate all temporary arrays into a single output array

@@ -13,7 +13,7 @@ wells: # This is wells related stuff
   window: 3 # window size for which the hypercube is/was padded
 
 # Directory where every file will be treated as a feature
-features_folder: "../../data/POV/features/" 
+features_folder: "../../data/POV/features" 
 
 # Output path for the porosity cube produced (if any)
 porosity_cube_output_path: "./results/porosity.npy" 
