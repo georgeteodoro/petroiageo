@@ -141,6 +141,7 @@ def run(config):
         it_training_time = 0
 
         # Wait all processes to finish prepare_porosity
+        print(f"{beg_str}[it{it}] Waiting prepare_porosity barrier")
         comm.Barrier()
 
         t1 = time()
