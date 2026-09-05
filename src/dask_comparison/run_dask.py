@@ -6,7 +6,9 @@ import h5py
 from tqdm import tqdm
 import numpy as np
 import ast
-from time import time
+from time import time, sleep
+import gc
+import tracemalloc
 
 from dask.distributed import Client, WorkerPlugin, as_completed, LocalCluster
 import dask
@@ -20,19 +22,29 @@ from feature_sel import test_new_feature
 # Configuration
 # ============================================================
 
-#BASE_PATH="/home/will/git/petroiageo"
 BASE_PATH="/snfs2/willianjunior/git/petroiageo"
+DATASET_PATH = BASE_PATH + "/data/POV/raw/porosity-canal.txt"
+DSET_MPI_PATH = "/scratch/e-sim/willian.barreiros2/petroiageo/6-rebutal-tests/1-quality/training_data_it11.log"
+FEATURES_LIST = ['NEAR', 'NEAR2', 'NEAR3', 'NEAR4']
+n_workers = 47
+
+#BASE_PATH="/home/will/git/petroiageo"
+#DATASET_PATH = Path(BASE_PATH + "/data/POV/porosity_data.h5")
+#DSET_MPI_PATH = "/snfs2/willianjunior/git/petroiageo/src/dask_comparison/training_data_it10.log"
+
+# BASE_PATH="/home/will/git/petroiageo"
+# DATASET_PATH = Path(BASE_PATH + "/data/POV/porosity_data.h5")
+# DSET_MPI_PATH = "./training_data_it1.log"
+# FEATURES_LIST = ['FAR']
+# n_workers = 2
+
+
 
 SCHEDULER_ADDRESS = "tcp://127.0.0.1:8786"
-# DATASET_PATH = Path(BASE_PATH + "/data/POV/porosity_data.h5")
-DATASET_PATH = BASE_PATH + "/data/POV/raw/porosity-canal.txt"
-DSET_MPI_PATH = "/snfs2/willianjunior/git/petroiageo/src/dask_comparison/training_data_it10.log"
 DISP_WINDOW_X = 1
 DISP_WINDOW_Y = DISP_WINDOW_X
 DISP_WINDOW_Z = DISP_WINDOW_X
 FEATURES_PATH = BASE_PATH + "/data/POV/features"
-#FEATURES_LIST = ['FAR', 'FAR2']
-FEATURES_LIST = ['FAR']
 
 NUM_SEL_FEATURES = 5
 
@@ -70,20 +82,46 @@ def config_gen() -> list[Configuration]:
 # 3. Actual task
 # ============================================================
 
-def single_feature_trial(training_data, features_data, feature_name, f_iteration):
+def single_feature_trial(training_data, coords, feature_files, config, f_iteration):
     t0 = time()
     worker = get_worker()
-    feature = features_data[feature_name]
-    training_data[f'f_{f_iteration}'] = feature
-    rmse, mae = test_new_feature(training_data, f_iteration)
+    worker_id = worker.id
+    # worker_id = 0
+
+    # Apply displacement to coords
+    feature_name, dx, dy, dz = config
+    coords['x'] += dx - 3
+    coords['y'] += dy - 3
+    coords['z'] += dz - 3
+    
+    # Write feature with displacement to training data
+    for i, c in enumerate(coords):
+        training_data[f'f_{f_iteration}'][i] = feature_files[feature_name][tuple(c)]
+
     t1 = time()
-    print(f"[single_feature_trial][{worker.id}][f_it{f_iteration}] done {feature_name} in {t1-t0:.4f} secs: {rmse}, {mae}")
+    rmse, mae = test_new_feature(training_data, f_iteration)
+    t2 = time()
+    print(f"[single_feature_trial][{worker_id}][f_it{f_iteration}] done {config} in {t1-t0:.4f} secs: {rmse}, {mae}")
 
-    return feature_name, rmse, mae
+    # del feature_data, feature
+    # sleep(2)
 
-def commit_feature(training_data, features_data, feature_name, f_iteration):
-    feature = features_data[feature_name]
-    training_data[f'f_{f_iteration}'] = feature
+    return config, rmse, mae
+
+def commit_feature(training_data, coords, feature_files, config, f_iteration):
+    # feature = features_data[feature_name]
+    # training_data[f'f_{f_iteration}'] = feature
+
+    # Apply displacement to coords
+    feature_name, dx, dy, dz = config
+    coords['x'] += dx - 3
+    coords['y'] += dy - 3
+    coords['z'] += dz - 3
+    
+    # Write feature with displacement to training data
+    for i, c in enumerate(coords):
+        training_data[f'f_{f_iteration}'][i] = feature_files[feature_name][tuple(c)]
+
 
 
 # ============================================================
@@ -167,6 +205,7 @@ def main():
 
     # Prepare the features
     all_feature_types = []
+    all_features_configs = []
     mpi_kwargs = {}
     features = []
     feature_files = {}
@@ -177,38 +216,9 @@ def main():
             for dy in range(-DISP_WINDOW_Y, DISP_WINDOW_Y + 1):
                 for dz in range(-DISP_WINDOW_Z, DISP_WINDOW_Z + 1):
                     features.append((feature_name, dx, dy, dz))
-                    all_feature_types.append((f'{feature_name}-{dx}-{dy}-{dz}', np.float64))
+                    all_features_configs.append(((feature_name, dx, dy, dz), np.float64))
 
-    dtype = np.dtype(all_feature_types)
-    features_data = np.empty(
-        len(coordinates),
-        dtype=dtype,
-    )
-
-    # apply all displacements and generate new arrays of features displacements
-    for feature, dx, dy, dz in tqdm(features, desc="Filtering feature data by coordinates"):
-        # Get the coordinates list
-        feature_coordinates = coordinates.copy()
-        # features array were padded with 3 rings
-        feature_coordinates['x'] += dx - 3
-        feature_coordinates['y'] += dy - 3
-        feature_coordinates['z'] += dz - 3
-        coords = feature_coordinates
-
-        # Filter coordinates into vals
-        feature_data = feature_files[feature]
-        vals = np.empty((len(coords), ), np.float64)
-        for i, c in enumerate(coords):
-            vals[i] = feature_data[tuple(c)]
-
-        # Add feature data
-        features_data[f'{feature_name}-{dx}-{dy}-{dz}'] = vals
-
-    # Create dask array with a single feature per chunk for feature parallelism
-    print(f"features: {features_data.shape}")
-
-    # Create configs to run
-    configurations = [fname for fname, _ in all_feature_types]
+    configurations = [config for config, _ in all_features_configs]
 
     print(
         f"Generated {len(configurations)} configurations"
@@ -216,17 +226,14 @@ def main():
 
     # --- start dask -----------------------------
     cluster = LocalCluster(
-        n_workers=16,
+        n_workers=n_workers,
         threads_per_worker=1,
     )
     client = Client(cluster)
 
-    #client = Client(SCHEDULER_ADDRESS)
-    
-
     client.upload_file("feature_sel.py")
-    client.scatter(training_data, broadcast=True)
-    client.scatter(features_data, broadcast=True)
+    sc_training_data = client.scatter(training_data, broadcast=True)
+    sc_feature_files = client.scatter(feature_files, broadcast=True)
     print(client)
 
     # Start workers
@@ -246,22 +253,18 @@ def main():
     for f_iteration in range(NUM_SEL_FEATURES):
         t0 = time()
 
-        # Test all features
-        tasks = [
-            dask.delayed(single_feature_trial)(training_data, features_data, config, f_iteration)
-            for config in configurations
-        ]
-        results = dask.compute(*tasks)
+        # Run all feature configs
+        futures = [client.submit(single_feature_trial, sc_training_data, coordinates, sc_feature_files, config, f_iteration) 
+            for config in configurations]
+        results = client.gather(futures)
 
         # Commit best feature
         best_feature = max(results, key=lambda t: t[1])
         print(f"[f_it{f_iteration}] best feature: {best_feature}")
         best_feature = best_feature[0]
-        tasks = [
-            dask.delayed(commit_feature)(training_data, features_data, best_feature, f_iteration)
-            for config in configurations
-        ]
-        dask.compute(*tasks)
+        futures = [client.submit(commit_feature, sc_training_data, coordinates, sc_feature_files, best_feature, f_iteration) 
+            for config in configurations]
+        client.gather(futures)
         configurations.remove(best_feature)
 
         t1 = time()
