@@ -38,8 +38,6 @@ n_workers = 47
 # FEATURES_LIST = ['FAR']
 # n_workers = 2
 
-
-
 SCHEDULER_ADDRESS = "tcp://127.0.0.1:8786"
 DISP_WINDOW_X = 1
 DISP_WINDOW_Y = DISP_WINDOW_X

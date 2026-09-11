@@ -10,14 +10,14 @@ training_params = {
     'objective': 'regression',
     'metric': 'mae',
     'verbose': -1,
-    'min_data': 10,
+    'min_data': 20,
     'boost_from_average': True,
     'bagging_freq': 1,
     'random_state': RANDOM_STATE,
     'num_threads': 1,
     'max_depth': 10,
     'num_leaves': 20,
-    'num_iterations': 1,
+    'num_iterations': 400,
     # 'tree_learner': 'data',
 }
 
