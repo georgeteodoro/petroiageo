@@ -1,178 +1,186 @@
-# Geral
+# General
 
-A solução de aprendizado invertido consiste em uma aplicação *Python3* que expande o hipercubo de pontos, gerando novos valores de porosidade. A aplicação tem suporte a execução serializada (1 core de CPU) ou com paralelismo local e distribuído via MPI.
+The inverted learning system consists of a Python3 application that expands the hypercube of points, generating new porosity values. The application supports serialized execution (1 CPU core) as well as local and distributed parallelism via MPI.
 
-# Versionamento
+# Versioning
 
-Para facilitar o processo de resolução de eventuais problemas de código é pedido que apenas tags sejam usadas. Embora a branch *main* esteja atualizada na grande maioria das vezes, isso não é grarantido a todo momento, principalmente em momentos de entregas, onde existem atualizações.
+To facilitate the process of resolving potential code issues, it is requested that only tags be used. Although the main branch is up to date most of the time, this is not guaranteed at all times, especially during delivery periods, when updates may be made.
 
-# Requisitos - Libs
+# Requirements - Libraries
 
-As seguintes libs são necessárias para execução em ambiente linux:
+The following libraries are required to run the application in a Linux environment:
+
  - python3
  - python3-pip
  - python3-dev
  - mpi
  - libopenmpi-dev
 
-A aplicação foi testada com o OpenMPI, porém podem ser usadas outras implementações do MPI.
+The application has been tested with OpenMPI, but other MPI implementations may also be used.
 
-## Requisitos - Libs - HDF5 e h5py
+## Requirements - Libraries - HDF5 and h5py
 
-Para a gestão de arquivos grandes por meio de execução Out-of-Core são usadas as libs hdf5 e h5py. Para permitir seu uso em conjunto ao MPI é necessária a compilação manual dessas duas ferramentas. Para a instalação dessas libs não e necessário acesso *root*, exceto para os comandos *pip3*. Porém é possível fazê-los usando um ambiente virtual, como *anaconda* ou *venv*, sem permissões *root*
+The hdf5 and h5py libraries are used for managing large files through Out-of-Core execution. To allow their use together with MPI, these two tools must be compiled manually. Root access is not required to install these libraries, except for the pip3 commands. However, they can be installed using a virtual environment, such as anaconda or venv, without root permissions.
 
-Essas libs possuem 2 scripts para auxiliar a sua instalaçã: latest_install.sh e prep_env.sh. O segundo script auxilia na geração de um venv caso não haja acesso root. Abaixo vem as operações explicadas passo a passo.
+These libraries have 2 scripts to assist with their installation: latest_install.sh and prep_env.sh. The second script assists in creating a venv when root access is unavailable. The operations are explained step by step below.
 
-A compilação do HDF5 pode ser feita da seguinte forma:
+HDF5 can be compiled as follows:
 
-    git clone https://github.com/HDFGroup/hdf5.git
-    cd hdf5
-    git checkout hdf5-1_12_2-3-rc1
-    autoconf
-    ./configure --enable-parallel --enable-shared --prefix=<HDF5_PATH>/build
-    make -j8
-    make install
+	git clone https://github.com/HDFGroup/hdf5.git
+	cd hdf5
+	git checkout hdf5-1_12_2-3-rc1
+	autoconf
+	./configure --enable-parallel --enable-shared --prefix=<HDF5_PATH>/build
+	make -j8
+	make install
 
-A compilação/instalação do h5py, a ser feita após o HDF5, sendo feita usando os comandos:
 
-    pip3 uninstall mpi4py
-    pip3 install mpi4py==4.0.1
-    git clone https://github.com/h5py/h5py.git
-    cd h5py
-    git checkout 3.11.0
-    pip3 install wheel Cython==3.1.0a1
-    export CC=mpicc; export HDF5_MPI="ON"; export HDF5_DIR="<HDF5_PATH>/build"; pip3 install --no-build-isolation .
+The compilation/installation of h5py, which should be performed after HDF5, can be done using the following commands:
 
-O h5py pode ter problemas de incompatibilidade com o mpi4py. Para evitar problemas certificar que a versão do mpi4py seja a acima. Isso é feito nos comando acima, onde uma versão previamente instalada do mpi4py é removida, sendo instalada a versão esperada.
+	pip3 uninstall mpi4py
+	pip3 install mpi4py==4.0.1
+	git clone https://github.com/h5py/h5py.git
+	cd h5py
+	git checkout 3.11.0
+	pip3 install wheel Cython==3.1.0a1
+	export CC=mpicc; export HDF5_MPI="ON"; export HDF5_DIR="<HDF5_PATH>/build"; pip3 install --no-build-isolation .
 
-### Lista de compatibilidade
 
-Foi testado com sucesso a compatibilidade das seguintes versões:
+h5py may have compatibility issues with mpi4py. To avoid problems, make sure that the mpi4py version is the one specified below. This is done in the commands above, where a previously installed version of mpi4py is removed and the expected version is installed.
+
+### Compatibility List
+
+The following versions have been successfully tested for compatibility:
 
  - python 3.12.7:
-     - openmpi 4.1.6
-     - mpi4py 4.0.1
-     - HDF5 hdf5-1_12_2-3-rc1
-     - Cython 3.1.0a1
-     - h5py 3.11.0
+   - openmpi 4.1.6
+   - mpi4py 4.0.1
+   - HDF5 hdf5-1_12_2-3-rc1
+   - Cython 3.1.0a1
+   - h5py 3.11.0
  - python 3.12.3:
-     - mpi4py 3.1.6
-     - HDF5 hdf5-1_12_2-3-rc1
-     - Cython 3.0.10
-     - h5py 3.11.0
+   - mpi4py 3.1.6
+   - HDF5 hdf5-1_12_2-3-rc1
+   - Cython 3.0.10
+   - h5py 3.11.0
  - python 3.12.4:
-     - mpi4py 3.1.6
-     - HDF5 hdf5-1_12_2-3-rc1
-     - Cython 3.0.10
-     - h5py 3.11.0
-     - openmpi 4.0.1 (sequana for sdumont)
-     - gcc 13.2 (sequana for sdumont)
+   - mpi4py 3.1.6
+   - HDF5 hdf5-1_12_2-3-rc1
+   - Cython 3.0.10
+   - h5py 3.11.0
+   - openmpi 4.0.1 (sequana for sdumont)
+   - gcc 13.2 (sequana for sdumont)
 
-Note que usar combinações de versões mais cerentes é recomendado dado que podem ter havido problemas com combinações anteriores, o que tornou necessária a criação de uma nova combinação.
+Note that using more recent version combinations is recommended, as there may have been issues with previous combinations, making it necessary to create a new combination.
 
-# Requisitos - Dados
+# Requirements - Data
 
-A execução da aplicação usa dois tipos de dados: dados sísmicos e dados reais de porosidade de poços. Os dados reais de poço são pequenos, e por isso já estão disponíveis nesse repositório privado. Os dados sísmicos são maiores e assim não constam no repositório. Esses arquivos *numpy* devem ser colocados no diretório **./data/**, contido na raiz deste projeto. Abaixo temos a lista de arquivos necessários para execução da aplicação que devem ser colocados no diretório **./data**:
+The application uses two types of data: seismic data and actual well porosity data. The actual well data is small, and therefore is already available in this private repository. The seismic data is larger and is therefore not included in the repository. These numpy files must be placed in the ./data/ directory, located at the root of this project. The following is the list of files required to run the application that must be placed in the ./data directory:
  - porosity-canal.npy
  - features/NEAR.npy
  - features/MID.npy
  - features/FAR.npy
  - features/UFAR.npy
 
-Os dados sísmicos (*NEAR.npy*, *MID.npy*, *FAR.npy* e *UFAR.npy*) são arquivos *numpy*, contendo uma matriz de *(434,646,251)* pontos (dimensão do hipercubo), com valores do tipo *numpy.float64*.
+The seismic data (NEAR.npy, MID.npy, FAR.npy, and UFAR.npy) consists of numpy files containing a matrix of (434,646,251) points (the hypercube dimensions), with values of type numpy.float64.
 
-## Geração de arquivos h5
+## Generating h5 Files
 
-Os dados *.npy* deverão ser convertidos para o formato *.h5*. Isso é feito por meio dos seguintes comandos, executados a partir da raiz do projeto:
+The .npy data must be converted to the .h5 format. This is done using the following commands, executed from the project root:
 
-    cd src/data
-    python3 wells_data3_hdf5.py
-    cd features
-    python3 seismic_data3_hdf5.py
+	cd src/data
+	python3 wells_data3_hdf5.py
+	cd features
+	python3 seismic_data3_hdf5.py
 
-Esses comandos acima gerarão arquivos *.h5* que deverão estar nos diretórios abaixo mostrados:
+
+The commands above generate .h5 files that should be located in the directories shown below:
  - ./data/POV/porosity-canal.h5
  - ./data/POV/features/h5_features/NEAR.npy
  - ./data/POV/features/h5_features/MID.npy
  - ./data/POV/features/h5_features/FAR.npy
  - ./data/POV/features/h5_features/UFAR.npy
 
-Os scripts *Python* já geram os dados nos locais corretos, porém é importante verificar a existência dos mesmos.
+The Python scripts already generate the data in the correct locations, but it is important to verify that the files exist.
 
-# Dependências *Python*
+# Python Dependencies
 
-A aplicação usa diversas libs *python* para sua execução. Todas elas (exceto h5py, já instalada anteriormente) podem ser facilmente instaladas por meio do seguinte comando:
+The application uses several Python libraries for its execution. All of them (except h5py, which was installed previously) can be easily installed using the following command:
 
-    pip3 install -r requirements
+	pip3 install -r requirements
 
-Vale ressaltar que essas dependências devem ser instaladas somente após as libs Linux necessárias.
+It is worth noting that these dependencies should only be installed after the required Linux libraries.
 
-Caso não tenha acesso *root*, é possível realizar essa instalação em um ambiente virtual suportado pelo ambiente de execução, como *anaconda* ou *venv*.
+If root access is unavailable, this installation can be performed in a virtual environment supported by the execution environment, such as anaconda or venv.
 
-# Execução
+# Execution
 
-Existem duas formas de executar a aplicação, serializada com um único processo ou com paralelismo. Dado o custo computacional envolvido é recomendado usar a execução serializada apenas para validar a instalação da aplicação. A execução serializada é feita por meio do comando a seguir a partir do diretório **./src/alg** desse repositório:
+There are two ways to run the application: serialized execution using a single process, or parallel execution. Given the computational cost involved, serialized execution is recommended only for validating the application installation. Serialized execution is performed using the following command from the ./src/alg directory of this repository:
 
-    python3 main.py --config config.yaml [params]
-
-Para execução paralela basta executar o seguinte comando para gerar N processos paralelos:
-
-    mpirun -np N --tag-output --bind-to core python3 main.py --config config.yaml [params]
-
-Esses N processos paralelos são distribuídos pelos recursos disponíveis. Então, para uma única máquina com 10 núcleos e N=20, 20 processos são inicializados nesta. Se houverem duas máquinas configuradas em ambiente distribuído, haverão 10 processos por máquina. Não é recomendado usar mais processos por máquina do que núcleos de CPU que esta possui.
-
-Outro ponto de atenção é que essa aplicação consome uma grande quantidade de memória, e dessa forma valores muito grandes de N podem resultar em execuções interrompidas por falta de memória.
-
-Os dados de estimação de porosidade são salvos em **./data/POV/porosity-canal.h5**. Dados relativos à performance da aplicação (e.g., tempos de execução) e à performance do modelo gerado (e.g., acurácia do modelo) são visto na saída padrão do sistema (*stdout*).
-
-# Parâmetros de Execução
-
-Nessa versão da aplicação existem parâmetros de entrada que podem ser usados para configurar como a geração de dados pode ser feita. A aplicação também conta com um parâmetro de "ajuda": *--help* ou *-h*. Abaixo alguns parâmetros disponíveis:
- - *--it*: Iteração inicial a ser executada. Exemplo, se tiver o valor 3, é esperado que as iterações 1 e 2 tenham sido concluídas, com os resultados no arquivo de porosidade, sendo assim executada a iteração 3 em diante. Nota: a primeira iteração é a iteração 1.
- - *--nits*: Define o número de iterações que serão realizadas, incluindo a iteração inicial. Caso a aplicação não consiga terminar sua execução (e.g., foi cancelada por uso excessivo de memória ou por *timeout* em *clusters*), os dados parciais dessa execução são **PERDIDOS**. Para evitar tal problema em ambientes de *clusters* é recomendado a execução de poucas iterações por vez, realizando o backup dos arquivos de porosidade a cada termino.
- - *--nf*: Número de características a serem usadas, a partir das características base disponíveis em **./data/POV/features/h5_features**. Se não definido, todas as características base disponíveis são usadas. 
- - *--nfs*: Número de característcas selecionadas por iteração. Por padrão 10 características são usadas para gerar um modelo estimador de porosidade. Porém esse valor pode ser reduzido para diminuir o tempo de execução.
-
-Além disso, um arquivo de configuração (*config.yaml*) é usado para configurar a aplicação a nível mais fino. Caso seja passado um parâmetro via argumento python que já tenha um valor definido em *config.yaml*, o valor da config é sobreescrito, sendo mantido o valor passado via parâmetro.
-
-# Exemplo
-
-Abaixo temos um exemplo rápido usando apenas 1 arquivo, selecionando apenas 1 melhor característica, para 1 iteração:
-
-    python3 main.py --config config.yaml --nits 1 --nf 1 --nsf 1
-
-A saída do comando acima será:
-
-    loading seismic
-    loading porosity
-    [gen_expanded_points][it0] Expanding points on ring 0
-    [PROFILING][expand][it0][chunk0-time] 5.728178262710571
-    [PROFILING][expand][it0][chunk1-time] 6.6458210945129395
-    [PROFILING][expand][it0][chunk0-time] 5.793959140777588
-    [PROFILING][expand][it0][chunk1-time] 5.810708999633789
-    [PROFILING][expand][it0][chunk0-time] 5.762479782104492
-    [PROFILING][expand][it0][chunk0-time] 5.958775043487549
-    [PROFILING][expand][it0][chunk0-time] 5.750436782836914
-    [PROFILING][expand][it0][chunk0-time] 5.760072231292725
-    [PROFILING][expand][it0][chunk0-time] 5.853853464126587
-    [PROFILING][expand][it0][chunk0-time] 5.790080308914185
-    [PROFILING][expand][it0][ran-chunks-time] 58.85436511039734
-    [PROFILING][expand][it0][chunks-ran] 1 2
-    ============== NEED TO AUTOMATE TMP_LIST CHUNK_SIZE
-    [get_features_sets][('MID', -3, -3, -3)] insert_feature_time: 0.0773627758026123
-    [get_features_sets][('MID', -3, -3, -3)] train_time: 0.4123711585998535
-    [get_features_sets][('MID', -3, -3, -3)] error: 0.05177651273487806
-    [get_features_sets][it0] Tested features ['x', 'y', 'z', ('MID', -3, -3, -3)] with error 0.05177651273487806
-    [get_features_sets][it0] full_it_time: 0.48976802825927734
-    [get_features_sets][('MID', -3, -3, -3)] commit_feature_time: 0.0767519474029541
-    [get_features_sets] full_time: 3.45944881439209
+	python3 main.py --config config.yaml [params]
 
 
-# Execução Via Container
+For parallel execution, simply run the following command to generate N parallel processes:
 
-Uma outra opção de execução é por meio do Dockerfile presente neste repositório. Usando o container é possível executar a aplicação sem precisar se preocupar com os módulos/requisitos a serem baixados, e sem precisar de acesso *root*. Dois comandos são necessários (executando a partir da raiz deste repositório):
+	mpirun -np N --tag-output --bind-to core python3 main.py --config config.yaml [params]
 
-    podman build --tag app .
-    podman run -v <GIT_PATH>/data:/home/petroiageo/data:Z app
 
-O prímeiro comando gera a imagem do conteiner a ser executada. No segundo comando é necessário colocar o caminho absoluto deste repositório (GIT_PATH). É possível passar parâmetros da aplicação normalmente via CLI para a aplicação. Os dados sismícos e de porosidade reais devem estar presentes no diretório **./data** no sistema *host*. Assim, não são necessários movimentos de dados (cópias) entre a imagem do container e o sistema host. Esse exemplo foi testado com a aplicação *podman* para criação e execução de containers, porém tratando-se de um Dockerfile, pode ser executada usando o software de containers de sua preferência.
+These N parallel processes are distributed across the available resources. Therefore, on a single machine with 10 cores and N=20, 20 processes are initialized on that machine. If there are two machines configured in a distributed environment, there will be 10 processes per machine. It is not recommended to use more processes per machine than the number of CPU cores it has.
+
+Another point of attention is that this application consumes a large amount of memory, and therefore very large values of N may result in executions being interrupted due to insufficient memory. *Note: this has been mostly solved with shared memory TrialDara*
+
+The porosity estimation data is saved in ./data/POV/porosity-canal.h5. Data related to application performance (e.g., execution times) and the performance of the generated model (e.g., model accuracy) can be seen in the system's standard output (stdout).
+
+# Execution Parameters
+
+In this version of the application, there are input parameters that can be used to configure how data generation is performed. The application also has a "help" parameter: --help or -h. Some available parameters are listed below:
+
+ - --it: Initial iteration to be executed. For example, if the value is 3, it is expected that iterations 1 and 2 have already been completed, with their results stored in the porosity file; therefore, iteration 3 onward will be executed. Note: the first iteration is iteration 1.
+ - --nits: Defines the number of iterations to be performed, including the initial iteration. If the application is unable to finish its execution (e.g., it is canceled due to excessive memory usage or a timeout on clusters), the partial data from that execution is LOST. To avoid this problem in cluster environments, it is recommended to execute only a few iterations at a time and back up the porosity files after each completion.
+ - --nf: Number of features to be used, based on the available base features in ./data/POV/features/h5_features. If not defined, all available base features are used.
+ - --nfs: Number of features selected per iteration. By default, 10 features are used to generate a porosity estimation model. However, this value can be reduced to decrease execution time.
+
+In addition, a configuration file (config.yaml) is used to configure the application at a finer level. If a parameter is passed via a Python argument that already has a value defined in config.yaml, the configuration value is overridden, and the value passed as an argument is retained.
+
+# Example
+
+Below is a quick example using only 1 file, selecting only 1 best feature, for 1 iteration:
+
+	python3 main.py --config config.yaml --nits 1 --nf 1 --nsf 1
+
+
+The output of the command above will be:
+
+	loading seismic
+	loading porosity
+	[gen_expanded_points][it0] Expanding points on ring 0
+	[PROFILING][expand][it0][chunk0-time] 5.728178262710571
+	[PROFILING][expand][it0][chunk1-time] 6.6458210945129395
+	[PROFILING][expand][it0][chunk0-time] 5.793959140777588
+	[PROFILING][expand][it0][chunk1-time] 5.810708999633789
+	[PROFILING][expand][it0][chunk0-time] 5.762479782104492
+	[PROFILING][expand][it0][chunk0-time] 5.958775043487549
+	[PROFILING][expand][it0][chunk0-time] 5.750436782836914
+	[PROFILING][expand][it0][chunk0-time] 5.760072231292725
+	[PROFILING][expand][it0][chunk0-time] 5.853853464126587
+	[PROFILING][expand][it0][chunk0-time] 5.790080308914185
+	[PROFILING][expand][it0][ran-chunks-time] 58.85436511039734
+	[PROFILING][expand][it0][chunks-ran] 1 2
+	============== NEED TO AUTOMATE TMP_LIST CHUNK_SIZE
+	[get_features_sets][('MID', -3, -3, -3)] insert_feature_time: 0.0773627758026123
+	[get_features_sets][('MID', -3, -3, -3)] train_time: 0.4123711585998535
+	[get_features_sets][('MID', -3, -3, -3)] error: 0.05177651273487806
+	[get_features_sets][it0] Tested features ['x', 'y', 'z', ('MID', -3, -3, -3)] with error 0.05177651273487806
+	[get_features_sets][it0] full_it_time: 0.48976802825927734
+	[get_features_sets][('MID', -3, -3, -3)] commit_feature_time: 0.0767519474029541
+	[get_features_sets] full_time: 3.45944881439209
+
+# Execution via Container
+
+Another execution option is through the Dockerfile available in this repository. Using the container, it is possible to run the application without having to worry about downloading the required modules/dependencies and without requiring root access. Two commands are required (executed from the root of this repository):
+
+	podman build --tag app .
+	podman run -v <GIT_PATH>/data:/home/petroiageo/data:Z app
+
+
+The first command generates the container image to be executed. In the second command, the absolute path to this repository (GIT_PATH) must be provided. Application parameters can normally be passed to the application via the CLI. The seismic and actual porosity data must be present in the ./data directory on the host system. Therefore, no data movement (copying) between the container image and the host system is required. This example was tested using podman for container creation and execution; however, since this is a Dockerfile, it can be executed using the container software of your choice.
